@@ -57,6 +57,7 @@ local compatible_checkers = {
   { 3008000000, --[[ 3.8.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
+      local dp_version_num = version_num(dp_version)
       local redis_plugins = {
         ["proxy-cache-advanced"] = true,
         ["graphql-proxy-cache-advanced"] = true,
@@ -182,11 +183,16 @@ local compatible_checkers = {
         if plugin_name == 'aws-lambda' then
           local config = plugin.config
           if config.aws_sts_endpoint_url ~= nil then
-            config.aws_sts_endpoint_url = nil
-            has_update = true
-            log_warn_message('configures ' .. plugin_name .. ' plugin with aws_sts_endpoint_url',
-              'will be removed.',
-              dp_version, log_suffix)
+            if dp_version_num < 3004003013 or
+                (dp_version_num >= 3005000000 and dp_version_num < 3005000008) or
+                (dp_version_num >= 3006000000 and dp_version_num < 3006001008) or
+                (dp_version_num >= 3007000000 and dp_version_num < 3007001003) then
+              config.aws_sts_endpoint_url = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin_name .. ' plugin with aws_sts_endpoint_url',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
           end
         end
 
@@ -254,11 +260,16 @@ local compatible_checkers = {
         local name = vault.name
         local config = vault.config
         if name == "aws" and config.sts_endpoint_url ~= nil then
-          log_warn_message('contains configuration vaults.aws.sts_endpoint_url',
-                           'be removed',
-                           dp_version, log_suffix)
-          vault.config.sts_endpoint_url = nil
-          has_update = true
+          if dp_version_num < 3004003013 or
+              (dp_version_num >= 3005000000 and dp_version_num < 3005000008) or
+              (dp_version_num >= 3006000000 and dp_version_num < 3006001008) or
+              (dp_version_num >= 3007000000 and dp_version_num < 3007001003) then
+            log_warn_message('contains configuration vaults.aws.sts_endpoint_url',
+                            'be removed',
+                            dp_version, log_suffix)
+            vault.config.sts_endpoint_url = nil
+            has_update = true
+          end
         end
       end
 

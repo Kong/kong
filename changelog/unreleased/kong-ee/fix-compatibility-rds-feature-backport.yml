@@ -1,0 +1,3 @@
+message: Fixed the clustering compatibility logic for the RDS assume role and custom STS endpoint features backport.
+type: bugfix
+scope: Clustering

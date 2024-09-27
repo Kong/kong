@@ -15,6 +15,8 @@ local ee_helpers = require "spec-ee.helpers"
 local get_portal_and_vitals_key = ee_helpers.get_portal_and_vitals_key
 local join = require("pl.stringx").join
 local pl_tablex = require("pl.tablex")
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local pl_file = require("pl.file")
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -96,6 +98,24 @@ local function get_sync_status(id)
   return status
 end
 
+local function get_vault(node_id, node_version, name)
+  -- Emulates a DP connection to a CP. We're sending our node_id and version
+  -- and expect a payload back that contains our sanitized plugin config.
+  local res = cluster_client({ id = node_id, version = node_version })
+
+  local vault
+  if ((res or EMPTY).config_table or EMPTY).vaults then
+    for _, p in ipairs(res.config_table.vaults) do
+      if p.name == name then
+        vault = p.config
+        break
+      end
+    end
+    assert.not_nil(vault, "vault " .. name .. " not found in config")
+  end
+
+  return vault, get_sync_status(node_id)
+end
 
 local function get_plugin(node_id, node_version, name)
   -- Emulates a DP connection to a CP. We're sending our node_id and version
@@ -125,7 +145,7 @@ end
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP config compat #" .. strategy, function()
-  local db
+  local db, reset_license_data
 
   local function do_assert(case, dp_version)
     assert(db:truncate("plugins"))
@@ -161,6 +181,8 @@ describe("CP/DP config compat #" .. strategy, function()
   end
 
   lazy_setup(function()
+    reset_license_data = clear_license_env()
+    helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
     local bp
     local ENABLED_PLUGINS = { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
     'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator", 'proxy-cache-advanced', 'graphql-proxy-cache-advanced',
@@ -170,6 +192,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
+      "vaults",
     }, ENABLED_PLUGINS)
 
     PLUGIN_LIST = helpers.get_plugins_list()
@@ -191,12 +214,14 @@ describe("CP/DP config compat #" .. strategy, function()
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       portal_and_vitals_key = get_portal_and_vitals_key(),
       nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled," .. join(',', ENABLED_PLUGINS),
+      vaults = "bundled",
+      plugins = "bundled," .. join(',', ENABLED_PLUGINS),
     }))
   end)
 
   lazy_teardown(function()
     helpers.stop_kong()
+    reset_license_data()
   end)
 
   describe("3.4.x.y", function()
@@ -1480,6 +1505,159 @@ describe("CP/DP config compat #" .. strategy, function()
             do_assert(case, "3.7.9.9")
           end)
         end
+      end)
+    end)
+
+    describe("#sts endpoint url in aws vault and aws-lambda plugin", function ()
+      describe("aws-lambda plugin aws_sts_endpoint_url", function()
+        local case_sanity = {
+          plugin = "aws-lambda",
+          label = "w/ aws_sts_endpoint_url",
+          pending = false,
+          config = {
+            aws_key = "test",
+            aws_secret = "test",
+            aws_region = "us-east-1",
+            function_name = "test-lambda",
+            aws_sts_endpoint_url = "https://test.com",
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.aws_sts_endpoint_url == "https://test.com"
+          end
+        }
+
+        it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+          do_assert(case_sanity, "3.5.0.8")
+        end)
+
+        it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+          do_assert(case_sanity, "3.6.1.8")
+        end)
+
+        it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+          do_assert(case_sanity, "3.7.1.3")
+        end)
+
+        it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+          do_assert(case_sanity, "3.8.0.0")
+        end)
+
+        local case = {
+          plugin = "aws-lambda",
+          label = "w/ aws_sts_endpoint_url unsupported",
+          pending = false,
+          config = {
+            aws_key = "test",
+            aws_secret = "test",
+            aws_region = "us-east-1",
+            function_name = "test-lambda",
+            aws_sts_endpoint_url = "https://test.com",
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.aws_sts_endpoint_url == nil
+          end
+        }
+
+        it(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.5.0.7")
+        end)
+
+        it(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.6.1.7")
+        end)
+
+        it(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.7.1.2")
+        end)
+      end)
+
+      describe("aws vault sts_endpoint_url", function ()
+        local function do_assert(case, dp_version)
+          assert(db:truncate("sm_vaults"))
+          assert(db:truncate("clustering_data_planes"))
+
+          local vault_entity = {
+            name = case.vault,
+            prefix = "aws-test",
+            config = case.config,
+          }
+
+          admin.vaults:insert(vault_entity)
+
+          local id = utils.uuid()
+          local conf, status
+          helpers.wait_until(function()
+            conf, status = get_vault(id, dp_version, case.vault)
+            return status == case.status
+          end, 5, 0.25)
+
+          assert.equals(case.status, status)
+
+          if case.validator then
+            assert.is_truthy(case.validator(conf), "unexpected config received")
+          end
+        end
+
+        local case_sanity = {
+          vault = "aws",
+          label = "w/ sts_endpoint_url supported",
+          pending = false,
+          config = {
+            region = "us-east-1",
+            assume_role_arn = "arn:aws:iam::123456789012:role/test-role",
+            sts_endpoint_url = "https://test.com"
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.sts_endpoint_url == "https://test.com"
+          end
+        }
+
+        it(fmt("%s - %s", case_sanity.vault, case_sanity.label), function()
+          do_assert(case_sanity, "3.5.0.8")
+        end)
+
+        it(fmt("%s - %s", case_sanity.vault, case_sanity.label), function()
+          do_assert(case_sanity, "3.6.1.8")
+        end)
+
+        it(fmt("%s - %s", case_sanity.vault, case_sanity.label), function()
+          do_assert(case_sanity, "3.7.1.3")
+        end)
+
+        it(fmt("%s - %s", case_sanity.vault, case_sanity.label), function()
+          do_assert(case_sanity, "3.8.0.0")
+        end)
+
+        local case = {
+          vault = "aws",
+          label = "w/ sts_endpoint_url unsupported",
+          pending = false,
+          config = {
+            region = "us-east-1",
+            assume_role_arn = "arn:aws:iam::123456789012:role/test-role",
+            sts_endpoint_url = "https://test.com"
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.sts_endpoint_url == nil
+          end
+        }
+
+        it(fmt("%s - %s", case.vault, case.label), function()
+          do_assert(case, "3.5.0.7")
+        end)
+
+        it(fmt("%s - %s", case.vault, case.label), function()
+          do_assert(case, "3.6.1.7")
+        end)
+
+        it(fmt("%s - %s", case.vault, case.label), function()
+          do_assert(case, "3.7.1.2")
+        end)
+
       end)
     end)
   end)
