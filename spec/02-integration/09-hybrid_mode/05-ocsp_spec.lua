@@ -14,9 +14,10 @@ local function set_ocsp_status(status)
 end
 
 
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy() do
 
-describe("cluster_ocsp = on works #" .. strategy, function()
+describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, function()
   describe("DP certificate good", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -440,4 +441,5 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " backend", funct
   end)
 end)
 
-end
+end -- for _, strategy
+end -- for inc_sync
