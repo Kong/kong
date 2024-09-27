@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local events = require("kong.clustering.events")
 local hooks = require("kong.clustering.services.sync.hooks")
 local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
@@ -30,6 +31,9 @@ end
 
 function _M:init_worker()
   if self.is_cp then
+    -- enable clustering broadcasts in CP
+    events.init()
+
     self.strategy:init_worker()
     return
   end
