@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where RBAC authorization could be enabled via `enforce_rbac` in DB-less mode. RBAC authorization should be disabled in DB-less mode.
+type: "bugfix"
+scope: "Core"

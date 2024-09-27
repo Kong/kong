@@ -1119,6 +1119,10 @@ local function validate(conf, errors)
       "encrypted via SSL")
   end
 
+  if conf.enforce_rbac ~= "off" and conf.database == "off" then
+    log.warn("RBAC authorization should be disabled in DB-less mode")
+  end
+
   -- warn user if rbac is on without admin_gui set
   local ok, err = validate_enforce_rbac(conf)
   if not ok then

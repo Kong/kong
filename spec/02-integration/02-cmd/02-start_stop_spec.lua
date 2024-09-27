@@ -1162,6 +1162,21 @@ describe("kong start/stop #" .. strategy, function()
         local body = assert.response(res).has.jsonbody()
         assert.equal("no Route matched with those values", body.message)
       end)
+
+      it("RBAC authorization should be disabled in dbless mode", function()
+        helpers.clean_logfile()
+        local ok, stderr = kong_exec("start", {
+          database = "off",
+          prefix = PREFIX,
+          admin_gui_auth = "basic-auth",
+          admin_gui_session_conf = [[{"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}]],
+          admin_gui_auth_conf = [[{ "hide_credentials": true }]],
+          admin_gui_url = "http://localhost:8080",
+          enforce_rbac = "on",
+        })
+        assert.truthy(ok)
+        assert.matches("RBAC authorization should be disabled in DB-less mode", stderr, nil, true)
+      end)
     end
   end)
 
