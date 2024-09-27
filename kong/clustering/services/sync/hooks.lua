@@ -4,13 +4,10 @@ local _MT = { __index = _M, }
 
 local hooks = require("kong.hooks")
 local EMPTY = require("kong.tools.table").EMPTY
---local constants = require("kong.constants")
 
 
---local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local ipairs = ipairs
 local ngx_log = ngx.log
---local ngx_DEBUG = ngx.DEBUG
 local ngx_ERR = ngx.ERR
 
 
