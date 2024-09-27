@@ -11,6 +11,8 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
     local prefix = "./wasm"
 
     lazy_setup(function()
+      helpers.setenv("KONG_CLUSTER_INCREMENTAL_SYNC", inc_sync)
+
       helpers.clean_prefix(prefix)
       assert(helpers.kong_exec("prepare", {
         database = role == "data_plane" and "off" or "postgres",
@@ -20,7 +22,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         role = role,
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        cluster_incremental_sync = inc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
@@ -28,6 +29,8 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
 
     lazy_teardown(function()
       helpers.clean_prefix(prefix)
+
+      helpers.unsetenv("KONG_CLUSTER_INCREMENTAL_SYNC")
     end)
 
     if role == "control_plane" then
@@ -113,7 +116,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           status_listen = "off",
           nginx_main_worker_processes = 2,
-          cluster_incremental_sync = inc_sync,
         }))
       end
     end)
