@@ -3,8 +3,9 @@ local join = require("pl.stringx").join
 
 local ENABLED_PLUGINS = { "dummy" , "reconfiguration-completion"}
 
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("deprecations are not reported on DP but on CP", function()
+  describe("deprecations are not reported on DP but on CP " .. " inc_sync=" .. inc_sync, function()
     local cp_prefix = "servroot1"
     local dp_prefix = "servroot2"
     local cp_logfile, dp_logfile, route
@@ -41,6 +42,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         admin_listen = "0.0.0.0:9001",
         proxy_listen = "off",
+        cluster_incremental_sync = inc_sync,
       }))
 
       assert(helpers.start_kong({
@@ -55,6 +57,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         plugins = "bundled," .. join(",", ENABLED_PLUGINS),
         admin_listen = "off",
         proxy_listen = "0.0.0.0:9002",
+        cluster_incremental_sync = inc_sync,
       }))
       dp_logfile = helpers.get_running_conf(dp_prefix).nginx_err_logs
       cp_logfile = helpers.get_running_conf(cp_prefix).nginx_err_logs
@@ -111,4 +114,5 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       end)
     end)
   end)
-end
+end -- for _, strategy
+end -- for inc_sync
