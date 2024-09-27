@@ -41,24 +41,7 @@ local fixtures = {
 }
 
 local function reload_router(flavor)
-  _G.kong = {
-    configuration = {
-      router_flavor = flavor,
-    },
-  }
-
-  helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
-
-  package.loaded["spec.helpers"] = nil
-  package.loaded["kong.global"] = nil
-  package.loaded["kong.cache"] = nil
-  package.loaded["kong.db"] = nil
-  package.loaded["kong.db.schema.entities.routes"] = nil
-  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
-
-  helpers = require "spec.helpers"
-
-  helpers.unsetenv("KONG_ROUTER_FLAVOR")
+  helpers = require("spec.internal.module").reload_helpers(flavor)
 
   fixtures.dns_mock = helpers.dns_mock.new({ mocks_only = true })
   fixtures.dns_mock:A {
