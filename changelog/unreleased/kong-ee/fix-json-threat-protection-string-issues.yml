@@ -1,0 +1,4 @@
+message: |
+  **json-threat-protection**: Fixed an issue where the length counting of escape sequences, non-ASCII characters, and object entry names in JSON Strings was incorrect; now using UTF-8 character count instead of bytes.
+type: bugfix
+scope: Plugin
