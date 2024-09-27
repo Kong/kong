@@ -32,7 +32,7 @@ local function compose_tags(service_name, status, consumer_id, tags, conf, route
   local result = {
     (conf.service_name_tag or "name") .. ":" .. service_name,
     (conf.status_tag or "status") .. ":" .. status,
-    route_name and route_name ~= "" and ((conf.route_name_tag or "route") .. ":" .. route_name) or nil
+    route_name and route_name ~= "" and ((conf.route_name_tag or "route") .. ":" .. route_name)
   }
 
   if consumer_id ~= nil then
