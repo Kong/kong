@@ -368,4 +368,9 @@ function _M:get_peers()
 end
 
 
+function _M:get_peer_ip(node_id)
+  return self.client_ips[node_id]
+end
+
+
 return _M
