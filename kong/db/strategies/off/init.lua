@@ -1,29 +1,19 @@
 local declarative_config = require("kong.db.schema.others.declarative_config")
---local workspaces = require("kong.workspaces")
 local lmdb = require("resty.lmdb")
 local lmdb_prefix = require("resty.lmdb.prefix")
---local lmdb_transaction = require("resty.lmdb.transaction")
 local marshaller = require("kong.db.declarative.marshaller")
---local yield = require("kong.tools.yield").yield
 local declarative = require("kong.db.declarative")
 
 local kong = kong
-local string_format = string.format
+local fmt = string.format
 local type = type
 local next = next
---local sort = table.sort
---local pairs = pairs
---local match = string.match
 local assert = assert
---local tostring = tostring
---local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
---local marshall = marshaller.marshall
 local lmdb_get = lmdb.get
---local get_workspace_id = workspaces.get_workspace_id
 local pk_string = declarative_config.pk_string
 local unique_field_key = declarative.unique_field_key
 local item_key = declarative.item_key
@@ -123,8 +113,6 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
   end
 
   offset = offset or prefix
-
-  --local list = {}
 
   local ret = {}
   local ret_idx = 0
@@ -249,7 +237,7 @@ end
 do
   local unsupported = function(operation)
     return function(self)
-      local err = string_format("cannot %s '%s' entities when not using a database",
+      local err = fmt("cannot %s '%s' entities when not using a database",
                       operation, self.schema.name)
       return nil, self.errors:operation_unsupported(err)
     end
@@ -257,9 +245,9 @@ do
 
   local unsupported_by = function(operation)
     return function(self, field_name)
-      local err = string_format("cannot %s '%s' entities by '%s' when not using a database",
+      local err = fmt("cannot %s '%s' entities by '%s' when not using a database",
                       operation, self.schema.name, '%s')
-      return nil, self.errors:operation_unsupported(string_format(err, field_name))
+      return nil, self.errors:operation_unsupported(fmt(err, field_name))
     end
   end
 
