@@ -150,10 +150,6 @@ describe("kong vault #" .. strategy, function()
     end)
 
     it("vault get non-existing env", function()
-      if strategy == "off" then
-        return
-      end
-
       local ok, stderr, stdout = helpers.kong_exec("vault get test-env/nonexist", {
         prefix = helpers.test_conf.prefix,
       })
