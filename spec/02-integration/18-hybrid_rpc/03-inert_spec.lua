@@ -96,6 +96,21 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(admin_client:get("/clustering/data-planes/" .. dp_node_id .. "/log-level"))
         assert.res_status(404, res)
       end)
+
+      it("can not get DP RPC capability status", function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:get("/clustering/data-planes"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        for _, v in pairs(json.data) do
+          assert.equal(#v.rpc_capabilities, 0)
+        end
+      end)
     end)
   end)
 end
