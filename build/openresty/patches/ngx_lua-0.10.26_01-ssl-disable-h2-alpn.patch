@@ -18,7 +18,7 @@ index 1c92d9f..232a279 100644
          h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 -
 +#if (NGX_HTTP_LUA_KONG)
-+        if(ngx_lua_kong_ssl_enable_http2_alpn(c->ssl, h2scf->enable || hc->addr_conf->http2)) {
++        if(ngx_http_lua_kong_ssl_get_http2_alpn_enabled(c->ssl, h2scf->enable || hc->addr_conf->http2)) {
 +#else
          if (h2scf->enable || hc->addr_conf->http2) {
 +#endif
