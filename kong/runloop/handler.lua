@@ -358,7 +358,7 @@ local function new_router(version)
     end
   end
 
-  local detect_changes = kong.core_cache
+  local detect_changes = kong.core_cache and true
 
   -- for dbless we will not check changes when initing
   if db.strategy == "off" and get_phase() == "init_worker" then
