@@ -98,7 +98,9 @@ local function select_by_key(schema, key, follow)
     return select_by_key(schema, actual_key, false)
   end
 
-  local entity, err = construct_entity(schema, lmdb_get(key))
+  local value = assert(lmdb_get(key))
+
+  local entity, err = construct_entity(schema, value)
   if not entity then
     return nil, err
   end
@@ -114,18 +116,17 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
 
   offset = offset or prefix
 
-  local ret = {}
-  local ret_idx = 0
-  local schema = self.schema
-
   local res, err_or_more = lmdb_prefix.page(offset, prefix, nil, size)
   if not res then
     return nil, err_or_more
   end
 
+  local ret = {}
+  local ret_idx = 0
+  local schema = self.schema
   local last_key
 
-  for i, kv in ipairs(res) do
+  for _, kv in ipairs(res) do
     last_key = kv.key
     local item, err
 
@@ -144,6 +145,7 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
     ret[ret_idx] = item
   end
 
+  -- more need to query
   if err_or_more then
     return ret, nil, encode_base64(last_key .. "\x00", true)
   end
@@ -163,13 +165,7 @@ local function page(self, size, offset, options)
       return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
     end
 
-    --local number = tonumber(token)
-    --if not number then
-    --  return nil, self.errors:invalid_offset(offset, "invalid offset")
-    --end
-
     offset = token
-
   end
 
   return page_for_prefix(self, prefix, size, offset, options, false)
