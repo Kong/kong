@@ -16,7 +16,9 @@ local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 
 
 local pairs = pairs
+local ipairs = ipairs
 local fmt = string.format
+local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
@@ -227,11 +229,16 @@ function _M:sync_once(delay)
           t:db_drop(false)
         end
 
+        local db = kong.db
+
         for _, delta in ipairs(ns_delta.deltas) do
-          if delta.row ~= ngx.null then
+          local delta_type = delta.type
+          local delta_row = delta.row
+
+          if delta_row ~= ngx_null then
             -- upsert the entity
             -- does the entity already exists?
-            local old_entity, err = kong.db[delta.type]:select(delta.row)
+            local old_entity, err = db[delta_type]:select(delta_row)
             if err then
               return nil, err
             end
@@ -239,7 +246,7 @@ function _M:sync_once(delay)
             local crud_event_type = "create"
 
             if old_entity then
-              local res, err = delete_entity_for_txn(t, delta.type, old_entity, nil)
+              local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
               if not res then
                 return nil, err
               end
@@ -247,30 +254,30 @@ function _M:sync_once(delay)
               crud_event_type = "update"
             end
 
-            local res, err = insert_entity_for_txn(t, delta.type, delta.row, nil)
+            local res, err = insert_entity_for_txn(t, delta_type, delta_row, nil)
             if not res then
               return nil, err
             end
 
             crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta.type, crud_event_type, delta.row, old_entity, }
+            crud_events[crud_events_n] = { delta_type, crud_event_type, delta_row, old_entity, }
 
           else
             -- delete the entity
-            local old_entity, err = kong.db[delta.type]:select({ id = delta.id, }) -- TODO: composite key
+            local old_entity, err = kong.db[delta_type]:select({ id = delta.id, }) -- TODO: composite key
             if err then
               return nil, err
             end
 
             if old_entity then
-              local res, err = delete_entity_for_txn(t, delta.type, old_entity, nil)
+              local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
               if not res then
                 return nil, err
               end
             end
 
             crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta.type, "delete", old_entity, }
+            crud_events[crud_events_n] = { delta_type, "delete", old_entity, }
           end
 
           -- XXX TODO: could delta.version be nil or ngx.null
@@ -291,10 +298,11 @@ function _M:sync_once(delay)
 
         else
           for _, event in ipairs(crud_events) do
-            kong.db[event[1]]:post_crud_event(event[2], event[3], event[4])
+            -- delta_type, crud_event_type, delta.row, old_entity
+            db[event[1]]:post_crud_event(event[2], event[3], event[4])
           end
         end
-      end
+      end -- for _, delta
 
       return true
     end)
