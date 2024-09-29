@@ -5,16 +5,16 @@ if [ "$#" -lt 2 ]; then
     exit 1
 fi
 
-if [ -d $3/.pongo ]; then
+if [ -d "$3/.pongo" ]; then
     plugins_ee_directory=$3
-elif [ ! -z $3 ]; then
+elif [ ! -z "$3" ]; then
     echo "Requested to start extra plugins-ee services at $3, but it doesn't contain a .pongo directory"
 fi
 
-cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
+cwd=$(realpath $(dirname $(readlink -f "${BASH_SOURCE[0]}")))
 PATH=$PATH:$cwd
 
-if ! test -z $plugins_ee_directory && ! yq --version >/dev/null 2>&1; then
+if [ ! -z "$plugins_ee_directory" ] && ! yq --version >/dev/null 2>&1; then
     binary_name=""
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         binary_name="yq_linux"
@@ -29,13 +29,13 @@ if ! test -z $plugins_ee_directory && ! yq --version >/dev/null 2>&1; then
     else
         binary_name="${binary_name}_arm64"
     fi
-    wget https://github.com/mikefarah/yq/releases/download/v4.40.5/${binary_name} -qO $cwd/yq
-    chmod +x $cwd/yq
+    wget "https://github.com/mikefarah/yq/releases/download/v4.40.5/${binary_name}" -qO "$cwd/yq"
+    chmod +x "$cwd/yq"
 fi
 
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
-elif [[ -z $(which docker-compose) ]]; then
+elif [ -z "$(which docker-compose)" ]; then
     echo "docker-compose or docker compose plugin not installed"
     exit 1
 else
@@ -49,7 +49,7 @@ fi
 
 KONG_SERVICE_ENV_FILE=$1
 # clear the file
-> $KONG_SERVICE_ENV_FILE
+> "$KONG_SERVICE_ENV_FILE"
 
 # Initialize parallel arrays for service names and port definitions
 services=()
@@ -61,36 +61,41 @@ compose_file=$cwd/docker-compose-test-services.yml
 
 if [ ! -z "$plugins_ee_directory" ]; then
     echo "Starting extra plugins-ee services at $plugins_ee_directory"
-    rm -rf $ptemp
-    mkdir -p $ptemp
+    rm -rf "$ptemp"
+    mkdir -p "$ptemp"
 
-    pushd $plugins_ee_directory/.pongo >/dev/null
-    for f in $(ls *.yml *.yaml 2>/dev/null); do
+    pushd "$plugins_ee_directory/.pongo" >/dev/null
+
+    shopt -s nullglob
+    yaml_files=(*.yml *.yaml)
+    shopt -u nullglob
+
+    for f in "${yaml_files[@]}"; do
         compose_file="$compose_file:$(pwd)/$f"
-        for service in $(yq '.services | keys| .[]' <$f); do
+        for service in $(yq '.services | keys| .[]' <"$f"); do
             # rest-proxy -> rest_proxy
             services+=( "$service" )
             service_normalized="${service//-/_}"
             ports=""
-            for port in $(yq ".services.$service.ports.[]" <$f | rev |cut -d: -f1 |rev); do
+            for port in $(yq ".services.$service.ports.[]" <"$f" | rev | cut -d: -f1 | rev); do
                 # KEYCLOAK_PORT_8080:8080
-                ports="$ports ${service_normalized^^}_PORT_${port}:${port}"
+                ports="$ports ${service_normalized}_PORT_${port}:${port}"
             done
             port_defs+=( "$ports" )
         done
     done
     popd >/dev/null
 
-    ln -sf $(pwd)/$plugins_ee_directory/.pongo $ptemp/.pongo
-    ln -sf $(pwd)/$plugins_ee_directory/spec $ptemp/spec
-    export PONGO_WD=$(realpath $plugins_ee_directory)
-    pushd $ptemp >/dev/null
+    ln -sf "$(pwd)/$plugins_ee_directory/.pongo" "$ptemp/.pongo"
+    ln -sf "$(pwd)/$plugins_ee_directory/spec" "$ptemp/spec"
+    export PONGO_WD=$(realpath "$plugins_ee_directory")
+    pushd "$ptemp" >/dev/null
 fi
 
 export COMPOSE_FILE="$compose_file"
 export COMPOSE_PROJECT_NAME="$(basename $(realpath $cwd/../../))-$(basename ${KONG_VENV:-kong-dev})"
-echo "export COMPOSE_FILE=$COMPOSE_FILE" >> $KONG_SERVICE_ENV_FILE
-echo "export COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> $KONG_SERVICE_ENV_FILE
+echo "export COMPOSE_FILE=$COMPOSE_FILE" >> "$KONG_SERVICE_ENV_FILE"
+echo "export COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> "$KONG_SERVICE_ENV_FILE"
 
 NETWORK_NAME="default" $DOCKER_COMPOSE up -d --build --wait --remove-orphans
 
@@ -129,8 +134,8 @@ for ((i = 0; i < ${#services[@]}; i++)); do
     svc="${services[i]}"
 
     for port_def in ${port_defs[i]}; do
-        env_name=$(echo $port_def |cut -d: -f1)
-        private_port=$(echo $port_def |cut -d: -f2)
+        env_name=$(echo "$port_def" | cut -d: -f1)
+        private_port=$(echo "$port_def" | cut -d: -f2)
         exposed_port="$($DOCKER_COMPOSE port "$svc" "$private_port" | cut -d: -f2)"
 
         if [ -z "$exposed_port" ]; then
@@ -147,6 +152,6 @@ for ((i = 0; i < ${#services[@]}; i++)); do
     # all services go to localhost
     for prefix in $env_prefixes; do
         svcn="${svc//-/_}"
-        echo "export ${prefix}${svcn^^}_HOST=127.0.0.1" >> "$KONG_SERVICE_ENV_FILE"
+        echo "export ${prefix}$(echo "$svcn" | tr '[:lower:]' '[:upper:]')_HOST=127.0.0.1" >> "$KONG_SERVICE_ENV_FILE"
     done
 done
