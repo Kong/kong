@@ -1998,7 +1998,7 @@
                         #
                         # Accepted format (items in square brackets are optional):
                         #
-                        #   `<scheme>://<IP / HOSTNAME>[:PORT/PATH][, <scheme>://<IP / HOSTNAME>:PORT/PATH]`
+                        #   `<scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>][, <scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>]]`
                         #
                         # Examples:
                         #
