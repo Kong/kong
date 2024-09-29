@@ -13,6 +13,10 @@ local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 
 
+local CLEANUP_VERSION_COUNT = 100
+local CLEANUP_TIME_DELAY = 3600  -- 1 hour
+
+
 function _M.new(db)
   local self = {
     connector = db.connector,
@@ -32,14 +36,14 @@ local PURGE_QUERY = [[
 
 
 function _M:init_worker()
-  ngx.timer.every(3600, function(premature)
+  ngx.timer.every(CLEANUP_TIME_DELAY, function(premature)
     if premature then
       ngx_log(ngx_DEBUG, "[incremental] worker exiting, killing incremental cleanup timer")
 
       return
     end
 
-    local res, err = self.connector:query(string_format(PURGE_QUERY, 100))
+    local res, err = self.connector:query(string_format(PURGE_QUERY, CLEANUP_VERSION_COUNT))
     if not res then
       ngx_log(ngx_ERR,
               "[incremental] unable to purge old data from incremental delta table, err: ",
@@ -92,8 +96,9 @@ end
 
 
 function _M:get_delta(version)
-  local sql = "SELECT * FROM clustering_sync_delta WHERE version > " ..
-              self.connector:escape_literal(version) .. " ORDER BY version ASC"
+  local sql = "SELECT * FROM clustering_sync_delta" ..
+              " WHERE version > " ..  self.connector:escape_literal(version) ..
+              " ORDER BY version ASC"
   return self.connector:query(sql)
 end
 
