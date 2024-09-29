@@ -5,8 +5,8 @@ local fmt = string.format
 local Connector = {
   defaults = {
     pagination = {
-      page_size     = 512,
-      max_page_size = 512,
+      page_size     = 512,  -- work with lmdb
+      max_page_size = 512,  -- work with lmdb
     },
   },
 }
