@@ -9,6 +9,7 @@ local EMPTY = require("kong.tools.table").EMPTY
 local ipairs = ipairs
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 
 
 local DEFAULT_PAGE_SIZE = 512
@@ -61,7 +62,7 @@ function _M:notify_all_nodes(new_version)
       end
 
     else
-      ngx_log(ngx_ERR, "notified ", node, " ", latest_version)
+      ngx_log(ngx_DEBUG, "notified ", node, " ", latest_version)
     end
   end
 end
