@@ -3,7 +3,6 @@ local _MT = { __index = _M, }
 
 
 local events = require("kong.clustering.events")
-local hooks = require("kong.clustering.services.sync.hooks")
 local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
 
@@ -19,17 +18,23 @@ function _M.new(db, is_cp)
   local self = {
     db = db,
     strategy = strategy,
-    hooks = hooks.new(strategy),
     rpc = rpc.new(strategy),
     is_cp = is_cp,
   }
+
+  -- only cp needs hooks
+  if is_cp then
+    self.hooks = require("kong.clustering.services.sync.hooks").new(strategy)
+  end
 
   return setmetatable(self, _MT)
 end
 
 
 function _M:init(manager)
-  self.hooks:register_dao_hooks(self.is_cp)
+  if self.hooks then
+    self.hooks:register_dao_hooks()
+  end
   self.rpc:init(manager, self.is_cp)
 end
 

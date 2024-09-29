@@ -96,12 +96,8 @@ function _M:entity_delta_writer(row, name, options, ws_id)
 end
 
 
-function _M:register_dao_hooks(is_cp)
-  -- only control plane has these delta operations
-  if not is_cp then
-    return
-  end
-
+-- only control plane has these delta operations
+function _M:register_dao_hooks()
   local function is_db_export(name)
     local db_export = kong.db[name].schema.db_export
     return db_export == nil or db_export == true
