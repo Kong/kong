@@ -3065,8 +3065,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
   end)
 
 
-  -- XXX TODO: fix key format
-  pending("unique foreign works with dbless", function()
+  it("unique foreign works with dbless", function()
     local config = [[
         _format_version: "1.1"
         unique_foreigns:
@@ -3101,14 +3100,35 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-    local declarative = require "kong.db.declarative"
-    local key = declarative.unique_field_key("unique_references", "", "unique_foreign",
-                                             foreigns.data[1].id, true)
+    -- get default workspace id in lmdb
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path,
+      require("kong.constants").DECLARATIVE_DEFAULT_WORKSPACE_KEY)
 
+    local handle = io.popen(cmd)
+    local ws_id = handle:read("*a")
+    handle:close()
+
+    -- get unique_field_key
+    local declarative = require "kong.db.declarative"
+    local key = declarative.unique_field_key("unique_references", ws_id, "unique_foreign",
+                                             foreigns.data[1].id, true)
 
     local cmd = string.format(
       [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
       TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, key)
+
+    local handle = io.popen(cmd)
+    local unique_field_key = handle:read("*a")
+    handle:close()
+
+    assert.not_equals("", unique_field_key, "empty result from unique lookup")
+
+    -- get the entity value
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, unique_field_key)
 
     local handle = io.popen(cmd)
     local result = handle:read("*a")
@@ -3117,11 +3137,13 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.not_equals("", result, "empty result from unique lookup")
 
     local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
+    cached_reference.ws_id = nil -- XXX FIXME
+
     assert.same(cached_reference, references.data[1])
 
     local cache = {
       get = function(_, k)
-        if k ~= "unique_references||unique_foreign:" .. foreigns.data[1].id then
+        if k ~= "unique_references|" ..ws_id .. "|unique_foreign:" .. foreigns.data[1].id then
           return nil
         end
 
