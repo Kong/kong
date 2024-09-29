@@ -163,37 +163,31 @@ function _M:register_dao_hooks(is_cp)
     return row
   end
 
-  -- dao:insert
+  local dao_hooks = {
+    -- dao:insert
+    ["dao:insert:pre"]  = pre_hook_func,
+    ["dao:insert:fail"] = fail_hook_func,
+    ["dao:insert:post"] = post_hook_writer_func,
 
-  hooks.register_hook("dao:insert:pre", pre_hook_func)
+    -- dao:delete
+    ["dao:delete:pre"]  = pre_hook_func,
+    ["dao:delete:fail"] = fail_hook_func,
+    ["dao:delete:post"] = post_hook_delete_func,
 
-  hooks.register_hook("dao:insert:fail", fail_hook_func)
+    -- dao:update
+    ["dao:update:pre"]  = pre_hook_func,
+    ["dao:update:fail"] = fail_hook_func,
+    ["dao:update:post"] = post_hook_writer_func,
 
-  hooks.register_hook("dao:insert:post", post_hook_writer_func)
+    -- dao:upsert
+    ["dao:upsert:pre"]  = pre_hook_func,
+    ["dao:upsert:fail"] = fail_hook_func,
+    ["dao:upsert:post"] = post_hook_writer_func,
+  }
 
-  -- dao:delete
-
-  hooks.register_hook("dao:delete:pre", pre_hook_func)
-
-  hooks.register_hook("dao:delete:fail", fail_hook_func)
-
-  hooks.register_hook("dao:delete:post", post_hook_delete_func)
-
-  -- dao:update
-
-  hooks.register_hook("dao:update:pre", pre_hook_func)
-
-  hooks.register_hook("dao:update:fail", fail_hook_func)
-
-  hooks.register_hook("dao:update:post", post_hook_writer_func)
-
-  -- dao:upsert
-
-  hooks.register_hook("dao:upsert:pre", pre_hook_func)
-
-  hooks.register_hook("dao:upsert:fail", fail_hook_func)
-
-  hooks.register_hook("dao:upsert:post", post_hook_writer_func)
+  for ev, func in ipairs(dao_hooks) do
+    hooks.register_hook(ev, func)
+  end
 end
 
 
