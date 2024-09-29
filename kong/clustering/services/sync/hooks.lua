@@ -185,7 +185,7 @@ function _M:register_dao_hooks(is_cp)
     ["dao:upsert:post"] = post_hook_writer_func,
   }
 
-  for ev, func in ipairs(dao_hooks) do
+  for ev, func in pairs(dao_hooks) do
     hooks.register_hook(ev, func)
   end
 end
