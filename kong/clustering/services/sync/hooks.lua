@@ -107,57 +107,38 @@ function _M:register_dao_hooks(is_cp)
     return db_export == nil or db_export == true
   end
 
-  -- dao:insert
+  -- common hook functions (pre and fail)
 
-  hooks.register_hook("dao:insert:pre", function(entity, name, options)
+  local function pre_hook_func(entity, name, options)
     if is_db_export(name) then
       return self.strategy:begin_txn()
     end
 
     return true
-  end)
+  end
 
-  hooks.register_hook("dao:insert:fail", function(err, entity, name)
+  local function fail_hook_func(err, entity, name)
     if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
         ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
       end
     end
-  end)
+  end
 
-  hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
+  local function post_hook_writer_func(row, name, options, ws_id)
     if is_db_export(name) then
       return self:entity_delta_writer(row, name, options, ws_id)
     end
 
     return row
-  end)
+  end
 
-  -- dao:delete
-
-  hooks.register_hook("dao:delete:pre", function(entity, name, options)
-    if is_db_export(name) then
-      return self.strategy:begin_txn()
-    end
-
-    return true
-  end)
-
-  hooks.register_hook("dao:delete:fail", function(err, entity, name)
-    if is_db_export(name) then
-      local res, err = self.strategy:cancel_txn()
-      if not res then
-        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
-      end
-    end
-  end)
-
-  hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
+  local function post_hook_delete_func(row, name, options, ws_id, cascade_entries)
     if is_db_export(name) then
       local deltas = {
         {
-          ["type"] = name,
+          type = name,
           id = row.id,
           ws_id = ws_id,
           row = ngx.null,
@@ -180,61 +161,39 @@ function _M:register_dao_hooks(is_cp)
     end
 
     return row
-  end)
+  end
+
+  -- dao:insert
+
+  hooks.register_hook("dao:insert:pre", pre_hook_func)
+
+  hooks.register_hook("dao:insert:fail", fail_hook_func)
+
+  hooks.register_hook("dao:insert:post", post_hook_writer_func)
+
+  -- dao:delete
+
+  hooks.register_hook("dao:delete:pre", pre_hook_func)
+
+  hooks.register_hook("dao:delete:fail", fail_hook_func)
+
+  hooks.register_hook("dao:delete:post", post_hook_delete_func)
 
   -- dao:update
 
-  hooks.register_hook("dao:update:pre", function(entity, name, options)
-    if is_db_export(name) then
-      return self.strategy:begin_txn()
-    end
+  hooks.register_hook("dao:update:pre", pre_hook_func)
 
-    return true
-  end)
+  hooks.register_hook("dao:update:fail", fail_hook_func)
 
-  hooks.register_hook("dao:update:fail", function(err, entity, name)
-    if is_db_export(name) then
-      local res, err = self.strategy:cancel_txn()
-      if not res then
-        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
-      end
-    end
-  end)
-
-  hooks.register_hook("dao:update:post", function(row, name, options, ws_id)
-    if is_db_export(name) then
-      return self:entity_delta_writer(row, name, options, ws_id)
-    end
-
-    return row
-  end)
+  hooks.register_hook("dao:update:post", post_hook_writer_func)
 
   -- dao:upsert
 
-  hooks.register_hook("dao:upsert:pre", function(entity, name, options)
-    if is_db_export(name) then
-      return self.strategy:begin_txn()
-    end
+  hooks.register_hook("dao:upsert:pre", pre_hook_func)
 
-    return true
-  end)
+  hooks.register_hook("dao:upsert:fail", fail_hook_func)
 
-  hooks.register_hook("dao:upsert:fail", function(err, entity, name)
-    if is_db_export(name) then
-      local res, err = self.strategy:cancel_txn()
-      if not res then
-        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
-      end
-    end
-  end)
-
-  hooks.register_hook("dao:upsert:post", function(row, name, options, ws_id)
-    if is_db_export(name) then
-      return self:entity_delta_writer(row, name, options, ws_id)
-    end
-
-    return row
-  end)
+  hooks.register_hook("dao:upsert:post", post_hook_writer_func)
 end
 
 
