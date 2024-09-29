@@ -487,6 +487,10 @@ function PluginsIterator.new(version)
     if not version then
       error("version must be given", 2)
     end
+
+  else
+    -- dbless, set the correct kong.default_workspace
+    assert(kong.db.get_default_workspace())
   end
 
   LOADED_PLUGINS = LOADED_PLUGINS or get_loaded_plugins()
