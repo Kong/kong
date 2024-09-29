@@ -2,17 +2,17 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("//build:build_system.bzl", "git_or_local_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
-load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
-load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
-load("//build/openresty/simdjson_ffi:simdjson_ffi_repositories.bzl", "simdjson_ffi_repositories")
+load("//build:build_system.bzl", "git_or_local_repository")
+load("//build/openresty/ada:ada_repositories.bzl", "ada_repositories")
 load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_repositories")
+load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
+load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
+load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
+load("//build/openresty/simdjson_ffi:simdjson_ffi_repositories.bzl", "simdjson_ffi_repositories")
+load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
 load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
-load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
-load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
-load("//build/openresty/ada:ada_repositories.bzl", "ada_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
