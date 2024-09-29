@@ -11,8 +11,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
     local prefix = "./wasm"
 
     lazy_setup(function()
-      helpers.setenv("KONG_CLUSTER_INCREMENTAL_SYNC", inc_sync)
-
       helpers.clean_prefix(prefix)
       assert(helpers.kong_exec("prepare", {
         database = role == "data_plane" and "off" or "postgres",
@@ -22,15 +20,15 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         role = role,
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_incremental_sync = inc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
+      conf.cluster_incremental_sync = inc_sync == "on"
     end)
 
     lazy_teardown(function()
       helpers.clean_prefix(prefix)
-
-      helpers.unsetenv("KONG_CLUSTER_INCREMENTAL_SYNC")
     end)
 
     if role == "control_plane" then
@@ -76,8 +74,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
     local cp_prefix = "./wasm-cp"
 
     lazy_setup(function()
-      helpers.setenv("KONG_CLUSTER_INCREMENTAL_SYNC", inc_sync)
-
       if role == "traditional" then
         helpers.get_db_utils("postgres")
       end
@@ -98,9 +94,12 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
 
         status_listen = "127.0.0.1:" .. status_port,
         nginx_main_worker_processes = 2,
+
+        cluster_incremental_sync = inc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
+      conf.cluster_incremental_sync = inc_sync == "on"
 
       -- we need to briefly spin up a control plane, or else we will get
       -- error.log entries when our data plane tries to connect
@@ -118,6 +117,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           status_listen = "off",
           nginx_main_worker_processes = 2,
+          cluster_incremental_sync = inc_sync,
         }))
       end
     end)
@@ -132,8 +132,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
       if role == "data_plane" then
         helpers.stop_kong(cp_prefix)
       end
-
-      helpers.unsetenv("KONG_CLUSTER_INCREMENTAL_SYNC")
     end)
 
     it("does not introduce any errors", function()
