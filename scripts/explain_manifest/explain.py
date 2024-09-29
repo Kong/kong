@@ -137,7 +137,7 @@ class ElfFileInfo(FileInfo):
             if d.tag == lief._lief.ELF.DynamicEntry.TAG.NEEDED:
                 self.needed_libraries.append(d.name)
             elif d.tag == lief._lief.ELF.DynamicEntry.TAG.RPATH:
-                self.rpath = d.runpath
+                self.rpath = d.rpath
             elif d.tag == lief._lief.ELF.DynamicEntry.TAG.RUNPATH:
                 self.runpath = d.runpath
 
