@@ -98,9 +98,7 @@ local function select_by_key(schema, key, follow)
     return select_by_key(schema, actual_key, false)
   end
 
-  local value = assert(lmdb_get(key))
-
-  local entity, err = construct_entity(schema, value)
+  local entity, err = construct_entity(schema, lmdb_get(key))
   if not entity then
     return nil, err
   end
