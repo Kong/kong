@@ -189,7 +189,7 @@ function _M:sync_once(delay)
 
     local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
       -- here must be 2 times
-      for i = 1, 2 do
+      for _ = 1, 2 do
         local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
                                              { default =
                                                { version =
@@ -201,16 +201,12 @@ function _M:sync_once(delay)
           return true
         end
 
-        local version = 0
-
-        local crud_events = {}
-        local crud_events_n = 0
-
         local ns_delta
 
         for namespace, delta in pairs(ns_deltas) do
           if namespace == "default" then
             ns_delta = delta
+            break   -- should we break here?
           end
         end
 
@@ -230,6 +226,10 @@ function _M:sync_once(delay)
         end
 
         local db = kong.db
+
+        local version = 0
+        local crud_events = {}
+        local crud_events_n = 0
 
         for _, delta in ipairs(ns_delta.deltas) do
           local delta_type = delta.type
