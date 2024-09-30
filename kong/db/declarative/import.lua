@@ -258,17 +258,9 @@ local function config_is_empty(entities)
 end
 
 
--- Serialize and set keys for a single validated entity into
--- the provided LMDB txn object, this operation is only safe
--- is the entity does not already exist inside the LMDB database
---
--- This function sets the following:
--- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
--- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
--- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
---
--- DO NOT touch `item`, or else the entity will be changed
-local function insert_entity_for_txn(t, entity_name, item, options)
+-- common implementation for
+-- insert_entity_for_txn() and delete_entity_for_txn()
+local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   local dao = kong.db[entity_name]
   local schema = dao.schema
   local pk = pk_string(schema, item)
@@ -276,19 +268,26 @@ local function insert_entity_for_txn(t, entity_name, item, options)
 
   local item_key = item_key(entity_name, ws_id, pk)
 
-  -- serialize item with possible nulls
-  local item_marshalled, err = marshall(item)
-  if not item_marshalled then
-    return nil, err
+  local value, idx_value
+  if not is_delete then
+    local err
+
+    -- serialize item with possible nulls
+    value, err = marshall(item)
+    if not value then
+      return nil, err
+    end
+
+    idx_value = item_key
   end
 
-  t:set(item_key, item_marshalled)
+  t:set(item_key, value)
 
   -- select_by_cache_key
   if schema.cache_key then
     local cache_key = dao:cache_key(item)
     local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
-    t:set(key, item_key)
+    t:set(key, idx_value)
   end
 
   for fname, fdata in schema:each_field() do
@@ -314,68 +313,7 @@ local function insert_entity_for_txn(t, entity_name, item, options)
         end
 
         local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
-        t:set(key, item_key)
-      end
-
-      if is_foreign then
-        -- is foreign, generate page_for_foreign_field indexes
-        assert(type(value) == "table", debug.traceback())
-
-        value_str = pk_string(kong.db[fdata_reference].schema, value)
-
-        local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
-        t:set(key, item_key)
-      end
-    end
-  end
-
-  return true
-end
-
-
--- Serialize and remove keys for a single validated entity into
--- the provided LMDB txn object, this operation is safe whether the provided
--- entity exists inside LMDB or not, but the provided entity must contains the
--- correct field value so indexes can be deleted correctly
-local function delete_entity_for_txn(t, entity_name, item, options)
-  local dao = kong.db[entity_name]
-  local schema = dao.schema
-  local pk = pk_string(schema, item)
-  local ws_id = workspace_id(schema, options)
-
-  local item_key = item_key(entity_name, ws_id, pk)
-  t:set(item_key, nil)
-
-  -- select_by_cache_key
-  if schema.cache_key then
-    local cache_key = dao:cache_key(item)
-    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
-    t:set(key, nil)
-  end
-
-  for fname, fdata in schema:each_field() do
-    local is_foreign = fdata.type == "foreign"
-    local fdata_reference = fdata.reference
-    local value = item[fname]
-
-    if value then
-      local value_str
-
-      if fdata.unique then
-        -- unique and not a foreign key, or is a foreign key, but non-composite
-        -- see: validate_foreign_key_is_single_primary_key, composite foreign
-        -- key is currently unsupported by the DAO
-        if type(value) == "table" then
-          assert(is_foreign)
-          value_str = pk_string(kong.db[fdata_reference].schema, value)
-        end
-
-        if fdata.unique_across_ws then
-          ws_id = kong.default_workspace
-        end
-
-        local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
-        t:set(key, nil)
+        t:set(key, idx_value)
       end
 
       if is_foreign then
@@ -385,12 +323,36 @@ local function delete_entity_for_txn(t, entity_name, item, options)
         value_str = pk_string(kong.db[fdata_reference].schema, value)
 
         local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
-        t:set(key, nil)
+        t:set(key, idx_value)
       end
     end
   end
 
   return true
+end
+
+
+-- Serialize and set keys for a single validated entity into
+-- the provided LMDB txn object, this operation is only safe
+-- is the entity does not already exist inside the LMDB database
+--
+-- This function sets the following:
+-- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
+-- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
+-- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
+--
+-- DO NOT touch `item`, or else the entity will be changed
+local function insert_entity_for_txn(t, entity_name, item, options)
+  return _set_entity_for_txn(t, entity_name, item, options, false)
+end
+
+
+-- Serialize and remove keys for a single validated entity into
+-- the provided LMDB txn object, this operation is safe whether the provided
+-- entity exists inside LMDB or not, but the provided entity must contains the
+-- correct field value so indexes can be deleted correctly
+local function delete_entity_for_txn(t, entity_name, item, options)
+  return _set_entity_for_txn(t, entity_name, item, options, true)
 end
 
 
