@@ -13,12 +13,11 @@ local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
 local sha256_hex = require("kong.tools.sha256").sha256_hex
 local pk_string = declarative_config.pk_string
+local EMPTY = require("kong.tools.table").EMPTY
 
 local assert = assert
---local sort = table.sort
 local type = type
 local pairs = pairs
---local next = next
 local insert = table.insert
 local string_format = string.format
 local null = ngx.null
@@ -221,7 +220,7 @@ end
 
 
 local function find_ws(entities, name)
-  for _, v in pairs(entities.workspaces or {}) do
+  for _, v in pairs(entities.workspaces or EMPTY) do
     if v.name == name then
       return v.id
     end
@@ -317,9 +316,6 @@ local function insert_entity_for_txn(t, entity_name, item, options)
 
       if is_foreign then
         -- is foreign, generate page_for_foreign_field indexes
-        --if type(value) ~= "table" then
-        --  value = { value }
-        --end
         assert(type(value) == "table", debug.traceback())
 
         value_str = pk_string(kong.db[fdata_reference].schema, value)
@@ -360,33 +356,32 @@ local function delete_entity_for_txn(t, entity_name, item, options)
     local value = item[fname]
 
     if value then
+      local value_str
+
       if fdata.unique then
         -- unique and not a foreign key, or is a foreign key, but non-composite
         -- see: validate_foreign_key_is_single_primary_key, composite foreign
         -- key is currently unsupported by the DAO
         if type(value) == "table" then
           assert(is_foreign)
-          value = pk_string(kong.db[fdata_reference].schema, value)
+          value_str = pk_string(kong.db[fdata_reference].schema, value)
         end
 
         if fdata.unique_across_ws then
           ws_id = kong.default_workspace
         end
 
-        local key = unique_field_key(entity_name, ws_id, fname, value)
+        local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
         t:set(key, nil)
       end
 
       if is_foreign then
         -- is foreign, generate page_for_foreign_field indexes
-        --if type(value) ~= "table" then
-        --  value = { value }
-        --end
         assert(type(value) == "table")
 
-        value = pk_string(kong.db[fdata_reference].schema, value)
+        value_str = pk_string(kong.db[fdata_reference].schema, value)
 
-        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
+        local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
         t:set(key, nil)
       end
     end
