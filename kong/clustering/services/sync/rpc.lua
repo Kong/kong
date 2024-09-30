@@ -234,6 +234,7 @@ function _M:sync_once(delay)
         for _, delta in ipairs(ns_delta.deltas) do
           local delta_type = delta.type
           local delta_row = delta.row
+          local ev
 
           if delta_row ~= ngx_null then
             -- upsert the entity
@@ -259,8 +260,7 @@ function _M:sync_once(delay)
               return nil, err
             end
 
-            crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta_type, crud_event_type, delta_row, old_entity, }
+            ev = { delta_type, crud_event_type, delta_row, old_entity, }
 
           else
             -- delete the entity
@@ -276,9 +276,11 @@ function _M:sync_once(delay)
               end
             end
 
-            crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta_type, "delete", old_entity, }
+            ev = { delta_type, "delete", old_entity, }
           end
+
+          crud_events_n = crud_events_n + 1
+          crud_events[crud_events_n] = ev
 
           -- XXX TODO: could delta.version be nil or ngx.null
           if type(delta.version) == "number" and delta.version ~= version then
