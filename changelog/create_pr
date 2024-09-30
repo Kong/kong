@@ -18,7 +18,7 @@ if [[ -z "${response:+x}" ]] ; then
          -H "Authorization: Bearer ${GITHUB_TOKEN}" \
          -H "X-GitHub-Api-Version: 2022-11-28" \
          "https://api.github.com/repos/${1}/pulls" \
-         -d '{"base":"'"${2}"'", "title":"'"Generate ${3} changelog"'","body":"'"Generate ${3} changelog"'","head":"'"${4}"'"}' \
+         -d '{"base":"'"${2}"'", "title":"'"docs(release): generate ${3} changelog"'","body":"'"Generate ${3} changelog"'","head":"'"${4}"'"}' \
          | jq -r '[.html_url, .head.ref] | @tsv'
 else
     printf 'Updated existing PR: %s\n' "${response}"
