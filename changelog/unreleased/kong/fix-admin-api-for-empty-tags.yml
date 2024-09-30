@@ -1,0 +1,3 @@
+message: Fix for querying admin API entities with emtpy tags
+type: bugfix
+scope: Admin API
