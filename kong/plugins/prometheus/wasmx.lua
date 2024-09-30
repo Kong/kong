@@ -1,6 +1,6 @@
 local buffer = require "string.buffer"
 local wasm = require "kong.runloop.wasm"
-local wasmx_shm = require "resty.wasmx.shm"
+local wasmx_shm
 
 
 local fmt = string.format
@@ -160,6 +160,19 @@ _M.metric_data = function()
   local metrics = {}
   local parsed = {}
   local buf = buf_new()
+
+  -- delayed require of the WasmX module, to ensure it is loaded
+  -- after ngx_wasm_module.so is loaded.
+  if not wasmx_shm then
+    local ok, _wasmx_shm = pcall(require, "resty.wasmx.shm")
+    if ok then
+      wasmx_shm = _wasmx_shm
+    end
+  end
+
+  if not wasmx_shm then
+    return
+  end
 
   wasmx_shm.metrics:lock()
 
