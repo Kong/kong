@@ -20,9 +20,8 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
 describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
   local r_single, mock_service
-  local hosts_file
 
-  lazy_setup(function()
+  local function setup_entities()
     require("kong.runloop.wasm").enable({
       { name = "tests",
         path = helpers.test_conf.wasm_filters_path .. "/tests.wasm",
@@ -33,6 +32,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       "routes",
       "services",
       "filter_chains",
+      "plugins",
     })
 
     mock_service = assert(bp.services:insert {
@@ -126,33 +126,32 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
         },
       },
     })
-
-
-    -- XXX our dns mock fixture doesn't work when called from wasm land
-    hosts_file = os.tmpname()
-    assert(helpers.file.write(hosts_file,
-                              "127.0.0.1 " .. DNS_HOSTNAME .. "\n"))
-
-    assert(helpers.start_kong({
-      database = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
-      dns_hostsfile = hosts_file,
-      resolver_hosts_file = hosts_file,
-      plugins = "pre-function,post-function",
-    }))
-  end)
-
-  lazy_teardown(function()
-    helpers.stop_kong()
-    os.remove(hosts_file)
-  end)
+  end
 
   before_each(function()
     helpers.clean_logfile()
   end)
 
+  lazy_teardown(function()
+    helpers.clean_prefix()
+  end)
+
   describe("runs a filter chain", function()
+    lazy_setup(function()
+      setup_entities()
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        plugins = "pre-function,post-function",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
     it("with a single filter", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
@@ -183,6 +182,20 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
   end)
 
   describe("filters can", function()
+    lazy_setup(function()
+      setup_entities()
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        plugins = "pre-function,post-function",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
     it("add request headers", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
@@ -788,6 +801,52 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
+    pending("start on_tick background timer", function()
+      -- Pending on internal ngx_wasm_module changes
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/200",
+      })
+
+      assert.res_status(200, res)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+
+      -- TODO
+    end)
+  end)
+
+  for _, new_dns_client in ipairs({"off", "on"}) do
+
+  describe("lua dns bridge (new_dns_client=" .. new_dns_client .. ")", function()
+    local hosts_file
+
+    lazy_setup(function()
+      -- XXX our dns mock fixture doesn't work when called from wasm land
+      hosts_file = os.tmpname()
+      assert(helpers.file.write(hosts_file,
+                                "127.0.0.1 " .. DNS_HOSTNAME .. "\n"))
+
+      setup_entities()
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        dns_hostsfile = hosts_file,
+        resolver_hosts_file = hosts_file,
+        plugins = "pre-function,post-function",
+        new_dns_client = new_dns_client,
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      os.remove(hosts_file)
+    end)
+
     it("resolves DNS hostnames to send an http dispatch, return its response body", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
@@ -818,26 +877,24 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
                                 .. DNS_HOSTNAME ..
                                 [[" to "127.0.0.1"]])
     end)
-
-    pending("start on_tick background timer", function()
-      -- Pending on internal ngx_wasm_module changes
-      local client = helpers.proxy_client()
-      finally(function() client:close() end)
-
-      local res = assert(client:send {
-        method = "GET",
-        path = "/single/status/200",
-      })
-
-      assert.res_status(200, res)
-      assert.logfile().has.no.line("[error]", true, 0)
-      assert.logfile().has.no.line("[crit]",  true, 0)
-
-      -- TODO
-    end)
   end)
+  end -- each `new_dns_client`
 
   describe("behavior with", function()
+    lazy_setup(function()
+      setup_entities()
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        wasm = true,
+        plugins = "pre-function,post-function",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
     pending("multiple filters, one sends a local response", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
