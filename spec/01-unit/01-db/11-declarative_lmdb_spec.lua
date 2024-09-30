@@ -242,7 +242,6 @@ describe("#off preserve nulls", function()
         cached_item = buffer.decode(lmdb.get(value))
 
         assert.are_same(cached_item, plugin)
-
         assert.are_equal(cached_item.config.large, null)
         assert.are_equal(cached_item.config.ttl, null)
 
