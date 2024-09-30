@@ -235,15 +235,18 @@ function _M:sync_once(delay)
           local delta_type = delta.type
           local delta_row = delta.row
 
+          local crud_event_type
+          local old_entity
+
           if delta_row ~= ngx_null then
             -- upsert the entity
             -- does the entity already exists?
-            local old_entity, err = db[delta_type]:select(delta_row)
+            old_entity, err = db[delta_type]:select(delta_row)
             if err then
               return nil, err
             end
 
-            local crud_event_type = "create"
+            crud_event_type = "create"
 
             if old_entity then
               local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
@@ -259,12 +262,12 @@ function _M:sync_once(delay)
               return nil, err
             end
 
-            crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta_type, crud_event_type, delta_row, old_entity, }
-
           else
             -- delete the entity
-            local old_entity, err = kong.db[delta_type]:select({ id = delta.id, }) -- TODO: composite key
+            crud_event_type = "delete"
+            delta_row = nil
+
+            old_entity, err = kong.db[delta_type]:select({ id = delta.id, }) -- TODO: composite key
             if err then
               return nil, err
             end
@@ -276,9 +279,10 @@ function _M:sync_once(delay)
               end
             end
 
-            crud_events_n = crud_events_n + 1
-            crud_events[crud_events_n] = { delta_type, "delete", old_entity, }
           end
+
+          crud_events_n = crud_events_n + 1
+          crud_events[crud_events_n] = { delta_type, crud_event_type, delta_row, old_entity, }
 
           -- XXX TODO: could delta.version be nil or ngx.null
           if type(delta.version) == "number" and delta.version ~= version then
