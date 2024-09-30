@@ -267,9 +267,6 @@ end
 -- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
 -- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
 local function insert_entity_for_txn(t, entity_name, item, options)
-  -- copy item for remove_nulls, don't touch original item
-  local item = cycle_aware_deep_copy(item)
-
   local dao = kong.db[entity_name]
   local schema = dao.schema
   local pk = pk_string(schema, item)
@@ -277,14 +274,11 @@ local function insert_entity_for_txn(t, entity_name, item, options)
 
   local item_key = item_key(entity_name, ws_id, pk)
 
-  -- serialize itme with nulls
+  -- serialize item with possible nulls
   local item_marshalled, err = marshall(item)
   if not item_marshalled then
     return nil, err
   end
-
-  -- after serializing we must remove nulls
-  item = remove_nulls(item)
 
   t:set(item_key, item_marshalled)
 
@@ -300,7 +294,8 @@ local function insert_entity_for_txn(t, entity_name, item, options)
     local fdata_reference = fdata.reference
     local value = item[fname]
 
-    if value then
+    -- value may be null, we should skip it
+    if value and value ~= null then
       local value_str
 
       if fdata.unique then
