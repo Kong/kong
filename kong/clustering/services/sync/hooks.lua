@@ -7,6 +7,7 @@ local EMPTY = require("kong.tools.table").EMPTY
 
 
 local ipairs = ipairs
+local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
@@ -103,7 +104,7 @@ function _M:register_dao_hooks()
     return db_export == nil or db_export == true
   end
 
-  -- common hook functions (pre and fail)
+  -- common hook functions (pre/fail/post)
 
   local function pre_hook_func(entity, name, options)
     if is_db_export(name) then
@@ -117,7 +118,7 @@ function _M:register_dao_hooks()
     if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
-        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
+        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
       end
     end
   end
@@ -137,7 +138,7 @@ function _M:register_dao_hooks()
           type = name,
           id = row.id,
           ws_id = ws_id,
-          row = ngx.null,
+          row = ngx_null,
         },
       }
 
