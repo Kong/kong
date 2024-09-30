@@ -266,6 +266,8 @@ end
 -- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
 -- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
 -- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
+--
+-- DO NOT touch `item`, or else the entity will be changed
 local function insert_entity_for_txn(t, entity_name, item, options)
   local dao = kong.db[entity_name]
   local schema = dao.schema
