@@ -543,6 +543,12 @@ jobs:
           docker compose -f ${{ github.workspace }}/spec/fixtures/redis_cluster/redis-cluster-compose.yaml up -d
           docker compose -p redis-cluster logs
 
+    # EE only
+    - name: Set up Redis Sentinel
+      run: |
+          docker compose -f ${{ github.workspace }}/spec/fixtures/redis_sentinel/redis-sentinel-compose.yaml up -d
+          docker compose -p redis-sentinel logs
+
     - name: Run OpenTelemetry Collector
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
@@ -736,6 +742,13 @@ jobs:
       continue-on-error: true
       run: |
           docker compose -p redis-cluster down -v
+
+    # EE only
+    - name: Stop Redis Sentinel
+      if: ${{ always() }}
+      continue-on-error: true
+      run: |
+         docker compose -p redis-sentinel down -v
 
   pdk-tests:
     name: PDK tests

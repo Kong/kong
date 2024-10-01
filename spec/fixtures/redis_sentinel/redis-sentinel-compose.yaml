@@ -1,0 +1,63 @@
+services:
+  redis-master:
+    image: redis:7.4
+    command: redis-server
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    network_mode: host
+
+  redis-replica-1:
+    image: redis:7.4
+    network_mode: host
+    command: redis-server --replicaof 127.0.0.1 6379 --port 6380
+    depends_on:
+      - redis-master
+
+  redis-replica-2:
+    image: redis:7.4
+    network_mode: host
+    command: redis-server --replicaof 127.0.0.1 6379 --port 6381
+    depends_on:
+      - redis-master
+
+  sentinel-1:
+    build:
+      context: ./sentinel
+      args:
+        MASTER_IP: 127.0.0.1
+        MASTER_PORT: 6379
+        SENTINEL_PORT: 27000
+    network_mode: host
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2
+
+  sentinel-2:
+    build:
+      context: ./sentinel
+      args:
+        MASTER_IP: 127.0.0.1
+        MASTER_PORT: 6379
+        SENTINEL_PORT: 27001
+    network_mode: host
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2
+
+  sentinel-3:
+    build:
+      context: ./sentinel
+      args:
+        MASTER_IP: 127.0.0.1
+        MASTER_PORT: 6379
+        SENTINEL_PORT: 27002
+    network_mode: host
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2

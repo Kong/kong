@@ -20,6 +20,7 @@ local REDIS_PORT = helpers.redis_port or 6379
 local REDIS_SSL_PORT = helpers.redis_ssl_port or 6380
 local REDIS_SSL_SNI = helpers.redis_ssl_sni
 local REDIS_CLUSTER_NODES = ee_helpers.redis_cluster_nodes
+local REDIS_SENTINEL_NODES = ee_helpers.redis_sentinel_nodes
 local REDIS_DATABASE = 1
 
 
@@ -1695,6 +1696,78 @@ for _, policy in ipairs({"memory", "redis"}) do
             path = "/get",
             headers = {
               host = "route-17.test",
+            }
+          }
+
+          local body2 = assert.res_status(200, res)
+          assert.same("Hit", res.headers["X-Cache-Status"])
+          local cache_key2 = res.headers["X-Cache-Key"]
+          assert.same(cache_key1, cache_key2)
+
+          assert.same(body1, body2)
+        end)
+      end)
+
+      describe("redis sentinel", function()
+        lazy_setup(function()
+          local redis_sentinel_policy_config = {
+            sentinel_nodes = REDIS_SENTINEL_NODES,
+            sentinel_role = "master",
+            sentinel_master = "mymaster"
+          }
+
+          local redis_sentinel_strategy = strategies({
+            strategy_name = policy,
+            strategy_opts = redis_sentinel_policy_config,
+          })
+
+          redis_sentinel_strategy:flush(true)
+
+          local route25 = assert(bp.routes:insert({
+            hosts = { "route-25.test" },
+          }))
+
+          assert(bp.plugins:insert {
+            name = "proxy-cache-advanced",
+            route = { id = route25.id },
+            config = {
+              strategy = policy,
+              response_code = { 200, 301, 404 },
+              request_method = { "GET", "HEAD" },
+              content_type = { "text/plain", "text/html", "application/json" },
+              [policy] = redis_sentinel_policy_config,
+            },
+          })
+
+          assert(helpers.restart_kong({
+            plugins = "bundled,proxy-cache-advanced",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        it("returns 200 OK", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "route-25.test",
+            }
+          })
+
+          local body1 = assert.res_status(200, res)
+          assert.same("Miss", res.headers["X-Cache-Status"])
+
+          local cache_key1 = res.headers["X-Cache-Key"]
+          assert.matches("^[%w%d]+$", cache_key1)
+          assert.equals(64, #cache_key1)
+
+          wait_until_key_in_cache(cache_key1)
+
+          local res = client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "route-25.test",
             }
           }
 

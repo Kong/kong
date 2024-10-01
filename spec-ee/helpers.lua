@@ -57,6 +57,7 @@ function _M.parsed_redis_cluster_nodes()
   return redis_cluster_nodes
 end
 
+
 function _M.parsed_redis_sentinel_nodes()
   local env_sentinel_addresses = os.getenv("KONG_SPEC_TEST_REDIS_SENTINEL_ADDRESSES")
 

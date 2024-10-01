@@ -1,6 +1,7 @@
 version: '3.5'
 include:
   - ../../spec/fixtures/redis_cluster/redis-cluster-compose.yaml
+  - ../../spec/fixtures/redis_sentinel/redis-sentinel-compose.yaml
 services:
   postgres:
     image: postgres
