@@ -41,7 +41,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { auth = {
     type = "string",
     len_min = 0,
-    translate_backwards = {'password'},
     deprecation = {
       replaced_with = { { path = { 'password' } } },
       message = "acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
@@ -52,7 +51,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { ssl_server_name = {
     type = "string",
-    translate_backwards = {'server_name'},
     deprecation = {
       replaced_with = { { path = { 'server_name' } } },
       message = "acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
@@ -64,7 +62,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { namespace = {
     type = "string",
     len_min = 0,
-    translate_backwards = {'extra_options', 'namespace'},
     deprecation = {
       replaced_with = { { path = { 'extra_options', 'namespace' } } },
       message = "acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
@@ -75,7 +72,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { scan_count = {
     type = "integer",
-    translate_backwards = {'extra_options', 'scan_count'},
     deprecation = {
       replaced_with = { { path = { 'extra_options', 'scan_count' } } },
       message = "acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
