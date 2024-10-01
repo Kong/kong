@@ -189,7 +189,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazel-contrib/setup-bazel@0.8.5
+      uses: bazel-contrib/setup-bazel@e403ad507104847c3539436f64a9e9eecc73eeec #0.8.5
       with:
         bazelisk-version: "1.20.0"
         # Avoid downloading Bazel every time.
@@ -423,19 +423,17 @@ jobs:
         cache: 'pip' # caching pip dependencies
 
     - name: Verify
-      env:
-        SUITE: ${{ matrix.check-manifest-suite || 'docker-image' }}
       run: |
         cd scripts/explain_manifest
         # docker image verify requires sudo to set correct permissions, so we
         # also install deps for root
-        sudo -H -E pip install -r requirements.txt
+        sudo -E pip install -r requirements.txt
         IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
-        sudo -H -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s "$SUITE"
+        sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
 
         if [[ ! -z "${{ matrix.docker-platforms }}" ]]; then
-          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s "$SUITE"
+          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
         fi
 
   scan-images:

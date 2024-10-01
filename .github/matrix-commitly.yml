@@ -10,7 +10,6 @@ build-images:
   base-image: ubuntu:24.04
   package: deb
   artifact-from: ubuntu-24.04
-  check-manifest-suite: docker-image-ubuntu-24.04
 
 smoke-tests:
 - label: ubuntu

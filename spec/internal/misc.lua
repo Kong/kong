@@ -9,7 +9,6 @@
 -- miscellaneous
 
 
-local ffi = require("ffi")
 local pl_path = require("pl.path")
 local pl_dir = require("pl.dir")
 local pkey = require("resty.openssl.pkey")
@@ -18,12 +17,7 @@ local shell = require("spec.internal.shell")
 
 
 local CONSTANTS = require("spec.internal.constants")
-
-
-ffi.cdef [[
-  int setenv(const char *name, const char *value, int overwrite);
-  int unsetenv(const char *name);
-]]
+local sys = require("spec.internal.sys")
 
 
 local pack = function(...) return { n = select("#", ...), ... } end
@@ -120,28 +114,6 @@ local function make_yaml_file(content, filename)
     assert(shell.kong_exec("config db_export --conf "..CONSTANTS.TEST_CONF_PATH.." "..filename))
   end
   return filename
-end
-
-
---- Set an environment variable
--- @function setenv
--- @param env (string) name of the environment variable
--- @param value the value to set
--- @return true on success, false otherwise
-local function setenv(env, value)
-  assert(type(env) == "string", "env must be a string")
-  assert(type(value) == "string", "value must be a string")
-  return ffi.C.setenv(env, value, 1) == 0
-end
-
-
---- Unset an environment variable
--- @function unsetenv
--- @param env (string) name of the environment variable
--- @return true on success, false otherwise
-local function unsetenv(env)
-  assert(type(env) == "string", "env must be a string")
-  return ffi.C.unsetenv(env) == 0
 end
 
 
@@ -304,10 +276,10 @@ local function use_old_plugin(name)
 
   local origin_lua_path = os.getenv("LUA_PATH")
   -- put the old plugin path at first
-  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+  assert(sys.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
 
   return function ()
-    setenv("LUA_PATH", origin_lua_path)
+    sys.setenv("LUA_PATH", origin_lua_path)
     if temp_dir then
       pl_dir.rmtree(temp_dir)
     end
@@ -323,8 +295,8 @@ return {
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
   make_yaml_file = make_yaml_file,
-  setenv = setenv,
-  unsetenv = unsetenv,
+  setenv = sys.setenv,
+  unsetenv = sys.unsetenv,
   deep_sort = deep_sort,
 
   generate_keys = generate_keys,
