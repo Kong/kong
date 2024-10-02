@@ -3123,6 +3123,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
     local unique_field_key = handle:read("*a")
     handle:close()
 
+    assert.is_string(unique_field_key, "non-string result from unique lookup")
     assert.not_equals("", unique_field_key, "empty result from unique lookup")
 
     -- get the entity value
