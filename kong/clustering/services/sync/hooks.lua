@@ -43,6 +43,7 @@ local function get_all_nodes_with_sync_cap()
       if c == "kong.sync.v2" then
         ret_n = ret_n + 1
         ret[ret_n] = row.id
+        break
       end
     end
   end
