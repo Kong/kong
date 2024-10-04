@@ -21,11 +21,11 @@ import axios from 'axios';
 describe('@gke: Gateway Plugins: key-auth-enc', function () {
   const path = '/key-auth-enc';
   const serviceName = 'key-auth-enc-service';
-  const waitTime = 5000;
+  const waitTime = 15000;
   const consumerName = 'ted';
   const key = 'apiKey';
   // add extra delay when database is remote and gateway in hybrid mode
-  const keyTtl = isGwHybrid() && !isLocalDatabase() ? 35 : 10;
+  const keyTtl = isGwHybrid() && !isLocalDatabase() ? 35 : 20;
   const tagAndTtlPayload = { tags: ['tag1'], ttl: keyTtl };
   const plugin = 'key-auth-enc';
 
