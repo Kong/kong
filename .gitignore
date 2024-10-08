@@ -37,8 +37,6 @@ bin/grpcurl
 *.bak
 *.rock
 
-bazel-*
-
 # pongo shell history
 .ash_history
 .bash_history
@@ -54,3 +52,8 @@ spec/fixtures/proxy_wasm_filters/target
 
 # python
 __pycache__
+
+# bazel
+bazel-*
+# remove it after migrating from WORKSPACE to Bzlmod
+MODULE.bazel.lock

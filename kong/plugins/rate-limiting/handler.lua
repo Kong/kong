@@ -209,12 +209,17 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
-      pdk_rl_apply_response_headers(ngx_ctx)
+      if not conf.hide_client_headers then
+        pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
+        pdk_rl_apply_response_headers(ngx_ctx)
+      end
+
       return kong.response.error(conf.error_code, conf.error_message)
     end
 
-    pdk_rl_apply_response_headers(ngx_ctx)
+    if not conf.hide_client_headers then
+      pdk_rl_apply_response_headers(ngx_ctx)
+    end
   end
 
   if conf.sync_rate ~= SYNC_RATE_REALTIME and conf.policy == "redis" then

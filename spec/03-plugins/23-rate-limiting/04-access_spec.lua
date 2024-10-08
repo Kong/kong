@@ -711,7 +711,22 @@ if limit_by == "ip" then
     })
 
     local res = assert(GET(test_path))
+    assert.res_status(200, res)
 
+    assert.is_nil(res.headers["X-Ratelimit-Limit-Minute"])
+    assert.is_nil(res.headers["X-Ratelimit-Remaining-Minute"])
+    assert.is_nil(res.headers["Ratelimit-Limit"])
+    assert.is_nil(res.headers["Ratelimit-Remaining"])
+    assert.is_nil(res.headers["Ratelimit-Reset"])
+    assert.is_nil(res.headers["Retry-After"])
+
+    -- repeat until get rate-limited
+    helpers.wait_until(function()
+      res = assert(GET(test_path))
+      return res.status == 429, "should be rate-limited (429), got " .. res.status
+    end, 10)
+
+    assert.res_status(429, res)
     assert.is_nil(res.headers["X-Ratelimit-Limit-Minute"])
     assert.is_nil(res.headers["X-Ratelimit-Remaining-Minute"])
     assert.is_nil(res.headers["Ratelimit-Limit"])
