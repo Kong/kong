@@ -34,6 +34,7 @@ local time          = ngx.time
 local type          = type
 local byte          = string.byte
 local sub           = string.sub
+local get_scopes    = utils.get_scopes
 
 
 local SLASH = byte("/")
@@ -89,10 +90,6 @@ local REVOKE = {
 }
 
 
-local OFFLINE_FIX = {
-  ["https://accounts.google.com"] = "offline",
-}
-
 local function url_array_fmt(arr)
   if type(arr) ~= "table" then
     return "unknown error (not a table)"
@@ -107,59 +104,6 @@ local function copy(original)
     copied[key] = value
   end
   return copied
-end
-
-
-local function get_scopes(options, args, opts, conf, verify_parameters)
-  local scope, count = set.new(options.scope or
-                                  args.scope or
-                                  opts.scope or "openid")
-
-  local scopes_supported = options.scopes_supported or
-                              opts.scopes_supported or
-                              conf.scopes_supported
-
-  if count == 0 then
-    return
-  end
-
-  if scopes_supported then
-    if not set.has(scope, scopes_supported) then
-      if set.has("offline_access", scope) then
-        local issuer = conf.issuer
-        if issuer then
-          if byte(issuer, -1) == SLASH then
-            issuer = sub(issuer, 1, -2)
-          end
-
-          local access_type = OFFLINE_FIX[issuer]
-
-          if access_type then
-            scope = set.remove("offline_access", scope)
-            if not args.access_type then
-              args.access_type = access_type
-            end
-          end
-        end
-
-        if verify_parameters then
-          if not set.has(scope, scopes_supported) then
-            return nil, "unsupported scopes requested (" .. concat(scope, ", ") .. ")"
-          end
-        end
-      else
-        if verify_parameters then
-          return nil, "unsupported scopes requested (" .. concat(scope, ", ") .. ")"
-        end
-      end
-    end
-  end
-
-  scope = concat(scope, " ")
-
-  if scope ~= "" then
-    return scope
-  end
 end
 
 

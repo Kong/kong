@@ -8,6 +8,7 @@
 local log           = require "kong.plugins.openid-connect.log"
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
+local oic_utils     = require "kong.openid-connect.utils"
 local utils         = require "kong.tools.utils"
 local sha256        = require "kong.tools.sha256"
 local http          = require "resty.http"
@@ -38,6 +39,7 @@ local wait          = ngx.thread.wait
 local kong          = kong
 local url_encode    = ngx.escape_uri
 local min           = math.min
+local get_scopes    = oic_utils.get_scopes
 
 
 local TOKEN_DECODE_OPTS = {
@@ -1298,7 +1300,7 @@ local function tokens_load(oic, args, ttl)
 end
 
 
-local function get_token_cache_key(iss, salt, args)
+local function get_token_cache_key(iss, salt, args, scopes)
   if not args.grant_type then return nil end
 
   local buffer = string_buffer.new()
@@ -1329,10 +1331,8 @@ local function get_token_cache_key(iss, salt, args)
     buffer:put("&", salt)
   end
 
-  local scope = args.args and args.args.scope
-  if args.token_cache_key_include_scope and scope
-    and args.grant_type ~= "refresh_token" then
-      buffer:put("&", url_encode(scope))
+  if scopes and args.grant_type ~= "refresh_token" then
+      buffer:put("&", url_encode(scopes))
   end
 
   return cache_key(sha256_base64url(buffer:get()))
@@ -1345,8 +1345,13 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
   local key
 
   if use_cache or flush then
+    local scopes
+    if args.token_cache_key_include_scope then
+      scopes = get_scopes(args, args.args or oic.options.args, oic.options, oic.configuration, false)
+    end
+
     local ok
-    ok, key = pcall(get_token_cache_key, oic.configuration.issuer, salt, args)
+    ok, key = pcall(get_token_cache_key, oic.configuration.issuer, salt, args, scopes)
     if not ok then return nil, key end
 
     if key then key = "oic:" .. key end

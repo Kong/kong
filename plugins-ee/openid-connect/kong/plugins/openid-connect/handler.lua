@@ -1283,8 +1283,9 @@ function OICHandler.access(_, conf)
     local auth_params
     if type(token_endpoint_args) == "table" then
       for _, arg in ipairs(token_endpoint_args) do
-        arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
+        arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values") or {}
         arg.token_cache_key_include_scope = args.get_conf_arg("token_cache_key_include_scope", false)
+
         local client_args = args.get_conf_arg("token_post_args_client")
         if client_args then
           for _, client_arg_name in ipairs(client_args) do
@@ -1299,10 +1300,6 @@ function OICHandler.access(_, conf)
             end
 
             if extra_arg then
-              if not arg.args then
-                arg.args = {}
-              end
-
               arg.args[client_arg_name] = extra_arg
             end
           end
@@ -1870,7 +1867,7 @@ function OICHandler.access(_, conf)
         log("required ", name, " were found")
 
       else
-        return nil, "required " .. name .. " were not found [ " .. concat(access_token_values, ", ") .. " ]"
+        return nil, "required " .. name .. " are missing. Found: [ " .. concat(access_token_values, ", ") .. " ]"
       end
 
       return true

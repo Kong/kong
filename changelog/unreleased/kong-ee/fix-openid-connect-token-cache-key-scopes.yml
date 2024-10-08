@@ -1,0 +1,5 @@
+message: >
+  **OpenID Connect**: Fixed an issue where the `token_cache_key_include_scope` feature
+  was not considering scopes defined via `config.scopes` to generate the cache key.
+type: bugfix
+scope: Plugin

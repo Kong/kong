@@ -3167,7 +3167,7 @@ for _, strategy in helpers.all_strategies() do
         })
         assert.response(res).has.status(403)
         local json = assert.response(res).has.jsonbody()
-        assert.matches("Forbidden %(required %w+ were not found %[ %w+ ]%)", json.message)
+        assert.matches("Forbidden %(required %w+ are missing. Found: %[ %w+ ]%)", json.message)
       end)
 
       it("invalid bearer token responds with the correct log message", function ()
@@ -3820,123 +3820,361 @@ for _, strategy in helpers.all_strategies() do
       end)
     end
 
-    describe("configure tests", function()
+    describe("#configure tests", function()
       local proxy_client
       for _, include_scope in ipairs{false, true} do
         describe("token_cache_key_include_scope=" .. tostring(include_scope), function()
-          lazy_setup(function()
-            local bp = helpers.get_db_utils(strategy, {
-              "routes",
-              "services",
-              "plugins",
-            }, {
-              PLUGIN_NAME
-            })
+          describe("configuring scopes via config.token_post_args_*", function()
+            lazy_setup(function()
+              local bp = helpers.get_db_utils(strategy, {
+                "routes",
+                "services",
+                "plugins",
+              }, {
+                PLUGIN_NAME
+              })
 
-            local service = bp.services:insert {
-              name = PLUGIN_NAME,
-              path = "/anything"
-            }
-            local scope1_route = bp.routes:insert {
-              service = service,
-              paths   = { "/scope1" },
-            }
-            local scope2_route = bp.routes:insert {
-              service = service,
-              paths   = { "/scope2" },
-            }
-
-            local config = {
-              issuer    = ISSUER_URL,
-              client_id = {
-                KONG_CLIENT_ID,
-              },
-              client_secret = {
-                KONG_CLIENT_SECRET,
-              },
-              auth_methods = {
-                "session",
-                "password"
-              },
-              logout_uri_suffix = "/logout",
-              logout_methods = {
-                "POST",
-              },
-              logout_revoke = true,
-              display_errors = true,
-              preserve_query_args = true,
-              token_cache_key_include_scope = include_scope,
-              cache_tokens_salt = "same",
-              scopes_required = { "address" },
-              token_post_args_names = { "scope" },
-              token_post_args_values = { "address" },
-            }
-
-            bp.plugins:insert {
-              route   = scope1_route,
-              name    = PLUGIN_NAME,
-              config  = config,
-            }
-
-            config.token_post_args_values = { "phone" }
-
-            bp.plugins:insert {
-              route   = scope2_route,
-              name    = PLUGIN_NAME,
-              config  = config,
-            }
-
-            assert(helpers.start_kong({
-              database   = strategy,
-              nginx_conf = "spec/fixtures/custom_nginx.template",
-              plugins    = "bundled," .. PLUGIN_NAME,
-            }))
-          end)
-
-          lazy_teardown(function()
-            helpers.stop_kong(nil, true)
-          end)
-
-          before_each(function()
-            proxy_client = helpers.proxy_client()
-          end)
-
-          after_each(function()
-            if proxy_client then
-              proxy_client:close()
-            end
-          end)
-
-          it("works", function()
-            local res = assert(proxy_client:send({
-              method = "GET",
-              path = "/scope1",
-              headers = {
-                ["Host"] = KONG_HOST,
-                ["Authorization"] = PASSWORD_CREDENTIALS,
+              local service = bp.services:insert {
+                name = PLUGIN_NAME,
+                path = "/anything"
               }
-            }))
-            assert.response(res).has.status(200)
-
-            res = assert(proxy_client:send({
-              method = "GET",
-              path = "/scope2",
-              headers = {
-                ["Host"] = KONG_HOST,
-                ["Authorization"] = PASSWORD_CREDENTIALS,
+              local scope1_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope1" },
               }
-            }))
+              local scope2_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope2" },
+              }
 
-            -- with scope the token is considered different.
-            -- the second request will get a new token with scope phone
-            -- and thus cannot pass the scope check
-            if include_scope then
-              assert.response(res).has.status(403)
-            else
-              -- but if the option is disabled, it will use the same token
-              -- which has scope address, thus pass the scope check
+              local config = {
+                issuer    = ISSUER_URL,
+                client_id = {
+                  KONG_CLIENT_ID,
+                },
+                client_secret = {
+                  KONG_CLIENT_SECRET,
+                },
+                auth_methods = {
+                  "session",
+                  "password"
+                },
+                logout_uri_suffix = "/logout",
+                logout_methods = {
+                  "POST",
+                },
+                logout_revoke = true,
+                display_errors = true,
+                preserve_query_args = true,
+                token_cache_key_include_scope = include_scope,
+                cache_tokens_salt = "same",
+                scopes_required = { "address" },
+                token_post_args_names = { "scope" },
+                token_post_args_values = { "address" },
+              }
+
+              bp.plugins:insert {
+                route   = scope1_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              config.token_post_args_values = { "phone" }
+
+              bp.plugins:insert {
+                route   = scope2_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              assert(helpers.start_kong({
+                database   = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+                plugins    = "bundled," .. PLUGIN_NAME,
+              }))
+            end)
+
+            lazy_teardown(function()
+              helpers.stop_kong(nil, true)
+            end)
+
+            before_each(function()
+              proxy_client = helpers.proxy_client()
+            end)
+
+            after_each(function()
+              if proxy_client then
+                proxy_client:close()
+              end
+            end)
+
+            it("works", function()
+              local res = assert(proxy_client:send({
+                method = "GET",
+                path = "/scope1",
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                }
+              }))
               assert.response(res).has.status(200)
-            end
+
+              res = assert(proxy_client:send({
+                method = "GET",
+                path = "/scope2",
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                }
+              }))
+
+              -- with scope the token is considered different.
+              -- the second request will get a new token with scope phone
+              -- and thus cannot pass the scope check
+              if include_scope then
+                assert.response(res).has.status(403)
+              else
+                -- but if the option is disabled, it will use the same token
+                -- which has scope address, thus pass the scope check
+                assert.response(res).has.status(200)
+              end
+            end)
+          end)
+
+          describe("configuring scopes via config.scopes", function()
+            lazy_setup(function()
+              local bp = helpers.get_db_utils(strategy, {
+                "routes",
+                "services",
+                "plugins",
+              }, {
+                PLUGIN_NAME
+              })
+
+              local service = bp.services:insert {
+                name = PLUGIN_NAME,
+                path = "/anything"
+              }
+              local scope1_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope1" },
+              }
+              local scope2_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope2" },
+              }
+
+              local config = {
+                issuer    = ISSUER_URL,
+                client_id = {
+                  KONG_CLIENT_ID,
+                },
+                client_secret = {
+                  KONG_CLIENT_SECRET,
+                },
+                auth_methods = {
+                  "session",
+                  "password"
+                },
+                logout_uri_suffix = "/logout",
+                logout_methods = {
+                  "POST",
+                },
+                logout_revoke = true,
+                display_errors = true,
+                preserve_query_args = true,
+                token_cache_key_include_scope = include_scope,
+                cache_tokens_salt = "same",
+                scopes_required = { "address" },
+                scopes = {
+                  "address",
+                },
+              }
+
+              bp.plugins:insert {
+                route   = scope1_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              config.scopes = { "phone" }
+
+              bp.plugins:insert {
+                route   = scope2_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              assert(helpers.start_kong({
+                database   = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+                plugins    = "bundled," .. PLUGIN_NAME,
+              }))
+            end)
+
+            lazy_teardown(function()
+              helpers.stop_kong()
+            end)
+
+            before_each(function()
+              proxy_client = helpers.proxy_client()
+            end)
+
+            after_each(function()
+              if proxy_client then
+                proxy_client:close()
+              end
+            end)
+
+            it("works", function()
+              local res = assert(proxy_client:send({
+                method = "GET",
+                path = "/scope1",
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                }
+              }))
+              assert.response(res).has.status(200)
+
+              res = assert(proxy_client:send({
+                method = "GET",
+                path = "/scope2",
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                }
+              }))
+
+              -- with scope the token is considered different.
+              -- the second request will get a new token with scope phone
+              -- and thus cannot pass the scope check
+              if include_scope then
+                assert.response(res).has.status(403)
+              else
+                -- but if the option is disabled, it will use the same token
+                -- which has scope address, thus pass the scope check
+                assert.response(res).has.status(200)
+              end
+            end)
+          end)
+
+          describe("configuring scopes from the client's request", function()
+            lazy_setup(function()
+              local bp = helpers.get_db_utils(strategy, {
+                "routes",
+                "services",
+                "plugins",
+              }, {
+                PLUGIN_NAME
+              })
+
+              local service = bp.services:insert {
+                name = PLUGIN_NAME,
+                path = "/anything"
+              }
+              local scope1_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope1" },
+              }
+              local scope2_route = bp.routes:insert {
+                service = service,
+                paths   = { "/scope2" },
+              }
+
+              local config = {
+                issuer    = ISSUER_URL,
+                client_id = {
+                  KONG_CLIENT_ID,
+                },
+                client_secret = {
+                  KONG_CLIENT_SECRET,
+                },
+                auth_methods = {
+                  "session",
+                  "password"
+                },
+                logout_uri_suffix = "/logout",
+                logout_methods = {
+                  "POST",
+                },
+                logout_revoke = true,
+                display_errors = true,
+                preserve_query_args = true,
+                token_cache_key_include_scope = include_scope,
+                cache_tokens_salt = "same",
+                scopes_required = { "address" },
+                token_post_args_client = {
+                  "scope",
+                }
+              }
+
+              bp.plugins:insert {
+                route   = scope1_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              bp.plugins:insert {
+                route   = scope2_route,
+                name    = PLUGIN_NAME,
+                config  = config,
+              }
+
+              assert(helpers.start_kong({
+                database   = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+                plugins    = "bundled," .. PLUGIN_NAME,
+              }))
+            end)
+
+            lazy_teardown(function()
+              helpers.stop_kong()
+            end)
+
+            before_each(function()
+              proxy_client = helpers.proxy_client()
+            end)
+
+            after_each(function()
+              if proxy_client then
+                proxy_client:close()
+              end
+            end)
+
+            it("works", function()
+              local res = assert(proxy_client:get("/scope1", {
+                query = {
+                  scope = "address",
+                },
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                },
+              }))
+              assert.response(res).has.status(200)
+
+              res = assert(proxy_client:get("/scope2", {
+                query = {
+                  scope = "phone",
+                },
+                headers = {
+                  ["Host"] = KONG_HOST,
+                  ["Authorization"] = PASSWORD_CREDENTIALS,
+                },
+              }))
+
+              -- with scope the token is considered different.
+              -- the second request will get a new token with scope phone
+              -- and thus cannot pass the scope check
+              if include_scope then
+                assert.response(res).has.status(403)
+              else
+                -- but if the option is disabled, it will use the same token
+                -- which has scope address, thus pass the scope check
+                assert.response(res).has.status(200)
+              end
+            end)
           end)
         end)
       end
