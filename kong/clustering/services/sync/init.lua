@@ -61,7 +61,7 @@ function _M:init_worker()
       return
     end
 
-    assert(self.rpc:sync_once(0))
+    assert(self.rpc:sync_once())
   end))
 end
 
