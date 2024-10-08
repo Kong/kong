@@ -135,7 +135,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
     end)
 
     -- XXX FIXME: incremental sync
-    pending("does not introduce any errors", function()
+    it("does not introduce any errors", function()
       local function assert_no_errors()
         assert.logfile(log).has.no.line("[error]", true, 0)
         assert.logfile(log).has.no.line("[alert]", true, 0)
