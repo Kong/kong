@@ -1244,9 +1244,8 @@ function Kong.access()
 
 
   if ctx.buffered_proxying then
-    local version = ngx.req.http_version()
     local upgrade = var.upstream_upgrade or ""
-    if version < 2 and upgrade == "" then
+    if upgrade == "" then
       if has_timing then
         req_dyn_hook_run_hook("timing", "after:access")
       end
@@ -1254,11 +1253,7 @@ function Kong.access()
       return Kong.response()
     end
 
-    if version >= 2 then
-      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
-    else
-      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
-    end
+    ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
 
     ctx.buffered_proxying = nil
   end

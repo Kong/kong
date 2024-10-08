@@ -33,7 +33,7 @@ qq{
             {
                 method        = "enable_buffering",
                 args          = { "http" },
-                init_worker   = false,
+                init_worker   = "forced false",
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
