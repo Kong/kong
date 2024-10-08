@@ -1,7 +1,7 @@
 """A module defining the dependency lua-resty-simdjson"""
 
-load("//build:build_system.bzl", "git_or_local_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "git_or_local_repository")
 
 def simdjson_ffi_repositories():
     git_or_local_repository(

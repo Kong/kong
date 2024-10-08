@@ -1,10 +1,10 @@
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
 load("@kong//build:build_system.bzl", "kong_cc_static_library")
-load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
 load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 
 filegroup(
     name = "luajit_srcs",
