@@ -56,13 +56,7 @@ function _M:init_worker()
   -- sync to CP ASAP
   assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
 
-  assert(ngx.timer.every(EACH_SYNC_DELAY, function(premature)
-    if premature then
-      return
-    end
-
-    assert(self.rpc:sync_once())
-  end))
+  assert(self.rpc:sync_every(EACH_SYNC_DELAY))
 end
 
 
