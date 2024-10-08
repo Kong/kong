@@ -61,6 +61,7 @@ function _M:init_cp(manager)
     for namespace, v in pairs(current_versions) do
       if namespace == "default" then
         default_namespace = v
+        break
       end
     end
 
@@ -150,7 +151,7 @@ function _M:init_dp(manager)
   -- Params: new_versions: list of namespaces and their new versions, like:
   -- { { namespace = "default", new_version = 1000, }, }
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
-    -- currently only default is supported, and anything else is ignored
+    -- TODO: currently only default is supported, and anything else is ignored
     for namespace, new_version in pairs(new_versions) do
       if namespace == "default" then
         local version = new_version.new_version
