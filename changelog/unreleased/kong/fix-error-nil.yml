@@ -1,0 +1,3 @@
+message: Fix an issue where an error was hidden by another one
+type: bugfix
+scope: Core
