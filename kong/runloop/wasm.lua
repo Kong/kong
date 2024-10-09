@@ -831,12 +831,26 @@ local function register_property_handlers()
     return ok, value, const
   end)
 
+  properties.add_getter("kong.route_name", function(_, _, ctx)
+    local value = ctx.route and ctx.route.name
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
   properties.add_getter("kong.service.response.status", function(kong)
     return true, kong.service.response.get_status(), false
   end)
 
   properties.add_getter("kong.service_id", function(_, _, ctx)
     local value = ctx.service and ctx.service.id
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
+  properties.add_getter("kong.service_name", function(_, _, ctx)
+    local value = ctx.service and ctx.service.name
     local ok = value ~= nil
     local const = ok
     return ok, value, const
