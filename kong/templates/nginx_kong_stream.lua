@@ -119,6 +119,9 @@ server {
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
     }
+    ssl_client_hello_by_lua_block {
+        Kong.ssl_client_hello()
+    }
 > end
 
     set $upstream_host '';

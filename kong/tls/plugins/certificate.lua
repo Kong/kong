@@ -7,6 +7,7 @@
 
 --- Copyright 2019 Kong Inc.
 local ngx_ssl = require "ngx.ssl"
+local ssl_clt = require "ngx.ssl.clienthello"
 local sni_filter = require("kong.tls.plugins.sni_filter")
 local pl_stringx = require "pl.stringx"
 local server_name = ngx_ssl.server_name
@@ -22,7 +23,6 @@ local EMPTY_T = {}
 
 
 local function match_sni(snis, server_name)
-  local matched_sni
   if server_name then
     -- search plain snis
     if snis[server_name] then
@@ -92,6 +92,37 @@ function _M.execute(snis_set)
     if not res then
       kong.log.err("unable to disable session reuse for client certificate: ",
                      err)
+    end
+  end
+end
+
+function _M.execute_client_hello(snis_set, options)
+
+  if not options then
+    return
+  end
+
+  if not options.disable_http2 then
+    return
+  end
+
+  local server_name, err = ssl_clt.get_client_hello_server_name()
+  if err then
+    kong.log.debug("unable to get client hello server name: ", err)
+    return
+  end
+
+  local sni_mapping = match_sni(snis_set, server_name)
+
+  if sni_mapping  then
+    -- TODO: improve detection of ennoblement once we have DAO functions
+    -- to filter plugin configurations based on plugin name
+
+    kong.log.debug("enabled, will disable http2 alpn")
+
+    local res, err = kong.tls.disable_http2_alpn()
+    if not res then
+      kong.log.err("unable to disable http2 alpn: ", err)
     end
   end
 end
