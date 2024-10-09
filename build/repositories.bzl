@@ -1,12 +1,12 @@
 """A module defining the third party dependency OpenResty"""
 
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build:build_system.bzl", "git_or_local_repository", "github_release")
-load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
 load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
 load("//build/libexpat:repositories.bzl", "libexpat_repositories")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
 load("//build/toolchain:bindings.bzl", "load_bindings")
 
 _SRCS_BUILD_FILE_CONTENT = """

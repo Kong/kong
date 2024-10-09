@@ -1,5 +1,5 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("//build/nfpm:rules.bzl", "nfpm_pkg")
 load("//build/toolchain:managed_toolchain.bzl", "aarch64_glibc_distros")
 

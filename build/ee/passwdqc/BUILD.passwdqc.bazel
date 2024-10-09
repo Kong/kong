@@ -1,5 +1,5 @@
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 
 filegroup(
     name = "all_srcs",

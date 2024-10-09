@@ -5,8 +5,8 @@ Note that the $(PERL) "make variable" (https://docs.bazel.build/versions/main/be
 is populated by the perl toolchain provided by rules_perl.
 """
 
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 
 # Read https://wiki.openssl.org/index.php/Compilation_and_Installation
 

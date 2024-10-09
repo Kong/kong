@@ -1,7 +1,7 @@
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("//build:build_system.bzl", "get_workspace_name", "kong_genrule", "kong_install", "kong_rules_group", "kong_template_file")
 load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "get_workspace_name", "kong_genrule", "kong_install", "kong_rules_group", "kong_template_file")
 
 exports_files([
     "package/nfpm.yaml",
