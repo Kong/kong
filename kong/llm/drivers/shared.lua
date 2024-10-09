@@ -638,7 +638,7 @@ function _M.pre_request(conf, request_table)
 
   local ok = check_multi_modal(conf, request_table)
   if not ok then
-    return kong.response.exit("multi-modal input is not supported by current provider")
+    return nil, "multi-modal input is not supported by current provider"
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
