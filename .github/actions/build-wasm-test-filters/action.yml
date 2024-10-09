@@ -17,7 +17,7 @@ runs:
         echo "WASM_FILTER_CACHE_PREFIX=wasm-test-filters::v3::${{ runner.os }}" >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       id: restore-cache
       with:
         path: |
