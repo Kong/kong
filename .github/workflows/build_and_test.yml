@@ -155,7 +155,7 @@ jobs:
         static-mode: ${{ github.run_attempt > 1 }}
 
     - name: Upload schedule files
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       continue-on-error: true
       with:
         name: schedule-test-files
@@ -306,7 +306,7 @@ jobs:
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
     - name: Download test schedule file
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: schedule-test-files
 
@@ -321,13 +321,13 @@ jobs:
         make dev
 
     - name: Download test rerun information
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
         name: test-rerun-info-${{ matrix.runner }}
 
     - name: Download test runtime statistics from previous runs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
@@ -357,7 +357,7 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: busted-test-errlogs-${{ matrix.runner }}
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
@@ -365,7 +365,7 @@ jobs:
 
     - name: Upload test rerun information
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-rerun-info-${{ matrix.runner }}
         path: ${{ env.FAILED_TEST_FILES_FILE }}
@@ -373,14 +373,14 @@ jobs:
 
     - name: Upload test runtime statistics for offline scheduling
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
         path: ${{ env.TEST_FILE_RUNTIME_FILE }}
         retention-days: 7
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.runner }}
@@ -444,14 +444,14 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: PDK-test-errlogs
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
         retention-days: 1
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -481,7 +481,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash
