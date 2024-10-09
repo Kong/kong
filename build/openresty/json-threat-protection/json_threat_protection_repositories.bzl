@@ -1,9 +1,14 @@
 """A module defining the dependency lua-resty-json-threat-protection"""
 
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "git_or_local_repository")
 
 def json_threat_protection_repositories():
-    native.local_repository(
+    git_or_local_repository(
         name = "json_threat_protection",
-        path = "distribution/lua-resty-json-threat-protection",
+        branch = KONG_VAR["RESTY_JSON_THREAT_PROTECTION"],
+        # Since majority of Kongers are using the GIT protocol,
+        # so we'd better use the same protocol instead of HTTPS
+        # for private repositories.
+        remote = "git@github.com:Kong/lua-resty-json-threat-protection.git",
     )

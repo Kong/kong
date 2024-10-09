@@ -199,7 +199,7 @@ jobs:
 
     - name: Swap git with https and make sure Cargo can fetch private repositories
       run: |
-        git config --global url."https://github".insteadOf git://github
+        git config --global url.'https://${{ secrets.GHA_KONG_BOT_READ_TOKEN }}@github.com/'.insteadOf 'git@github.com:'
         # Cargo needs to use https to fetch private repositories
         git config --global url."https://${{ secrets.GHA_KONG_BOT_READ_TOKEN }}@github.com".insteadOf https://github.com
 
