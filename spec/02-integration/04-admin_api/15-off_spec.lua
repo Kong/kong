@@ -3139,7 +3139,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
 
     local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
 
-    -- NOTE: we have changed internla LDMB storage format, and dao does not has this field(ws_id)
+    -- NOTE: we have changed internl LDMB storage format, and dao does not has this field(ws_id)
     cached_reference.ws_id = nil
 
     assert.same(cached_reference, references.data[1])
