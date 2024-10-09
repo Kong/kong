@@ -3138,7 +3138,9 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.not_equals("", result, "empty result from unique lookup")
 
     local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
-    cached_reference.ws_id = nil -- XXX FIXME
+
+    -- NOTE: we have changed internla LDMB storage format, and dao does not has this field(ws_id)
+    cached_reference.ws_id = nil
 
     assert.same(cached_reference, references.data[1])
 
