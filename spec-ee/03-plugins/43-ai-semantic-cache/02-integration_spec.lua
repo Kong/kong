@@ -269,6 +269,13 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 },
               },
             }
+            bp.plugins:insert {
+              name = "prometheus",
+              route = { id = rt.id },
+              config = {
+                ai_metrics = true,
+              },
+            }
             -- for collecting analytics logs
             bp.plugins:insert {
               name = "post-function",
@@ -329,6 +336,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         -- let me read test files
         untrusted_lua = "on",
+        log_level = "info",
       }, nil, nil, fixtures))
     end)
 
@@ -440,7 +448,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 local buffer_size = 35536
                 local events = {}
                 local buf = buffer.new()
-
                 -- extract event
                 repeat
                   -- receive next chunk
@@ -567,6 +574,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   assert.logfile().has.no.line("headers have already been sent", true)
                 end
               end
+              assert.logfile().has.no.line("attempt to compare number with string", true)
             end)
 
           end -- end for each TEST SCENARIO

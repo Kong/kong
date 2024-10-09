@@ -846,7 +846,11 @@ function _M.stash_cache_stats(conf, cache_metrics)
   for k, v in pairs(cache_metrics) do
     local key = log_entry_keys[string.upper(k)]
     if key then
-      cache_container[key] = string.lower(v)
+      if type(v) == "string" then
+        cache_container[key] = string.lower(v)
+      else
+        cache_container[key] = v
+      end
     end
   end
 
