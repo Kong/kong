@@ -56,7 +56,10 @@ export {
   deployKonnectDataPlane,
   stopAndRemoveTargetContainer,
   reloadGateway,
-  copyFileFromDockerContainer
+  copyFileFromDockerContainer,
+  checkFileExistsInDockerContainer,
+  deleteFileFromDockerContainer,
+  createFileInDockerContainer
 } from './exec/gateway-container';
 export { getTargetFileContent, createFileWithContent, deleteTargetFile } from './utilities/files'
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
@@ -77,6 +80,7 @@ export * from './utilities/influxdb';
 export * from './utilities/jwe-keys';
 export { logDebug, logResponse } from './utilities/logging';
 export { getHttpLogServerLogs, deleteHttpLogServerLogs } from './utilities/http-log-server';
+export { checkLogPropertyAndValue } from './utilities/file-log';
 export { getNegative, postNegative } from './utilities/negative-axios';
 export { execCustomCommand, checkForArm64 } from './utilities/prog';
 export { findRegex, randomString, wait } from './utilities/random';

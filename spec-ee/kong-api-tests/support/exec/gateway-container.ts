@@ -180,6 +180,82 @@ export const copyFileFromDockerContainer = (containerName, fileName) => {
   execSync(`docker cp ${containerName}:/${fileName} ${cwd}`);
 };
 
+/**
+ * Check a file exist or not from target container
+ * @param {string} containerName - name of the container to check file from
+ * @param {string} fileName - the name of the target file
+ * @param {boolean} exist - check this file exist or not, default value is true means default check this file exist
+ */
+export const checkFileExistsInDockerContainer = async(containerName: string, fileName: string, exist = true) => {
+  await eventually(async () => {
+    const checkResult = execSync(
+      `docker exec -i $(docker ps -aqf name="${containerName}") sh -c "test -e ${fileName} && echo 'File exists' || echo 'File not found'"`
+    );
+    const resultString = checkResult.toString().trim();
+    console.info(`Check target file ${fileName} in docker container: ${resultString}`);
+
+    if (exist) {
+      expect(resultString, 'The target file should exist in docker container').to.contain('File exists');
+    } else {
+      expect(resultString, 'Wait for log file not generating').to.contain('File not found');
+    }
+  });
+};
+
+/**
+ * Delete a file from target container
+ * @param {string} containerName - name of the container to to delete file from
+ * @param {string} fileName - the name of the target file
+ */
+export const deleteFileFromDockerContainer = async(containerName: string, fileName: string) => {
+  const fileNotFoundMessage = 'File not found'; // Constants for messages
+
+  try {
+    // Delete the file
+    execSync(`docker exec -i $(docker ps -aqf name="${containerName}") sh -c "rm -f ${fileName}"`);
+
+    // Check if the file still exists
+    const checkResult = execSync(
+      `docker exec -i $(docker ps -aqf name="${containerName}") sh -c "test -e ${fileName} && echo 'File exists' || echo '${fileNotFoundMessage}'"`
+    ).toString().trim();
+
+    if (checkResult.includes('File exists')) {
+      console.info(`File delete failed: ${fileName}`);
+    } else if (checkResult.includes(fileNotFoundMessage)) {
+      console.info(`Successfully removed target file: ${fileName} from docker container`);
+    } else {
+      console.error(`Unexpected result from Docker check: ${checkResult}`);
+    }
+  } catch (error) {
+    console.error(
+      `Something went wrong during deleting the file from docker container: ${error}`
+    );
+  } 
+};
+
+/**
+ * Create a file in the target container and change its ownership
+ * @param {string} containerName - name of the container to to create file from
+ * @param {string} fileName - the name of the target file
+ * @param {boolean} changeOwnership - change the ownership of this file to kong, default is true
+ */
+export const createFileInDockerContainer = async(containerName: string, fileName: string, changeOwnership = true) => {
+  try {
+    // Create the file
+    execSync(`docker exec -i $(docker ps -aqf name="${containerName}") sh -c "touch ${fileName}"`);
+
+    // Optionally change ownership to 'kong'
+    if (changeOwnership) {
+      execSync(`docker exec -i $(docker ps -aqf name="${containerName}") sh -c "chown kong:kong ${fileName}"`);
+      console.info(`Ownership of ${fileName} changed to kong:kong`);
+    }
+
+    console.info(`File created successfully: ${fileName} in docker container`);
+  } catch (error) {
+    console.error(`Error during file creation in docker container: ${error}`);
+  }
+};
+
 
 /**
  * Generates code snippet and deploys a Konnect Data Plane via Docker in the same network as other test 3rd party services
