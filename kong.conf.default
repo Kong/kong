@@ -2264,8 +2264,11 @@
                                  #
                                  # - `X-Kong-Request-Debug-Token`:
                                  #   Token for authenticating the client making the debug
-                                 #   request to prevent abuse. Debug requests originating from loopback
-                                 #   addresses do not require this header.
+                                 #   request to prevent abuse.
+                                 #   ** Note: Debug requests originating from loopback
+                                 #   addresses do not require this header. Deploying Kong behind
+                                 #   other proxies may result in exposing the debug interface to
+                                 #   the public.**
                                  #
 #request_debug_token = <random>  # The Request Debug Token is used in the
                                  # `X-Kong-Request-Debug-Token` header to prevent abuse.
