@@ -967,7 +967,7 @@ return {
         end
       end
 
-      --if strategy ~= "off" then
+      do  -- start some rebuild timers
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
         local router_async_opts = {
@@ -992,8 +992,8 @@ return {
         end
 
         local _, err = kong.timer:named_every("router-rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_router_timer)
+                                              worker_state_update_frequency,
+                                              rebuild_router_timer)
         if err then
           log(ERR, "could not schedule timer to rebuild router: ", err)
         end
@@ -1016,12 +1016,11 @@ return {
         end
 
         local _, err = kong.timer:named_every("plugins-iterator-rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_plugins_iterator_timer)
+                                              worker_state_update_frequency,
+                                              rebuild_plugins_iterator_timer)
         if err then
           log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
         end
-
 
         if wasm.enabled() then
           local wasm_async_opts = {
@@ -1042,13 +1041,13 @@ return {
           end
 
           local _, err = kong.timer:named_every("wasm-rebuild",
-                                           worker_state_update_frequency,
-                                           rebuild_wasm_filter_chains_timer)
+                                                worker_state_update_frequency,
+                                                rebuild_wasm_filter_chains_timer)
           if err then
             log(ERR, "could not schedule timer to rebuild WASM filter chains: ", err)
           end
         end
-      --end
+      end -- rebuild timer do block
     end,
   },
   preread = {
