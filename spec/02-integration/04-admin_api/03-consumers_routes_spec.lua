@@ -282,6 +282,16 @@ describe("Admin API (#" .. strategy .. "): ", function()
         local body = assert.response(res).has.status(200)
         assert.match('"data":%[%]', body)
       end)
+      it("returns bad request for empty tags", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers",
+          query = { tags = ngx.null}
+        })
+        res = assert.res_status(400, res)
+        local json = cjson.decode(res)
+        assert.same("invalid option (tags: tags cannot be null (or empty string))", json.message)
+      end)
     end)
     it("returns 405 on invalid method", function()
       local methods = {"DELETE", "PATCH"}

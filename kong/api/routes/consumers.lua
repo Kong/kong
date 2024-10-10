@@ -20,7 +20,11 @@ return {
 
       -- Search by custom_id: /consumers?custom_id=xxx
       if custom_id then
-        local opts = endpoints.extract_options(args, db.consumers.schema, "select")
+        local opts, _, err_t = endpoints.extract_options(db, args, db.consumers.schema, "select")
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
         local consumer, _, err_t = db.consumers:select_by_custom_id(custom_id, opts)
         if err_t then
           return endpoints.handle_error(err_t)
