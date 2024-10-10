@@ -12,9 +12,11 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
+--- XXX FIXME: enable inc_sync = on
+for _, inc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
-describe("CP/DP communication #" .. strategy, function()
+describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
@@ -27,6 +29,7 @@ describe("CP/DP communication #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -38,6 +41,7 @@ describe("CP/DP communication #" .. strategy, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_incremental_sync = inc_sync,
     }))
 
     for _, plugin in ipairs(helpers.get_plugins_list()) do
@@ -263,7 +267,13 @@ describe("CP/DP communication #" .. strategy, function()
         method  = "GET",
         path    = "/soon-to-be-disabled",
       }))
-      assert.res_status(404, res)
+
+      if inc_sync == "on" then
+        -- XXX incremental sync does not skip_disabled_services by default
+        assert.res_status(200, res)
+      else
+        assert.res_status(404, res)
+      end
 
       proxy_client:close()
     end)
@@ -357,6 +367,7 @@ describe("CP/DP #version check #" .. strategy, function()
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_version_check = "major_minor",
+        cluster_incremental_sync = inc_sync,
       }))
 
       for _, plugin in ipairs(helpers.get_plugins_list()) do
@@ -624,6 +635,7 @@ describe("CP/DP config sync #" .. strategy, function()
       database = strategy,
       db_update_frequency = 3,
       cluster_listen = "127.0.0.1:9005",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -634,6 +646,7 @@ describe("CP/DP config sync #" .. strategy, function()
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -736,6 +749,7 @@ describe("CP/DP labels #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -748,6 +762,7 @@ describe("CP/DP labels #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_dp_labels="deployment:mycloud,region:us-east-1",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -796,6 +811,7 @@ describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -808,6 +824,7 @@ describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_dp_labels="deployment:mycloud,region:us-east-1",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -854,6 +871,7 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
       -- additional attributes for PKI:
       cluster_mtls = "pki",
       cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -869,6 +887,7 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
       cluster_mtls = "pki",
       cluster_server_name = "kong_clustering",
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -900,4 +919,5 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
   end)
 end)
 
-end
+end -- for _, strategy
+end -- for inc_sync

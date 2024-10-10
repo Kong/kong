@@ -88,7 +88,6 @@ build = {
     ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
-    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
@@ -98,6 +97,12 @@ build = {
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
+
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+    ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
+    ["kong.clustering.services.sync.rpc"] = "kong/clustering/services/sync/rpc.lua",
+    ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
+    ["kong.clustering.services.sync.strategies.postgres"] = "kong/clustering/services/sync/strategies/postgres.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -289,7 +294,6 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
-    ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
@@ -316,6 +320,7 @@ build = {
     ["kong.db.migrations.core.021_340_to_350"] = "kong/db/migrations/core/021_340_to_350.lua",
     ["kong.db.migrations.core.022_350_to_360"] = "kong/db/migrations/core/022_350_to_360.lua",
     ["kong.db.migrations.core.023_360_to_370"] = "kong/db/migrations/core/023_360_to_370.lua",
+    ["kong.db.migrations.core.024_370_to_380"] = "kong/db/migrations/core/024_370_to_380.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",

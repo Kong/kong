@@ -277,6 +277,8 @@ end
 -- }
 local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   strategy = strategy or conf.database
+  conf.database = strategy  -- overwrite kong.configuration.database
+
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
   end
@@ -312,12 +314,6 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
 
   if not skip_migrations then
     bootstrap_database(db)
-  end
-
-  do
-    local database = conf.database
-    conf.database = strategy
-    conf.database = database
   end
 
   db:truncate("plugins")

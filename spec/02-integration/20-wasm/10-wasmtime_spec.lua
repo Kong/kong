@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 
+--- XXX FIXME: enable inc_sync = on
+for _, inc_sync in ipairs { "off" } do
 for _, role in ipairs({"traditional", "control_plane", "data_plane"}) do
 
 describe("#wasm wasmtime (role: " .. role .. ")", function()
@@ -18,9 +20,11 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         role = role,
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_incremental_sync = inc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
+      conf.cluster_incremental_sync = inc_sync == "on"
     end)
 
     lazy_teardown(function()
@@ -90,9 +94,12 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
 
         status_listen = "127.0.0.1:" .. status_port,
         nginx_main_worker_processes = 2,
+
+        cluster_incremental_sync = inc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
+      conf.cluster_incremental_sync = inc_sync == "on"
 
       -- we need to briefly spin up a control plane, or else we will get
       -- error.log entries when our data plane tries to connect
@@ -110,6 +117,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           status_listen = "off",
           nginx_main_worker_processes = 2,
+          cluster_incremental_sync = inc_sync,
         }))
       end
     end)
@@ -126,6 +134,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
       end
     end)
 
+    -- XXX FIXME: incremental sync
     it("does not introduce any errors", function()
       local function assert_no_errors()
         assert.logfile(log).has.no.line("[error]", true, 0)
@@ -167,3 +176,4 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
 
 end) -- wasmtime
 end -- each role
+end -- for inc_sync

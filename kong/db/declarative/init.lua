@@ -245,15 +245,22 @@ _M.to_yaml_file                = declarative_export.to_yaml_file
 _M.export_from_db              = declarative_export.export_from_db
 _M.export_config               = declarative_export.export_config
 _M.export_config_proto         = declarative_export.export_config_proto
+_M.export_config_sync          = declarative_export.export_config_sync
 _M.sanitize_output             = declarative_export.sanitize_output
 
 
 -- import
 _M.get_current_hash            = declarative_import.get_current_hash
 _M.unique_field_key            = declarative_import.unique_field_key
+_M.item_key                    = declarative_import.item_key
+_M.item_key_prefix             = declarative_import.item_key_prefix
+_M.foreign_field_key_prefix    = declarative_import.foreign_field_key_prefix
 _M.load_into_db                = declarative_import.load_into_db
 _M.load_into_cache             = declarative_import.load_into_cache
 _M.load_into_cache_with_events = declarative_import.load_into_cache_with_events
+_M.insert_entity_for_txn       = declarative_import.insert_entity_for_txn
+_M.delete_entity_for_txn       = declarative_import.delete_entity_for_txn
+_M.workspace_id                = declarative_import.workspace_id
 
 
 return _M
