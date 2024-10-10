@@ -149,7 +149,7 @@ function _M:init_dp(manager)
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
-  -- { { namespace = "default", new_version = 1000, }, }
+  -- { { new_version = 1000, }, }, possible field: namespace = "default"
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
     for namespace, new_version in pairs(new_versions) do
