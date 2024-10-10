@@ -28,7 +28,8 @@ end
 function Workspaces:select_by_name(key, options)
   if kong.configuration.database == "off" and key == "default" then
     -- it should be a table, not a single string
-    return  { id = lmdb.get(DECLARATIVE_DEFAULT_WORKSPACE_KEY), }
+    local id = lmdb.get(DECLARATIVE_DEFAULT_WORKSPACE_KEY)
+    return id and { id = lmdb.get(DECLARATIVE_DEFAULT_WORKSPACE_KEY), } or nil
   end
 
   return self.super.select_by_name(self, key, options)
