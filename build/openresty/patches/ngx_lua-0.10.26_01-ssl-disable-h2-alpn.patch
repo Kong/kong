@@ -1,0 +1,41 @@
+diff --git a/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c b/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
+index 1c92d9f..232a279 100644
+--- a/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
++++ b/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
+@@ -8,6 +8,9 @@
+ #include <ngx_config.h>
+ #include <ngx_core.h>
+ #include <ngx_http.h>
++#if (NGX_HTTP_LUA_KONG)
++#include <ngx_http_lua_kong_module.h>
++#endif
+ 
+ #if (NGX_QUIC_OPENSSL_COMPAT)
+ #include <ngx_event_quic_openssl_compat.h>
+@@ -473,8 +476,11 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
+     {
+ #if (NGX_HTTP_V2)
+         h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+-
++#if (NGX_HTTP_LUA_KONG)
++        if(ngx_http_lua_kong_ssl_get_http2_alpn_enabled(c->ssl, h2scf->enable || hc->addr_conf->http2)) {
++#else
+         if (h2scf->enable || hc->addr_conf->http2) {
++#endif
+             srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
+             srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
+ 
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
+index 3d577c6..aa20f03 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
+@@ -38,6 +38,9 @@ typedef struct {
+     unsigned                 entered_client_hello_handler:1;
+     unsigned                 entered_cert_handler:1;
+     unsigned                 entered_sess_fetch_handler:1;
++#if (NGX_HTTP_LUA_KONG)
++    unsigned                 disable_http2_alpn:1;
++#endif
+ } ngx_http_lua_ssl_ctx_t;
+ 
+ 

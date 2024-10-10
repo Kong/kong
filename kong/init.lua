@@ -1032,6 +1032,8 @@ function Kong.ssl_certificate()
   kong.table.clear(ngx.ctx)
 end
 
+function Kong.ssl_client_hello()
+end
 
 function Kong.preread()
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
