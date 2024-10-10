@@ -52,7 +52,7 @@ local function get_all_nodes_with_sync_cap()
 end
 
 
-function _M:notify_all_nodes(new_version)
+function _M:notify_all_nodes()
   local latest_version = self.strategy:get_latest_version()
   local msg = { default = { new_version = latest_version, }, }
 
