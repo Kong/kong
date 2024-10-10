@@ -287,6 +287,26 @@ local function assert_plugin_has_span(plugin_span, span_name)
   return true
 end
 
+local function assert_total_time_is_float(subcontext, current_path)
+  local current_path = current_path or '$'
+
+  if subcontext.total_time then
+    -- body filter is mostly zero
+    if subcontext.total_time ~= 0 then
+      assert.are_not.equal(subcontext.total_time % 1, 0, current_path .. ".total_time is not a float number");
+    end
+  end
+
+  if subcontext.child then
+    for path, child in pairs(subcontext.child) do
+      -- Upstream time is measured by nginx and it's always decimal rather than float
+      if path ~= "upstream" then
+        assert_total_time_is_float(child, current_path .. "." .. path)
+      end
+    end
+  end
+end
+
 
 local function start_kong(strategy, deployment, disable_req_dbg, token)
   local request_debug = nil
@@ -500,22 +520,28 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/slow-streaming", "*")
-    local log_output = assert_has_output_log(deployment, "/slow-streaming", "*")
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/slow-streaming", "*")
+      local log_output = assert_has_output_log(deployment, "/slow-streaming", "*")
 
-    local total_header = assert(tonumber(header_output.child.upstream.total_time))
-    local tfb_header = assert(tonumber(header_output.child.upstream.child.time_to_first_byte.total_time))
-    assert.falsy(header_output.child.upstream.child.streaming)
-    assert.same(total_header, tfb_header)
+      local total_header = assert(tonumber(header_output.child.upstream.total_time))
+      local tfb_header = assert(tonumber(header_output.child.upstream.child.time_to_first_byte.total_time))
+      assert.falsy(header_output.child.upstream.child.streaming)
+      assert.same(total_header, tfb_header)
 
-    local total_log = assert(tonumber(log_output.child.upstream.total_time))
-    local tfb_log = assert(tonumber(log_output.child.upstream.child.time_to_first_byte.total_time))
-    local streaming = assert(tonumber(log_output.child.upstream.child.streaming.total_time))
-    assert.near(tfb_header, tfb_log, 50)
-    assert.same(total_log, tfb_log + streaming)
+      local total_log = assert(tonumber(log_output.child.upstream.total_time))
+      local tfb_log = assert(tonumber(log_output.child.upstream.child.time_to_first_byte.total_time))
+      local streaming = assert(tonumber(log_output.child.upstream.child.streaming.total_time))
 
-    assert.near(TIME_TO_FIRST_BYTE, tfb_log, 50)
-    assert.near(STREAMING, streaming, 50)
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(log_output)
+
+      assert.near(tfb_header, tfb_log, 50)
+      assert.same(total_log, tfb_log + streaming)
+
+      assert.near(TIME_TO_FIRST_BYTE, tfb_log, 50)
+      assert.near(STREAMING, streaming, 50)
+    end, 10)
   end)
 
   it("rewrite, access, balancer, header_filter, body_filter, log, plugin span, dns span", function()
@@ -529,26 +555,31 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/mutiple-spans", "*")
-    local log_output = assert_has_output_log(deployment, "/mutiple-spans", "*")
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/mutiple-spans", "*")
+      local log_output = assert_has_output_log(deployment, "/mutiple-spans", "*")
 
-    assert.truthy(header_output.child.rewrite)
-    assert.truthy(header_output.child.access)
-    assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
-    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
-    assert(header_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
-    assert.truthy(header_output.child.balancer)
-    assert.truthy(header_output.child.header_filter)
+      assert.truthy(header_output.child.rewrite)
+      assert.truthy(header_output.child.access)
+      assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
+      assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
+      assert(header_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
+      assert.truthy(header_output.child.balancer)
+      assert.truthy(header_output.child.header_filter)
 
-    assert.truthy(log_output.child.rewrite)
-    assert.truthy(log_output.child.access)
-    assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
-    assert.truthy(log_output.child.access.child.router) -- router is executed in access phase
-    assert(log_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
-    assert.truthy(log_output.child.balancer)
-    assert.truthy(log_output.child.header_filter)
-    assert.truthy(log_output.child.body_filter)
-    assert.truthy(log_output.child.log)
+      assert.truthy(log_output.child.rewrite)
+      assert.truthy(log_output.child.access)
+      assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
+      assert.truthy(log_output.child.access.child.router) -- router is executed in access phase
+      assert(log_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
+      assert.truthy(log_output.child.balancer)
+      assert.truthy(log_output.child.header_filter)
+      assert.truthy(log_output.child.body_filter)
+      assert.truthy(log_output.child.log)
+
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(log_output)
+    end, 10)
   end)
 
   it("subrequests involved", function()
@@ -568,34 +599,39 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/subrequests", "*")
-    local log_output = assert_has_output_log(deployment, "/subrequests", "*")
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/subrequests", "*")
+      local log_output = assert_has_output_log(deployment, "/subrequests", "*")
 
-    -- spans of main request
-    assert.truthy(header_output.child.rewrite)
-    assert.truthy(header_output.child.access)
-    assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
-    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
-    assert.truthy(header_output.child.response)
+      -- spans of main request
+      assert.truthy(header_output.child.rewrite)
+      assert.truthy(header_output.child.access)
+      assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
+      assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
+      assert.truthy(header_output.child.response)
 
-    assert.truthy(log_output.child.rewrite)
-    assert.truthy(log_output.child.access)
-    assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
-    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
-    assert.truthy(log_output.child.body_filter)
-    assert.truthy(log_output.child.log)
+      assert.truthy(log_output.child.rewrite)
+      assert.truthy(log_output.child.access)
+      assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
+      assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
+      assert.truthy(log_output.child.body_filter)
+      assert.truthy(log_output.child.log)
 
-    -- spans of subrequest
-    assert.truthy(header_output.child.response.child.balancer)
-    assert.truthy(header_output.child.response.child.header_filter)
-    assert.truthy(header_output.child.response.child.plugins)
-    assert.truthy(header_output.child.response.child.plugins.child["enable-buffering-response"])
+      -- spans of subrequest
+      assert.truthy(header_output.child.response.child.balancer)
+      assert.truthy(header_output.child.response.child.header_filter)
+      assert.truthy(header_output.child.response.child.plugins)
+      assert.truthy(header_output.child.response.child.plugins.child["enable-buffering-response"])
 
-    assert.truthy(log_output.child.response.child.balancer)
-    assert.truthy(log_output.child.response.child.header_filter)
-    assert.truthy(log_output.child.response.child.body_filter)
-    assert.truthy(log_output.child.response.child.plugins)
-    assert.truthy(log_output.child.response.child.plugins.child["enable-buffering-response"])
+      assert.truthy(log_output.child.response.child.balancer)
+      assert.truthy(log_output.child.response.child.header_filter)
+      assert.truthy(log_output.child.response.child.body_filter)
+      assert.truthy(log_output.child.response.child.plugins)
+      assert.truthy(log_output.child.response.child.plugins.child["enable-buffering-response"])
+
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(log_output)
+    end, 10)
   end)
 
   it("external_http span", function()
@@ -614,14 +650,19 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/external_http", "*")
-    local log_output = assert_has_output_log(deployment, "/external_http", "*")
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/external_http", "*")
+      local log_output = assert_has_output_log(deployment, "/external_http", "*")
 
-    local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["muti-external-http-calls"].child)
-    assert_plugin_has_span(plugin_span, "external_http")
+      local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["muti-external-http-calls"].child)
+      assert_plugin_has_span(plugin_span, "external_http")
 
-    plugin_span = assert.truthy(log_output.child.access.child.plugins.child["muti-external-http-calls"].child)
-    assert_plugin_has_span(plugin_span, "external_http")
+      plugin_span = assert.truthy(log_output.child.access.child.plugins.child["muti-external-http-calls"].child)
+      assert_plugin_has_span(plugin_span, "external_http")
+
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(log_output)
+    end, 10)
   end)
 
   it("redis span", function()
@@ -649,14 +690,19 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/redis", "*")
-    local log_output = assert_has_output_log(deployment, "/redis", "*")
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/redis", "*")
+      local log_output = assert_has_output_log(deployment, "/redis", "*")
 
-    local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["rate-limiting"].child)
-    assert_plugin_has_span(plugin_span, "redis")
+      local plugin_span = assert.truthy(header_output.child.access.child.plugins.child["rate-limiting"].child)
+      assert_plugin_has_span(plugin_span, "redis")
 
-    plugin_span = assert.truthy(log_output.child.access.child.plugins.child["rate-limiting"].child)
-    assert_plugin_has_span(plugin_span, "redis")
+      plugin_span = assert.truthy(log_output.child.access.child.plugins.child["rate-limiting"].child)
+      assert_plugin_has_span(plugin_span, "redis")
+
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(log_output)
+    end, 10)
   end)
 
   it("truncate/split too large debug output", function()
@@ -675,11 +721,16 @@ describe(desc, function()
 
     helpers.wait_for_all_config_update()
 
-    local header_output = assert_has_output_header(deployment, "/large_debug_output", "*", "1.1.1.1", TOKEN)
-    local _, truncated = assert_has_output_log(deployment, "/large_debug_output", "*", "1.1.1.1", TOKEN)
+    helpers.pwait_until(function()
+      local header_output = assert_has_output_header(deployment, "/large_debug_output", "*", "1.1.1.1", TOKEN)
+      local _, truncated = assert_has_output_log(deployment, "/large_debug_output", "*", "1.1.1.1", TOKEN)
 
-    assert.truthy(header_output.truncated)
-    assert.truthy(truncated)
+      assert.truthy(header_output.truncated)
+      assert.truthy(truncated)
+
+      assert_total_time_is_float(header_output)
+      assert_total_time_is_float(truncated)
+    end, 10)
   end)
 
   it("invalid X-Kong-Request-Debug request header should not trigger this feature", function()
