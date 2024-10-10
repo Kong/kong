@@ -5,7 +5,6 @@ local constants = require("kong.constants")
 local lmdb = require("resty.lmdb")
 
 
-local DECLARATIVE_DEFAULT_WORKSPACE_ID = constants.DECLARATIVE_DEFAULT_WORKSPACE_ID
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 
 
@@ -28,8 +27,12 @@ end
 
 function Workspaces:select_by_name(key, options)
   if kong.configuration.database == "off" and key == "default" then
+    -- We can ensure that when starting in dbless mode, lmdb will by default
+    -- insert a 'default' workspace. If this Kong is a dataplane, it will later
+    -- synchronize the configuration from the CP and overwrite this default one.
+    --
     -- it should be a table, not a single string
-    return { id = lmdb.get(DECLARATIVE_DEFAULT_WORKSPACE_KEY) or DECLARATIVE_DEFAULT_WORKSPACE_ID, }
+    return { id = lmdb.get(DECLARATIVE_DEFAULT_WORKSPACE_KEY), }
   end
 
   return self.super.select_by_name(self, key, options)
