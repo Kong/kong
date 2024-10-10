@@ -37,7 +37,7 @@ runs:
         toolchain: stable
         override: true
         components: cargo
-        target: wasm32-wasi
+        target: wasm32-wasip1
 
     - name: cargo build
       if: steps.restore-cache.outputs.cache-hit != 'true'
@@ -50,7 +50,7 @@ runs:
           --manifest-path "${{ env.WASM_FILTER_PATH }}/Cargo.toml"
           --workspace
           --lib
-          --target wasm32-wasi
+          --target wasm32-wasip1
           --release
 
     - name: Save cache
@@ -71,7 +71,7 @@ runs:
       run: |
         ln -sfv \
           --no-target-directory \
-          "${{ env.WASM_FILTER_PATH }}"/target/wasm32-wasi/release \
+          "${{ env.WASM_FILTER_PATH }}"/target/wasm32-wasip1/release \
           "${{ env.WASM_FIXTURE_PATH }}"
 
     - name: debug
