@@ -163,14 +163,17 @@
 
 #pluginserver_XXX_socket = <prefix>/<XXX>.socket            # Path to the unix socket
                                                             # used by the <XXX> pluginserver.
+
 #pluginserver_XXX_start_cmd = /usr/local/bin/<XXX>          # Full command (including
                                                             # any needed arguments) to
-                                                            # start the <XXX> pluginserver
+                                                            # start the <XXX>
+                                                            # pluginserver.
+
 #pluginserver_XXX_query_cmd = /usr/local/bin/query_<XXX>    # Full command to "query" the
                                                             # <XXX> pluginserver.  Should
                                                             # produce a JSON with the
-                                                            # dump info of all plugins it
-                                                            # manages
+                                                            # dump info of the plugin it
+                                                            # manages.
 
 #port_maps =                     # With this configuration parameter, you can
                                  # let Kong Gateway know the port from

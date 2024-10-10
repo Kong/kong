@@ -91,7 +91,7 @@ local wait = reload_module("spec.internal.wait")
   bin_path = CONSTANTS.BIN_PATH,
   test_conf = conf,
   test_conf_path = CONSTANTS.TEST_CONF_PATH,
-  go_plugin_path = CONSTANTS.GO_PLUGIN_PATH,
+  external_plugins_path = CONSTANTS.EXTERNAL_PLUGINS_PATH,
   mock_upstream_hostname = CONSTANTS.MOCK_UPSTREAM_HOSTNAME,
   mock_upstream_protocol = CONSTANTS.MOCK_UPSTREAM_PROTOCOL,
   mock_upstream_host     = CONSTANTS.MOCK_UPSTREAM_HOST,
@@ -224,4 +224,6 @@ local wait = reload_module("spec.internal.wait")
   get_available_port = wait.get_available_port,
 
   make_temp_dir = misc.make_temp_dir,
+
+  build_go_plugins = cmd.build_go_plugins,
 }
