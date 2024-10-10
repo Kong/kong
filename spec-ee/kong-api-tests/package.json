@@ -46,7 +46,7 @@
     "@types/chai-as-promised": "^7.1.7",
     "@types/chai-like": "^1.1.2",
     "@types/chai-string": "^1.4.2",
-    "@types/mocha": "^10.0.8",
+    "@types/mocha": "^10.0.9",
     "@types/node": "^18.19.55",
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
