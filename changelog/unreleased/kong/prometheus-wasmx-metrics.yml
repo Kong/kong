@@ -1,0 +1,4 @@
+message: |
+  **Prometheus**: Added support for Proxy-Wasm metrics.
+type: feature
+scope: Plugin
