@@ -17,7 +17,6 @@ function _M.generate_kconfig(kong_config)
   local api_ssl_port = api_ssl_listen and api_ssl_listen.port
 
   local configs = {
-    ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
     ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
     ADMIN_API_URL = prepare_variable(kong_config.admin_gui_api_url),
     ADMIN_API_PORT = prepare_variable(api_port),
