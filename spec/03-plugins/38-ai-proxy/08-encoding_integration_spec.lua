@@ -110,8 +110,9 @@ local plugin_conf = {
   },
 }
 
+for _, client_protocol in ipairs({ "http", "https", "http2" }) do
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
-  describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
+  describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "] [#" .. client_protocol .. "]", function()
     local client
 
     lazy_setup(function()
@@ -241,7 +242,13 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     end)
 
     before_each(function()
-      client = helpers.proxy_client()
+      if client_protocol == "http" then
+        client = helpers.proxy_client()
+      elseif client_protocol == "https" then
+        client = helpers.proxy_ssl_client()
+      elseif client_protocol == "http2" then
+        client = helpers.proxy_ssl_client(nil, nil, 2)
+      end
     end)
 
     after_each(function()
@@ -369,3 +376,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   ----
 
 end end
+end
