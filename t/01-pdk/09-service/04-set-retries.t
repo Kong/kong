@@ -68,8 +68,8 @@ retries must be an integer
 --- request
 GET /t
 --- response_body
-port must be an integer between 0 and 32767: given -1
-port must be an integer between 0 and 32767: given 32768
+retries must be an integer between 0 and 32767: given -1
+retries must be an integer between 0 and 32767: given 32768
 --- no_error_log
 [error]
 
