@@ -22,6 +22,7 @@ jobs:
   autoformat:
     name: Auto-format and Check
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     steps:
       - name: Check out code

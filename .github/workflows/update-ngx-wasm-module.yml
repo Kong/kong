@@ -9,6 +9,7 @@ on:
 jobs:
   update:
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     permissions:
       # required to create a branch and push commits

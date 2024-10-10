@@ -6,6 +6,7 @@ jobs:
   check-labels:
     name: prevent merge labels
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     steps:
     - name: backport master label found
