@@ -53,7 +53,12 @@ end
 
 
 function _M:notify_all_nodes()
-  local latest_version = self.strategy:get_latest_version()
+  local latest_version, err = self.strategy:get_latest_version()
+  if not latest_version then
+    ngx_log(ngx_ERR, "can not get the latest version: ", err)
+    return
+  end
+
   local msg = { default = { new_version = latest_version, }, }
 
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do

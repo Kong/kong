@@ -86,9 +86,14 @@ function _M:init_cp(manager)
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
     end
 
+    local latest_version, err = self.strategy:get_latest_version()
+    if not latest_version then
+      return nil, err
+    end
+
     -- is the node empty? If so, just do a full sync to bring it up to date faster
     if default_namespace_version == 0 or
-       self.strategy:get_latest_version() - default_namespace_version > FULL_SYNC_THRESHOLD
+       latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
     then
       -- we need to full sync because holes are found
 
