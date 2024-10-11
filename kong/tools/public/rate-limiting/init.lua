@@ -12,7 +12,7 @@ local ngx_log  = ngx.log
 local now      = ngx.now
 local time     = ngx.time
 local timer_at = ngx.timer.at
-
+local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 
 local DEBUG = ngx.DEBUG
 local ERR   = ngx.ERR
@@ -444,9 +444,25 @@ local function new_instance(instance_name, options)
       dict:incr(incr_key .. "|diff", -newval)
       local cur_sync = dict:incr(incr_key .. "|sync", newval, 0)
 
-      local ok, err = cfg.strategy:push_diffs(diffs)
-      if not ok then
-        log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+      if in_yieldable_phase() then
+        local ok, err = cfg.strategy:push_diffs(diffs)
+        if not ok then
+          log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+        end
+      else
+        local ok, err = timer_at(0, function(premature)
+          if premature then
+            return
+          end
+
+          local ok, err = cfg.strategy:push_diffs(diffs)
+          if not ok then
+            log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+          end
+        end)
+        if not ok then
+          log(ERR, "error starting new push diff timer: ", err, " in non yieldable phase for namespace ", namespace)
+        end
       end
 
       log(DEBUG, "current window_size ", window_size)
