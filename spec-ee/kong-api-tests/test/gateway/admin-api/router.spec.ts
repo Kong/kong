@@ -9,7 +9,6 @@ import {
   Environment,
   randomString,
   createGatewayService,
-  deleteGatewayService,
   logResponse,
   isGwHybrid,
   isLocalDatabase,
@@ -20,9 +19,12 @@ import {
   retryRequest,
   getKongContainerName,
   waitForConfigRebuild,
-  deleteGatewayRoute,
+  resetGatewayContainerEnvVariable,
+  clearAllKongResources,
   isGateway,
   isKoko,
+  deleteWorkspace,
+  eventually,
 } from '@support';
 
 const agent = new https.Agent({
@@ -55,15 +57,18 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
 
   const isHybrid = isGwHybrid();
   const serviceName = randomString();
+  const serviceName2 = randomString();
   const kongContainerName = getKongContainerName();
   const regexPath = '~/(hell?o|world)-(?<user>[a-zA-Z]+)';
   const waitTime = 5000;
   const hybridWaitTime = 6000;
 
   let serviceDetails: any;
+  let service2Details: any;
   let routeId: string;
   let adminUrl: any;
   let routesUrl: any
+  let workspaceName: string;
 
   const routePayload = {
     name: randomString(),
@@ -84,6 +89,40 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
       id: serviceReq.id,
       name: serviceReq.name,
     };
+
+    const workspaceReq = await axios({
+      method: 'POST',
+      url: `${adminUrl}/workspaces`,
+      data: {
+        name: randomString(),
+      },
+      validateStatus: null,
+    });
+
+    expect(workspaceReq.status, 'Status should be 201').equal(201);
+    workspaceName = workspaceReq.data.name;
+
+    //create service in new workspace
+    const serviceReq2 = await axios({
+      method: 'POST',
+      url: `${adminUrl}/${workspaceName}/services`,
+      data: {
+        name: serviceName2,
+        url: 'http://mockbin.org',
+      },
+    })
+    logResponse(serviceReq2);
+
+    service2Details = {
+      id: serviceReq2.data.id,
+      name: serviceReq2.data.name,
+    };
+
+    const resp = await axios({
+      method: 'get',
+      url: `${adminUrl}/services/${serviceDetails.id}/routes`,
+    });
+    logResponse(resp);
   });
 
   it('should create a route with header', async function () {
@@ -98,6 +137,7 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
       method: 'post',
       url: `${adminUrl}/services/${serviceDetails.id}/routes`,
       data: payload,
+      validateStatus: null,
     });
 
     logResponse(resp);
@@ -409,8 +449,93 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
     });
   }
 
+  it('should perform route validation when creating a duplicate route in a different workspace', async function () {
+    // duplicate routes cannot be created when route validation is on
+    const resp = await axios({ 
+      method: 'post',
+      url: `${adminUrl}/services/${serviceDetails.id}/routes`,
+      data: {
+        ...routePayload,
+        name: routePayload.name,
+      },
+      validateStatus: null,
+    });
+    expect(resp.status, 'Status should be 201').to.equal(201);
+
+    waitForConfigRebuild();
+
+    // attempt to create route in second workspace
+    const respRepeat = await axios({ 
+      method: 'post',
+      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+      data: {
+        ...routePayload,
+        name: routePayload.name,
+      },
+      validateStatus: null,
+    });
+    logResponse(respRepeat);
+    expect(respRepeat.status, 'Status should be 409').to.equal(409);
+    expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
+  })
+
+  it('should update router to not perform route validation', async function () {
+    await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
+    if (isHybrid) {
+      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
+    }
+
+    await eventually(async () => {
+    // ensure that route validation is set to off
+    const resp = await axios({
+      method: 'get',
+      url: `${adminUrl}`,
+    });
+    logResponse(resp);
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.configuration.route_validation_strategy, 'Route validation should be off').to.equal('off');
+    });
+  })
+
+  it('should create a duplicate route when route validation is off', async function () {
+    const resp = await axios({ 
+      method: 'post',
+      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+      data: {
+        ...routePayload,
+        name: routePayload.name,
+      },
+    });
+    expect(resp.status, 'Status should be 201').to.equal(201); 
+
+    // validate route was created
+    const respGet = await axios({
+      method: 'get',
+      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+    });
+    expect(respGet.status, 'Status should be 200').to.equal(200);
+    expect(respGet.data.data.length, 'Should have correct number of routes').to.equal(1);
+    expect(respGet.data.data[0].name, 'Should have correct route name').to.equal(routePayload.name);
+  })
+
+  it('should be able to send request to duplicate route', async function () {
+    const resp = await axios({
+      method: 'get',
+      url: `${proxyUrl}${routePayload.paths[0]}`,
+      headers: { testHeader: 'test' },
+    });
+    logResponse(resp);
+    expect(resp.status, 'Status should be 200').to.equal(200);
+  })
+
   after(async function () {
-    await deleteGatewayRoute(routeId);
-    await deleteGatewayService(isGateway() ? serviceName : serviceDetails.id);
+    await clearAllKongResources();
+    await clearAllKongResources(workspaceName);
+    await deleteWorkspace(workspaceName);
+    await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
+    // reset data plane
+    if (isHybrid) {
+      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, 'kong-dp1');
+    }
   });
 });

@@ -289,7 +289,9 @@ describe('Websocket Validator Plugin Tests', function () {
         await closeWebsocket(ws, 1007, 'Invalid Frame Payload Data');
       });
 
-      after(clearAllKongResources);
+      after(async function () {
+        await clearAllKongResources()
+      });
     });
   });
 });

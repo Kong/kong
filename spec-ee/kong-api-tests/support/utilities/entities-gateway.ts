@@ -6,13 +6,17 @@ import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
 import { getNegative } from './negative-axios';
 
-export const getUrl = (endpoint: string) => {
-  const basePath = getBasePath({
+export const getUrl = (endpoint: string, workspaceNameOrId?: string) => {
+  let basePath = getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   });
+  if (workspaceNameOrId) {
+    basePath = `${basePath}/${workspaceNameOrId}`;
+  }
   if (endpoint && endpoint.startsWith('/')) {
     return `${basePath}${endpoint}`;
   }
+
   return `${basePath}/${endpoint}`;
 };
 
@@ -592,7 +596,7 @@ export const createWorkspace = async (workspaceName: string) => {
 export const deleteWorkspace = async (workspaceNameOrId: string) => {
   const resp = await axios({
     method: 'delete',
-    url: `${getUrl('workspaces')}/${workspaceNameOrId}`,
+    url: `${getUrl('workspaces')}/${workspaceNameOrId}`
   });
   logResponse(resp);
   expect(resp.status, 'Status should be 204').to.equal(204);
@@ -889,22 +893,22 @@ interface ResponseProps {
   data: Array<ItemProps>;
 }
 
-export const clearAllKongResources = async () => {
-  await clearKongResource('consumers');
-  await clearKongResource('consumer_groups');
-  await clearKongResource('plugins');
-  await clearKongResource('certificates');
-  await clearKongResource('ca_certificates');
-  await clearKongResource('snis');
-  await clearKongResource('vaults');
-  await clearKongResource('routes');
-  await clearKongResource('services');
-  await clearKongResource('upstreams');
+export const clearAllKongResources = async (workspaceNameorId?: string) => {
+  await clearKongResource('consumers', workspaceNameorId);
+  await clearKongResource('consumer_groups', workspaceNameorId);
+  await clearKongResource('plugins', workspaceNameorId);
+  await clearKongResource('certificates', workspaceNameorId);
+  await clearKongResource('ca_certificates', workspaceNameorId);
+  await clearKongResource('snis', workspaceNameorId);
+  await clearKongResource('vaults', workspaceNameorId);
+  await clearKongResource('routes', workspaceNameorId);
+  await clearKongResource('services', workspaceNameorId);
+  await clearKongResource('upstreams', workspaceNameorId);
 };
 
-export const clearKongResource = async (endpoint: string) => {
+export const clearKongResource = async (endpoint: string, workspaceNameorId?: string) => {
   const tasks: (() => AxiosPromise)[] = [];
-  const url = getUrl(endpoint);
+  const url = getUrl(endpoint, workspaceNameorId)
   try {
     const items: ItemProps[] = [];
     let next = url;
@@ -920,7 +924,7 @@ export const clearKongResource = async (endpoint: string) => {
       }
 
       if ((res.data as any)?.next) {
-        next = getUrl((res.data as any)?.next);
+        next = getUrl((res.data as any)?.next, workspaceNameorId)
       } else {
         break;
       }
@@ -933,7 +937,7 @@ export const clearKongResource = async (endpoint: string) => {
     items.forEach((resource: ItemProps) => {
       const clearAllOptions = {
         method: 'DELETE',
-        url: `${getUrl(endpoint)}/${resource.id || resource.name}`,
+        url: `${getUrl(endpoint, workspaceNameorId)}/${resource.id || resource.name}`
       };
 
       tasks.push(async () => axios(clearAllOptions));

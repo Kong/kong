@@ -62,7 +62,9 @@ describe('Gateway Websocket Tests', function () {
         await ws.close();
       });
 
-      after(clearAllKongResources);
+      after(async function () {
+        await clearAllKongResources()
+      });
     });
   });
 
@@ -168,7 +170,9 @@ describe('Gateway Websocket Tests', function () {
       );
     });
 
-    after(clearAllKongResources);
+    after(async function () {
+      await clearAllKongResources()
+    });
   });
 
   describe('http/https service/route can still proxy ws/wss traffic', function () {
@@ -211,6 +215,10 @@ describe('Gateway Websocket Tests', function () {
       wss.close();
     });
 
-    after(clearAllKongResources);
+
+    after(async function () {
+      await clearAllKongResources()
+    });
+  
   });
 });
