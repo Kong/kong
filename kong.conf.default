@@ -1994,7 +1994,7 @@
 
 #admin_gui_url =        # Kong Manager URL
                         #
-                        # Comma-separated list of addresses(the lookup or balancer) for Kong Manager.
+                        # Comma-separated list of addresses (the lookup or balancer) for Kong Manager.
                         #
                         # Accepted format (items in square brackets are optional):
                         #
