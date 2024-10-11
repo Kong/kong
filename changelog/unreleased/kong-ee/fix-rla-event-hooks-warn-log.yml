@@ -1,0 +1,3 @@
+message: "**rate-limiting-advanced:** Fixed an issue where a warn log was printed when event_hooks was disabled."
+type: bugfix
+scope: Plugin

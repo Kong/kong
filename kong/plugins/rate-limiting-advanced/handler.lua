@@ -538,7 +538,7 @@ function NewRLHandler:access(conf)
         window = window_name,
       })
 
-      if not ok then
+      if not ok and err then
         kong.log.warn("failed to emit event: ", err)
       end
     end
