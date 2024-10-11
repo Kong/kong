@@ -147,7 +147,7 @@ local function new()
       error("retries must be an integer", 2)
     end
     if retries < 0 or retries > 32767 then
-      error("port must be an integer between 0 and 32767: given " .. retries, 2)
+      error("retries must be an integer between 0 and 32767: given " .. retries, 2)
     end
 
     local ctx = ngx.ctx
