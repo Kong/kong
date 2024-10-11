@@ -153,23 +153,22 @@ function _M:init_dp(manager)
   -- { { new_version = 1000, }, }, possible field: namespace = "default"
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
-    for namespace, new_version in pairs(new_versions) do
-      if namespace == "default" then
-        local version = new_version.new_version
-        if not version then
-          return nil, "'new_version' key does not exist"
-        end
-
-        local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
-        if lmdb_ver < version then
-          return self:sync_once()
-        end
-
-        return true
-      end
+    local default_new_version = new_versions.default
+    if not default_new_version then
+      return nil, "default namespace does not exist inside params"
     end
 
-    return nil, "default namespace does not exist inside params"
+    local version = default_new_version.new_version
+    if not version then
+      return nil, "'new_version' key does not exist"
+    end
+
+    local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+    if lmdb_ver < version then
+      return self:sync_once()
+    end
+
+    return true
   end)
 end
 
