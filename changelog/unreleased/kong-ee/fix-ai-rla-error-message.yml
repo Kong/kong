@@ -1,0 +1,3 @@
+message: "**AI Rate Limiting Advanced:** Updated the error message for rate limit exceeded to include AI-related information."
+type: bugfix
+scope: Plugin

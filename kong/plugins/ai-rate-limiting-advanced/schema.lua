@@ -90,7 +90,7 @@ return {
             required = false,
           }},
           { error_code = { description = "Set a custom error code to return when the rate limit is exceeded.", type = "number", default = 429, gt = 0, }, },
-          { error_message = { description = "Set a custom error message to return when the rate limit is exceeded.", type = "string", default = "API rate limit exceeded for provider(s): ", }, },
+          { error_message = { description = "Set a custom error message to return when the rate limit is exceeded.", type = "string", default = "AI token rate limit exceeded for provider(s): ", }, },
           { error_hide_providers = { description = "Optionally hide informative response that would otherwise provide information about the provider in the error message.", type = "boolean", default = false, }, },
           { tokens_count_strategy = { description = "What tokens to use for cost calculation. Available values are: `total_tokens` `prompt_tokens`, `completion_tokens` or `cost`.", type = "string",
             one_of = { "total_tokens", "prompt_tokens", "completion_tokens", "cost" },

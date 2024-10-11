@@ -838,7 +838,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): openai" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0)
             assert.is_true(retry_after <= 8) -- Few more seconds as using sliding window and is executed in quick succession
@@ -865,7 +865,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): requestPrompt" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): requestPrompt" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0)
             assert.is_true(retry_after <= 9) -- Few more seconds as using sliding window and is executed in quick succession
@@ -909,7 +909,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): openai" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0)
             assert.is_true(retry_after <= 8) -- Few more seconds as using sliding window and is executed in quick succession
@@ -1003,7 +1003,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): openai" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
             assert.is_true(retry_after <= 10) -- Uses sliding window and is executed in quick succession
@@ -1050,7 +1050,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): requestPrompt" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): requestPrompt" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
             assert.is_true(retry_after <= 9) -- Uses sliding window and is executed in quick succession
@@ -1094,7 +1094,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): azure, cohere" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): azure, cohere" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
             assert.is_true(retry_after <= 9) -- Uses sliding window and is executed in quick succession
@@ -1231,7 +1231,7 @@ for _, strategy in strategies() do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
-            assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+            assert.same({ message = "AI token rate limit exceeded for provider(s): openai" }, json)
             local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
             assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
             assert.is_true(retry_after <= 10) -- Uses sliding window and is executed in quick succession
@@ -1287,7 +1287,7 @@ for _, strategy in strategies() do
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
 
-          assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+          assert.same({ message = "AI token rate limit exceeded for provider(s): openai" }, json)
           local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
           assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
           assert.is_true(retry_after <= 10) -- Uses sliding window and is executed in quick succession
