@@ -382,6 +382,8 @@ local function load_into_cache(entities, meta, hash)
     hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
+  local db = kong.db
+
   local t = txn.begin(512)
   t:db_drop(false)
 
@@ -390,13 +392,13 @@ local function load_into_cache(entities, meta, hash)
   for entity_name, items in pairs(entities) do
     yield(true, phase)
 
-    local dao = kong.db[entity_name]
+    local dao = db[entity_name]
     if not dao then
       return nil, "unknown entity: " .. entity_name
     end
     local schema = dao.schema
 
-    for id, item in pairs(items) do
+    for _, item in pairs(items) do
       if not schema.workspaceable or item.ws_id == null or item.ws_id == nil then
         item.ws_id = default_workspace_id
       end
@@ -419,12 +421,13 @@ local function load_into_cache(entities, meta, hash)
         end
       end
 
+      -- nil means no extra options
       local res, err = insert_entity_for_txn(t, entity_name, item, nil)
       if not res then
         return nil, err
       end
-    end
-  end
+    end -- for for _, item
+  end -- for entity_name, items
 
   t:set(DECLARATIVE_HASH_KEY, hash)
   t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, default_workspace_id)
