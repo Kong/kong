@@ -26,6 +26,11 @@ qq{
             phase_check_functions(phases.certificate)
         }
 
+
+        ssl_client_hello_by_lua_block {
+            phase_check_functions(phases.client_hello)
+        }
+
         location / {
             set \$upstream_uri '/t';
             set \$upstream_scheme 'https';
@@ -66,6 +71,7 @@ qq{
                 args          = {},
                 init_worker   = "forced false",
                 certificate   = true,
+                client_hello  = "forced false",
                 rewrite       = "forced false",
                 access        = "forced false",
                 header_filter = "forced false",
@@ -78,6 +84,7 @@ qq{
                 args          = {},
                 init_worker   = false,
                 certificate   = true,
+                client_hello  = false,
                 rewrite       = false,
                 access        = false,
                 header_filter = false,
@@ -90,6 +97,7 @@ qq{
                 args          = {},
                 init_worker   = false,
                 certificate   = false,
+                client_hello  = false,
                 rewrite       = true,
                 access        = true,
                 response      = true,
@@ -101,6 +109,7 @@ qq{
                 method        = "set_client_verify",
                 args          = { "SUCCESS", },
                 init_worker   = "forced false",
+                client_hello  = "forced false",
                 certificate   = "forced false",
                 rewrite       = nil,
                 access        = nil,
@@ -108,6 +117,19 @@ qq{
                 response      = false,
                 body_filter   = "forced false",
                 log           = "forced false",
+                admin_api     = false,
+            }, {
+                method        = "disable_http2_alpn",
+                args          = {},
+                init_worker   = false,
+                client_hello  = true,
+                certificate   = false,
+                rewrite       = false,
+                access        = false,
+                header_filter = false,
+                response      = false,
+                body_filter   = false,
+                log           = false,
                 admin_api     = false,
             },
         }

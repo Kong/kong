@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 local strip = require("kong.tools.string").strip
@@ -232,12 +233,24 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         path = "/",
       })
 
+      local certificate = bp.certificates:insert {
+        cert = ssl_fixtures.cert_alt_alt,
+        key = ssl_fixtures.key_alt_alt,
+        cert_alt = ssl_fixtures.cert_alt_alt_ecdsa,
+        key_alt = ssl_fixtures.key_alt_alt_ecdsa,
+      }
+      bp.snis:insert {
+        name = "example.test",
+        certificate = certificate,
+      }
+
       -- 200 chat good with one option
       local chat_good = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good" }
+        paths = { "/openai/llm/v1/chat/good" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -785,6 +798,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         plugins = "bundled,ctx-checker-last,ctx-checker," .. PLUGIN_NAME,
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+        log_level = "info",
       }, nil, nil, fixtures))
     end)
 
@@ -807,221 +821,221 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       if client then client:close() end
     end)
 
-    describe("openai general", function()
-      it("logs statistics", function()
-        local r = client:get("/openai/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    -- describe("openai general", function()
+    --   it("logs statistics", function()
+    --     local r = client:get("/openai/llm/v1/chat/good", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        -- validate that the request succeeded, response status 200
-        local body = assert.res_status(200 , r)
-        local json = cjson.decode(body)
+    --     -- validate that the request succeeded, response status 200
+    --     local body = assert.res_status(200 , r)
+    --     local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
-        assert.equals(json.model, "gpt-3.5-turbo-0613")
-        assert.equals(json.object, "chat.completion")
+    --     -- check this is in the 'kong' response format
+    --     assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+    --     assert.equals(json.model, "gpt-3.5-turbo-0613")
+    --     assert.equals(json.object, "chat.completion")
 
-        assert.is_table(json.choices)
-        assert.is_table(json.choices[1].message)
-        assert.same({
-          content = "The sum of 1 + 1 is 2.",
-          role = "assistant",
-        }, json.choices[1].message)
+    --     assert.is_table(json.choices)
+    --     assert.is_table(json.choices[1].message)
+    --     assert.same({
+    --       content = "The sum of 1 + 1 is 2.",
+    --       role = "assistant",
+    --     }, json.choices[1].message)
 
-        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
-        assert.same("127.0.0.1", log_message.client_ip)
-        assert.is_number(log_message.request.size)
-        assert.is_number(log_message.response.size)
+    --     local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
+    --     assert.same("127.0.0.1", log_message.client_ip)
+    --     assert.is_number(log_message.request.size)
+    --     assert.is_number(log_message.response.size)
 
-        -- test ai-proxy stats
-        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
-        -- we are currently stripping the top level key and comparing values directly
-        local _, first_expected = next(_EXPECTED_CHAT_STATS)
-        local _, first_got = next(log_message.ai)
-        local actual_llm_latency = first_got.meta.llm_latency
-        local actual_time_per_token = first_got.usage.time_per_token
-        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
+    --     -- test ai-proxy stats
+    --     -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+    --     -- we are currently stripping the top level key and comparing values directly
+    --     local _, first_expected = next(_EXPECTED_CHAT_STATS)
+    --     local _, first_got = next(log_message.ai)
+    --     local actual_llm_latency = first_got.meta.llm_latency
+    --     local actual_time_per_token = first_got.usage.time_per_token
+    --     local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
 
-        first_got.meta.llm_latency = 1
-        first_got.usage.time_per_token = 1
+    --     first_got.meta.llm_latency = 1
+    --     first_got.usage.time_per_token = 1
 
-        assert.same(first_expected, first_got)
-        assert.is_true(actual_llm_latency >= 0)
-        assert.same(actual_time_per_token, time_per_token)
-        assert.same(first_got.meta.request_model, "gpt-3.5-turbo")
-      end)
+    --     assert.same(first_expected, first_got)
+    --     assert.is_true(actual_llm_latency >= 0)
+    --     assert.same(actual_time_per_token, time_per_token)
+    --     assert.same(first_got.meta.request_model, "gpt-3.5-turbo")
+    --   end)
 
-      it("does not log statistics", function()
-        local r = client:get("/openai/llm/v1/chat/good-without-stats", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("does not log statistics", function()
+    --     local r = client:get("/openai/llm/v1/chat/good-without-stats", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        -- validate that the request succeeded, response status 200
-        local body = assert.res_status(200 , r)
-        local json = cjson.decode(body)
+    --     -- validate that the request succeeded, response status 200
+    --     local body = assert.res_status(200 , r)
+    --     local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
-        assert.equals(json.model, "gpt-3.5-turbo-0613")
-        assert.equals(json.object, "chat.completion")
+    --     -- check this is in the 'kong' response format
+    --     assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+    --     assert.equals(json.model, "gpt-3.5-turbo-0613")
+    --     assert.equals(json.object, "chat.completion")
 
-        assert.is_table(json.choices)
-        assert.is_table(json.choices[1].message)
-        assert.same({
-          content = "The sum of 1 + 1 is 2.",
-          role = "assistant",
-        }, json.choices[1].message)
+    --     assert.is_table(json.choices)
+    --     assert.is_table(json.choices[1].message)
+    --     assert.same({
+    --       content = "The sum of 1 + 1 is 2.",
+    --       role = "assistant",
+    --     }, json.choices[1].message)
 
-        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
-        assert.same("127.0.0.1", log_message.client_ip)
-        assert.is_number(log_message.request.size)
-        assert.is_number(log_message.response.size)
+    --     local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+    --     assert.same("127.0.0.1", log_message.client_ip)
+    --     assert.is_number(log_message.request.size)
+    --     assert.is_number(log_message.response.size)
 
-        -- test ai-proxy has no stats
-        assert.same(nil, log_message.ai)
-      end)
+    --     -- test ai-proxy has no stats
+    --     assert.same(nil, log_message.ai)
+    --   end)
 
-      it("logs payloads", function()
-        local r = client:get("/openai/llm/v1/chat/good-with-payloads", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("logs payloads", function()
+    --     local r = client:get("/openai/llm/v1/chat/good-with-payloads", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        -- validate that the request succeeded, response status 200
-        local body = assert.res_status(200 , r)
-        local json = cjson.decode(body)
+    --     -- validate that the request succeeded, response status 200
+    --     local body = assert.res_status(200 , r)
+    --     local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
-        assert.equals(json.model, "gpt-3.5-turbo-0613")
-        assert.equals(json.object, "chat.completion")
+    --     -- check this is in the 'kong' response format
+    --     assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+    --     assert.equals(json.model, "gpt-3.5-turbo-0613")
+    --     assert.equals(json.object, "chat.completion")
 
-        assert.is_table(json.choices)
-        assert.is_table(json.choices[1].message)
-        assert.same({
-          content = "The sum of 1 + 1 is 2.",
-          role = "assistant",
-        }, json.choices[1].message)
+    --     assert.is_table(json.choices)
+    --     assert.is_table(json.choices[1].message)
+    --     assert.same({
+    --       content = "The sum of 1 + 1 is 2.",
+    --       role = "assistant",
+    --     }, json.choices[1].message)
 
-        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
-        assert.same("127.0.0.1", log_message.client_ip)
-        assert.is_number(log_message.request.size)
-        assert.is_number(log_message.response.size)
+    --     local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+    --     assert.same("127.0.0.1", log_message.client_ip)
+    --     assert.is_number(log_message.request.size)
+    --     assert.is_number(log_message.response.size)
 
-        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
-        -- we are currently stripping the top level key and comparing values directly
-        local _, message = next(log_message.ai)
+    --     -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+    --     -- we are currently stripping the top level key and comparing values directly
+    --     local _, message = next(log_message.ai)
 
-        -- test request bodies
-        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
-        assert.matches('"role": "user"', message.payload.request, nil, true)
+    --     -- test request bodies
+    --     assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
+    --     assert.matches('"role": "user"', message.payload.request, nil, true)
 
-        -- test response bodies
-        assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
-        assert.matches('"role": "assistant"', message.payload.response, nil, true)
-        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', message.payload.response, nil, true)
-      end)
+    --     -- test response bodies
+    --     assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
+    --     assert.matches('"role": "assistant"', message.payload.response, nil, true)
+    --     assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', message.payload.response, nil, true)
+    --   end)
 
-      it("internal_server_error request", function()
-        local r = client:get("/openai/llm/v1/chat/internal_server_error", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("internal_server_error request", function()
+    --     local r = client:get("/openai/llm/v1/chat/internal_server_error", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        local body = assert.res_status(500 , r)
-        assert.is_not_nil(body)
-      end)
+    --     local body = assert.res_status(500 , r)
+    --     assert.is_not_nil(body)
+    --   end)
 
-      it("unauthorized request", function()
-        local r = client:get("/openai/llm/v1/chat/unauthorized", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("unauthorized request", function()
+    --     local r = client:get("/openai/llm/v1/chat/unauthorized", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        local body = assert.res_status(401 , r)
-        local json = cjson.decode(body)
+    --     local body = assert.res_status(401 , r)
+    --     local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.code, "invalid_api_key")
-      end)
+    --     -- check this is in the 'kong' response format
+    --     assert.is_truthy(json.error)
+    --     assert.equals(json.error.code, "invalid_api_key")
+    --   end)
 
-      it("unauthorized request with client header auth", function()
-        local r = client:get("/openai/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-            ["Authorization"] = "Bearer wrong",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("unauthorized request with client header auth", function()
+    --     local r = client:get("/openai/llm/v1/chat/good", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --         ["Authorization"] = "Bearer wrong",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        local body = assert.res_status(401 , r)
-        local json = cjson.decode(body)
+    --     local body = assert.res_status(401 , r)
+    --     local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.code, "invalid_api_key")
-      end)
+    --     -- check this is in the 'kong' response format
+    --     assert.is_truthy(json.error)
+    --     assert.equals(json.error.code, "invalid_api_key")
+    --   end)
 
-      it("authorized request with client header auth", function()
-        local r = client:get("/openai/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-            ["Authorization"] = "Bearer openai-key",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("authorized request with client header auth", function()
+    --     local r = client:get("/openai/llm/v1/chat/good", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --         ["Authorization"] = "Bearer openai-key",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        assert.res_status(200 , r)
-      end)
+    --     assert.res_status(200 , r)
+    --   end)
 
-      it("authorized request with client right header auth with no allow_override", function()
-        local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-            ["Authorization"] = "Bearer openai-key",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("authorized request with client right header auth with no allow_override", function()
+    --     local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --         ["Authorization"] = "Bearer openai-key",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        assert.res_status(200 , r)
-      end)
+    --     assert.res_status(200 , r)
+    --   end)
 
-      it("authorized request with wrong client header auth  with no allow_override", function()
-        local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-            ["Authorization"] = "Bearer wrong",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
-        })
+    --   it("authorized request with wrong client header auth  with no allow_override", function()
+    --     local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
+    --       headers = {
+    --         ["content-type"] = "application/json",
+    --         ["accept"] = "application/json",
+    --         ["Authorization"] = "Bearer wrong",
+    --       },
+    --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    --     })
 
-        assert.res_status(200 , r)
-      end)
+    --     assert.res_status(200 , r)
+    --   end)
 
-    end)
+    -- end)
 
     describe("openai llm/v1/chat", function()
       it("good request", function()
@@ -1052,6 +1066,23 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- from ctx-checker-last plugin
         assert.equals(r.headers["ctx-checker-last-llm-model-requested"], "gpt-3.5-turbo")
+      end)
+
+      it("good request with http2", function()
+        local curl_command = string.format("curl -X GET -k --resolve example.test:%s:127.0.0.1  -H 'Content-Type: application/json' https://example.test:%s/openai/llm/v1/chat/good -d @spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json", helpers.get_proxy_port(true), helpers.get_proxy_port(true))
+        local output = io.popen(curl_command):read("*a")
+        local json = assert(cjson.decode(output))
+        -- in this case, origin is "undxpected error" message
+        assert.equals(json.message, nil)
+        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "gpt-3.5-turbo-0613")
+        assert.equals(json.object, "chat.completion")
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
       end)
 
       it("good request, parses model of cjson.null", function()

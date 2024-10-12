@@ -13,7 +13,14 @@ local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.string").strip
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local kong_global = require("kong.global")
+local PHASES = kong_global.phases
 
+local certificate = require("kong.tls.plugins.certificate")
+local sni_filter = require("kong.tls.plugins.sni_filter")
+
+local TTL_FOREVER = { ttl = 0 }
+-- local SNI_CACHE_KEY = "ai:llm:cert_enabled_snis"
 
 local EMPTY = require("kong.tools.table").EMPTY
 
@@ -475,6 +482,59 @@ function _M:access(conf)
 
   -- lights out, and away we go
 
+end
+
+
+
+function _M:init_worker_for_plugin(plugin_name)
+  -- TODO: remove nasty hacks once we have singleton phases support in core
+  local sni_cache_key = "ai:llm:cert_enabled_snis:" .. plugin_name
+  local orig_ssl_client_hello = Kong.ssl_client_hello   -- luacheck: ignore
+  Kong.ssl_client_hello = function()                   -- luacheck: ignore
+    orig_ssl_client_hello()
+
+    local ctx = ngx.ctx
+    -- ensure phases are set
+    ctx.KONG_PHASE = PHASES.client_hello
+
+    kong_global.set_namespaced_log(kong, plugin_name)
+    local snis_set, err = kong.cache:get(sni_cache_key, TTL_FOREVER,
+      sni_filter.build_ssl_route_filter_set, plugin_name)
+
+    if err then
+      kong.log.err("unable to request client to present its certificate: ",
+            err)
+      return ngx.exit(ngx.ERROR)
+    end
+    certificate.execute_client_hello(snis_set, { disable_http2 = true })
+    kong_global.reset_log(kong)
+
+  end
+
+  local worker_events = kong.worker_events
+  if not worker_events or not worker_events.register then
+    return
+  end
+
+  local function invalidate_sni_cache()
+    kong.cache:invalidate(sni_cache_key)
+  end
+
+  worker_events.register(function(data)
+    invalidate_sni_cache()
+  end, "crud", "plugins")
+
+  worker_events.register(function(data)
+    invalidate_sni_cache()
+  end, "crud", "routes")
+
+  worker_events.register(function(data)
+    invalidate_sni_cache()
+  end, "crud", "services")
+
+  worker_events.register(function(data)
+    invalidate_sni_cache()
+  end, "crud", "ca_certificates")
 end
 
 return _M
