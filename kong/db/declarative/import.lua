@@ -48,19 +48,19 @@ local function workspace_id(schema, options)
     return kong.default_workspace
   end
 
-  if options then
-    -- options.workspace == null must be handled by caller by querying
-    -- all available workspaces one by one
-    if options.workspace == null then
-      return kong.default_workspace
-    end
-
-    if options.workspace then
-      return options.workspace
-    end
+  -- options.workspace does not exist
+  if not options or not options.workspace then
+    return get_workspace_id()
   end
 
-  return get_workspace_id()
+  -- options.workspace == null must be handled by caller by querying
+  -- all available workspaces one by one
+  if options.workspace == null then
+    return kong.default_workspace
+  end
+
+  -- options.workspace is a UUID
+  return options.workspace
 end
 
 
