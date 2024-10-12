@@ -76,15 +76,13 @@ local NEW_VERSION_QUERY = [[
 --   { type = "route", "id" = "0a5bac5c-b795-4981-95d2-919ba3390b7e", "ws_id" = "73478cf6-964f-412d-b1c4-8ac88d9e85e9", row = "JSON", }
 -- }
 function _M:insert_delta(deltas)
-  local escape_literal = self.connector:escape_literal
-
   local buf = buffer.new()
   for _, d in ipairs(deltas) do
     buf:putf("(new_version, %s, %s, %s, %s)",
-             escape_literal(d.type),
-             escape_literal(d.id),
-             escape_literal(d.ws_id),
-             escape_literal(cjson_encode(d.row)))
+             self.connector:escape_literal(d.type),
+             self.connector:escape_literal(d.id),
+             self.connector:escape_literal(d.ws_id),
+             self.connector:escape_literal(cjson_encode(d.row)))
   end
 
   local sql = string_format(NEW_VERSION_QUERY, buf:get())
