@@ -268,25 +268,33 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
 
   local item_key = item_key(entity_name, ws_id, pk)
 
-  local value, idx_value
+  -- if we are deleting, item_value and idx_value should be nil
+  local item_value, idx_value
+
+  -- if we are inserting or updating
+  -- value is serialized entity
+  -- idx_value is the lmdb item_key
   if not is_delete then
     local err
 
     -- serialize item with possible nulls
-    value, err = marshall(item)
-    if not value then
+    item_value, err = marshall(item)
+    if not item_value then
       return nil, err
     end
 
     idx_value = item_key
   end
 
-  t:set(item_key, value)
+  -- store serialized entity into lmdb
+  t:set(item_key, item_value)
 
   -- select_by_cache_key
   if schema.cache_key then
     local cache_key = dao:cache_key(item)
     local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
+
+    -- store item_key or nil into lmdb
     t:set(key, idx_value)
   end
 
@@ -296,37 +304,47 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
     local value = item[fname]
 
     -- value may be null, we should skip it
-    if value and value ~= null then
-      local value_str
-
-      if fdata.unique then
-        -- unique and not a foreign key, or is a foreign key, but non-composite
-        -- see: validate_foreign_key_is_single_primary_key, composite foreign
-        -- key is currently unsupported by the DAO
-        if type(value) == "table" then
-          assert(is_foreign)
-          value_str = pk_string(kong.db[fdata_reference].schema, value)
-        end
-
-        if fdata.unique_across_ws then
-          ws_id = kong.default_workspace
-        end
-
-        local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
-        t:set(key, idx_value)
-      end
-
-      if is_foreign then
-        -- is foreign, generate page_for_foreign_field indexes
-        assert(type(value) == "table")
-
-        value_str = pk_string(kong.db[fdata_reference].schema, value)
-
-        local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
-        t:set(key, idx_value)
-      end
+    if not value or value == null then
+      goto continue
     end
-  end
+
+    -- value should be a string or table
+
+    local value_str
+
+    if fdata.unique then
+      -- unique and not a foreign key, or is a foreign key, but non-composite
+      -- see: validate_foreign_key_is_single_primary_key, composite foreign
+      -- key is currently unsupported by the DAO
+      if type(value) == "table" then
+        assert(is_foreign)
+        value_str = pk_string(kong.db[fdata_reference].schema, value)
+      end
+
+      if fdata.unique_across_ws then
+        ws_id = kong.default_workspace
+      end
+
+      local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
+
+      -- store item_key or nil into lmdb
+      t:set(key, idx_value)
+    end
+
+    if is_foreign then
+      -- is foreign, generate page_for_foreign_field indexes
+      assert(type(value) == "table")
+
+      value_str = pk_string(kong.db[fdata_reference].schema, value)
+
+      local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
+
+      -- store item_key or nil into lmdb
+      t:set(key, idx_value)
+    end
+
+    ::continue::
+  end -- for fname, fdata in schema:each_field()
 
   return true
 end
