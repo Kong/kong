@@ -120,7 +120,9 @@ function commit_changelog() {
 function update_copyright() {
   version=$1
 
-  if ! "$scripts_folder/update-copyright"
+  PDIR=$(dirname "$scripts_folder")
+
+  if ! (docker build -t kong/update-copyright ${scripts_folder} && docker run -v ${PDIR}:/workspace --rm kong/update-copyright)
   then
     die "Could not update copyright file. Check logs for missing licenses, add hardcoded ones if needed"
   fi
