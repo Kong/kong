@@ -36,7 +36,7 @@ local PURGE_QUERY = [[
 
 
 function _M:init_worker()
-  ngx.timer.every(CLEANUP_TIME_DELAY, function(premature)
+  local function cleanup_handler(premature)
     if premature then
       ngx_log(ngx_DEBUG, "[incremental] worker exiting, killing incremental cleanup timer")
 
@@ -54,7 +54,9 @@ function _M:init_worker()
 
     ngx_log(ngx_DEBUG,
             "[incremental] successfully purged old data from incremental delta table")
-  end)
+  end
+
+  assert(ngx.timer.every(CLEANUP_TIME_DELAY, cleanup_handler))
 end
 
 
@@ -74,13 +76,15 @@ local NEW_VERSION_QUERY = [[
 --   { type = "route", "id" = "0a5bac5c-b795-4981-95d2-919ba3390b7e", "ws_id" = "73478cf6-964f-412d-b1c4-8ac88d9e85e9", row = "JSON", }
 -- }
 function _M:insert_delta(deltas)
+  local escape_literal = self.connector:escape_literal
+
   local buf = buffer.new()
   for _, d in ipairs(deltas) do
     buf:putf("(new_version, %s, %s, %s, %s)",
-             self.connector:escape_literal(d.type),
-             self.connector:escape_literal(d.id),
-             self.connector:escape_literal(d.ws_id),
-             self.connector:escape_literal(cjson_encode(d.row)))
+             escape_literal(d.type),
+             escape_literal(d.id),
+             escape_literal(d.ws_id),
+             escape_literal(cjson_encode(d.row)))
   end
 
   local sql = string_format(NEW_VERSION_QUERY, buf:get())
@@ -97,7 +101,7 @@ function _M:get_latest_version()
     return nil, err
   end
 
-  return res[1].max_version
+  return res[1] and res[1].max_version
 end
 
 
