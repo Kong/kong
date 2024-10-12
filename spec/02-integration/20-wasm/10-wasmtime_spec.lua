@@ -1,8 +1,7 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 
---- XXX FIXME: enable inc_sync = on
-for _, inc_sync in ipairs { "off" } do
+for _, inc_sync in ipairs { "off", "on" } do
 for _, role in ipairs({"traditional", "control_plane", "data_plane"}) do
 
 describe("#wasm wasmtime (role: " .. role .. ")", function()
@@ -134,7 +133,6 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
       end
     end)
 
-    -- XXX FIXME: incremental sync
     it("does not introduce any errors", function()
       local function assert_no_errors()
         assert.logfile(log).has.no.line("[error]", true, 0)
