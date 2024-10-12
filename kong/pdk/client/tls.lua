@@ -166,6 +166,24 @@ local function new()
     ngx.ctx.CLIENT_VERIFY_OVERRIDE = v
   end
 
+  ---
+  -- Prevents the TLS handshake from negotiating HTTP/2 ALPN. 
+  -- if successful, the TLS handshake will not negotiate HTTP/2 ALPN to turn to HTTP1.1.
+  --
+  -- @function kong.client.tls.disable_http2_alpn
+  -- @phases client_hello
+  -- @treturn true|nil Returns `true` if successful, `nil` if it fails.
+  -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
+  --
+  -- @usage
+  -- local res, err = kong.client.tls.disable_http2_alpn()
+  -- if not res then
+  --   -- do something with err
+  -- end
+  function _TLS.disable_http2_alpn()
+    check_phase(PHASES.client_hello)
+    return kong_tls.disable_http2_alpn()
+  end
 
   return _TLS
 end
