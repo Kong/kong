@@ -320,7 +320,7 @@ end
 
 
 local function start_sync_timer(timer_func, delay)
-  local hdl, err = timer_func(delay or 0, do_sync)
+  local hdl, err = timer_func(delay, do_sync)
 
   if not hdl then
     return nil, err
