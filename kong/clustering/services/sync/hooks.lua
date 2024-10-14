@@ -75,11 +75,11 @@ function _M:notify_all_nodes()
 end
 
 
-function _M:entity_delta_writer(row_id, row, name, options, ws_id)
+function _M:entity_delta_writer(row, name, options, ws_id)
   local deltas = {
     {
       type = name,
-      id = row_id,
+      id = row.id,
       ws_id = ws_id,
       row = row,
     },
@@ -136,7 +136,7 @@ function _M:register_dao_hooks()
       return row
     end
 
-    return self:entity_delta_writer(row.id, row, name, options, ws_id)
+    return self:entity_delta_writer(row, name, options, ws_id)
   end
 
   local function post_hook_delete_func(row, name, options, ws_id, cascade_entries)
@@ -144,7 +144,30 @@ function _M:register_dao_hooks()
       return row
     end
 
-    return self:entity_delta_writer(row.id, ngx_null, name, options, ws_id)
+    local deltas = {
+      {
+        type = name,
+        id = row.id,
+        ws_id = ws_id,
+        row = ngx_null,
+      },
+    }
+
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    self:notify_all_nodes()
+
+    return row
   end
 
   local dao_hooks = {
