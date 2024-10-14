@@ -187,7 +187,7 @@ function _M:init(manager, is_cp)
 end
 
 
-local function sync_handler()
+local function do_sync()
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
                                        { default =
                                          { version =
@@ -307,7 +307,7 @@ local function sync_handler()
 end
 
 
-local function do_sync(premature)
+local function sync_handler(premature)
   if premature then
     return
   end
@@ -315,11 +315,11 @@ local function do_sync(premature)
   local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
     -- here must be 2 times
     for _ = 1, 2 do
-      local ok, err = sync_handler()
+      local ok, err = do_sync()
       if not ok then
         return nil, err
       end
-    end -- for _, delta
+    end -- for
 
     return true
   end)
@@ -330,7 +330,7 @@ end
 
 
 local function start_sync_timer(timer_func, delay)
-  local hdl, err = timer_func(delay, do_sync)
+  local hdl, err = timer_func(delay, sync_handler)
 
   if not hdl then
     return nil, err
