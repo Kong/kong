@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local http = require "resty.http"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 local KAFKA_HOST = os.getenv("KONG_SPEC_TEST_KAFKA_HOST") or "broker"
 local KAFKA_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KAFKA_PORT_9092")) or 9092
@@ -401,6 +402,30 @@ for _, strategy in helpers.all_strategies() do
         }
       }
 
+      local testws = bp.workspaces:insert({ name = "test" })
+      local testws_service = assert(bp.services:insert_ws(nil, testws))
+      local testws_route = assert(bp.routes:insert_ws({
+        service = testws_service,
+        hosts = { "test_ws.test" }
+      }, testws))
+      local certificate = assert(bp.certificates:insert_ws({
+        cert = ssl_fixtures.cert_client,
+        key = ssl_fixtures.key_client,
+      }, testws))
+      assert(bp.plugins:insert_ws({
+        name = "kafka-log",
+        route = { id = testws_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SERVERS,
+          producer_async = false,
+          topic = 'custom_log_sync_topic',
+          security = {
+            certificate_id = certificate.id,
+            ssl = true,
+          }
+        }
+      }, testws))
+
       local fixtures = {
         dns_mock = helpers.dns_mock.new(),
       }
@@ -789,6 +814,16 @@ for _, strategy in helpers.all_strategies() do
         assert.same(nil, message.route)
 
       end)
+    end)
+
+    it("should not has log 'failed to find or load certificate' #testme", function()
+      local res = proxy_client:get("/", {
+        headers = {
+          host = "test_ws.test",
+        },
+      })
+      assert.res_status(200, res)
+      assert.logfile().has_not.line("failed to find or load certificate")
     end)
   end)
 end

@@ -11,14 +11,14 @@ local lrucache = require("resty.lrucache").new(200)
 local kong    = kong
 local sha256_hex = require "kong.tools.sha256".sha256_hex
 
-local function load_cert(cert_id)
+local function load_cert(cert_id, ws_id)
   kong.log.debug("cache miss for CA store")
 
   local key = {
     id = cert_id
   }
 
-  local obj, err = kong.db.certificates:select(key)
+  local obj, err = kong.db.certificates:select(key, { workspace = ws_id, show_ws_id = true })
   if not obj then
     if err then
       kong.log.notice("failed to select certificate with key: ", key)
@@ -35,12 +35,12 @@ local function cert_id_cache_key(cert_id)
   return sha256_hex("kafka-upstream:cert:" .. cert_id)
 end
 
-local function load_certificate(cert_id)
+local function load_certificate(cert_id, ws_id)
   kong.log.debug("Looking for certificate id: ", cert_id)
 
   local cert_cache_key = cert_id_cache_key(cert_id)
 
-  local certificate, err = kong.cache:get(cert_cache_key, nil, load_cert, cert_id)
+  local certificate, err = kong.cache:get(cert_cache_key, nil, load_cert, cert_id, ws_id)
   if not certificate then
     kong.log.err("failed to find certificate: ", err)
     return nil, nil, "failed to find certificate " .. cert_id

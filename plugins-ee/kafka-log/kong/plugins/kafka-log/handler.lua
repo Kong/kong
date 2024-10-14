@@ -21,7 +21,7 @@ KafkaLogHandler.VERSION = meta.core_version
 
 --- Publishes a message to Kafka.
 -- Must run in the context of `ngx.timer.at`.
-local function timer_log(premature, conf, message)
+local function timer_log(premature, conf, message, ws_id)
   if premature then
     return
   end
@@ -30,7 +30,7 @@ local function timer_log(premature, conf, message)
 
   -- fetch certificate from the store
   if conf.security.certificate_id then
-    local client_cert, client_priv_key, err = cert_utils.load_certificate(conf.security.certificate_id)
+    local client_cert, client_priv_key, err = cert_utils.load_certificate(conf.security.certificate_id, ws_id)
     if not client_cert or not client_priv_key or err ~= nil then
       kong.log.err("failed to find or load certificate: ", err)
       return kong.response.exit(500, { message = "Could not load certificate" })
@@ -59,11 +59,12 @@ function KafkaLogHandler:log(conf, other)
     for key, expression in pairs(conf.custom_fields_by_lua) do
       set_serialize_value(key, sandbox(expression, sandbox_opts)())
     end
-  end  
+  end
 
   kong.log.notice("Creating timer")
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
-  local ok, err = ngx.timer.at(0, timer_log, conf, message)
+  local ws_id = ngx.ctx.workspace or kong.default_workspace
+  local ok, err = ngx.timer.at(0, timer_log, conf, message, ws_id)
   if not ok then
     kong.log.err("failed to create timer: ", err)
   end
