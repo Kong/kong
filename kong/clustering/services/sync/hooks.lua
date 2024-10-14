@@ -113,57 +113,59 @@ function _M:register_dao_hooks()
   -- common hook functions (pre/fail/post)
 
   local function pre_hook_func(entity, name, options)
-    if is_db_export(name) then
-      return self.strategy:begin_txn()
+    if not is_db_export(name) then
+      return true
     end
 
-    return true
+    return self.strategy:begin_txn()
   end
 
   local function fail_hook_func(err, entity, name)
-    if is_db_export(name) then
-      local res, err = self.strategy:cancel_txn()
-      if not res then
-        ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
-      end
+    if not is_db_export(name) then
+      return
+    end
+
+    local res, err = self.strategy:cancel_txn()
+    if not res then
+      ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
     end
   end
 
   local function post_hook_writer_func(row, name, options, ws_id)
-    if is_db_export(name) then
-      return self:entity_delta_writer(row, name, options, ws_id)
+    if not is_db_export(name) then
+      return row
     end
 
-    return row
+    return self:entity_delta_writer(row, name, options, ws_id)
   end
 
   local function post_hook_delete_func(row, name, options, ws_id, cascade_entries)
-    if is_db_export(name) then
-      local deltas = {
-        {
-          type = name,
-          id = row.id,
-          ws_id = ws_id,
-          row = ngx_null,
-        },
-      }
-
-      local res, err = self.strategy:insert_delta(deltas)
-      if not res then
-        self.strategy:cancel_txn()
-        return nil, err
-      end
-
-      res, err = self.strategy:commit_txn()
-      if not res then
-        self.strategy:cancel_txn()
-        return nil, err
-      end
-
-      self:notify_all_nodes()
+    if not is_db_export(name) then
+      return row
     end
 
-    return row
+    local deltas = {
+      {
+        type = name,
+        id = row.id,
+        ws_id = ws_id,
+        row = ngx_null,
+      },
+    }
+
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    self:notify_all_nodes()
   end
 
   local dao_hooks = {
