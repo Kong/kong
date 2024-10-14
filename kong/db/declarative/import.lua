@@ -266,28 +266,28 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   local pk = pk_string(schema, item)
   local ws_id = workspace_id(schema, options)
 
-  local item_key = item_key(entity_name, ws_id, pk)
+  local itm_key = item_key(entity_name, ws_id, pk)
 
   -- if we are deleting, item_value and idx_value should be nil
-  local item_value, idx_value
+  local itm_value, idx_value
 
   -- if we are inserting or updating
-  -- value is serialized entity
+  -- itm_value is serialized entity
   -- idx_value is the lmdb item_key
   if not is_delete then
     local err
 
     -- serialize item with possible nulls
-    item_value, err = marshall(item)
-    if not item_value then
+    itm_value, err = marshall(item)
+    if not itm_value then
       return nil, err
     end
 
-    idx_value = item_key
+    idx_value = itm_key
   end
 
   -- store serialized entity into lmdb
-  t:set(item_key, item_value)
+  t:set(itm_key, itm_value)
 
   -- select_by_cache_key
   if schema.cache_key then
