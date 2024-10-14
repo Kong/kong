@@ -75,13 +75,13 @@ function _M:notify_all_nodes()
 end
 
 
-function _M:entity_delta_writer(row, name, options, ws_id)
+function _M:entity_delta_writer(row, name, options, ws_id, is_delete)
   local deltas = {
     {
       type = name,
       id = row.id,
       ws_id = ws_id,
-      row = row,
+      row = is_delete and ngx_null or row,
     },
   }
 
@@ -99,7 +99,7 @@ function _M:entity_delta_writer(row, name, options, ws_id)
 
   self:notify_all_nodes()
 
-  return row
+  return row -- for other hooks
 end
 
 
@@ -144,30 +144,8 @@ function _M:register_dao_hooks()
       return row
     end
 
-    local deltas = {
-      {
-        type = name,
-        id = row.id,
-        ws_id = ws_id,
-        row = ngx_null,
-      },
-    }
-
-    local res, err = self.strategy:insert_delta(deltas)
-    if not res then
-      self.strategy:cancel_txn()
-      return nil, err
-    end
-
-    res, err = self.strategy:commit_txn()
-    if not res then
-      self.strategy:cancel_txn()
-      return nil, err
-    end
-
-    self:notify_all_nodes()
-
-    return row
+    -- set lmdb value to ngx_null then return row
+    return self:entity_delta_writer(row, name, options, ws_id, true)
   end
 
   local dao_hooks = {
