@@ -64,7 +64,6 @@ describe("admin_gui template", function()
     it("should generates the appropriate kconfig", function()
       local kconfig_content = admin_gui.generate_kconfig(conf)
 
-      assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", kconfig_content, nil, true)
       assert.matches("'ADMIN_GUI_PATH': '/manager'", kconfig_content, nil, true)
       assert.matches("'ADMIN_API_URL': 'https://admin-reference.kong-cloud.test'", kconfig_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", kconfig_content, nil, true)
@@ -83,7 +82,6 @@ describe("admin_gui template", function()
       local new_content = admin_gui.generate_kconfig(new_conf)
 
       -- test configuration values against template
-      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", new_content, nil, true)
       assert.matches("'ADMIN_GUI_PATH': '/manager'", new_content, nil, true)
       assert.matches("'ADMIN_API_URL': 'http://localhost:8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", new_content, nil, true)
@@ -146,7 +144,6 @@ describe("admin_gui template", function()
     it("should generates the appropriate kconfig", function()
       local kconfig_content = admin_gui.generate_kconfig(conf)
 
-      assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", kconfig_content, nil, true)
       assert.matches("'ADMIN_API_URL': '0.0.0.0:8001'", kconfig_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", kconfig_content, nil, true)
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", kconfig_content, nil, true)
@@ -164,7 +161,6 @@ describe("admin_gui template", function()
       local new_content = admin_gui.generate_kconfig(new_conf)
 
       -- test configuration values against template
-      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", new_content, nil, true)
       assert.matches("'ADMIN_API_URL': '0.0.0.0:8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_PORT': '8001'", new_content, nil, true)
       assert.matches("'ADMIN_API_SSL_PORT': '8444'", new_content, nil, true)

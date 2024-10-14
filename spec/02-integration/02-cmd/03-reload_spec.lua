@@ -739,7 +739,7 @@ describe("Admin GUI config", function ()
       path = "/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'ADMIN_GUI_URL': 'http://test1.example.com'", res, nil, true)
+    assert.matches("'ADMIN_GUI_PATH': '/'", res, nil, true)
 
     client:close()
 
@@ -764,7 +764,7 @@ describe("Admin GUI config", function ()
       path = "/manager/kconfig.js",
     })
     res = assert.res_status(200, res)
-    assert.matches("'ADMIN_GUI_URL': 'http://test2.example.com'", res, nil, true)
+    assert.matches("'ADMIN_GUI_PATH': '/manager'", res, nil, true)
     client:close()
   end)
 end)

@@ -1994,21 +1994,18 @@
 
 #admin_gui_url =        # Kong Manager URL
                         #
-                        # The lookup, or balancer, address for Kong Manager.
+                        # Comma-separated list of addresses (the lookup or balancer) for Kong Manager.
                         #
-                        # Accepted format (items in parentheses are optional):
+                        # Accepted format (items in square brackets are optional):
                         #
-                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>)`
+                        #   `<scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>][, <scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>]]`
                         #
                         # Examples:
                         #
                         # - `http://127.0.0.1:8003`
                         # - `https://kong-admin.test`
                         # - `http://dev-machine`
-                        #
-                        # By default, Kong Manager will use the window request
-                        # host and append the resolved listener port depending
-                        # on the requested protocol.
+                        # - `http://127.0.0.1:8003, https://exmple.com/manager`
 
 #admin_gui_path = /     # Kong Manager base path
                         #
