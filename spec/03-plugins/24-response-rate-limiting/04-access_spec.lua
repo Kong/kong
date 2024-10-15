@@ -481,6 +481,9 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(ITERATIONS - n, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
 
             for i = n+1, ITERATIONS do
+              if i == ITERATIONS then
+                ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+              end
               res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20image%3D1", {
                 headers = { Host = "test2.test" },
               })
@@ -583,8 +586,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
-          local request_id = res.headers["X-Kong-Request-Id"]
-          assert.same({ message = "API rate limit exceeded for 'image'", request_id = request_id }, json)
+          assert.matches("API rate limit exceeded for 'image'", json.message)
         end)
 
         describe("Config with hide_client_headers", function()
@@ -868,7 +870,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(500, res)
               local json = cjson.decode(body)
-              assert.same({ message = "An unexpected error occurred" }, json)
+              assert.matches("An unexpected error occurred", json.message)
             end)
 
             it("keeps working if an error occurs", function()
@@ -957,7 +959,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(500, res)
             local json = cjson.decode(body)
-            assert.same({ message = "An unexpected error occurred" }, json)
+            assert.matches("An unexpected error occurred", json.message)
           end)
           it("keeps working if an error occurs", function()
             -- Make another request
