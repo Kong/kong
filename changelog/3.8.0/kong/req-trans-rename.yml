@@ -1,7 +1,3 @@
-message: >
-  **Request-Transformer**: Fixed an issue where renamed query parameters,
-  url-encoded body parameters,
-  and JSON body parameters were not handled properly
-  when the target name was the same as the source name in the request.
+message: "**Request-Transformer**: Fixed an issue where renamed query parameters, url-encoded body parameters, and json body parameters were not handled properly when target name is the same as the source name in the request."
 type: feature
 scope: Plugin
