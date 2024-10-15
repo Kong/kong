@@ -219,7 +219,8 @@ local function do_sync()
 
   local t = txn.begin(512)
 
-  if ns_delta.wipe then
+  local wipe = ns_delta.wipe
+  if wipe then
     t:db_drop(false)
   end
 
@@ -245,9 +246,12 @@ local function do_sync()
       local crud_event_type = "create"
 
       if old_entity then
-        local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
-        if not res then
-          return nil, err
+        -- If we need to wipe lmdb, we don't need to not delete it from lmdb.
+        if not wipe then
+          local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
+          if not res then
+            return nil, err
+          end
         end
 
         crud_event_type = "update"
@@ -267,7 +271,8 @@ local function do_sync()
         return nil, err
       end
 
-      if old_entity then
+      -- If we need to wipe lmdb, we don't need to delete old entity.
+      if old_entity and not wipe then
         local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
         if not res then
           return nil, err
@@ -292,7 +297,7 @@ local function do_sync()
     return nil, err
   end
 
-  if ns_delta.wipe then
+  if wipe then
     kong.core_cache:purge()
     kong.cache:purge()
 
