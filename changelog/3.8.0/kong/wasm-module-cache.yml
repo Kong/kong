@@ -1,3 +1,3 @@
-message: You can now configure the Wasmtime module cache when Wasm is enabled.
+message: Configure Wasmtime module cache when Wasm is enabled
 type: feature
 scope: Configuration
