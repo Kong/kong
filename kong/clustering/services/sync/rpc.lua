@@ -297,7 +297,7 @@ local function do_sync()
     return nil, err
   end
 
-  if ns_delta.wipe then
+  if wipe then
     kong.core_cache:purge()
     kong.cache:purge()
 
