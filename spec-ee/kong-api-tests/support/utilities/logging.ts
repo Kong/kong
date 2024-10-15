@@ -20,7 +20,7 @@ export const logResponse = (response: AxiosResponse): void => {
     console.log('HEADERS:');
     console.log(response.headers);
     console.log('BODY:');
-    console.log(response.data);
+    console.log(JSON.stringify(response.data, null, 2));
     console.log('\n');
   }
 };

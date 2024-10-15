@@ -1,5 +1,6 @@
 import { AxiosResponse } from 'axios';
 import { logResponse } from './logging';
+import { isCI } from '@support';
 
 /**
  * Retry the given Axios request to match the status code using a timeout and interval
@@ -16,6 +17,8 @@ export const retryRequest = async (
   interval = 3000,
   verbose = false,
 ): Promise<AxiosResponse> => {
+  // enable verbose logs in GH Actions for debugability
+  verbose = isCI() ? true : verbose
   let response: AxiosResponse = {} as any;
   let errorMsg = '';
   while (timeout >= 0) {

@@ -8,6 +8,7 @@ import {
   logResponse,
   retryRequest,
   isGateway,
+  waitForConfigRebuild,
 } from '@support';
 import axios from 'axios';
 
@@ -403,6 +404,7 @@ describe('Gateway Admin API: Targets health', function () {
       target: respTarget.data.target,
       id: respTarget.data.id
     }
+    await waitForConfigRebuild();
   });
 
   it('should set target to healthy using target id and address and confirm its status', async function () {
@@ -421,7 +423,7 @@ describe('Gateway Admin API: Targets health', function () {
     };
 
     await retryRequest(setStatusReq, setStatusAssertions);    
-
+    await waitForConfigRebuild();
 
     // confirm healthy status
     const req = () => axios(`${url}/${upstreamData.id}/health`);
@@ -460,6 +462,7 @@ describe('Gateway Admin API: Targets health', function () {
     };
 
     await retryRequest(setStatusReq, setStatusAssertions);
+    await waitForConfigRebuild();
   });
 
   it('should confirm target unhealthy status', async function () {
