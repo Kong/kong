@@ -219,7 +219,8 @@ local function do_sync()
 
   local t = txn.begin(512)
 
-  if ns_delta.wipe then
+  local wipe = ns_delta.wipe
+  if wipe then
     t:db_drop(false)
   end
 
@@ -246,7 +247,7 @@ local function do_sync()
 
       if old_entity then
         -- If we need to wipe lmdb, we don't need to not delete it from lmdb.
-        if not ns_delta.wipe then
+        if not wipe then
           local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
           if not res then
             return nil, err
@@ -271,7 +272,7 @@ local function do_sync()
       end
 
       -- If we need to wipe lmdb, we don't need to delete old entity.
-      if old_entity and not ns_delta.wipe then
+      if old_entity and not wipe then
         local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
         if not res then
           return nil, err
