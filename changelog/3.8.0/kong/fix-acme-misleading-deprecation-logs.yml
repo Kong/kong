@@ -1,5 +1,3 @@
-message: >
-  **ACME**: Fixed an issue where the DP would report that deprecated
-  config fields were used when configuration was pushed from the CP.
+message: "**ACME**: Fixed an issue of DP reporting that deprecated config fields are used when configuration from CP is pushed"
 type: bugfix
 scope: Plugin

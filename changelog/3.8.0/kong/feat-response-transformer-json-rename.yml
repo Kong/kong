@@ -1,4 +1,4 @@
 message: |
-  **response-transformer**: Added support for `json_body` rename.
+  Added support for json_body rename in response-transformer plugin
 type: feature
 scope: Plugin
