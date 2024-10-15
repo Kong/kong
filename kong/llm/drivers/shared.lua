@@ -646,20 +646,6 @@ function _M.resolve_plugin_conf(kong_request, conf)
 end
 
 
-local function check_multi_modal(conf, request_table)
-  if not request_table.messages or (conf.model.provider == "openai" or conf.model.provider == "bedrock" ) then
-    return true
-  end
-
-  for _, m in ipairs(request_table.messages) do
-    if type(m.content) == "table" then
-      return false
-    end
-  end
-
-  return true
-end
-
 function _M.pre_request(conf, request_table)
   assert(conf.__key__, "missing plugin conf key")
 
@@ -678,11 +664,6 @@ function _M.pre_request(conf, request_table)
   local plugin_name = conf.__key__:match('plugins:(.-):')
   if not plugin_name or plugin_name == "" then
     return nil, "no plugin name is being passed by the plugin"
-  end
-
-  local ok = check_multi_modal(conf, request_table)
-  if not ok then
-    return kong.response.exit("multi-modal input is not supported by current provider")
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
