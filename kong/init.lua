@@ -750,6 +750,11 @@ function Kong.init()
     if not is_control_plane(config) then
       assert(runloop.build_router("init"))
 
+      ok, err = wasm.check_enabled_filters()
+      if not ok then
+        error("[wasm]: " .. err)
+      end
+
       ok, err = runloop.set_init_versions_in_cache()
       if not ok then
         error("error setting initial versions for router and plugins iterator in cache: " ..
