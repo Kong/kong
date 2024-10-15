@@ -1,0 +1,5 @@
+message: |
+    **proxy-wasm:** Added a check that prevents Kong from starting when the
+    database contains invalid Wasm filters.
+type: bugfix
+scope: Core
