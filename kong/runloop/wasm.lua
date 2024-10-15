@@ -1007,4 +1007,36 @@ function _M.status()
   return true
 end
 
+function _M.check_enabled_filters()
+  if not ENABLED then
+    return true
+  end
+
+  local enabled_filters = _M.filters_by_name
+
+  local errs
+  for chain, err in kong.db.filter_chains:each() do
+    if err then
+      return nil, err
+    end
+
+    for i, filter in ipairs(chain.filters) do
+      if not enabled_filters[filter.name] then
+        errs = errs or {}
+
+        insert(errs, fmt("filter chain: %s, filter: #%s (%s)",
+                         chain.id, i, filter.name))
+      end
+    end
+  end
+
+  if errs then
+    return nil, "found one or more filter chain entities with filters that are "
+             .. "not enabled/installed:\n" .. table.concat(errs, "\n")
+  end
+
+
+  return true
+end
+
 return _M
