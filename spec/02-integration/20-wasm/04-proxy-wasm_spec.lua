@@ -38,6 +38,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     mock_service = assert(bp.services:insert {
       host = helpers.mock_upstream_host,
       port = helpers.mock_upstream_port,
+      name = "mock_service",
     })
 
     local mock_upstream = assert(bp.upstreams:insert {
@@ -50,12 +51,14 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     })
 
     r_single = assert(bp.routes:insert {
+      name = "r_single",
       paths = { "/single" },
       strip_path = true,
       service = mock_service,
     })
 
     local r_double = assert(bp.routes:insert {
+      name = "r_double",
       paths = { "/double" },
       strip_path = true,
       service = mock_service,
@@ -687,6 +690,26 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
+    it("read kong.route_name", function()
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/201",
+        headers = {
+          [HEADER_NAME_TEST] = "get_kong_property",
+          [HEADER_NAME_INPUT] = "route_name",
+          [HEADER_NAME_DISPATCH_ECHO] = "on",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.equal(r_single.name, body)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+    end)
+
     it("read kong.service_id", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
@@ -703,6 +726,26 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
       local body = assert.res_status(200, res)
       assert.equal(mock_service.id, body)
+      assert.logfile().has.no.line("[error]", true, 0)
+      assert.logfile().has.no.line("[crit]",  true, 0)
+    end)
+
+    it("read kong.service_name", function()
+      local client = helpers.proxy_client()
+      finally(function() client:close() end)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/single/status/201",
+        headers = {
+          [HEADER_NAME_TEST] = "get_kong_property",
+          [HEADER_NAME_INPUT] = "service_name",
+          [HEADER_NAME_DISPATCH_ECHO] = "on",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.equal(mock_service.name, body)
       assert.logfile().has.no.line("[error]", true, 0)
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)

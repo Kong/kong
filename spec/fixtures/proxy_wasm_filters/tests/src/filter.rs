@@ -1,6 +1,7 @@
 mod routines;
 mod test_http;
 mod types;
+mod metrics;
 
 use crate::routines::*;
 use crate::test_http::*;
