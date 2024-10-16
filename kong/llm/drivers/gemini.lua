@@ -43,6 +43,25 @@ local function is_response_content(content)
         and content.candidates[1].content.parts[1].text
 end
 
+local function is_tool_content(content)
+  return content
+        and content.candidates
+        and #content.candidates > 0
+        and content.candidates[1].content
+        and content.candidates[1].content.parts
+        and #content.candidates[1].content.parts > 0
+        and content.candidates[1].content.parts[1].functionCall
+end
+
+local function is_function_call_message(message)
+  return message
+        and message.role
+        and message.role == "assistant"
+        and message.tool_calls
+        and type(message.tool_calls) == "table"
+        and #message.tool_calls > 0
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
@@ -84,10 +103,32 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 end
 
-local function to_gemini_chat_openai(request_table, model_info, route_type)
-  if request_table then  -- try-catch type mechanism
-    local new_r = {}
+local function to_tools(in_tools)
+  if not in_tools then
+    return nil
+  end
+ 
+  local out_tools
 
+  for i, v in ipairs(in_tools) do
+    if v['function'] then
+      out_tools = out_tools or {
+        [1] = {
+          function_declarations = {}
+        }
+      }
+
+      out_tools[1].function_declarations[i] = v['function']
+    end
+  end
+
+  return out_tools
+end
+
+local function to_gemini_chat_openai(request_table, model_info, route_type)
+  local new_r = {}
+
+  if request_table then
     if request_table.messages and #request_table.messages > 0 then
       local system_prompt
 
@@ -97,18 +138,60 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
         if v.role and v.role == "system" then
           system_prompt = system_prompt or buffer.new()
           system_prompt:put(v.content or "")
-        else
-          -- for any other role, just construct the chat history as 'parts.text' type
-          new_r.contents = new_r.contents or {}
+
+        elseif v.role and v.role == "tool" then
+          -- handle tool execution output
           table_insert(new_r.contents, {
-            role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+            role = "function",
             parts = {
               {
-                text = v.content or ""
+                function_response = {
+                  response = {
+                    content = {
+                      v.content,
+                    },
+                  },
+                  name = "get_product_info",
+                },
               },
             },
           })
+
+        elseif is_function_call_message(v) then
+          -- treat specific 'assistant function call' tool execution input message
+          local function_calls = {}
+          for i, t in ipairs(v.tool_calls) do
+            function_calls[i] = {
+              function_call = {
+                name = t['function'].name,
+              },
+            }
+          end
+
+          table_insert(new_r.contents, {
+            role = "function",
+            parts = function_calls,
+          })
+
+        else
+          -- for any other role, just construct the chat history as 'parts.text' type
+          new_r.contents = new_r.contents or {}
+
+          local part = v.content
+          if type(v.content) == "string" then
+            part = {
+              text = v.content
+            }
+          end
+
+          table_insert(new_r.contents, {
+            role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+            parts = {
+              part,
+            },
+          })
         end
+
       end
 
       -- This was only added in Gemini 1.5
@@ -128,42 +211,20 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
 
     new_r.generationConfig = to_gemini_generation_config(request_table)
 
-    return new_r, "application/json", nil
+    -- handle function calling translation from OpenAI format
+    new_r.tools = request_table.tools and to_tools(request_table.tools)
   end
 
-  local new_r = {}
-
-  if request_table.messages and #request_table.messages > 0 then
-    local system_prompt
-
-    for i, v in ipairs(request_table.messages) do
-
-      -- for 'system', we just concat them all into one Gemini instruction
-      if v.role and v.role == "system" then
-        system_prompt = system_prompt or buffer.new()
-        system_prompt:put(v.content or "")
-      else
-        -- for any other role, just construct the chat history as 'parts.text' type
-        new_r.contents = new_r.contents or {}
-        table_insert(new_r.contents, {
-          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-          parts = {
-            {
-              text = v.content or ""
-            },
-          },
-        })
-      end
-    end
-  end
-
-  new_r.generationConfig = to_gemini_generation_config(request_table)
+  kong.log.warn(cjson.encode(new_r))
 
   return new_r, "application/json", nil
 end
 
 local function from_gemini_chat_openai(response, model_info, route_type)
-  local response, err = cjson.decode(response)
+  local err
+  if response and (type(response) == "string") then
+    response, err = cjson.decode(response)
+  end
 
   if err then
     local err_client = "failed to decode response from Gemini"
@@ -175,20 +236,38 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   local messages = {}
   messages.choices = {}
 
-  if response.candidates
-        and #response.candidates > 0
-        and is_response_content(response) then
+  if response.candidates and #response.candidates > 0 then
+    if is_response_content(response) then
+      messages.choices[1] = {
+        index = 0,
+        message = {
+          role = "assistant",
+          content = response.candidates[1].content.parts[1].text,
+        },
+        finish_reason = string_lower(response.candidates[1].finishReason),
+      }
+      messages.object = "chat.completion"
+      messages.model = model_info.name
 
-    messages.choices[1] = {
-      index = 0,
-      message = {
-        role = "assistant",
-        content = response.candidates[1].content.parts[1].text,
-      },
-      finish_reason = string_lower(response.candidates[1].finishReason),
-    }
-    messages.object = "chat.completion"
-    messages.model = model_info.name
+    elseif is_tool_content(response) then
+      local function_call_responses = response.candidates[1].content.parts
+      for i, v in ipairs(function_call_responses) do
+        messages.choices[i] = {
+          index = 0,
+          message = {
+            role = "assistant",
+            tool_calls = {
+              {
+                ['function'] = {
+                  name = v.functionCall.name,
+                  arguments = cjson.encode(v.functionCall.args),
+                },
+              },
+            },
+          },
+        }
+      end
+    end
 
     -- process analytics
     if response.usageMetadata then
@@ -207,7 +286,7 @@ local function from_gemini_chat_openai(response, model_info, route_type)
     ngx.log(ngx.ERR, err)
     return nil, err
 
-  else-- probably a server fault or other unexpected response
+  else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Gemini, or max_tokens too short"
     ngx.log(ngx.ERR, err)
     return nil, err
@@ -471,5 +550,13 @@ function _M.configure_request(conf, identity_interface)
 
   return true
 end
+
+
+if _G._TEST then
+  -- export locals for testing
+  _M._to_tools = to_tools
+  _M._from_gemini_chat_openai = from_gemini_chat_openai
+end
+
 
 return _M
