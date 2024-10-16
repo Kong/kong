@@ -243,18 +243,14 @@ local function do_sync()
         return nil, err
       end
 
-      local crud_event_type = "create"
+      local crud_event_type = old_entity and "update" or "create"
 
-      if old_entity then
-        -- If we need to wipe lmdb, we don't need to not delete it from lmdb.
-        if not wipe then
-          local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
-          if not res then
-            return nil, err
-          end
+      -- If we will wipe lmdb, we don't need to delete it from lmdb.
+      if old_entity and not wipe then
+        local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
+        if not res then
+          return nil, err
         end
-
-        crud_event_type = "update"
       end
 
       local res, err = insert_entity_for_txn(t, delta_type, delta_row, nil)
@@ -271,7 +267,7 @@ local function do_sync()
         return nil, err
       end
 
-      -- If we need to wipe lmdb, we don't need to delete old entity.
+      -- If we will wipe lmdb, we don't need to delete it from lmdb.
       if old_entity and not wipe then
         local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
         if not res then
