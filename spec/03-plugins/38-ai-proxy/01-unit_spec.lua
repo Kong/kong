@@ -80,6 +80,23 @@ local SAMPLE_OPENAI_TOOLS_REQUEST = {
   },
 }
 
+local SAMPLE_GEMINI_TOOLS_RESPONSE = {
+  candidates = { {
+    content = {
+      role = "model",
+      parts = { {
+        functionCall = {
+          name = "sql_execute",
+          args = {
+            product_name = "NewPhone"
+          }
+        }
+      } }
+    },
+    finishReason = "STOP",
+  } },
+}
+
 local SAMPLE_BEDROCK_TOOLS_RESPONSE = {
   metrics = {
     latencyMs = 3781
@@ -829,6 +846,71 @@ describe(PLUGIN_NAME .. ": (unit)", function()
           -- somehow malformed
         },
       }))
+    end)
+  end)
+
+  describe("gemini tools", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+  
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("transforms openai tools to gemini tools GOOD", function()
+      local gemini_tools = gemini_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools)
+
+      assert.not_nil(gemini_tools)
+      assert.same(gemini_tools, {
+        {
+          function_declarations = {
+            {
+              description = "Check a product is in stock.",
+              name = "check_stock",
+              parameters = {
+                properties = {
+                  product_name = {
+                    type = "string"
+                  }
+                },
+                required = {
+                  "product_name"
+                },
+                type = "object"
+              }
+            }
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tools to gemini tools NO_TOOLS", function()
+      local gemini_tools = gemini_driver._to_tools(SAMPLE_LLM_V1_CHAT)
+
+      assert.is_nil(gemini_tools)
+    end)
+
+    it("transforms openai tools to gemini tools NIL", function()
+      local gemini_tools = gemini_driver._to_tools(nil)
+
+      assert.is_nil(gemini_tools)
+    end)
+
+    it("transforms gemini tools to openai tools GOOD", function()
+      local openai_tools = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_tools)
+
+      openai_tools = cjson.decode(openai_tools)
+      assert.same(openai_tools.choices[1].message.tool_calls[1]['function'], {
+        name = "sql_execute",
+        arguments = "{\"product_name\":\"NewPhone\"}"
+      })
     end)
   end)
 
