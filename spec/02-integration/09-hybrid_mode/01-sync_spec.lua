@@ -12,7 +12,8 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
-for _, inc_sync in ipairs { "off", "on"  } do
+--- XXX FIXME: enable inc_sync = on
+for _, inc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, function()

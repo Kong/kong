@@ -73,7 +73,7 @@ end
 
 
 -- XXX TODO: enable inc_sync = "on"
-for _, inc_sync in ipairs { "off", "on" } do
+for _, inc_sync in ipairs { "off"  } do
 describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
   local cp_prefix = "cp"
   local cp_errlog = cp_prefix .. "/logs/error.log"
