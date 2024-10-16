@@ -33,6 +33,13 @@ local TYPE_TO_ATTRIBUTE_TYPES = {
   boolean = "bool_value",
 }
 
+local PROMETHEUS_TO_OTLP_METRIC_TYPE = {
+  ["gauge"] = "gauge",
+  ["counter"] = "sum",
+  ["histogram"] = "histogram",
+  ["unknown"] = "gauge"
+}
+
 local function transform_attributes(attr)
   if type(attr) ~= "table" then
     error("invalid attributes", 2)
@@ -123,7 +130,89 @@ local function transform_span(span)
   return pb_span
 end
 
-local encode_traces, encode_logs, prepare_logs
+
+-- Read prometheus metrics and transform into OTLP metric
+-- https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/
+local function transform_metric(metric)
+  assert(type(metric) == "string")
+  -- prometheus metric to otlp metric
+  local help, name = ""
+  local typ = "gauge"
+  local dataValue = {}
+
+  local value_found, histo_sum, histo_count
+  local bucketCounts = {}
+  local explicitBounds = {}
+  for line in metric:gmatch("([^\n]*)\n?") do
+    if string.find(line, "# HELP") then
+      for word in line:gmatch("%S+") do
+        if string.find(word, "kong_") then
+          name = string.gsub(word, "kong_", "")
+        elseif word ~= "#" and word ~= "HELP" then
+          help = help .. " " .. word
+        end
+      end
+    elseif string.find(line, "# TYPE") then
+      for word in line:gmatch("%S+") do
+        typ = PROMETHEUS_TO_OTLP_METRIC_TYPE[word]
+      end
+    else
+      local start = string.find(line, " ")
+      local eof = #line
+      if start and eof then
+        value_found = string.sub(line, start+1, eof)
+      end
+      if typ ~= "histogram" then
+        dataValue = {
+          as_double = tonumber(value_found)
+        }
+      else
+        if string.find(line, "_count") then
+          histo_count = value_found
+        elseif string.find(line, "_sum") then
+          histo_sum = value_found
+        elseif string.find(line, "_bucket") then
+          table.insert(bucketCounts, value_found)
+          local bucket_col = line:match('le=%".*%"')
+          local value = bucket_col:match('%d+')
+          if value then table.insert(explicitBounds, value) end
+        end
+      end
+    end
+  end
+
+  local isMonotonic, aggregationTemporality
+  if typ == "counter" then
+    typ = "sum"
+    isMonotonic = "true"
+  elseif typ == "unknown" then
+    typ = "gauge"
+  elseif typ == "histogram" then
+    aggregationTemporality = 1
+    dataValue = {
+      sum = histo_sum,
+      count = histo_count,
+      bucketCounts = bucketCounts,
+      explicitBounds = explicitBounds
+    }
+  end
+
+  local pb_metrics = {
+    name = name,
+    unit = "1",
+    description = help,
+    [typ] = {
+      aggregationTemporality = aggregationTemporality,
+      isMonotonic = isMonotonic,
+      data_points = {dataValue}
+    },
+  }
+
+  return pb_metrics
+end
+
+
+local encode_traces, encode_metrics, encode_logs, prepare_logs
 do
   local attributes_cache = setmetatable({}, { __mode = "k" })
   local function default_resource_attributes()
@@ -249,6 +338,42 @@ do
 
     return logs
   end
+
+  local pb_memo_metrics = {
+    resource_metrics = {
+      { resource = {
+          attributes = {}
+        },
+        scope_metrics = {
+          { scope = {
+              name = "kong-internal",
+              version = "0.1.0",
+            },
+            metrics = {}, },
+        }, },
+    },
+  }
+
+  encode_metrics = function(metrics, resource_attributes)
+    local tab = tablepool_fetch(POOL_OTLP, 0, 4)
+    if not tab.resource_metrics then
+      tab.resource_metrics = deep_copy(pb_memo_metrics.resource_metrics)
+    end
+
+    local resource = tab.resource_metrics[1].resource
+    resource.attributes = render_resource_attributes(resource_attributes)
+
+    local scoped = tab.resource_metrics[1].scope_metrics[1]
+
+    scoped.metrics = metrics
+    local pb_metrics = pb.encode("opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest", tab)
+
+    -- remove reference
+    scoped.metrics = nil
+    tablepool_release(POOL_OTLP, tab, true) -- no clear
+
+    return pb_metrics
+  end
 end
 
 return {
@@ -257,4 +382,6 @@ return {
   encode_traces = encode_traces,
   encode_logs = encode_logs,
   prepare_logs = prepare_logs,
+  encode_metrics = encode_metrics,
+  transform_metric = transform_metric,
 }

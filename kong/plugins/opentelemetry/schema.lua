@@ -37,6 +37,7 @@ return {
       fields = {
         { traces_endpoint = typedefs.url { referenceable = true } }, -- OTLP/HTTP
         { logs_endpoint = typedefs.url { referenceable = true } },
+        { metrics_endpoint = typedefs.url { referenceable = true } },
         { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.", type = "map",
           keys = typedefs.header_name,
           values = {
@@ -96,6 +97,7 @@ return {
         { at_least_one_of = {
           "traces_endpoint",
           "logs_endpoint",
+          "metrics_endpoint"
         } },
       },
       shorthand_fields = {

@@ -594,6 +594,7 @@ build = {
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
     ["kong.plugins.opentelemetry.traces"] = "kong/plugins/opentelemetry/traces.lua",
     ["kong.plugins.opentelemetry.logs"] = "kong/plugins/opentelemetry/logs.lua",
+    ["kong.plugins.opentelemetry.metrics"] = "kong/plugins/opentelemetry/metrics.lua",
     ["kong.plugins.opentelemetry.utils"] = "kong/plugins/opentelemetry/utils.lua",
 
     ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",

@@ -166,6 +166,7 @@ return {
     opentelemetry = {
       "traces_endpoint",
       "logs_endpoint",
+      "metrics_endpoint",
       "queue.concurrency_limit",
     },
     ai_proxy = {
