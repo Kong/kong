@@ -879,10 +879,9 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  -- Currently privileged agent is enabled only on data planes
-  if process.type() == "privileged agent" and not kong.sync then
+  if process.type() == "privileged agent" and (is_data_plane(kong.configuration) and not kong.sync) then
     if kong.clustering then
-      -- dp will enable full sync protocol
+      -- full sync cp/dp
       kong.clustering:init_worker()
     end
     return
@@ -984,8 +983,8 @@ function Kong.init_worker()
 
   if kong.clustering then
 
-    -- cp should always support full sync protocol
-    if is_control_plane(kong.configuration) and not kong.sync then
+    -- full sync cp/dp
+    if is_control_plane(kong.configuration) or not kong.sync then
       kong.clustering:init_worker()
     end
 
