@@ -699,10 +699,6 @@ function Kong.init()
         kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
         kong.sync:init(kong.rpc)
       end
-
-      if is_data_plane(config) then
-        require("kong.clustering.services.debug").init(kong.rpc)
-      end
     end
   end
 
