@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Fixed an issue where RLA stores long expiration time items cause `no memory` errors."
+type: bugfix
+scope: Plugin

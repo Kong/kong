@@ -29,6 +29,7 @@ local TIME_DELTA = 0.001
 local new_tab = require("table.new")
 local DEFAULT_INSTANCE_NAME = "rate-limiting"
 
+local DEFAULT_MAINTENANCE_CYCLE_LOCK_TTL = 300
 
 local function calculate_weight(window_size)
   return (window_size - (now() % window_size)) / window_size
@@ -506,7 +507,8 @@ local function new_instance(instance_name, options)
       return
     end
 
-    local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
+    local rl_maint_key = "rl-maint-" .. namespace
+    local ok, err = locks_shm:add(rl_maint_key, true, DEFAULT_MAINTENANCE_CYCLE_LOCK_TTL)
     if not ok then
       if err ~= "exists" then
         log(ERR, "failed to execute lock acquisition: ", err)
@@ -519,6 +521,8 @@ local function new_instance(instance_name, options)
     if not ok then
       log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
     end
+
+    locks_shm:delete(rl_maint_key)
   end
 
 

@@ -15,11 +15,16 @@ local fmt          = string.format
 
 
 local DELETE_COUNTER_QUERY = [[
-DELETE
-   FROM rl_counters
-  WHERE namespace    = ?
+DELETE FROM rl_counters
+WHERE ctid IN (
+  SELECT ctid
+  FROM rl_counters
+  WHERE namespace = ?
     AND window_start <= ?
-    AND window_size  = ?
+    AND window_size = ?
+  ORDER BY namespace, window_start, window_size
+  FOR UPDATE SKIP LOCKED
+)
 ]]
 
 local INCR_COUNTER_QUERY = [[
