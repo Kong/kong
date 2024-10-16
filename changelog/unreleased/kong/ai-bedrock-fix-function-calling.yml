@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where tools (function) calls to Bedrock would return empty results."
+type: bugfix
+scope: Plugin
