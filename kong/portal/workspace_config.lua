@@ -7,7 +7,7 @@
 
 local cjson = require "cjson"
 local clone = require "table.clone"
-
+local ee_utils = require "kong.enterprise_edition.utils"
 
 local cjson_decode = cjson.decode
 local null = ngx.null
@@ -16,13 +16,7 @@ local null = ngx.null
 local workspace_config = {}
 
 function workspace_config.build_ws_admin_gui_url(config, workspace)
-  local admin_gui_url = config.admin_gui_url
-  -- this will only occur when smtp_mock is on
-  -- otherwise, conf_loader will throw an error if
-  -- admin_gui_url is nil
-  if not admin_gui_url then
-    return ""
-  end
+  local admin_gui_url = ee_utils.retrieve_admin_gui_url(config.admin_gui_url)
 
   if not workspace.name or workspace.name == "" then
     return admin_gui_url

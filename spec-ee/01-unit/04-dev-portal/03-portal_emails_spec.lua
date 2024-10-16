@@ -6,6 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 _G.kong = {}
+_G.ngx.req.get_headers = function()
+  return {}
+end
+
 local emails     = require "kong.portal.emails"
 
 local function mock_cache(cache_table, limit)
@@ -47,7 +51,7 @@ describe("ee portal emails", function()
       portal_approved_email = true,
       portal_reset_email = true,
       portal_reset_success_email = true,
-      admin_gui_url = "http://localhost:8080",
+      admin_gui_url = { "http://localhost:8080" },
       smtp_admin_emails = {"admin@example.com"},
     }
     ngx.ctx.workspace = "mock_uuid"

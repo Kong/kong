@@ -19,7 +19,7 @@ local renderer = require "kong.portal.renderer"
 local workspace_config = require "kong.portal.workspace_config"
 local api_helpers = require "kong.api.api_helpers"
 local ee_api = require "kong.enterprise_edition.api_helpers"
-
+local ee_utils = require "kong.enterprise_edition.utils"
 
 local kong = kong
 local log = ngx.log
@@ -127,10 +127,8 @@ app:before_filter(function(self)
 
   if self.is_admin then
     self.path = string.gsub(self.path, "/", "", 1)
-
-    local ok, err = ee_api.set_cors_headers({
-      kong.configuration.admin_gui_origin or "*",
-    }, ee_api.apis.PORTAL)
+    local cors_origin = ee_utils.retrieve_admin_gui_origin()
+    local ok, err = ee_api.set_cors_headers({ cors_origin }, ee_api.apis.PORTAL)
 
     if not ok then
       log(ERR, err)

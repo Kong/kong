@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local smtp_client  = require "kong.enterprise_edition.smtp_client"
+local ee_utils     = require "kong.enterprise_edition.utils"
 local fmt          = string.format
 local log          = ngx.log
 local INFO         = ngx.INFO
@@ -120,7 +121,6 @@ function _M.new(conf)
     client    = client,
     templates = templates,
     kong_conf = conf,
-    admin_gui_url = conf.admin_gui_url or "",
   }
 
   return setmetatable(self, mt)
@@ -136,10 +136,9 @@ function _M:invite_template()
   return self.templates.invite_login
 end
 
-
 function _M:register_url(email, jwt, username)
   return fmt("%s/register?email=%s&username=%s",
-             self.admin_gui_url, ngx.escape_uri(email),
+             ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url), ngx.escape_uri(email),
              ngx.escape_uri(username)) .. (jwt and fmt("&token=%s",
                                           ngx.escape_uri(jwt) or '') or '')
 end
@@ -197,9 +196,12 @@ function _M:reset_password(email, jwt)
   end
 
   local template = self.templates.password_reset
-  local reset_url = (self.kong_conf.admin_gui_url or "") ..
-                    "/account/reset-password?email=" .. ngx.escape_uri(email) ..
-                    "&token=" .. ngx.escape_uri(jwt)
+  local reset_url =
+      fmt("%s/account/reset-password?email=%s&token=%s",
+        ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url),
+        ngx.escape_uri(email),
+        ngx.escape_uri(jwt)
+      )
 
   local options = {
     from = self.kong_conf.admin_emails_from,
@@ -226,7 +228,7 @@ function _M:reset_password_success(email)
   end
 
   local template = self.templates.password_reset_success
-  local login_url = (self.kong_conf.admin_gui_url or "") .. "/login"
+  local login_url = ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url) .. "/login"
 
   local options = {
     from = self.kong_conf.admin_emails_from,

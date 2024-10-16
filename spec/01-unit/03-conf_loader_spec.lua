@@ -341,7 +341,7 @@ describe("Configuration loader", function()
     assert.is_nil(errors)
     assert.is_not_nil(conf)
     assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("http://localhost:8002", conf.admin_gui_origin)
+    assert.same({ "http://localhost:8002" }, conf.admin_gui_origin)
 
     conf, _, errors = conf_loader(nil, {
       admin_gui_url = "https://localhost:8002",
@@ -349,15 +349,16 @@ describe("Configuration loader", function()
     assert.is_nil(errors)
     assert.is_not_nil(conf)
     assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("https://localhost:8002", conf.admin_gui_origin)
+    assert.same({ "https://localhost:8002" }, conf.admin_gui_origin)
 
     conf, _, errors = conf_loader(nil, {
-      admin_gui_url = "http://localhost:8002/manager",
+      admin_gui_url = "http://localhost:8002/manager, https://example.com/manager",
+      admin_gui_path = "/manager"
     })
     assert.is_nil(errors)
     assert.is_not_nil(conf)
     assert.is_not_nil(conf.admin_gui_origin)
-    assert.equal("http://localhost:8002", conf.admin_gui_origin)
+    assert.same({ "http://localhost:8002", "https://example.com" }, conf.admin_gui_origin)
   end)
 
   it("strips comments ending settings", function()

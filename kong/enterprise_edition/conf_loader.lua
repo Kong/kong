@@ -770,7 +770,7 @@ local function validate_portal_smtp_config(conf, errors)
     return
   end
 
-  if not conf.admin_gui_url or conf.admin_gui_url == "" then
+  if conf.admin_gui_url and not conf.admin_gui_url[1] then
     errors[#errors+1] = "admin_gui_url is required for portal"
   end
 
@@ -1106,7 +1106,7 @@ local function validate(conf, errors)
 
 
   -- warn user if admin_gui_auth is on but admin_gui_url is empty
-  if conf.admin_gui_auth and not conf.admin_gui_url then
+  if conf.admin_gui_auth and conf.admin_gui_url and not conf.admin_gui_url[1] then
     log.warn("when admin_gui_auth is set, admin_gui_url is required")
   end
 

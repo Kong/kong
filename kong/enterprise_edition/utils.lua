@@ -7,7 +7,7 @@
 
 local cjson = require "cjson"
 local http = require "resty.http"
-
+local socket_url = require "socket.url"
 local encode_args = require("kong.tools.http").encode_args
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
@@ -245,5 +245,46 @@ local function normalize_table(data)
   return hash
 end
 _M.normalize_table = normalize_table
+
+function _M.retrieve_admin_gui_url(admin_gui_urls)
+  local admin_gui_urls = admin_gui_urls or kong.configuration.admin_gui_url
+  local req_origin = ngx.req.get_headers()["Origin"]
+  for _, gui_url in ipairs(admin_gui_urls) do
+    local parsed_url = socket_url.parse(gui_url)
+    local allowed_origin = parsed_url.scheme .. "://" .. parsed_url.authority
+    if req_origin == allowed_origin then
+      return gui_url
+    end
+  end
+  return admin_gui_urls[1] or ""
+end
+
+function _M.retrieve_admin_gui_origin()
+  local allowed_origins = kong.configuration.admin_gui_origin
+
+  local function is_origin_allowed(req_origin)
+    for _, allowed_origin in ipairs(allowed_origins) do
+      if req_origin == allowed_origin then
+        return true
+      end
+    end
+    return false
+  end
+
+  local cors_origin, variant
+  local req_origin = ngx.req.get_headers()["Origin"]
+
+  if allowed_origins and #allowed_origins > 0 then
+    if not is_origin_allowed(req_origin) then
+      cors_origin = allowed_origins[1]
+    end
+    variant = cors_origin
+  else
+    cors_origin = req_origin or "*"
+  end
+
+  return cors_origin, variant
+end
+
 
 return _M

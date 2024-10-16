@@ -540,7 +540,7 @@ local function validate_workspace_name(name)
   })
 end
 
-function _M.set_cors_headers(origins, api_type)
+function _M.set_cors_headers(origins, api_type, variant)
   local invoke_plugin = kong.invoke_plugin
 
   local cors_conf = {
@@ -551,6 +551,7 @@ function _M.set_cors_headers(origins, api_type)
 
   return invoke_plugin({
     name = "cors",
+    variant = variant,
     config = cors_conf,
     phases = { "access", "header_filter" },
     api_type = api_type,
@@ -615,9 +616,8 @@ function _M.before_filter(self)
     workspaces.set_workspace(workspace)
     self.params.workspace_name = nil
 
-    local ok, err = _M.set_cors_headers({
-      kong.configuration.admin_gui_origin or "*",
-    }, _M.apis.ADMIN)
+    local cors_origin, variant = ee_utils.retrieve_admin_gui_origin()
+    local ok, err = _M.set_cors_headers({ cors_origin }, _M.apis.ADMIN, variant)
 
     if not ok then
       return app_helpers.yield_error(err)

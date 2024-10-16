@@ -12,6 +12,9 @@ local constants  = require "kong.constants"
 local ws_constants = constants.WORKSPACE_CONFIG
 
 _G.kong = {}
+_G.ngx.req.get_headers = function()
+  return {}
+end
 
 describe("retrieve", function()
   local snapshot
@@ -316,7 +319,7 @@ describe("build_ws_admin_gui_url", function()
 
   it("should return admin_gui_url if no workspace name", function()
     local config = {
-      admin_gui_url = "http://admins-are-fun.org",
+      admin_gui_url = { "http://admins-are-fun.org" },
     }
 
     local workspace = {}
@@ -328,7 +331,7 @@ describe("build_ws_admin_gui_url", function()
 
   it("should return admin_gui_url appended with workspace name", function()
     local config = {
-      admin_gui_url = 'http://admins-are-fun.org',
+      admin_gui_url = { 'http://admins-are-fun.org' },
     }
 
     local workspace = {

@@ -7,6 +7,10 @@
 
 local emails = require "kong.enterprise_edition.admin.emails"
 
+_G.ngx.req.get_headers = function()
+  return {}
+end
+
 describe("ee admin emails", function()
   local conf
   local admin_emails
@@ -22,6 +26,7 @@ describe("ee admin emails", function()
       admin_approved_email = true,
       admin_reset_email = true,
       admin_reset_success_email = true,
+      admin_gui_url = {},
       smtp_admin_emails = {"admin@test.com"},
     }
   end)
