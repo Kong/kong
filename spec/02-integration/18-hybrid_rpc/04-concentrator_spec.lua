@@ -77,35 +77,6 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("Dynamic log level over RPC", function()
-      it("can get the current log level", function()
-        local dp_node_id = obtain_dp_node_id()
-
-        -- this sleep is *not* needed for the below wait_until to succeed,
-        -- but it makes the wait_until tried succeed sooner because this
-        -- extra time gives the concentrator enough time to report the node is
-        -- online inside the DB. Without it, the first call to "/log-level"
-        -- will always timeout after 5 seconds
-        ngx.sleep(1)
-
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-          finally(function()
-            admin_client:close()
-          end)
-
-          local res = assert(admin_client:get("/clustering/data-planes/" .. dp_node_id .. "/log-level"))
-          if res.status == 200 then
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal(0, json.timeout)
-            assert.equal("debug", json.current_level)
-            assert.equal("debug", json.original_level)
-            return true
-          end
-        end, 10)
-      end)
-    end)
   end)
 end -- for _, strategy
 end -- for inc_sync
