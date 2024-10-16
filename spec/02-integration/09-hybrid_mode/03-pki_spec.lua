@@ -9,9 +9,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy() do
 
-describe("CP/DP PKI sync #" .. strategy, function()
+describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
@@ -31,6 +32,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
       -- additional attributes for PKI:
       cluster_mtls = "pki",
       cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+      cluster_incremental_sync = inc_sync,
     }))
 
     assert(helpers.start_kong({
@@ -46,6 +48,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
       cluster_mtls = "pki",
       cluster_server_name = "kong_clustering",
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -94,9 +97,12 @@ describe("CP/DP PKI sync #" .. strategy, function()
   end)
 
   describe("sync works", function()
+    -- XXX FIXME
+    local skip_inc_sync = inc_sync == "on" and pending or it
+
     local route_id
 
-    it("proxy on DP follows CP config", function()
+    skip_inc_sync("proxy on DP follows CP config", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
         admin_client:close()
@@ -133,7 +139,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
       end, 10)
     end)
 
-    it("cache invalidation works on config change", function()
+    skip_inc_sync("cache invalidation works on config change", function()
       local admin_client = helpers.admin_client()
       finally(function()
         admin_client:close()
@@ -164,4 +170,5 @@ describe("CP/DP PKI sync #" .. strategy, function()
   end)
 end)
 
-end
+end -- for _, strategy
+end -- for inc_sync

@@ -977,10 +977,9 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  -- TODO: remove this when cluster_rpc is ready for GA
-  if conf.cluster_rpc then
-    log.warn("Cluster RPC has been forcibly disabled")
-    conf.cluster_rpc = "off"
+  if not conf.cluster_rpc then
+    log.warn("Cluster incremental sync has been forcibly disabled")
+    conf.cluster_incremental_sync = false
   end
 
   -- initialize the dns client, so the globally patched tcp.connect method

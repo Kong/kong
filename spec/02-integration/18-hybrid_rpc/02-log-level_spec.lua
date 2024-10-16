@@ -34,8 +34,9 @@ local function obtain_dp_node_id()
 end
 
 
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy() do
-  describe("Hybrid Mode RPC #" .. strategy, function()
+  describe("Hybrid Mode RPC #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -48,8 +49,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
-        cluster_rpc = "on",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync, -- incremental sync
       }))
 
       assert(helpers.start_kong({
@@ -59,9 +60,9 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
-        cluster_rpc = "on",
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync, -- incremental sync
       }))
     end)
 
@@ -71,22 +72,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Dynamic log level over RPC", function()
-
-      -- TODO: remove when cluster RPC is GA
-      it("log level API is unavailable", function()
-        local dp_node_id = obtain_dp_node_id()
-
-        local admin_client = helpers.admin_client()
-        finally(function()
-          admin_client:close()
-        end)
-
-        local res = assert(admin_client:get("/clustering/data-planes/" .. dp_node_id .. "/log-level"))
-        assert.res_status(404, res)
-      end)
-
-      -- TODO: enable when cluster RPC is GA
-      pending("can get the current log level", function()
+      it("can get the current log level", function()
         local dp_node_id = obtain_dp_node_id()
 
         local admin_client = helpers.admin_client()
@@ -102,8 +88,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("debug", json.original_level)
       end)
 
-    -- TODO: enable when cluster RPC is GA
-      pending("can set the current log level", function()
+      it("can set the current log level", function()
         local dp_node_id = obtain_dp_node_id()
 
         local admin_client = helpers.admin_client()
@@ -131,8 +116,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("debug", json.original_level)
       end)
 
-      -- TODO: enable when cluster RPC is GA
-      pending("set current log level to original_level turns off feature", function()
+      it("set current log level to original_level turns off feature", function()
         local dp_node_id = obtain_dp_node_id()
 
         local admin_client = helpers.admin_client()
@@ -172,8 +156,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("debug", json.original_level)
       end)
 
-      -- TODO: enable when cluster RPC is GA
-      pending("DELETE turns off feature", function()
+      it("DELETE turns off feature", function()
         local dp_node_id = obtain_dp_node_id()
 
         local admin_client = helpers.admin_client()
@@ -205,4 +188,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end -- for _, strategy
+end -- for inc_sync

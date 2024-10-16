@@ -93,7 +93,9 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
     end)
   end)
 
-  describe("in hybrid mode", function()
+  --- XXX FIXME: enable inc_sync = on
+  for _, inc_sync in ipairs { "off" } do
+  describe("in hybrid mode" .. " inc_sync=" .. inc_sync, function()
     local route
     lazy_setup(function()
       route = bp.routes:insert({
@@ -114,7 +116,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         COMMIT;
       ]], {
         ROUTE_ID = route.id,
-        CACHE_KEY = "plugins:correlation-id:"..route.id.."::::"..ws.id,
+        --CACHE_KEY = "plugins:correlation-id:"..route.id.."::::"..ws.id,
+        CACHE_KEY = "plugins|"..ws.id.."|route|"..route.id.."|"..plugin_id,
         ID = plugin_id,
       })
       local _, err = db.connector:query(sql)
@@ -128,6 +131,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         prefix = "servroot",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync,
       }))
 
       assert(helpers.start_kong({
@@ -139,6 +143,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
+        cluster_incremental_sync = inc_sync,
       }))
     end)
 
@@ -188,4 +193,5 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       proxy_client:close()
     end)
   end)
+  end -- for inc_sync
 end)

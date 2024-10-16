@@ -669,7 +669,7 @@ describe("DAO", function()
       dao:delete({ id = 1 })
       dao:delete({ id = 1 })
 
-      assert.spy(post_hook).was_called(1)
+      assert.spy(post_hook).was_called(2)
     end)
   end)
 

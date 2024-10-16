@@ -201,11 +201,13 @@ describe("#off preserve nulls", function()
     assert(declarative.load_into_cache(entities, meta, current_hash))
 
     local id, item = next(entities.basicauth_credentials)
+
+    -- format changed after incremental sync
     local cache_key = concat({
-      "basicauth_credentials:",
-      id,
-      ":::::",
-      item.ws_id
+      "basicauth_credentials|",
+      item.ws_id,
+      "|*|",
+      id
     })
 
     local lmdb = require "resty.lmdb"
@@ -222,17 +224,23 @@ describe("#off preserve nulls", function()
 
     for _, plugin in pairs(entities.plugins) do
       if plugin.name == PLUGIN_NAME then
+
+        -- format changed after incremental sync
         cache_key = concat({
-          "plugins:" .. PLUGIN_NAME .. ":",
+          "plugins|",
+          plugin.ws_id,
+          "|route|",
           plugin.route.id,
-          "::::",
-          plugin.ws_id
+          "|",
+          plugin.id
         })
         value, err, hit_lvl = lmdb.get(cache_key)
         assert.is_nil(err)
         assert.are_equal(hit_lvl, 1)
 
-        cached_item = buffer.decode(value)
+        -- get value by the index key
+        cached_item = buffer.decode(lmdb.get(value))
+
         assert.are_same(cached_item, plugin)
         assert.are_equal(cached_item.config.large, null)
         assert.are_equal(cached_item.config.ttl, null)

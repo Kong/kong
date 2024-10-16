@@ -391,26 +391,11 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_dhparam", kong_nginx_conf)
     end)
 
-    -- TODO: enable when cluster RPC is GA
-    pending("renders RPC server", function()
+    it("renders RPC server", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        cluster_listen = "127.0.0.1:9005",
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("location = /v2/outlet {", kong_nginx_conf)
-    end)
-
-    -- TODO: remove when cluster RPC is GA
-    it("does not render RPC server, even when cluster_rpc enabled", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        role = "control_plane",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        cluster_rpc = "on",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))

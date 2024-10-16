@@ -1211,12 +1211,14 @@ function DAO:insert(entity, options)
 
   local row, err_t = self.strategy:insert(entity_to_insert, options)
   if not row then
+    run_hook("dao:insert:fail", err_t, entity, self.schema.name, options)
     return nil, tostring(err_t), err_t
   end
 
   local ws_id = row.ws_id
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
+    run_hook("dao:insert:fail", err, entity, self.schema.name, options)
     return nil, err, err_t
   end
 
@@ -1264,12 +1266,14 @@ function DAO:update(pk_or_entity, entity, options)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update, options)
   if not row then
+    run_hook("dao:update:fail", err_t, entity_to_update, self.schema.name, options)
     return nil, tostring(err_t), err_t
   end
 
   local ws_id = row.ws_id
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
+    run_hook("dao:update:fail", err_t, entity_to_update, self.schema.name, options)
     return nil, err, err_t
   end
 
@@ -1392,9 +1396,11 @@ function DAO:delete(pk_or_entity, options)
   local rows_affected
   rows_affected, err_t = self.strategy:delete(primary_key, options)
   if err_t then
+    run_hook("dao:delete:fail", err_t, entity, self.schema.name, options)
     return nil, tostring(err_t), err_t
 
   elseif not rows_affected then
+    run_hook("dao:delete:post", nil, self.schema.name, options, ws_id, nil)
     return nil
   end
 

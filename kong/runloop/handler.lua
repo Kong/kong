@@ -423,7 +423,13 @@ local function new_router(version)
     end
   end
 
-  local detect_changes = db.strategy ~= "off" and kong.core_cache
+  local detect_changes = kong.core_cache and true
+
+  -- for dbless we will not check changes when initing
+  if db.strategy == "off" and get_phase() == "init_worker" then
+    detect_changes = false
+  end
+
   local counter = 0
   local page_size = db.routes.pagination.max_page_size
   for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
@@ -1074,51 +1080,87 @@ return {
         end
       end
 
-      if strategy ~= "off" then
+      do  -- start some rebuild timers
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-        local function rebuild_timer(premature)
+        local router_async_opts = {
+          name = "router",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
+        local function rebuild_router_timer(premature)
           if premature then
             return
           end
 
-          local router_update_status, err = rebuild_router({
-            name = "router",
-            timeout = 0,
-            on_timeout = "return_true",
-          })
-          if not router_update_status then
+          -- Don't wait for the semaphore (timeout = 0) when updating via the
+          -- timer.
+          -- If the semaphore is locked, that means that the rebuild is
+          -- already ongoing.
+          local ok, err = rebuild_router(router_async_opts)
+          if not ok then
             log(ERR, "could not rebuild router via timer: ", err)
           end
+        end
 
-          local plugins_iterator_update_status, err = rebuild_plugins_iterator({
-            name = "plugins_iterator",
-            timeout = 0,
-            on_timeout = "return_true",
-          })
-          if not plugins_iterator_update_status then
-            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+        local _, err = kong.timer:named_every("router-rebuild",
+                                              worker_state_update_frequency,
+                                              rebuild_router_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild router: ", err)
+        end
+
+        local plugins_iterator_async_opts = {
+          name = "plugins_iterator",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
+        local function rebuild_plugins_iterator_timer(premature)
+          if premature then
+            return
           end
 
-          if wasm.enabled() then
-            local wasm_update_status, err = rebuild_wasm_state({
-              name = "wasm",
-              timeout = 0,
-              on_timeout = "return_true",
-            })
-            if not wasm_update_status then
+          local _, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
+          if err then
+            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+          end
+        end
+
+        local _, err = kong.timer:named_every("plugins-iterator-rebuild",
+                                              worker_state_update_frequency,
+                                              rebuild_plugins_iterator_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
+        end
+
+        if wasm.enabled() then
+          local wasm_async_opts = {
+            name = "wasm",
+            timeout = 0,
+            on_timeout = "return_true",
+          }
+
+          local function rebuild_wasm_filter_chains_timer(premature)
+            if premature then
+              return
+            end
+
+            local _, err = rebuild_wasm_state(wasm_async_opts)
+            if err then
               log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
           end
-        end
 
-        local _, err = kong.timer:named_every("rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_timer)
-        if err then
-          log(ERR, "could not schedule timer to rebuild: ", err)
+          local _, err = kong.timer:named_every("wasm-rebuild",
+                                                worker_state_update_frequency,
+                                                rebuild_wasm_filter_chains_timer)
+          if err then
+            log(ERR, "could not schedule timer to rebuild WASM filter chains: ", err)
+          end
         end
-      end
+      end -- rebuild timer do block
     end,
   },
   preread = {

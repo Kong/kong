@@ -110,7 +110,6 @@ build = {
     ["kong.clustering.config_sync_backup.election"] = "kong/clustering/config_sync_backup/election.lua",
     ["kong.clustering.config_sync_backup.strategies.s3"] = "kong/clustering/config_sync_backup/strategies/s3.lua",
     ["kong.clustering.config_sync_backup.strategies.gcs"] = "kong/clustering/config_sync_backup/strategies/gcs.lua",
-    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
@@ -120,6 +119,12 @@ build = {
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
+
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+    ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
+    ["kong.clustering.services.sync.rpc"] = "kong/clustering/services/sync/rpc.lua",
+    ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
+    ["kong.clustering.services.sync.strategies.postgres"] = "kong/clustering/services/sync/strategies/postgres.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -590,6 +595,7 @@ build = {
     ["kong.db.migrations.core.021_340_to_350"] = "kong/db/migrations/core/021_340_to_350.lua",
     ["kong.db.migrations.core.022_350_to_360"] = "kong/db/migrations/core/022_350_to_360.lua",
     ["kong.db.migrations.core.023_360_to_370"] = "kong/db/migrations/core/023_360_to_370.lua",
+    ["kong.db.migrations.core.024_370_to_380"] = "kong/db/migrations/core/024_370_to_380.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.230_to_260"] = "kong/db/migrations/operations/230_to_260.lua",

@@ -88,6 +88,8 @@ local function get_sync_status(id)
 end
 
 
+-- XXX TODO: helpers.clustering_client supports incremental sync
+for _, inc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP config compat transformations #" .. strategy, function()
@@ -125,6 +127,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled,ldap-auth-advanced",
       vaults = "gcp,hcv,aws",
+      cluster_incremental_sync = inc_sync,
     }))
   end)
 
@@ -1379,3 +1382,4 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 end)
 
 end -- each strategy
+end -- for inc_sync

@@ -770,6 +770,11 @@ function Kong.init()
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
 
+      if config.cluster_incremental_sync then
+        kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
+        kong.sync:init(kong.rpc)
+      end
+
       if is_data_plane(config) then
         require("kong.clustering.services.debug").init(kong.rpc)
       end
@@ -844,7 +849,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.dedicated_config_processing and is_data_plane(config) then
+  if config.dedicated_config_processing and is_data_plane(config) and not kong.sync then
     -- TODO: figure out if there is better value than 4096
     -- 4096 is for the cocurrency of the lua-resty-timer-ng
     local ok, err = process.enable_privileged_agent(4096)
@@ -996,8 +1001,9 @@ function Kong.init_worker()
   kong.cache:invalidate_local(ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY)
   -- ]]
 
-  if process.type() == "privileged agent" then
+  if process.type() == "privileged agent" and not kong.sync then
     if kong.clustering then
+      -- full sync cp/dp
       kong.clustering:init_worker()
     end
     return
@@ -1035,6 +1041,7 @@ function Kong.init_worker()
         return
       end
     elseif declarative_entities then
+
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta,
@@ -1096,11 +1103,18 @@ function Kong.init_worker()
   end
 
   if kong.clustering then
-    kong.clustering:init_worker()
 
-    local cluster_tls = require("kong.clustering.tls")
+    -- full sync cp/dp
+    if not kong.sync then
+      kong.clustering:init_worker()
+    end
 
+    -- rpc and incremental sync
     if kong.rpc and is_http_module then
+
+      -- only available in http subsystem
+      local cluster_tls = require("kong.clustering.tls")
+
       if is_data_plane(kong.configuration) then
         ngx.timer.at(0, function(premature)
           kong.rpc:connect(premature,
@@ -1112,6 +1126,11 @@ function Kong.init_worker()
 
       else -- control_plane
         kong.rpc.concentrator:start()
+      end
+
+      -- init incremental sync
+      if kong.sync then
+        kong.sync:init_worker()
       end
     end
   end
