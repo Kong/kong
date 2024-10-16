@@ -77,6 +77,9 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
+    -- TODO: test with other rpc
+    --describe("XXX over RPC", function()
+    --end)
   end)
 end -- for _, strategy
 end -- for inc_sync
