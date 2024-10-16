@@ -2,9 +2,8 @@ local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
 
---[[
 -- keep it for future usage
-local function obtain_dp_node_id()
+local function obtain_dp_node_id()  -- luacheck: ignore
   local dp_node_id
 
   helpers.wait_until(function()
@@ -27,7 +26,6 @@ local function obtain_dp_node_id()
 
   return dp_node_id
 end
---]]
 
 
 for _, inc_sync in ipairs { "on", "off"  } do
