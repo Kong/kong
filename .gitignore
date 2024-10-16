@@ -31,8 +31,6 @@ bin/grpcurl
 *.bak
 *.rock
 
-bazel-*
-
 worktree/
 bin/bazel
 bin/h2client
@@ -41,3 +39,8 @@ bin/h2client
 *.wasm
 spec/fixtures/proxy_wasm_filters/build
 spec/fixtures/proxy_wasm_filters/target
+
+# bazel
+bazel-*
+# remove it after migrating from WORKSPACE to Bzlmod
+MODULE.bazel.lock
