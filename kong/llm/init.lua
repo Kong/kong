@@ -153,10 +153,10 @@ do
     if err then
       return nil, err
     end
-
+    
     -- run the shared logging/analytics/auth function
     ai_shared.pre_request(self.conf, ai_request)
-
+    
     -- send it to the ai service
     local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false, self.identity_interface)
     if err then
@@ -164,7 +164,7 @@ do
     end
 
     -- parse and convert the response
-    local ai_response, _, err = self.driver.from_format(ai_response, self.conf.model, self.conf.route_type)
+    local ai_response, err, _ = self.driver.from_format(ai_response, self.conf.model, self.conf.route_type)
     if err then
       return nil, "failed to convert AI response to Kong format: " .. err
     end

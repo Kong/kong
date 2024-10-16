@@ -1,0 +1,3 @@
+message: "**ai-transformers**: Fixed a bug where the correct LLM error message was not propagated to the caller."
+type: bugfix
+scope: Plugin

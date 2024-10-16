@@ -78,6 +78,29 @@ local OPENAI_FLAT_RESPONSE = {
   },
 }
 
+local GEMINI_GOOD = {
+  route_type = "llm/v1/chat",
+  logging = {
+    log_payloads = false,
+    log_statistics = true,
+  },
+  model = {
+    name = "gemini-1.5-flash",
+    provider = "gemini",
+    options = {
+      max_tokens = 512,
+      temperature = 0.5,
+      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/failssafety",
+      input_cost = 10.0,
+      output_cost = 10.0,
+    },
+  },
+  auth = {
+    header_name = "x-goog-api-key",
+    header_value = "123",
+  },
+}
+
 local OPENAI_BAD_INSTRUCTIONS = {
   route_type = "llm/v1/chat",
   model = {
@@ -256,6 +279,15 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               }
             }
 
+            location = "/failssafety" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+
+                ngx.status = 200
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-chat/responses/fails_safety.json"))
+              }
+            }
+
             location = "/internalservererror" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
@@ -341,6 +373,19 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           prompt = SYSTEM_PROMPT,
           parse_llm_response_json_instructions = false,
           llm = OPENAI_BAD_REQUEST,
+        },
+      }
+
+      local fails_safety = assert(bp.routes:insert {
+        paths = { "/echo-fails-safety" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = fails_safety.id },
+        config = {
+          prompt = SYSTEM_PROMPT,
+          parse_llm_response_json_instructions = false,
+          llm = GEMINI_GOOD,
         },
       }
 
@@ -489,6 +534,22 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         assert.is_nil(err)
         assert.same({ error = { message = "failed to introspect request with AI service: status code 400" }}, body_table)
+      end)
+
+      it("fails Gemini content-safety", function()
+        local r = client:get("/echo-fails-safety", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = REQUEST_BODY,
+        })
+
+        local body = assert.res_status(400 , r)
+        local body_table, err = cjson.decode(body)
+
+        assert.is_nil(err)
+        assert.match_re(body_table.error.message, ".*transformation generation candidate breached Gemini content safety.*")
       end)
 
       it("internal server error from LLM", function()
