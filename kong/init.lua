@@ -879,7 +879,7 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  if process.type() == "privileged agent" and (is_data_plane(kong.configuration) and not kong.sync) then
+  if process.type() == "privileged agent" and not kong.sync then
     if kong.clustering then
       -- full sync cp/dp
       kong.clustering:init_worker()
@@ -984,7 +984,7 @@ function Kong.init_worker()
   if kong.clustering then
 
     -- full sync cp/dp
-    if is_control_plane(kong.configuration) or not kong.sync then
+    if not kong.sync then
       kong.clustering:init_worker()
     end
 
