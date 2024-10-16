@@ -213,21 +213,6 @@ local function select_by_field(self, field, value, options)
 end
 
 
---[[
-local function remove_nulls(tbl)
-  for k,v in pairs(tbl) do
-    if v == null then
-      tbl[k] = nil
-
-    elseif type(v) == "table" then
-      tbl[k] = remove_nulls(v)
-    end
-  end
-  return tbl
-end
---]]
-
-
 do
   local unsupported = function(operation)
     return function(self)
