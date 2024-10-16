@@ -255,6 +255,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_35.config.propagation = nil
         expected_otel_prior_35.config.traces_endpoint = nil
         expected_otel_prior_35.config.logs_endpoint = nil
+        expected_otel_prior_35.config.metrics_endpoint = nil
         expected_otel_prior_35.config.endpoint = "http://1.1.1.1:12345/v1/trace"
         expected_otel_prior_35.config.queue.concurrency_limit = nil
 
@@ -281,6 +282,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_34.config.propagation = nil
         expected_otel_prior_34.config.traces_endpoint = nil
         expected_otel_prior_34.config.logs_endpoint = nil
+        expected_otel_prior_34.config.metrics_endpoint = nil
         expected_otel_prior_34.config.endpoint = "http://1.1.1.1:12345/v1/trace"
         expected_otel_prior_34.config.queue.concurrency_limit = nil
         do_assert(uuid(), "3.3.0", expected_otel_prior_34)

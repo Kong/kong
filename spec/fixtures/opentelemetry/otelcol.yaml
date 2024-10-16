@@ -30,3 +30,7 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [logging, file]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, file]
