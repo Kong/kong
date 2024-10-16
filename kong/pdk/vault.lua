@@ -1439,6 +1439,16 @@ local function new(self)
   end
 
 
+  local function should_register_crud_event()
+    local conf = self.configuration
+
+    local not_dbless = conf.database ~= "off"  -- postgres
+    local dp_with_inc_sync = conf.role == "data_plane" and
+                             conf.cluster_incremental_sync
+
+    return not_dbless or dp_with_inc_sync
+  end
+
   local initialized
   ---
   -- Initializes vault.
@@ -1455,9 +1465,7 @@ local function new(self)
 
     initialized = true
 
-    if self.configuration.database ~= "off" or  -- postgres
-       self.configuration.role == "data_plane" and self.configuration.cluster_incremental_sync -- incremental dp
-    then
+    if should_register_crud_event() then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
 
