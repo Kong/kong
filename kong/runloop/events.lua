@@ -490,7 +490,11 @@ local function register_events(reconfigure_handler)
   if db.strategy == "off" then
     -- declarative config updates
     register_for_dbless(reconfigure_handler)
-    return
+
+    -- dbless (not dataplane) has no other events
+    if not kong.sync then
+      return
+    end
   end
 
   register_for_db()

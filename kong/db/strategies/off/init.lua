@@ -1,26 +1,31 @@
-local declarative_config = require "kong.db.schema.others.declarative_config"
-local workspaces = require "kong.workspaces"
+local declarative_config = require("kong.db.schema.others.declarative_config")
 local lmdb = require("resty.lmdb")
+local lmdb_prefix = require("resty.lmdb.prefix")
 local marshaller = require("kong.db.declarative.marshaller")
-local yield = require("kong.tools.yield").yield
-local unique_field_key = require("kong.db.declarative").unique_field_key
+local declarative = require("kong.db.declarative")
 
 local kong = kong
 local fmt = string.format
 local type = type
 local next = next
-local sort = table.sort
-local pairs = pairs
-local match = string.match
 local assert = assert
-local tostring = tostring
-local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
-local get_workspace_id = workspaces.get_workspace_id
+local pk_string = declarative_config.pk_string
+local unique_field_key = declarative.unique_field_key
+local item_key = declarative.item_key
+local item_key_prefix = declarative.item_key_prefix
+local workspace_id = declarative.workspace_id
+local foreign_field_key_prefix = declarative.foreign_field_key_prefix
+
+
+local PROCESS_AUTO_FIELDS_OPTS = {
+  no_defaults = true,
+  show_ws_id = true,
+}
 
 
 local off = {}
@@ -30,21 +35,16 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local function ws(schema, options)
-  if not schema.workspaceable then
-    return ""
+local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
+
+
+local function get_default_workspace()
+  if kong.default_workspace == UNINIT_WORKSPACE_ID then
+    local res = kong.db.workspaces:select_by_name("default")
+    kong.default_workspace = assert(res and res.id)
   end
 
-  if options then
-    if options.workspace == null then
-      return "*"
-    end
-    if options.workspace then
-      return options.workspace
-    end
-  end
-
-  return get_workspace_id()
+  return kong.default_workspace
 end
 
 
@@ -53,175 +53,18 @@ local function process_ttl_field(entity)
     local ttl_value = entity.ttl - ngx.time()
     if ttl_value > 0 then
       entity.ttl = ttl_value
+
     else
       entity = nil  -- do not return the expired entity
     end
   end
+
   return entity
 end
 
 
--- Returns a dict of entity_ids tagged according to the given criteria.
--- Currently only the following kinds of keys are supported:
--- * A key like `services|<ws_id>|@list` will only return service keys
--- @tparam string the key to be used when filtering
--- @tparam table tag_names an array of tag names (strings)
--- @tparam string|nil tags_cond either "or", "and". `nil` means "or"
--- @treturn table|nil returns a table with entity_ids as values, and `true` as keys
-local function get_entity_ids_tagged(key, tag_names, tags_cond)
-  local tag_name, list, err
-  local dict = {} -- keys are entity_ids, values are true
-
-  for i = 1, #tag_names do
-    tag_name = tag_names[i]
-    list, err = unmarshall(lmdb_get("taggings:" .. tag_name .. "|" .. key))
-    if err then
-      return nil, err
-    end
-
-    yield(true)
-
-    list = list or {}
-
-    if i > 1 and tags_cond == "and" then
-      local list_len = #list
-      -- optimization: exit early when tags_cond == "and" and one of the tags does not return any entities
-      if list_len == 0 then
-        return {}
-      end
-
-      local and_dict = {}
-      local new_tag_id
-      for i = 1, list_len do
-        new_tag_id = list[i]
-        and_dict[new_tag_id] = dict[new_tag_id] -- either true or nil
-      end
-      dict = and_dict
-
-      -- optimization: exit early when tags_cond == "and" and current list is empty
-      if not next(dict) then
-        return {}
-      end
-
-    else -- tags_cond == "or" or first iteration
-      -- the first iteration is the same for both "or" and "and": put all ids into dict
-      for i = 1, #list do
-        dict[list[i]] = true
-      end
-    end
-  end
-
-  local arr = {}
-  local len = 0
-  for entity_id in pairs(dict) do
-    len = len + 1
-    arr[len] = entity_id
-  end
-  sort(arr) -- consistency when paginating results
-
-  return arr
-end
-
-
-local function page_for_key(self, key, size, offset, options)
-  if not size then
-    size = self.connector:get_page_size(options)
-  end
-
-  if offset then
-    local token = decode_base64(offset)
-    if not token then
-      return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
-    end
-
-    local number = tonumber(token)
-    if not number then
-      return nil, self.errors:invalid_offset(offset, "invalid offset")
-    end
-
-    offset = number
-
-  else
-    offset = 1
-  end
-
-  local list, err
-  if options and options.tags then
-    list, err = get_entity_ids_tagged(key, options.tags, options.tags_cond)
-    if err then
-      return nil, err
-    end
-
-  else
-    list, err = unmarshall(lmdb_get(key))
-    if err then
-      return nil, err
-    end
-
-    list = list or {}
-  end
-
-  yield()
-
-  local ret = {}
-  local ret_idx = 1
-  local schema = self.schema
-  local schema_name = schema.name
-
-  local item
-  for i = offset, offset + size - 1 do
-    item = list[i]
-    if not item then
-      offset = nil
-      break
-    end
-
-    -- Tags are stored in the cache entries "tags||@list" and "tags:<tagname>|@list"
-    -- The contents of both of these entries is an array of strings
-    -- Each of these strings has the form "<tag>|<entity_name>|<entity_id>"
-    -- For example "admin|services|<a service uuid>"
-    -- This loop transforms each individual string into tables.
-    if schema_name == "tags" then
-      local tag_name, entity_name, uuid = match(item, "^([^|]+)|([^|]+)|(.+)$")
-      if not tag_name then
-        return nil, "Could not parse tag from cache: " .. tostring(item)
-      end
-
-      item = { tag = tag_name, entity_name = entity_name, entity_id = uuid }
-
-    -- The rest of entities' lists (i.e. "services|<ws_id>|@list") only contain ids, so in order to
-    -- get the entities we must do an additional cache access per entry
-    else
-      item, err = unmarshall(lmdb_get(item))
-      if err then
-        return nil, err
-      end
-    end
-
-    if not item then
-      return nil, "stale data detected while paginating"
-    end
-
-    if schema.ttl then
-      item = process_ttl_field(item)
-    end
-
-    if item then
-      ret[ret_idx] = item
-      ret_idx = ret_idx + 1
-    end
-  end
-
-  if offset then
-    return ret, nil, encode_base64(tostring(offset + size), true)
-  end
-
-  return ret
-end
-
-
-local function select_by_key(schema, key)
-  local entity, err = unmarshall(lmdb_get(key))
+local function construct_entity(schema, value)
+  local entity, err = unmarshall(value)
   if not entity then
     return nil, err
   end
@@ -233,49 +76,140 @@ local function select_by_key(schema, key)
     end
   end
 
+  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+
   return entity
+end
+
+
+-- select item by primary key, if follow is true, then one indirection
+-- will be followed indirection means the value of `key` is not the actual
+-- serialized item, but rather the value is a pointer to the key where
+-- actual serialized item is located. This way this function can be shared
+-- by both primary key lookup as well as unique key lookup without needing
+-- to duplicate the item content
+local function select_by_key(schema, key, follow)
+  if follow then
+    local actual_key, err = lmdb_get(key)
+    if not actual_key then
+        return nil, err
+    end
+
+    return select_by_key(schema, actual_key, false)
+  end
+
+  local entity, err = construct_entity(schema, lmdb_get(key))
+  if not entity then
+    return nil, err
+  end
+
+  return entity
+end
+
+
+local function page_for_prefix(self, prefix, size, offset, options, follow)
+  if not size then
+    size = self.connector:get_page_size(options)
+  end
+
+  offset = offset or prefix
+
+  local res, err_or_more = lmdb_prefix.page(offset, prefix, nil, size)
+  if not res then
+    return nil, err_or_more
+  end
+
+  local ret = {}
+  local ret_idx = 0
+  local schema = self.schema
+  local last_key
+
+  for _, kv in ipairs(res) do
+    last_key = kv.key
+    local item, err
+
+    if follow then
+      item, err = select_by_key(schema, kv.value, false)
+
+    else
+      item, err = construct_entity(schema, kv.value)
+    end
+
+    if err then
+      return nil, err
+    end
+
+    ret_idx = ret_idx + 1
+    ret[ret_idx] = item
+  end
+
+  -- more need to query
+  if err_or_more then
+    return ret, nil, encode_base64(last_key .. "\x00", true)
+  end
+
+  return ret
 end
 
 
 local function page(self, size, offset, options)
   local schema = self.schema
-  local ws_id = ws(schema, options)
-  local key = schema.name .. "|" .. ws_id .. "|@list"
-  return page_for_key(self, key, size, offset, options)
+  local ws_id = workspace_id(schema, options)
+  local prefix = item_key_prefix(schema.name, ws_id)
+
+  if offset then
+    local token = decode_base64(offset)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+    end
+
+    offset = token
+  end
+
+  return page_for_prefix(self, prefix, size, offset, options, false)
 end
 
 
+-- select by primary key
 local function select(self, pk, options)
   local schema = self.schema
-  local ws_id = ws(schema, options)
-  local id = declarative_config.pk_string(schema, pk)
-  local key = schema.name .. ":" .. id .. ":::::" .. ws_id
-  return select_by_key(schema, key)
+  local ws_id = workspace_id(schema, options)
+  local pk = pk_string(schema, pk)
+  local key = item_key(schema.name, ws_id, pk)
+  return select_by_key(schema, key, false)
 end
 
 
+-- select by unique field (including select_by_cache_key)
+-- the DAO guarantees this method only gets called for unique fields
+-- see: validate_foreign_key_is_single_primary_key
 local function select_by_field(self, field, value, options)
+  local schema = self.schema
+
   if type(value) == "table" then
+    -- select by foreign, DAO only support one key for now (no composites)
+    local fdata = schema.fields[field]
+    assert(fdata.type == "foreign")
+    assert(#kong.db[fdata.reference].schema.primary_key == 1)
+
     local _
     _, value = next(value)
   end
 
-  local schema = self.schema
-  local ws_id = ws(schema, options)
+  local ws_id = workspace_id(schema, options)
 
   local key
-  if field ~= "cache_key" then
-    local unique_across_ws = schema.fields[field].unique_across_ws
-    -- only accept global query by field if field is unique across workspaces
-    assert(not options or options.workspace ~= null or unique_across_ws)
+  local unique_across_ws = schema.fields[field].unique_across_ws
+  -- only accept global query by field if field is unique across workspaces
+  assert(not options or options.workspace ~= null or unique_across_ws)
 
-    key = unique_field_key(schema.name, ws_id, field, value, unique_across_ws)
-  else
-    -- if select_by_cache_key, use the provided cache_key as key directly
-    key = value
+  if unique_across_ws then
+    ws_id = get_default_workspace()
   end
 
-  return select_by_key(schema, key)
+  key = unique_field_key(schema.name, ws_id, field, value)
+
+  return select_by_key(schema, key, true)
 end
 
 
@@ -307,8 +241,6 @@ do
   _mt.upsert_by_field = unsupported_by("create or update")
   _mt.delete_by_field = unsupported_by("remove")
   _mt.truncate = function() return true end
-  -- off-strategy specific methods:
-  _mt.page_for_key = page_for_key
 end
 
 
@@ -323,18 +255,17 @@ function off.new(connector, schema, errors)
     -- This is not the id for the default workspace in DB-less.
     -- This is a sentinel value for the init() phase before
     -- the declarative config is actually loaded.
-    kong.default_workspace = "00000000-0000-0000-0000-000000000000"
+    kong.default_workspace = UNINIT_WORKSPACE_ID
   end
 
   local name = schema.name
   for fname, fdata in schema:each_field() do
     if fdata.type == "foreign" then
-      local entity = fdata.reference
       local method = "page_for_" .. fname
       self[method] = function(_, foreign_key, size, offset, options)
-        local ws_id = ws(schema, options)
-        local key = name .. "|" .. ws_id .. "|" .. entity .. "|" .. foreign_key.id .. "|@list"
-        return page_for_key(self, key, size, offset, options)
+        local ws_id = workspace_id(schema, options)
+        local prefix = foreign_field_key_prefix(name, ws_id, fname, foreign_key.id)
+        return page_for_prefix(self, prefix, size, offset, options, true)
       end
     end
   end
