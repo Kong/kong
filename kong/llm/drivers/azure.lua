@@ -47,7 +47,7 @@ function _M.post_request(conf)
   end
 end
 
-function _M.subrequest(body, conf, http_opts, return_res_table)
+function _M.subrequest(body, conf, http_opts, return_res_table, identity_interface)
   local body_string, err
 
   if type(body) == "table" then
@@ -82,6 +82,19 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   if conf.auth and conf.auth.header_name then
     headers[conf.auth.header_name] = conf.auth.header_value
   end
+
+  -- [[ EE
+  if identity_interface and identity_interface.interface then  -- managed identity mode, passed from ai-* handler.lua
+    local _, token, _, err = identity_interface.interface.credentials:get()
+
+    if err then
+      kong.log.err("failed to authenticate with Azure OpenAI, ", err)
+      return kong.response.exit(500, { error = { message = "failed to authenticate with Azure OpenAI" }})
+    end
+
+    headers["Authorization"] = "Bearer " .. token
+  end
+  -- ]]
 
   local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then

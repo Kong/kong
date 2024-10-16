@@ -1,0 +1,3 @@
+message: "**ai-request-transformer**, **ai-response-transformer**: Fixed an issue where Azure Managed Identity did not work for AI Transformer Plugins."
+type: bugfix
+scope: Plugin
