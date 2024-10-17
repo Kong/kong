@@ -1,0 +1,23 @@
+{
+  "object": "chat.completion",
+  "id": "",
+  "created": 1722866733,
+  "model": "mistralai/Mistral-7B-Instruct-v0.2",
+  "system_fingerprint": "2.1.1-sha-4dfdb48",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": " The sum of 1 + 1 is 2. This is a basic arithmetic operation and the answer is always the same: adding one to one results in having two in total."
+      },
+      "logprobs": null,
+      "finish_reason": "eos_token"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 26,
+    "completion_tokens": 40,
+    "total_tokens": 66
+  }
+}
