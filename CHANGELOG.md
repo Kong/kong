@@ -105,7 +105,7 @@ which would improve the latency significantly.
 
 
 - Bumped `Wasmtime` version to `23.0.2`
- [#12930](https://github.com/Kong/kong/issues/12930)
+ [#13567](https://github.com/Kong/kong/pull/13567)
  
 
 
