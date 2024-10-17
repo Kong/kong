@@ -1,0 +1,26 @@
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
+index 037faef..0e6dcd0 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
+@@ -5731,7 +5731,7 @@ ngx_http_lua_socket_keepalive_close_handler(ngx_event_t *ev)
+     ngx_http_lua_socket_pool_t          *spool;
+
+     int                n;
+-    char               buf[1];
++    unsigned char      buf[1];
+     ngx_connection_t  *c;
+
+     c = ev->data;
+@@ -5752,9 +5752,10 @@ ngx_http_lua_socket_keepalive_close_handler(ngx_event_t *ev)
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                    "lua tcp socket keepalive close handler check stale events");
+
+-    n = recv(c->fd, buf, 1, MSG_PEEK);
++    /* consume the possible ssl-layer data implicitly */
++    n = c->recv(c, buf, 1);
+
+-    if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
++    if (n == NGX_AGAIN) {
+         /* stale event */
+
+         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {

@@ -152,12 +152,12 @@ function SSL.wrap(sock, cfg)
    if s then
     local fd = sock:getfd()
     C.SSL_set_fd(s, fd)
-    sock:setfd(SOCKET_INVALID)
 
     local self = setmetatable({
       ssl_ctx = ctx,
       ctx = s,
       fd = fd,
+      sock = sock,
     }, ssl_mt)
 
     return self, nil
@@ -259,9 +259,7 @@ function SSL:send(s)
 end
 
 function SSL:close()
-  if C.SSL_shutdown(self.ctx) ~= 1 then
-    return nil, format_error("SSL_shutdown")
-  end
+  self.sock:close()
   return true
 end
 
