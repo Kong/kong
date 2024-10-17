@@ -104,6 +104,7 @@ return {
           endpoint = typedefs.url {
             referenceable = true,
             deprecation = {
+              replaced_with = { { path = { 'traces_endpoint' } } },
               message = "OpenTelemetry: config.endpoint is deprecated, please use config.traces_endpoint instead",
               removal_in_version = "4.0", },
             func = function(value)
