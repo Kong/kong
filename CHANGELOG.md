@@ -64,7 +64,8 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
  
 
 - Bumped lua-resty-healthcheck from 3.0.1 to 3.1.0 to fix an issue that was causing high memory usage
- [#13532](https://github.com/Kong/kong/issues/13532)
+ [#13038](https://github.com/Kong/kong/issues/13038)
+ [FTI-5847](https://konghq.atlassian.net/browse/FTI-5847)
  
 
 - Bumped lua-resty-lmdb to 1.4.3 to get fixes from the upstream (lmdb 0.9.33), which resolved numerous race conditions and fixed a cursor issue.
@@ -116,12 +117,12 @@ which would improve the latency significantly.
 ##### Configuration
 
 - Configure Wasmtime module cache when Wasm is enabled
- [#13532](https://github.com/Kong/kong/issues/13532)
+  [#12930](https://github.com/Kong/kong/issues/12930)
  
 ##### Core
 
 - **prometheus**: Added `ai_requests_total`, `ai_cost_total` and `ai_tokens_total` metrics in the Prometheus plugin to start counting AI usage.
- [#13532](https://github.com/Kong/kong/issues/13532)
+ [#13148](https://github.com/Kong/kong/issues/13148)
  
 
 - Added a new configuration `concurrency_limit`(integer, default to 1) for Queue to specify the number of delivery timers.
@@ -136,7 +137,7 @@ according to `RFC7230` and `RFC9110`.
  
 
 - Starting from this version, a new DNS client library has been implemented and added into Kong, which is disabled by default. The new DNS client library has the following changes - Introduced global caching for DNS records across workers, significantly reducing the query load on DNS servers. - Introduced observable statistics for the new DNS client, and a new Status API `/status/dns` to retrieve them. - Simplified the logic and make it more standardized
- [#13532](https://github.com/Kong/kong/issues/13532)
+ [#12305](https://github.com/Kong/kong/issues/12305)
  
 ##### PDK
 
@@ -161,7 +162,7 @@ to generate log entries to be reported via the OpenTelemetry plugin.
  [#13428](https://github.com/Kong/kong/issues/13428)
 
 - Allow AI plugin to read request from buffered file
- [#13532](https://github.com/Kong/kong/issues/13532)
+ [#13158](https://github.com/Kong/kong/pull/13158)
  
 
 - **AI-proxy-plugin**: Add `allow_override` option to allow overriding the upstream model auth parameter or header from the caller's request.
@@ -406,7 +407,7 @@ to not be written to the logging plugin(s).
  [#13116](https://github.com/Kong/kong/issues/13116)
 
 - "**AI Plugins**: Fixed an issue for multi-modal inputs are not properly validated and calculated.
- [#13532](https://github.com/Kong/kong/issues/13532)
+ [#13445](https://github.com/Kong/kong/issues/13445)
  
 
 - **OpenTelemetry:** Fixed an issue where migration fails when upgrading from below version 3.3 to 3.7.
