@@ -73,6 +73,16 @@ describe("Admin API - tags", function()
         end
       end)
 
+      it("filter by emtpy tag", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers?tags="
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same("invalid option (tags: tags cannot be null (or empty string))", json.message)
+      end)
+
       it("filter by multiple tags with AND", function()
         local res = assert(client:send {
           method = "GET",
