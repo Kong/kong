@@ -1,4 +1,4 @@
-ARG KONG_BASE_IMAGE=redhat/ubi8
+ARG KONG_BASE_IMAGE=redhat/ubi9
 FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"
@@ -18,7 +18,7 @@ LABEL name="Kong" \
 # RedHat required LICENSE file approved path
 COPY LICENSE /licenses/
 
-ARG PACKAGE_DISTRO=el8
+ARG PACKAGE_DISTRO=el9
 
 ARG KONG_PREFIX=/usr/local/kong
 ENV KONG_PREFIX $KONG_PREFIX

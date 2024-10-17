@@ -1,0 +1,2 @@
+message: "Updated the default base for RPM Dockerfile from UBI 8 to UBI 9."
+type: dependency
