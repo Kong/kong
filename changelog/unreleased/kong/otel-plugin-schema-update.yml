@@ -1,5 +1,5 @@
 message: |
-  Added "replaced_with" in deprecation fields to show the new config path to use instead 
+  Added "replaced_with" in deprecation fields to show the new config path to use instead
   of the deprecated fields in the opentelemetry plugin schema.
 type: bugfix
 scope: Plugin
