@@ -28,6 +28,7 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
 local strip = require("kong.tools.string").strip
 local split = require("kong.tools.string").split
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local getmetatable = getmetatable
@@ -829,21 +830,32 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     "",
   }
 
-  local refs = kong_config["$refs"]
-  local has_refs = refs and type(refs) == "table"
-
-  local secrets
-  if write_process_secrets and has_refs then
-    secrets = process_secrets.extract(kong_config)
-  end
-
   local function quote_hash(s)
     return s:gsub("#", "\\#")
   end
 
+  local refs = kong_config["$refs"]
+  local has_refs = refs and type(refs) == "table"
+  local secrets = process_secrets.extract(kong_config)
+
   for k, v in pairs(kong_config) do
+    -- do not output secrets in .kong_env
     if has_refs and refs[k] then
-      v = refs[k]
+      local ref = refs[k]
+      if type(ref) == "table" then
+        if type(v) ~= "table" then
+          v = { v }
+        else
+          v = shallow_copy(v)
+        end
+
+        for i, r in pairs(ref) do
+          v[i] = r
+        end
+
+      elseif ref then
+        v = ref
+      end
     end
 
     if type(v) == "table" then
@@ -869,7 +881,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     prepare_prefixed_interface_dir("/usr/local/kong", "gui", kong_config)
   end
 
-  if secrets then
+  if secrets and write_process_secrets then
     secrets, err = process_secrets.serialize(secrets, kong_config.kong_env)
     if not secrets then
       return nil, err
