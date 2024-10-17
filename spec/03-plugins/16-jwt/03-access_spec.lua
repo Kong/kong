@@ -735,6 +735,23 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
         assert.equal(rsa_jwt_secret_2.key, body.headers["x-credential-identifier"])
       end)
+      it("proxies the request if conf.secret is base64", function()
+        PAYLOAD.iss = rsa_jwt_secret_2.key
+        local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt5.test"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(authorization, body.headers.authorization)
+        assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
+        assert.equal(rsa_jwt_secret_2.key, body.headers["x-credential-identifier"])
+      end)
     end)
 
     describe("RS512", function()
