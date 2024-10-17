@@ -25,6 +25,8 @@ import {
   isKoko,
   deleteWorkspace,
   eventually,
+  isFipsMode,
+  isGwNative,
 } from '@support';
 
 const agent = new https.Agent({
@@ -479,63 +481,67 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
     expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
   })
 
-  it('should update router to not perform route validation', async function () {
-    await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
-    if (isHybrid) {
-      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
-    }
-
-    await eventually(async () => {
-    // ensure that route validation is set to off
-    const resp = await axios({
-      method: 'get',
-      url: `${adminUrl}`,
-    });
-    logResponse(resp);
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.configuration.route_validation_strategy, 'Route validation should be off').to.equal('off');
-    });
-  })
-
-  it('should create a duplicate route when route validation is off', async function () {
-    const resp = await axios({ 
-      method: 'post',
-      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
-      data: {
-        ...routePayload,
-        name: routePayload.name,
-      },
-    });
-    expect(resp.status, 'Status should be 201').to.equal(201); 
-
-    // validate route was created
-    const respGet = await axios({
-      method: 'get',
-      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
-    });
-    expect(respGet.status, 'Status should be 200').to.equal(200);
-    expect(respGet.data.data.length, 'Should have correct number of routes').to.equal(1);
-    expect(respGet.data.data[0].name, 'Should have correct route name').to.equal(routePayload.name);
-  })
-
-  it('should be able to send request to duplicate route', async function () {
-    const resp = await axios({
-      method: 'get',
-      url: `${proxyUrl}${routePayload.paths[0]}`,
-      headers: { testHeader: 'test' },
-    });
-    logResponse(resp);
-    expect(resp.status, 'Status should be 200').to.equal(200);
-  })
+  if(!isGwNative() && !isFipsMode()) {
+    it('should update router to not perform route validation', async function () {
+      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
+      if (isHybrid) {
+        await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
+      }
+  
+      await eventually(async () => {
+      // ensure that route validation is set to off
+      const resp = await axios({
+        method: 'get',
+        url: `${adminUrl}`,
+      });
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.configuration.route_validation_strategy, 'Route validation should be off').to.equal('off');
+      });
+    })
+  
+    it('should create a duplicate route when route validation is off', async function () {
+      const resp = await axios({ 
+        method: 'post',
+        url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+        data: {
+          ...routePayload,
+          name: routePayload.name,
+        },
+      });
+      expect(resp.status, 'Status should be 201').to.equal(201); 
+  
+      // validate route was created
+      const respGet = await axios({
+        method: 'get',
+        url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+      });
+      expect(respGet.status, 'Status should be 200').to.equal(200);
+      expect(respGet.data.data.length, 'Should have correct number of routes').to.equal(1);
+      expect(respGet.data.data[0].name, 'Should have correct route name').to.equal(routePayload.name);
+    })
+  
+    it('should be able to send request to duplicate route', async function () {
+      const resp = await axios({
+        method: 'get',
+        url: `${proxyUrl}${routePayload.paths[0]}`,
+        headers: { testHeader: 'test' },
+      });
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    })  
+  }
 
   after(async function () {
     await clearAllKongResources();
     await clearAllKongResources(workspaceName);
     await deleteWorkspace(workspaceName);
-    await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
-    // reset data plane
-    if (isHybrid) {
-      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, 'kong-dp1');
+    if(!isGwNative() && !isFipsMode()) {
+      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
+      // reset data plane
+      if (isHybrid) {
+        await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, 'kong-dp1');
+      }
     }
   });
 });

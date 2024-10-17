@@ -74,6 +74,14 @@ export const isGwNative = (): boolean => {
 };
 
 /**
+ * Check if fips mode is enabled
+ * @returns {boolean}
+ */
+export const isFipsMode = (): boolean => {
+  return process.env.FIPS_MODE == 'on' ? true : false;
+};
+
+/**
  * Check if tests are runing for custom plugins
  * @returns {string}
  */

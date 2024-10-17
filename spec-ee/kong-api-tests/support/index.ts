@@ -36,7 +36,8 @@ export {
   getKongVersion,
   getDataPlaneDockerImage,
   isCustomPlugin,
-  getControlPlaneDockerImage
+  getControlPlaneDockerImage,
+  isFipsMode
 } from './config/gateway-vars';
 export {
   createUuidEmail,
