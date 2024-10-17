@@ -18,6 +18,7 @@ jobs:
   build-packages:
     name: Build dependencies
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -81,6 +82,7 @@ jobs:
   perf:
     name: RPS, latency and flamegraphs
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: build-packages
 
     permissions:
