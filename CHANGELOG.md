@@ -65,7 +65,6 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 - Bumped lua-resty-healthcheck from 3.0.1 to 3.1.0 to fix an issue that was causing high memory usage
  [#13038](https://github.com/Kong/kong/issues/13038)
- [FTI-5847](https://konghq.atlassian.net/browse/FTI-5847)
  
 
 - Bumped lua-resty-lmdb to 1.4.3 to get fixes from the upstream (lmdb 0.9.33), which resolved numerous race conditions and fixed a cursor issue.
