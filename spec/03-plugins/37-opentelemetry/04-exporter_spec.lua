@@ -808,7 +808,7 @@ for _, strategy in helpers.each_strategy() do
         }, { "opentelemetry" }))
 
         setup_instrumentations("all", {
-          endpoint = "{vault://env/test_otel_endpoint}",
+          traces_endpoint = "{vault://env/test_otel_endpoint}",
           headers = {
             ["X-Access-Key"] = "{vault://env/test_otel_access_key}",
             ["X-Access-Secret"] = "{vault://env/test_otel_access_secret}",
