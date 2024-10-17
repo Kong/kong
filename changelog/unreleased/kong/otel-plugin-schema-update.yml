@@ -1,0 +1,3 @@
+message: Added replaced_with in deprecation fields to show the new config path to use instead of the deprecated fields in the schema
+type: bugfix
+scope: Plugin
