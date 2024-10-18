@@ -34,8 +34,6 @@ configure_make(
         "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
-    out_include_dir = "include/libexpat",  # don't install headers
-    # out_lib_dir = "lib",
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libexpat.1.dylib",
