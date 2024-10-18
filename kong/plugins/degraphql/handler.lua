@@ -167,7 +167,14 @@ end
 
 
 function DeGraphQLHandler:init_worker()
-  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+  if not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
+  if kong.configuration.database == "off" then
+    kong.worker_events.register(function(data)
+      self:update_router(FORCE)
+    end, "declarative", "reconfigure")
     return
   end
 
