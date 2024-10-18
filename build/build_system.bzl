@@ -75,6 +75,7 @@ def _render_template(ctx, output):
     for l in ctx.attr.srcs + ctx.attr.tools:
         if OutputGroupInfo in l and "gen_dir" in l[OutputGroupInfo]:  # usualy it's foreign_cc target
             gen_dirs = l[OutputGroupInfo].gen_dir.to_list()
+
             # foreign_cc target usually has only one element in gen_dirs
             if len(gen_dirs) == 1:
                 # foreign_cc target usually has the similar path structure

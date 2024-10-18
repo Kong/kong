@@ -11,4 +11,5 @@ def jsonschema_repositories():
         # so we'd better use the same protocol instead of HTTPS
         # for private repositories.
         remote = "git@github.com:Kong/lua-resty-jsonschema-rs.git",
+        build_file = "//build/openresty/jsonschema:BUILD.jsonschema.bazel",
     )
