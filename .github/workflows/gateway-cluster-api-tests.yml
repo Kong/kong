@@ -128,7 +128,7 @@ jobs:
         run: 'gcloud info'
 
       - name: Checkout docker-compose-generator
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator

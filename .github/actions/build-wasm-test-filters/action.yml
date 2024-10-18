@@ -31,7 +31,7 @@ runs:
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: crusty-pie/toolchain@0483ab3fbb1e3e4d4847447ac2fe8012d7d23adf
+      uses: Kong/toolchain@bc77b86dc90d16b1479f85da83d9578122ce97f6
       with:
         profile: minimal
         toolchain: stable
@@ -41,7 +41,7 @@ runs:
 
     - name: cargo build
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: clechasseur/rs-cargo@34eb9ee3e4186e5c7820a54393fbf081f78bc102
+      uses: Kong/cargo@71cae9646805fdef7782eb47d85bf40765c95a41
       with:
         command: build
         # building in release mode yields smaller library sizes, so it's
