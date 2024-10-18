@@ -39,13 +39,13 @@ jobs:
         run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: kong
           ref: ${{ github.event.inputs.source_branch }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-normal
           path: .
@@ -62,7 +62,7 @@ jobs:
         run: make dev LIBRARY_PREFIX=/usr/local/kong
 
       - name: Checkout Kong Docs
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: kong/docs.konghq.com
           path: docs.konghq.com

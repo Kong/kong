@@ -15,12 +15,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: ${{github.event.pull_request.head.repo.full_name}}
           ref: ${{github.event.pull_request.head.ref}}
           submodules: false
-      - uses: jschmid1/chatgpt-action@3e0350fcecd16c2dacd3e26f753abc4078b8a012
+      - uses: jschmid1/chatgpt-action@7255d6fc6efcd1e7996e402463cb86a14ee97463
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -56,13 +56,13 @@ jobs:
         run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev postgresql-client jq
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-normal
           path: .
@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
-          api-key: ${{ secrets.DATADOG_API_KEY }}
+          api_key: ${{ secrets.DATADOG_API_KEY }}
           service: kong-ee-github-actions-ci
           files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
           extra-args: --xpath-tag test.suite=/testcase/@filename

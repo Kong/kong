@@ -95,10 +95,10 @@ jobs:
           fi
 
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout docker-compose-generator
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
@@ -191,7 +191,7 @@ jobs:
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
-          api-key: ${{ secrets.DATADOG_API_KEY }}
+          api_key: ${{ secrets.DATADOG_API_KEY }}
           service: kong-ee-github-actions-ci
           files: spec-ee/kong-api-tests/results/
           extra-args: --xpath-tag test.suite=/testcase/@classname
@@ -231,7 +231,7 @@ jobs:
           slack_url: ${{ secrets.TEST_API_SLACK_WEBHOOK_URL }}
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:

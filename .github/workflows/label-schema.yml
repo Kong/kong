@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ vars.RUNS_ON }}
     steps:
     - name: Schema change label found
-      uses: rtCamp/action-slack-notify@v2
+      uses: Kong/action-slack-notify@91f422d724306b1a2ca72aa8fb71b6e577077ae8 #v2_node20
       continue-on-error: true
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}

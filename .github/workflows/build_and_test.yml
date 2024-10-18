@@ -69,7 +69,7 @@ jobs:
       old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # `git merge-base` requires the history
     - name: Build Info
@@ -168,13 +168,13 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-normal
         path: .
@@ -277,13 +277,13 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-normal
         path: .
@@ -455,14 +455,14 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     # used for plugin compatibility test
     - name: Checkout old version Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: kong-ee-old
         # if the minor version is 0, `ref` will default to ''
@@ -471,13 +471,13 @@ jobs:
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download normal build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-normal
         path: .
 
     - name: Download fips build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       if: ${{ inputs.aarch64 == false }}
       with:
         name: build-fips
@@ -679,7 +679,7 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: busted-test-errlogs-${{ matrix.runner }}
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
@@ -714,7 +714,7 @@ jobs:
       continue-on-error: true
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
       with:
-        api-key: ${{ secrets.DATADOG_API_KEY }}
+        api_key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS }}
         extra-args: --xpath-tag test.suite=/testcase/@filename
@@ -729,7 +729,7 @@ jobs:
 
     - name: Upload core dumps
       if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}-${{ matrix.runner }}
         retention-days: 3
@@ -779,13 +779,13 @@ jobs:
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-normal
         path: .
@@ -830,14 +830,14 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: PDK-test-errlogs
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
         retention-days: 1
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -855,7 +855,7 @@ jobs:
 
     - name: Upload core dumps
       if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
         retention-days: 3
@@ -871,11 +871,11 @@ jobs:
       matrix: "${{ fromJSON(needs.metadata.outputs.matrix)['build-image'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # used for plugin compatibility test
     - name: Checkout old version kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: kong-ee-old
         # if the minor version is 0, `ref` will default to ''
@@ -884,7 +884,7 @@ jobs:
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-${{ matrix.label }}
         path: .
@@ -928,7 +928,7 @@ jobs:
         docker image save -o docker-image/image.tar kong-local/kong-ee:${{ matrix.label }}
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: docker-image-${{matrix.label}}
         path: docker-image/**
@@ -945,13 +945,13 @@ jobs:
 
     steps:
       - name: Clone Kong source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-normal
           path: .
@@ -1019,13 +1019,13 @@ jobs:
         fi
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Checkout kong-pongo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
@@ -1038,7 +1038,7 @@ jobs:
         ln -s $(realpath kong-pongo/pongo.sh) /usr/local/bin/pongo
 
     - name: Download docker image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: docker-image-${{matrix.label}}
         path: docker-images
@@ -1072,7 +1072,7 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: plugins-ee-test-errlogs-${{ matrix.label }}-${{ matrix.split }}
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
@@ -1083,7 +1083,7 @@ jobs:
       # upload test results even if the job fails
       if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }}
       with:
-        api-key: ${{ secrets.DATADOG_API_KEY }}
+        api_key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
         files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
         extra-args: --xpath-tag test.suite=/testcase/@filename
@@ -1101,7 +1101,7 @@ jobs:
 
     steps:
     - name: Checkout source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install requirements
       run: |
@@ -1110,7 +1110,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash

@@ -37,7 +37,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
       # so we don't need to rebuild it everytime. So that also means
       # the "artifacts" here can't be used as a per-commit CD artifact; only
       # the ones from release.yml could.
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           artifacts
@@ -111,7 +111,7 @@ jobs:
         bazel build :kong_deb $bazel_args
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: bazel-outputs
@@ -134,7 +134,7 @@ jobs:
         tar -zcvf artifacts/$BUILD_TAR.tar.gz -C bazel-bin/build/${{ inputs.build-name }} --mode="a+rw" .
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-${{ inputs.label }}
         path: |

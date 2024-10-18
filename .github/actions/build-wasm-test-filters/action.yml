@@ -17,7 +17,7 @@ runs:
         echo "WASM_FILTER_CACHE_PREFIX=wasm-test-filters::v3::${{ runner.os }}" >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       id: restore-cache
       with:
         path: |
@@ -31,7 +31,7 @@ runs:
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/toolchain@v1
+      uses: crusty-pie/toolchain@0483ab3fbb1e3e4d4847447ac2fe8012d7d23adf
       with:
         profile: minimal
         toolchain: stable
@@ -41,7 +41,7 @@ runs:
 
     - name: cargo build
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/cargo@v1
+      uses: clechasseur/rs-cargo@34eb9ee3e4186e5c7820a54393fbf081f78bc102
       with:
         command: build
         # building in release mode yields smaller library sizes, so it's
@@ -56,7 +56,7 @@ runs:
     - name: Save cache
       if: steps.restore-cache.outputs.cache-hit != 'true'
       id: save-cache
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v4
       with:
         path: |
           ~/.cargo/bin/
