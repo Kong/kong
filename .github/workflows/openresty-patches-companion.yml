@@ -7,6 +7,7 @@ on:
 jobs:
   create-pr:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     steps:
       - name: Dispatch the workflow
         if: ${{ github.repository_owner == 'Kong' }}
