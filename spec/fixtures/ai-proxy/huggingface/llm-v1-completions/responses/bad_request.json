@@ -1,0 +1,3 @@
+{
+  "message": "Failed to deserialize the JSON body into the target type: missing field `inputs` at line 9 column 7"
+}
