@@ -1,5 +1,6 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
+local rpc_util = require "kong.runloop.plugin_servers.rpc.util"
 local _
 
 local msgpack do
@@ -26,19 +27,6 @@ local str_find = string.find
 
 local Rpc = {}
 Rpc.__index = Rpc
-
-Rpc.notifications_callbacks = {}
-
-function Rpc.new(socket_path, notifications)
-  kong.log.debug("mp_rpc.new: ", socket_path)
-  return setmetatable({
-    socket_path = socket_path,
-    msg_id = 0,
-    notifications_callbacks = notifications,
-  }, Rpc)
-end
-
-
 
 -- add MessagePack empty array/map
 
@@ -106,48 +94,30 @@ Kong API exposed to external plugins
 --]]
 
 
--- global method search and cache
-local function index_table(table, field)
-  if table[field] then
-    return table[field]
-  end
-
-  local res = table
-  for segment, e in ngx.re.gmatch(field, "\\w+", "jo") do
-    if res[segment[0]] then
-      res = res[segment[0]]
-    else
-      return nil
-    end
-  end
-  return res
-end
-
-
 local get_field
 do
   local method_cache = {}
 
-  function get_field(method)
+  function get_field(pdk, method)
     if method_cache[method] then
       return method_cache[method]
 
     else
-      method_cache[method] = index_table(Rpc.exposed_api, method)
+      method_cache[method] = rpc_util.index_table(pdk, method)
       return method_cache[method]
     end
   end
 end
 
 
-local function call_pdk_method(cmd, args)
-  local method = get_field(cmd)
+local function call_pdk_method(pdk, cmd, args)
+  local method = get_field(pdk, cmd)
   if not method then
     kong.log.err("could not find pdk method: ", cmd)
     return
   end
 
-  local saved = Rpc.save_for_later[coroutine.running()]
+  local saved = pdk.get_saved_req_data()
   if saved and saved.plugin_name then
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
@@ -203,7 +173,7 @@ function Rpc:call(method, ...)
   self.msg_id = self.msg_id + 1
   local msg_id = self.msg_id
 
-  local c, err = ngx.socket.connect("unix:" .. self.socket_path)
+  local c, err = ngx.socket.connect("unix:" .. self.plugin.server_def.socket)
   if not c then
     kong.log.err("trying to connect: ", err)
     return nil, err
@@ -278,7 +248,7 @@ end
 
 
 function Rpc:notification(label, args)
-  local f = self.notifications_callbacks[label]
+  local f = self.plugin.rpc_notifications[label]
   if f then
     f(self, args)
   end
@@ -311,6 +281,7 @@ local function bridge_loop(instance_rpc, instance_id, phase)
     end
 
     local pdk_res, pdk_err = call_pdk_method(
+      instance_rpc.plugin.exposed_api,
       step_in.Data.Method,
       step_in.Data.Args)
 
@@ -327,8 +298,10 @@ local function bridge_loop(instance_rpc, instance_id, phase)
 end
 
 
-function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id, err = self.get_instance_id(plugin_name, conf)
+function Rpc:handle_event(conf, phase)
+  local plugin_name = self.plugin.name
+
+  local instance_id, err = self.plugin.instance_callbacks.get_instance_id(self.plugin, conf)
   if not err then
     _, err = bridge_loop(self, instance_id, phase)
   end
@@ -337,16 +310,24 @@ function Rpc:handle_event(plugin_name, conf, phase)
     local err_lowered = err:lower()
 
     if str_find(err_lowered, "no plugin instance") then
-      self.reset_instance(plugin_name, conf)
+      self.plugin.instance_callbacks.reset_instance(plugin_name, conf)
       kong.log.warn(err)
-      return self:handle_event(plugin_name, conf, phase)
+      return self:handle_event(conf, phase)
     end
 
     kong.log.err(err)
   end
 end
 
+local function new(plugin)
+  local self = setmetatable({
+    msg_id = 0,
+    plugin = plugin,
+  }, Rpc)
+  return self
+end
 
 
-
-return Rpc
+return {
+  new = new,
+}

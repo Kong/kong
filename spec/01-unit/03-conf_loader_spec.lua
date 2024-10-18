@@ -2695,4 +2695,80 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("pluginserver config", function()
+    describe("fails if", function()
+      it("no query_command and not found in default location", function()
+        local _, err = conf_loader(nil, {
+          pluginserver_names = "gopher",
+          -- query_command = {},
+        })
+        assert.is_not_nil(err)
+        assert.matches("query_command undefined for pluginserver gopher", err)
+      end)
+    end)
+    describe("warns if", function()
+      it("no start_command (meaning process is externally maintained)", function()
+        local spy_log = spy.on(log, "warn")
+
+        finally(function()
+          log.warn:revert()
+          assert:unregister("matcher", "str_match")
+        end)
+
+        assert:register("matcher", "str_match", function (_state, arguments)
+          local expected = arguments[1]
+          return function(value)
+            return string.match(value, expected) ~= nil
+          end
+        end)
+
+        local _, err = conf_loader(nil, {
+          pluginserver_names = "gopher",
+          pluginserver_gopher_query_cmd = "gopher -dump",
+        })
+        assert.is_nil(err)
+        assert.spy(spy_log).was_called(1)
+        assert.spy(spy_log).was_called_with("start_command undefined for pluginserver gopher; assuming external process management")
+      end)
+    end)
+    it("fills in default settings", function()
+      -- mock default conf loader path - as we cannot
+      -- reliably write in the default path (/usr/local/bin)
+      package.loaded["kong.conf_loader"] = nil
+      local conf_constants = require"kong.conf_loader.constants"
+      conf_constants.DEFAULT_PLUGINSERVER_PATH = helpers.external_plugins_path .. "/go"
+      local conf_loader = require"kong.conf_loader"
+
+      helpers.build_go_plugins(helpers.external_plugins_path .. "/go")
+
+      finally(function()
+        package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
+      end)
+
+      local conf, err = conf_loader(nil, {
+        pluginserver_names = "go-hello",
+        -- leave out start_command and query_command so that the defaults
+        -- are used
+      })
+      assert.is_nil(err)
+      assert.same("go-hello", conf.pluginservers[1].name)
+      assert.same("./spec/fixtures/external_plugins/go/go-hello -dump", conf.pluginservers[1].query_command)
+      assert.same("./spec/fixtures/external_plugins/go/go-hello", conf.pluginservers[1].start_command)
+      assert.same(conf.prefix .. "/go-hello.socket", conf.pluginservers[1].socket)
+    end)
+    it("accepts custom settings", function()
+      local conf, err = conf_loader(nil, {
+        pluginserver_names = "gopher",
+        pluginserver_gopher_query_cmd = "gopher -dump",
+        pluginserver_gopher_start_cmd = "gopher -p $KONG_PREFIX",
+        pluginserver_gopher_socket = "/foo/bar/gopher.socket",
+      })
+      assert.is_nil(err)
+      assert.same("gopher", conf.pluginservers[1].name)
+      assert.same("gopher -dump", conf.pluginservers[1].query_command)
+      assert.same("gopher -p $KONG_PREFIX", conf.pluginservers[1].start_command)
+      assert.same("/foo/bar/gopher.socket", conf.pluginservers[1].socket)
+    end)
+  end)
 end)

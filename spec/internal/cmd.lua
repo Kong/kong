@@ -272,8 +272,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   -- go plugins are enabled
   --  compile fixture go plugins if any setting mentions it
   for _,v in pairs(env) do
-    if type(v) == "string" and v:find(CONSTANTS.GO_PLUGIN_PATH) then
-      build_go_plugins(CONSTANTS.GO_PLUGIN_PATH)
+    if type(v) == "string" and v:find(CONSTANTS.EXTERNAL_PLUGINS_PATH .. "/go") then
+      build_go_plugins(CONSTANTS.EXTERNAL_PLUGINS_PATH .. "/go")
       break
     end
   end
@@ -471,5 +471,7 @@ return {
   kill_all = kill_all,
   signal = signal,
   signal_workers = signal_workers,
+
+  build_go_plugins = build_go_plugins,
 }
 
