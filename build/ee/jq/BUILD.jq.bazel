@@ -38,7 +38,8 @@ configure_make(
     linkopts = [
         "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
     ],
-    # out_lib_dir = "lib",
+    out_bin_dir = "bin",
+    out_binaries = ["jq"],
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libjq.dylib",

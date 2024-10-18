@@ -29,6 +29,20 @@ EXPAT_DIR=$root_path/$libexpat_path
 LIBXML2_DIR=$root_path/$libxml2_path
 OPENSSL_DIR=$root_path/$openssl_path
 
+# The Bazel rules doesn't export the `libexpat.so` file,
+# it only exports something like `libexpat.so.1.6.0`,
+# but the linker expects `libexpat.so` to be present.
+# So we create a symlink to the actual file
+# if it doesn't exist.
+if ! test -e $EXPAT_DIR/lib/libexpat.so; then
+    so=$(ls $EXPAT_DIR/lib/libexpat.*)
+    if [[ -z $so ]]; then
+        echo "No expat library found in $EXPAT_DIR/lib"
+        exit 1
+    fi
+    ln -s $so $EXPAT_DIR/lib/libexpat.so
+fi
+
 # we use system libyaml on macos
 if [[ "$OSTYPE" == "darwin"* ]]; then
      YAML_DIR=$(HOME=~$(whoami) PATH=/opt/homebrew/bin:$PATH brew --prefix)/opt/libyaml

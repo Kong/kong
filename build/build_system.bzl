@@ -74,7 +74,23 @@ def _render_template(ctx, output):
     substitutions = dict(ctx.attr.substitutions)
     for l in ctx.attr.srcs + ctx.attr.tools:
         if OutputGroupInfo in l and "gen_dir" in l[OutputGroupInfo]:  # usualy it's foreign_cc target
-            p = l[OutputGroupInfo].gen_dir.to_list()[0].path
+            gen_dirs = l[OutputGroupInfo].gen_dir.to_list()
+            # foreign_cc target usually has only one element in gen_dirs
+            if len(gen_dirs) == 1:
+                # foreign_cc target usually has the similar path structure
+                # bazel-out/k8-fastbuild/bin/external/<name>/copy_<name>/<name>
+                segments = gen_dirs[0].path.split("/")
+                if len(segments) >= 2 and segments[-2] == "copy_" + segments[-1]:
+                    # go up to the copy_<name> directory and then go down to the <name> directory
+                    # For example,
+                    # bazel-out/k8-fastbuild/bin/external/openssl/copy_openssl/openssl ->
+                    # bazel-out/k8-fastbuild/bin/external/openssl/openssl
+                    p = gen_dirs[0].path + "/../../" + segments[-1]
+                else:
+                    fail("expect a target of rules_foreign_cc")
+            else:
+                fail("expect a target of rules_foreign_cc")
+
         else:  # otherwise it's usually output from gen_rule, file_group etc
             files = l.files.to_list()
             p = files[0].path
@@ -324,6 +340,7 @@ def _kong_install_impl(ctx):
         outputs.append(output)
 
         if full_path.find(".so.") >= 0 and ctx.attr.create_dynamic_library_symlink:
+            # libX.so.2.3.4 -> ["libX", "so", "2", "3", "4"]
             el = full_path.split(".")
             si = el.index("so")
             sym_paths = []
