@@ -1,0 +1,3 @@
+message: "**JWT Signer**: Supported `/jwt-signer/jwks` endpoint in dbless mode"
+type: feature
+scope: Plugin

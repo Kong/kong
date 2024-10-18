@@ -166,6 +166,8 @@ local jwk = schema.define {
 return {
   {
     name                = "jwt_signer_jwks",
+    dao                 = "kong.plugins.jwt-signer.daos.jwt_signer_jwks",
+    admin_api_name      = "jwt-signer/jwks",
     primary_key         = { "id" },
     cache_key           = { "name" },
     endpoint_key        = "name",
@@ -174,7 +176,7 @@ return {
       { id = typedefs.uuid },
       {
         name = {
-          type= "string",
+          type = "string",
           required = true,
           unique = true,
         },

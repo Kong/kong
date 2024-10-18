@@ -281,6 +281,19 @@ describe(fmt("%s - dbless specific tests", plugin_name), function()
       "jwt_signer_jwks",
     }, { plugin_name })
 
+    local route2 = bp.routes:insert({ paths = { "/keyset2" } })
+    bp.plugins:insert({
+      name = plugin_name,
+      route = route2,
+      config = {
+        verify_access_token_signature = false,
+        access_token_signing_algorithm = "ES256",
+        access_token_upstream_header = "Authorization:Bearer",
+        access_token_keyset = "kong_service",
+        channel_token_optional = true,
+      }
+    })
+
     local route = bp.routes:insert({ paths = { "/keyset" } })
 
     bp.plugins:insert({
@@ -345,5 +358,52 @@ describe(fmt("%s - dbless specific tests", plugin_name), function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     assert.is_table(json.keys[1])
+  end)
+
+  it("get public key", function()
+    local access_token = assert(jws.encode(token))
+    local credential = "Bearer " .. access_token
+
+    -- load once first to make sure the jwks exists
+    assert(proxy_client:send {
+      method = "GET",
+      path = "/keyset2",
+      headers = {
+        ["Authorization"] = credential,
+      }
+    })
+
+    local res, err = assert(admin_client:send {
+      method = "GET",
+      path = "/jwt-signer/jwks"
+    })
+    assert.is_nil(err)
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+   
+    assert.is_table(json.data)
+    assert.is_not_nil(json.data[1])
+    assert.equal(2, #json.data)
+
+    -- pageation
+    local next = "/jwt-signer/jwks?size=1"
+    for i = 1, 2, 1 do
+      local res, err = assert(admin_client:send {
+        method = "GET",
+        path = next
+      })
+      assert.is_nil(err)
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_not_nil(json.data[1])
+      assert.equal(1, #json.data)
+      if (i == 1) then
+        assert.is_not_nil(json.next)
+      else
+        assert.is_nil(json.offset)
+        break
+      end
+      next = json.next
+    end
   end)
 end)

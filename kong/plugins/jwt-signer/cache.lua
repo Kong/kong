@@ -35,14 +35,69 @@ local kong        = kong
 local get_cert    = certificate.get_certificate
 local fmt         = string.format
 
-
-local KEYS = {}
-
+local JWKS_CACHE_KEY = "JWT_SIGNER_JWKS:GLOBAL"
 
 local function cache_jwks(data)
   return data
 end
 
+local strategy
+
+local strategies = {
+  ["postgres"] = {
+    store_keys = function(name, row)
+      row.id = nil
+      return kong.db.jwt_signer_jwks:upsert_by_name(name, row)
+    end,
+    select = function(name)
+      log("loading jwks from database for ", name)
+
+      local row, err
+
+      if utils.is_valid_uuid(name) then
+        row, err = kong.db.jwt_signer_jwks:select { id = name }
+      else
+        row, err = kong.db.jwt_signer_jwks:select_by_name(name)
+      end
+
+      return row, err
+    end,
+    select_all_keys = function()
+      local rows = {}
+      for row in kong.db.jwt_signer_jwks:each() do
+        table.insert(rows, row)
+      end
+
+      return rows
+    end
+  },
+  ["off"] = {
+    store_keys = function(name, row)
+      if not row then
+        return nil
+      end
+
+      local jwks_cache, err = kong.cache:get(JWKS_CACHE_KEY, nil, cache_jwks, {})
+      if err then
+        return nil, err
+      end
+      kong.cache:invalidate(JWKS_CACHE_KEY)
+      row.name = name
+      jwks_cache[name] = row
+      kong.cache:get(JWKS_CACHE_KEY, nil, cache_jwks, jwks_cache)
+
+      return row
+    end,
+    select = function(name)
+      local jwks_cache = kong.cache:get(JWKS_CACHE_KEY)
+      local row = jwks_cache and jwks_cache[name]
+      return row
+    end,
+    select_all_keys = function()
+      return kong.cache:get(JWKS_CACHE_KEY, nil, cache_jwks, {})
+    end
+  }
+}
 
 local function warmup(premature)
   if premature then
@@ -66,7 +121,8 @@ end
 
 
 local function init_worker()
-  KEYS = {}
+  kong.cache:invalidate(JWKS_CACHE_KEY)
+  strategy = strategies[kong.configuration.database]
 
   if worker_id() == 0 then
     local ok, err = timer_at(0, warmup)
@@ -117,31 +173,17 @@ end
 
 local rediscover_keys
 
+local function create_keys_object(row, name, current_keys)
+  local now = time()
 
-local function load_keys_db(name)
-  log("loading jwks from database for ", name)
-
-  local row, err
-
-  if utils.is_valid_uuid(name) then
-    row, err = kong.db.jwt_signer_jwks:select { id = name }
-  else
-    row, err = kong.db.jwt_signer_jwks:select_by_name(name)
-  end
-
-  if kong.configuration.database == "off" then
-    if not row then
-      row = KEYS[name]
-      if row then
-        return row
-      end
-
-    else
-      KEYS[name] = row
-    end
-  end
-
-  return row, err
+  return {
+    id = row and row.id or utils.uuid(),
+    name = name,
+    keys = current_keys,
+    previous = row and row.keys,
+    created_at = row and row.created_at or now,
+    updated_at = now,
+  }
 end
 
 
@@ -157,14 +199,12 @@ end
 
 
 local function rotate_keys(name, row, update, force, ret_err, opts)
-  local now = time()
   local is_http = find(name, "http://", 1, true) == 1
   local is_https = find(name, "https://", 1, true) == 1
   local is_uri = is_http or is_https
   local need_load
   local action
   local current_keys, err, err_str
-  local stored_data
 
   if is_uri then
     action = "loading jwks from "
@@ -238,40 +278,17 @@ local function rotate_keys(name, row, update, force, ret_err, opts)
     end
 
     if current_keys then
-      local id = row and row.id
+      local keys_object = create_keys_object(row, name, current_keys)
+      row, err = strategy.store_keys(name, keys_object)
+      if err then
+        err_str = fmt("unable to upsert %s jwks to database or cache (%s)", name, err or "unknown error")
 
-      row = {
-        name = name,
-        keys = current_keys,
-        previous = row and row.keys,
-        created_at = row and row.created_at or now,
-        updated_at = now,
-      }
-
-      if kong.configuration.database == "off" then
-        row.id = id or utils.uuid()
-        KEYS[name] = row
-        local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
-        kong.cache:invalidate_local(cache_key)
-        kong.cache:get(cache_key, nil, cache_jwks, row)
-
-      else
-        stored_data, err = kong.db.jwt_signer_jwks:upsert_by_name(name, row)
-        if stored_data then
-          row = stored_data
-
-        else
-          err_str = fmt("unable to upsert %s jwks to database (%s)", name, err or "unknown error")
-
-          if ret_err then
-            return nil, err_str
-          end
-
-          log.warn(err_str)
-          row.id = id or utils.uuid()
+        if ret_err then
+          return nil, err_str
         end
-      end
 
+        log.warn(err_str)
+      end
     else
       err_str = fmt("%s%s failed: %s", action, name, err or "unknown error")
 
@@ -282,38 +299,19 @@ local function rotate_keys(name, row, update, force, ret_err, opts)
       log.warn(err_str)
 
       if not row then
-        if kong.configuration.database == "off" then
-          if KEYS[name] then
-            log.notice("falling back to cached jwks")
-            row = KEYS[name]
+        row, err = strategy.select(name)
+        if err then
+          err_str = fmt("failed to load %s jwks from database or cache (%s)", name, err)
+
+          if ret_err then
+            return nil, err_str
           end
-
-        else
-          stored_data, err = kong.db.jwt_signer_jwks:select_by_name(name)
-          if stored_data then
-            log.notice("falling back to stored jwks")
-            row = stored_data
-
-          elseif err then
-            err_str = fmt("failed to load %s jwks from database (%s)", name, err)
-
-            if ret_err then
-              return nil, err_str
-            end
-
-            log.warn(err_str)
-          end
+          log.warn(err_str)
         end
 
         if not row then
           log.warn("falling back to empty jwks")
-          row = {
-            id = utils.uuid(),
-            name = name,
-            keys = {},
-            created_at = now,
-            updated_at = now,
-          }
+          row = create_keys_object(nil, name, {})
         end
       end
     end
@@ -341,8 +339,19 @@ end
 
 
 local function get_keys(name)
-  local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
-  return kong.cache:get(cache_key, nil, load_keys_db, name)
+  if kong.configuration.database == "off" then
+    return strategy.select(name)
+  end
+
+  local cache_strategy = strategies["off"]
+  local row = cache_strategy.select(name)
+
+  if not row then
+    row = strategy.select(name)
+    cache_strategy.store_keys(name, row)
+  end
+
+  return row
 end
 
 
@@ -546,11 +555,15 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
   return introspect_uri(endpoint, opaque_token, hint, authorization, args, timeout)
 end
 
+local function get_all_keys()
+  return strategy.select_all_keys()
+end
 
 return {
   init_worker   = init_worker,
   load_keys     = load_keys,
   get_keys      = get_keys,
+  get_all_keys  = get_all_keys,
   load_consumer = load_consumer,
   rotate_keys   = rotate_keys,
   introspect    = introspect,

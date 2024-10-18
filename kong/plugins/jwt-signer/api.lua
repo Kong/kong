@@ -10,8 +10,6 @@ local endpoints = require "kong.api.endpoints"
 local json  = require "cjson.safe"
 
 
-local escape_uri = ngx.escape_uri
-local fmt = string.format
 local setmetatable = setmetatable
 local ipairs = ipairs
 local kong = kong
@@ -106,29 +104,8 @@ return {
   ["/jwt-signer/jwks"] = {
     schema = jwks_schema,
     methods = {
-      GET = function(self, db)
-        -- TODO: Remove hardcoded method "page" once 4f90ae61c gets on ee
-        local jwks, _, err_t, offset = endpoints.page_collection(self, db, jwks_schema, "page")
-
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-        for i, row in ipairs(jwks) do
-          jwks[i] = post_process_keys(row)
-        end
-
-        local next_page
-        if offset then
-          next_page = fmt("jwt-signer/jwks?offset=%s", escape_uri(offset))
-        else
-          next_page = null
-        end
-
-        return kong.response.exit(200, {
-          data      = jwks,
-          offset    = offset,
-          next      = next_page,
-        })
+      GET = function(self, db, helpers)
+        return endpoints.get_collection_endpoint(jwks_schema, nil, nil, "page")(self, db, helpers, post_process_keys)
       end,
     },
   },
@@ -137,12 +114,7 @@ return {
     schema = jwks_schema,
     methods = {
       GET = function(self, db)
-        local row, _, err
-        if kong.configuration.database == "off" then
-          row, err = cache.get_keys(self.params.jwt_signer_jwks)
-        else
-          row, _, err = endpoints.select_entity(self, db, jwks_schema)
-        end
+        local row, _, err = endpoints.select_entity(self, db, jwks_schema)
         if err then
           return endpoints.handle_error(err)
         elseif row == nil then
