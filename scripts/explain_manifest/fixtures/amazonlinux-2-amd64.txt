@@ -299,7 +299,7 @@
   - libc.so.6
   - ld-linux-x86-64.so.2
 
-- Path      : /usr/local/openresty/site/lualib/liblua_resty_json_threat_protection.so
+- Path      : /usr/local/openresty/site/lualib/libjson_threat_protection.so
   Needed    :
   - libgcc_s.so.1
   - librt.so.1

@@ -94,7 +94,10 @@ json_threat_protection_repositories()
 
 load("@json_threat_protection//build:deps.bzl", "json_threat_protection_dependencies")
 
-json_threat_protection_dependencies(cargo_home_isolated = False)
+json_threat_protection_dependencies(
+    "//:Cargo.Bazel.lock",
+    cargo_home_isolated = False,
+)
 
 load("@json_threat_protection//build:crates.bzl", "json_threat_protection_crates")
 

@@ -87,7 +87,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
             .functions \
             .contain("simdjson_ffi_state_new")
 
-    expect("/usr/local/openresty/site/lualib/liblua_resty_json_threat_protection.so", "lua-resty-json-threat-protection should have ffi module compiled") \
+    expect("/usr/local/openresty/site/lualib/libjson_threat_protection.so", "json-threat-protection should have ffi module compiled") \
         .functions \
         .contain("validator_new_from_json")
 

@@ -148,7 +148,7 @@ luaclib_deps = [
     "@atc_router",
     # EE only
     "@jsonschema//:lua_resty_jsonschema_rs",
-    "@json_threat_protection//:lua_resty_json_threat_protection",
+    "@json_threat_protection",
 ]
 
 # TODO: merge into luaclib_deps once amazonlinux2 support is dropped

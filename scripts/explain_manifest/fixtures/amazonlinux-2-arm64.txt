@@ -312,7 +312,7 @@
   - libdl.so.2
   - libc.so.6
 
-- Path      : /usr/local/openresty/site/lualib/liblua_resty_json_threat_protection.so
+- Path      : /usr/local/openresty/site/lualib/libjson_threat_protection.so
   Needed    :
   - libgcc_s.so.1
   - libpthread.so.0
