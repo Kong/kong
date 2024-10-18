@@ -1,0 +1,3 @@
+message: "**response-ratelimiting**: Fixed missing upstream headers."
+type: bugfix
+scope: Plugin
