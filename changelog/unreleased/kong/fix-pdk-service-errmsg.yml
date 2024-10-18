@@ -1,0 +1,3 @@
+message: "**PDK**: fix the error message in `kong.pdk.service.set_retries`"
+scope: PDK
+type: bugfix
