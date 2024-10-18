@@ -1707,6 +1707,7 @@ local function new(self)
     init_worker()
   end
 
+
   ---
   -- Warmups vault caches from config.
   --
