@@ -5,12 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local reports           = require("kong.reports")
-local new_tab           = require("table.new")
-local request_id        = require("kong.observability.tracing.request_id")
-local Queue             = require("kong.tools.queue")
-local pb                = require("pb")
-local protoc            = require("protoc")
+local reports            = require("kong.reports")
+local new_tab            = require("table.new")
+local request_id         = require("kong.observability.tracing.request_id")
+local telemetry_dispatcher = require ("kong.clustering.telemetry_dispatcher")
+local Queue              = require("kong.tools.queue")
+local pb                 = require("pb")
+local protoc             = require("protoc")
+
 local is_http_module    = ngx.config.subsystem == "http"
 local log               = ngx.log
 local INFO              = ngx.INFO
@@ -36,11 +38,8 @@ local Queue_enqueue     = Queue.enqueue
 local get_rl_header     = require("kong.pdk.private.rate_limiting").get_stored_response_header
 
 local _log_prefix                         = "[analytics] "
-local DELAY_LOWER_BOUND                   = 0
-local DELAY_UPPER_BOUND                   = 3
 local DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT = 100000
 local DEFAULT_ANALYTICS_FLUSH_INTERVAL    = 1
-local KEEPALIVE_INTERVAL                  = 1
 local KONG_VERSION                        = kong.version
 
 
@@ -56,7 +55,6 @@ p:addpath("/usr/local/kong/include")
 p:addpath("kong/include")
 p:loadfile("kong/model/analytics/payload.proto")
 
-local EMPTY_PAYLOAD = pb.encode("kong.model.analytics.Payload", {})
 local LOG_SERILIZER_OPTS = {
   __skip_fetch_headers__ = true,
 }
@@ -71,64 +69,13 @@ local function strip_query(str)
 end
 
 
-local function keepalive_handler(premature, self)
-  if premature then
-    return
-  end
-
-  if not self.ws_send_func then
-    log(INFO, _log_prefix, "no analytics websocket connection, skipping this round of keepalive")
-    return
-  end
-
-  -- Random delay to avoid thundering herd.
-  -- We should not do this at the beginning of this function
-  -- because this will block the coroutine the timer is running in
-  -- even if we don't need to send the keepalive message (no connection).
-  -- So we should do this after we check if the connection is available.
-  ngx.sleep(KEEPALIVE_INTERVAL + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND))
-
-  -- DO NOT YIELD IN THIS SECTION [[
-  -- the connection might be closed after the ngx.sleep (yielding)
-  if not self.ws_send_func then
-    log(INFO, _log_prefix, "no analytics websocket connection, skipping this round of keepalive")
-    return
-  end
-
-  self.ws_send_func(EMPTY_PAYLOAD)
-  -- DO NOT YIELD IN THIS SECTION ]]
-end
-
-
-local function send_entries(self, entries)
-  -- DO NOT YIELD IN THIS SECTION [[
-  -- the connection might be closed after the yielding
-
-  if not self.ws_send_func then
-    -- let the queue know that we are not able to send the entries
-    -- so it can retry later or drop them after serveral retries
-    return false, "no connection to analytics service"
-  end
-
-  local bytes = assert(pb.encode("kong.model.analytics.Payload", {
-    data = entries,
-  }))
-  self.ws_send_func(bytes)
-  -- DO NOT YIELD IN THIS SECTION ]]
-
-  return true
-end
-
-
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
 
   local self = {
     cluster_endpoint = kong.configuration.cluster_telemetry_endpoint,
     path = "analytics/reqlog",
-    ws_send_func = nil,
-    keepalive_timer = nil, -- the handle of the timer to do keepalive for analytics service
-    running = false,
+    reporter = nil,
     queue_conf = {
       name = "konnect_analytics_queue",
       log_tag = "konnect_analytics_queue",
@@ -178,7 +125,7 @@ function _M:init_worker()
     return false
   end
 
-  if self.initialized then
+  if self:is_reporter_initialized() then
     log(WARN, _log_prefix, "tried to initialize kong.analytics (already initialized)")
     return true
   end
@@ -193,21 +140,14 @@ function _M:init_worker()
     "&node_version=" .. KONG_VERSION
 
   local server_name = get_server_name()
-  local clustering = kong.clustering or require("kong.clustering").new(kong.configuration)
 
-  assert(ngx.timer.at(0, clustering.telemetry_communicate, clustering, uri, server_name, function(connected, send_func)
-    if connected then
-      ngx.log(ngx.INFO, _log_prefix, "worker id: ", (ngx.worker.id() or -1), ". analytics websocket is connected: ", uri)
-      self.ws_send_func = send_func
-
-    else
-      ngx.log(ngx.INFO, _log_prefix, "worker id: ", (ngx.worker.id() or -1), ". analytics websocket is disconnected: ", uri)
-      self.ws_send_func = nil
-    end
-  end), nil)
-
-  self.initialized = true
-  self:start()
+  self.reporter = assert(telemetry_dispatcher.new({
+    name = "analytics",
+    server_name = server_name,
+    uri = uri,
+    pb_def_empty = "kong.model.analytics.Payload",
+  }))
+  self.reporter:init_connection()
 
   if ngx.worker.id() == 0 then
     reports.add_ping_value("konnect_analytics", true)
@@ -217,8 +157,19 @@ function _M:init_worker()
 end
 
 
+function _M:is_reporter_initialized()
+  return self.reporter and self.reporter:is_initialized()
+end
+
+
+function _M:is_reporter_running()
+  return self.reporter and self.reporter:is_running()
+end
+
+
 function _M:enabled()
-  return kong.configuration.konnect_mode and self.initialized and self.running
+  return kong.configuration.konnect_mode and
+         self:is_reporter_initialized() and self:is_reporter_running()
 end
 
 
@@ -228,62 +179,31 @@ function _M:register_config_change(events_handler)
       kong.configuration.konnect_mode)
 
     if kong.configuration.konnect_mode then
-      if not self.initialized then
+      if not self:is_reporter_initialized() then
         self:init_worker()
       end
-      if not self.running then
+      if not self:is_reporter_running() then
         self:start()
       end
-    elseif self.running then
+    elseif self:is_reporter_running() then
       self:stop()
     end
 
   end, "kong:configuration", "change")
 end
 
-
 function _M:start()
-  local hdl, err = kong.timer:named_every(
-    "konnect_analytics_keepalive",
-    KEEPALIVE_INTERVAL,
-    keepalive_handler,
-    self
-  )
-  if not hdl then
-    local msg = string.format(
-      "failed to start the initial analytics timer for worker %d: %s",
-      ngx.worker.id(), err
-    )
-    log(ERR, _log_prefix, msg)
+  if not self.reporter then
+    return nil, "reporter not initialized"
   end
-
-  log(INFO, _log_prefix, "initial analytics keepalive timer started for worker ", ngx.worker.id())
-
-  self.keepalive_timer = hdl
-  self.running = true
+  self.reporter:start()
 end
 
-
 function _M:stop()
-  log(INFO, _log_prefix, "stopping analytics")
-  self.running = false
-
-  if not self.keepalive_timer then
-    log(INFO, _log_prefix, "no analytics keepalive timer to stop for worker ", ngx.worker.id())
-    return
+  if not self.reporter then
+    return nil, "reporter not initialized"
   end
-
-  local ok, err = kong.timer:cancel(self.keepalive_timer)
-  if not ok then
-    local msg = string.format(
-      "failed to stop the analytics keepalive timer for worker %d: %s",
-      ngx.worker.id(), err
-    )
-    log(ERR, _log_prefix, msg)
-  end
-
-  self.keepalive_timer = nil
-  log(INFO, _log_prefix, "analytics keepalive timer stopped for worker ", ngx.worker.id())
+  self.reporter:stop()
 end
 
 
@@ -663,6 +583,16 @@ function _M:split(str, sep)
 end
 
 
+local function encode_and_send(conf, data)
+  local reporter = conf.reporter
+  local payload = assert(pb.encode("kong.model.analytics.Payload", {
+    data = data,
+  }))
+
+  return reporter:send(payload)
+end
+
+
 function _M:log_request()
   if not self:enabled() then
     return
@@ -676,10 +606,14 @@ function _M:log_request()
     return
   end
 
+  local handler_conf = {
+    reporter = self.reporter,
+  }
+
   local ok, err = Queue_enqueue(
     queue_conf,
-    send_entries,
-    self,
+    encode_and_send,
+    handler_conf,
     self:create_payload(kong.log.serialize(LOG_SERILIZER_OPTS))
   )
 

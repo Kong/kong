@@ -119,6 +119,7 @@ build = {
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
+    ["kong.clustering.telemetry_dispatcher"] = "kong/clustering/telemetry_dispatcher.lua",
 
     ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
     ["kong.clustering.services.sync.rpc"] = "kong/clustering/services/sync/rpc.lua",
