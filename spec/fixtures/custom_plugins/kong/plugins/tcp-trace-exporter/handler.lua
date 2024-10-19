@@ -22,6 +22,19 @@ local _M = {
 
 local tracer_name = "tcp-trace-exporter"
 
+function _M:certificate(config)
+  if not config.custom_spans then
+    return
+  end
+
+  local tracer = kong.tracing(tracer_name)
+
+  local span = tracer.start_span("certificate", {
+    parent = kong.tracing.active_span(),
+  })
+  tracer.set_active_span(span)
+end
+
 function _M:rewrite(config)
   if not config.custom_spans then
     return
@@ -70,6 +83,21 @@ function _M:header_filter(config)
   local span
   if config.custom_spans then
     span = tracer.start_span("header_filter")
+    tracer.set_active_span(span)
+  end
+
+  if span then
+    span:finish()
+  end
+end
+
+
+function _M:body_filter(config)
+  local tracer = kong.tracing(tracer_name)
+
+  local span
+  if config.custom_spans then
+    span = tracer.start_span("body_filter")
     tracer.set_active_span(span)
   end
 

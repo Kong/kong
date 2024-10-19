@@ -781,27 +781,31 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         assert.equals("table", type(tries), "logged balancer tries is not a table")
         assert.truthy(#tries > 0, "logged balancer tries is empty")
 
-        for i = 1, #tries - 1 do
-          check_table_types({
-            ip = "string",
-            port = "number",
-            balancer_latency = "number",
-            balancer_start = "number",
-            balancer_latency_ns = "number",
-            balancer_start_ns = "number",
-            code = "number",
-            state = "string",
-          }, tries[i], fmt("logged balancer try #%s is invalid", i))
-        end
-
-        check_table_types({
+        local expected = {
           ip = "string",
           port = "number",
           balancer_latency = "number",
           balancer_start = "number",
           balancer_latency_ns = "number",
           balancer_start_ns = "number",
-        }, tries[#tries], "final logged balancer try is invalid")
+          code = "number",
+          state = "string",
+        }
+
+        if case.service_proto ~= "ws" and case.service_proto ~= "wss" then
+          expected.target_id = "string"
+          expected.keepalive = "boolean"
+        end
+
+        for i = 1, #tries - 1 do
+          check_table_types(expected, tries[i], fmt("logged balancer try #%s is invalid", i))
+        end
+
+        -- no code or state for the final try
+        expected.code = nil
+        expected.state = nil
+
+        check_table_types(expected, tries[#tries], "final logged balancer try is invalid")
       end)
     end)
 

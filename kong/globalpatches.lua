@@ -636,6 +636,8 @@ return function(options)
     if not options.cli and not options.rbusted then
       local timing = require "kong.timing"
       timing.register_hooks()
+      local debug_session_instrums = require "kong.enterprise_edition.debug_session.instrumentation"
+      debug_session_instrums.instrument()
     end
 
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
@@ -643,9 +645,16 @@ return function(options)
       -- dns query patch
       local instrumentation = require "kong.observability.tracing.instrumentation"
       client.toip = instrumentation.get_wrapped_dns_query(client.toip)
+      -- TODO: double patching is bad, can we do better?
+      local debug_instrumentation = require "kong.enterprise_edition.debug_session.instrumentation"
+      client.toip = debug_instrumentation.get_wrapped_dns_query(client.toip)
 
       -- patch request_uri to record http_client spans
       instrumentation.http_client()
+      debug_instrumentation.http_client()
+
+      -- patch ngx.req.read_body
+      debug_instrumentation.patch_read_body() -- TODO: how about we call a single instrumentation-patch-all function
     end
   end
 

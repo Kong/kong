@@ -107,7 +107,7 @@ end
 --- Trace Context. Those IDs are all represented as bytes, and the length may vary.
 -- We try best to preserve as much information as possible from the tracing context.
 -- @field trace_id bytes auto generated 16 bytes ID if not designated
--- @field span_id bytes 
+-- @field span_id bytes
 -- @field parent_span_id bytes
 --
 --- Timing. All times are in nanoseconds.
@@ -125,7 +125,7 @@ end
 -- @field kind number TODO: Should we remove this field? It's used by OTEL and zipkin. Maybe move this to impl_specific.
 -- @field attributes table extra information about the span. Attribute of OTEL or meta of Datadog.
 -- TODO: @field impl_specific table implementation specific fields. For example, impl_specific.datadog is used by Datadog tracer.
--- TODO: @field events table list of events. 
+-- TODO: @field events table list of events.
 --
 --- Internal fields
 -- @field tracer table
@@ -594,7 +594,7 @@ local function new_tracer(name, options)
   --- Get the sampling decision result
   --
   -- Uses a parent-based sampler when the parent has sampled flag == false
-  -- to inherit the non-recording decision from the parent span, or when 
+  -- to inherit the non-recording decision from the parent span, or when
   -- trace_id is not available.
   --
   -- Else, apply the probability-based should_sample decision.

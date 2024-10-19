@@ -40,6 +40,7 @@ local dicts = {
   "kong_keyring 5m",
   "kong_test_rla_schema_abcd 1m",
   "kong_test_sp_schema_abcd 1m",
+  "kong_debug_session 1m",
 
   -- stream shared dicts
   "stream_kong 5m",

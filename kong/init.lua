@@ -86,6 +86,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.observability.tracing.instrumentation"
+local debug_instrumentation = require "kong.enterprise_edition.debug_session.instrumentation"
 local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
@@ -113,6 +114,7 @@ local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local licensing = require "kong.enterprise_edition.licensing"
 local ee_constants = require "kong.enterprise_edition.constants"
 local set_fingerprint_to_cache = require("kong.enterprise_edition.tls.ja4").set_fingerprint_to_cache
+local debug_session = require "kong.enterprise_edition.debug_session"
 
 
 local kong             = kong
@@ -347,9 +349,12 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   for _, plugin, configuration in iterator, plugins, 0 do
-    local span
-    if phase == "rewrite" then
+    local span, debug_span
+    if phase == "certificate" then
+      debug_span = debug_instrumentation.plugin_certificate(plugin, configuration)
+    elseif phase == "rewrite" then
       span = instrumentation.plugin_rewrite(plugin)
+      debug_span = debug_instrumentation.plugin_rewrite(plugin, configuration)
     end
 
     setup_plugin_context(ctx, plugin, configuration)
@@ -368,6 +373,9 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
 
     if span then
       span:finish()
+    end
+    if debug_span then
+      debug_span:finish()
     end
   end
 
@@ -398,9 +406,10 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
 
   for _, plugin, configuration in iterator, plugins, 0 do
     if not ctx.delayed_response then
-      local span
+      local span, debug_span
       if phase == "access" then
         span = instrumentation.plugin_access(plugin)
+        debug_span = debug_instrumentation.plugin_access(plugin, configuration)
       end
 
       setup_plugin_context(ctx, plugin, configuration)
@@ -421,6 +430,10 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
         if span then
           span:record_error(cerr)
           span:set_status(2)
+        end
+        if debug_span then
+          debug_span:record_error(cerr)
+          debug_span:set_status(2)
         end
 
         kong.log.err(cerr)
@@ -444,6 +457,9 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
       -- ends tracing span
       if span then
         span:finish()
+      end
+      if debug_span then
+        debug_span:finish()
       end
     end
   end
@@ -470,9 +486,14 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   for _, plugin, configuration in iterator, plugins, 0 do
-    local span
+    local span, debug_span, debug_body_filter_span
     if phase == "header_filter" then
       span = instrumentation.plugin_header_filter(plugin)
+      debug_span = debug_instrumentation.plugin_header_filter(plugin, configuration)
+    elseif phase == "response" then
+      debug_span = debug_instrumentation.plugin_response(plugin, configuration)
+    elseif phase == "body_filter" then
+      debug_body_filter_span = debug_instrumentation.plugin_body_filter_before(plugin, configuration)
     end
 
     setup_plugin_context(ctx, plugin, configuration)
@@ -489,8 +510,15 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
 
     reset_plugin_context(ctx, old_ws)
 
+    if phase == "body_filter" then
+      debug_instrumentation.plugin_body_filter_after(debug_body_filter_span)
+    end
+
     if span then
       span:finish()
+    end
+    if debug_span then
+      debug_span:finish()
     end
   end
 
@@ -676,6 +704,7 @@ function Kong.init()
 
   kong_global.init_pdk(kong, config)
   instrumentation.init(config)
+  debug_instrumentation.init(config)
   wasm.init(config)
 
   -- EE **MUST** register license hooks as early as possible.
@@ -1109,12 +1138,16 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
+  kong.debug_session = debug_session:new()
   -- rpc and incremental sync
   if is_http_module then
 
     -- init rpc connection
     if kong.rpc then
       kong.rpc:init_worker()
+      if is_data_plane(kong.configuration) then
+        kong.debug_session:init_worker()
+      end
     end
 
     -- init incremental sync
@@ -1143,6 +1176,7 @@ end
 
 
 function Kong.ssl_certificate()
+  local debug_ssl_cert_phase_span = debug_instrumentation.certificate()
   -- Note: ctx here is for a connection (not for a single request)
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
 
@@ -1153,6 +1187,16 @@ function Kong.ssl_certificate()
   certificate.execute()
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
+
+  if debug_ssl_cert_phase_span then
+    debug_ssl_cert_phase_span:finish()
+  end
+
+  ngx.ctx = {
+    __index = {
+      connection = ngx.ctx
+    }
+  }
 end
 
 function Kong.ssl_client_hello()
@@ -1216,7 +1260,7 @@ end
 
 function Kong.rewrite()
   local proxy_mode = var.kong_proxy_mode
-  if proxy_mode == "grpc" or proxy_mode == "unbuffered"  or proxy_mode == "websocket" then
+  if proxy_mode == "grpc" or proxy_mode == "unbuffered" or proxy_mode == "websocket" then
     kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
     kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
@@ -1238,6 +1282,13 @@ function Kong.rewrite()
   local ctx
   if is_https then
     ctx = ngx.ctx
+
+    -- copy information from the "connection" scoped context that comes from
+    -- the ssl_certificate phase
+    local ssl_cert_ctx = ctx.connection
+    if ssl_cert_ctx then
+      debug_instrumentation.copy_ssl_ctx_to_req_ctx(ctx, ssl_cert_ctx)
+    end
   else
     ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
   end
@@ -1258,6 +1309,9 @@ function Kong.rewrite()
   end
 
   ctx.KONG_PHASE = PHASES.rewrite
+
+  local debug_rewrite_phase_span = debug_instrumentation.rewrite(ctx)
+
   local has_timing
 
   req_dyn_hook_run_hook("timing:auth", "auth")
@@ -1299,10 +1353,14 @@ function Kong.rewrite()
   if has_timing then
     req_dyn_hook_run_hook("timing", "after:rewrite")
   end
+  if debug_rewrite_phase_span then
+    debug_rewrite_phase_span:finish()
+  end
 end
 
 
 function Kong.access()
+  local debug_access_phase_span = debug_instrumentation.access()
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
 
@@ -1336,7 +1394,9 @@ function Kong.access()
     if has_timing then
       req_dyn_hook_run_hook("timing", "after:access")
     end
-
+    if debug_access_phase_span then
+      debug_access_phase_span:finish()
+    end
     return flush_delayed_response(ctx)
   end
 
@@ -1353,7 +1413,13 @@ function Kong.access()
       req_dyn_hook_run_hook("timing", "after:access")
     end
 
-    return kong.response.error(503, "no Service found with those values")
+    local err = "no Service found with those values"
+    if debug_access_phase_span then
+      debug_access_phase_span:record_error(err)
+      debug_access_phase_span:set_status(2)
+      debug_access_phase_span:finish()
+    end
+    return kong.response.error(503, err)
   end
 
   runloop.wasm_attach(ctx)
@@ -1372,7 +1438,9 @@ function Kong.access()
       if has_timing then
         req_dyn_hook_run_hook("timing", "after:access")
       end
-
+      if debug_access_phase_span then
+        debug_access_phase_span:finish()
+      end
       return Kong.response()
     end
 
@@ -1384,6 +1452,10 @@ function Kong.access()
   if has_timing then
     req_dyn_hook_run_hook("timing", "after:access")
   end
+  if debug_access_phase_span then
+    debug_access_phase_span:finish()
+  end
+  debug_instrumentation.debug_read_body()
 end
 
 
@@ -1439,6 +1511,12 @@ function Kong.balancer()
   -- runloop.balancer.before(ctx)
   current_try.balancer_start = now_ms
   current_try.balancer_start_ns = now_ns
+  current_try.target_id = balancer_data
+                      and balancer_data.balancer_handle
+                      and balancer_data.balancer_handle.address
+                      and balancer_data.balancer_handle.address.target
+                      and balancer_data.balancer_handle.address.target.id
+                      or  "unknown"
 
   if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -1561,12 +1639,14 @@ function Kong.balancer()
     if not ok then
       ngx_log(ngx_ERR, "could not enable connection keepalive: ", err)
     end
+    current_try.keepalive = ok
 
     ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool_opts.pool,
                        ", pool_size=", pool_opts.pool_size,
                        ", idle_timeout=", kong_conf.upstream_keepalive_idle_timeout,
                        ", max_requests=", kong_conf.upstream_keepalive_max_requests, ")")
   end
+  current_try.keepalive = not not current_try.keepalive
 
   -- record overall latency
   ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
@@ -1610,6 +1690,7 @@ do
   }
 
   function Kong.response()
+    local debug_response_phase_span = debug_instrumentation.response()
     local ctx = ngx.ctx
     local has_timing = ctx.has_timing
 
@@ -1636,6 +1717,11 @@ do
 
       if has_timing then
         req_dyn_hook_run_hook("timing", "after:response")
+      end
+
+      if debug_response_phase_span then
+        debug_response_phase_span:set_status(2)
+        debug_response_phase_span:finish()
       end
 
       return kong_error_handlers(ctx)
@@ -1692,6 +1778,10 @@ do
       req_dyn_hook_run_hook("timing", "after:response")
     end
 
+    if debug_response_phase_span then
+      debug_response_phase_span:finish()
+    end
+
     -- jump over the balancer to header_filter
     ngx.exit(status)
   end
@@ -1699,6 +1789,7 @@ end
 
 
 function Kong.header_filter()
+  local debug_header_filter_phase_span = debug_instrumentation.header_filter()
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
 
@@ -1779,10 +1870,15 @@ function Kong.header_filter()
   if has_timing then
     req_dyn_hook_run_hook("timing", "after:header_filter")
   end
+  if debug_header_filter_phase_span then
+    debug_header_filter_phase_span:finish()
+  end
 end
 
 
 function Kong.body_filter()
+  debug_instrumentation.body_filter_before()
+
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
 
@@ -1848,7 +1944,6 @@ function Kong.body_filter()
     if has_timing then
       req_dyn_hook_run_hook("timing", "after:body_filter")
     end
-
     return
   end
 
@@ -1964,10 +2059,18 @@ function Kong.log()
     end
   end
 
+  debug_instrumentation.body_filter_after(ctx.KONG_BODY_FILTER_ENDED_AT_NS)
+  debug_instrumentation.plugins_body_filter_after(ctx.KONG_BODY_FILTER_ENDED_AT_NS)
+
   ctx.KONG_PHASE = PHASES.log
 
   runloop.log.before(ctx)
   ee.handlers.log.before(ctx)
+
+  -- The sampler gets contexct the root span
+  kong.debug_session:sample()
+
+  kong.debug_session:report()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
   plugins_iterator.release(ctx)

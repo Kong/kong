@@ -26,6 +26,7 @@ local request_id   = require "kong.observability.tracing.request_id"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.observability.tracing.instrumentation"
+local debug_instrumentation = require "kong.enterprise_edition.debug_session.instrumentation"
 local req_dyn_hook   = require "kong.dynamic_hook"
 
 
@@ -1262,6 +1263,11 @@ return {
 
       -- trace router
       local span = instrumentation.router()
+      local debug_span = debug_instrumentation.router()
+
+      local debug_access_phase_span = debug_instrumentation.get_span_by_name(
+          debug_instrumentation.SPAN_NAMES.PHASE_ACCESS)
+
       -- create the balancer span "in advance" so its ID is available
       -- to plugins in the access phase for doing headers propagation
       instrumentation.precreate_balancer_span(ctx)
@@ -1286,7 +1292,13 @@ return {
           span:set_status(2)
           span:finish()
         end
-
+        if debug_span then
+          debug_span:set_status(2)
+          debug_span:finish()
+        end
+        if debug_access_phase_span then
+          debug_access_phase_span:finish()
+        end
 
         return kong.response.error(404, "no Route matched with those values")
       end
@@ -1294,6 +1306,9 @@ return {
       -- ends tracing span
       if span then
         span:finish()
+      end
+      if debug_span then
+        debug_span:finish()
       end
 
       local route          = match_t.route
@@ -1368,6 +1383,9 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           return kong.response.error(426, "Please use HTTPS protocol", {
             ["Connection"] = "Upgrade",
             ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
@@ -1379,6 +1397,9 @@ return {
         or redirect_status_code == 307
         or redirect_status_code == 308
         then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           header["Location"] = "https://" .. forwarded_host .. ctx.request_uri
           return kong.response.exit(redirect_status_code)
         end
@@ -1391,6 +1412,9 @@ return {
 
         if content_type and sub(content_type, 1, #"application/grpc") == "application/grpc" then
           if protocol_version ~= 2 then
+            if debug_access_phase_span then
+              debug_access_phase_span:finish()
+            end
             -- mismatch: non-http/2 request matched grpc route
             return kong.response.error(426, "Please use HTTP2 protocol", {
               ["connection"] = "Upgrade",
@@ -1399,11 +1423,17 @@ return {
           end
 
         else
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           -- mismatch: non-grpc request matched grpc route
           return kong.response.error(415, "Non-gRPC request matched gRPC route")
         end
 
         if not protocols.grpc and forwarded_proto ~= "https" then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           -- mismatch: grpc request matched grpcs route
           return kong.response.exit(200, nil, {
             ["content-type"] = "application/grpc",
@@ -1597,6 +1627,7 @@ return {
     before = function(ctx)
       if not ctx.KONG_PROXIED then
         instrumentation.runloop_before_header_filter(ngx.status)
+        debug_instrumentation.runloop_before_header_filter(ngx.status)
         return
       end
 
@@ -1646,6 +1677,7 @@ return {
       end
 
       instrumentation.runloop_before_header_filter(status)
+      debug_instrumentation.runloop_before_header_filter(status)
 
       local hash_cookie = ctx.balancer_data.hash_cookie
       if hash_cookie then
@@ -1724,9 +1756,11 @@ return {
   log = {
     before = function(ctx)
       instrumentation.runloop_log_before(ctx)
+      debug_instrumentation.runloop_log_before(ctx)
     end,
     after = function(ctx)
       instrumentation.runloop_log_after(ctx)
+      debug_instrumentation.runloop_log_after(ctx)
 
       update_lua_mem()
 

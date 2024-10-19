@@ -51,6 +51,7 @@ http {
     lua_shared_dict kong_healthchecks   5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
     lua_shared_dict kong_vaults_hcv 1m;
+    lua_shared_dict kong_debug_session 1m;
     lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate_combined then
     lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';

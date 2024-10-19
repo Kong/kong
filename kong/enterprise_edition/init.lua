@@ -147,6 +147,7 @@ _M.handlers = {
     before = function(ctx)
       kong.analytics:log_request()
       kong.sales_counters:log_request(ctx)
+      kong.debug_session:enrich_root_span()
     end,
     after = function(ctx, status)
       if not ctx.is_internal then
