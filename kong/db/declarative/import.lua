@@ -229,12 +229,12 @@ end
 
 
 local function unique_field_key(schema_name, ws_id, field, value)
-  return string_format("%s|%s|%s|%s", schema_name, ws_id, field, sha256_hex(value))
+  return string_format("%s|%s|%s|%s", schema_name, field, ws_id, sha256_hex(value))
 end
 
 
 local function foreign_field_key_prefix(schema_name, ws_id, field, foreign_id)
-  return string_format("%s|%s|%s|%s|", schema_name, ws_id, field, foreign_id)
+  return string_format("%s|%s|%s|%s|", schema_name, field, ws_id, foreign_id)
 end
 
 
@@ -243,7 +243,7 @@ local function foreign_field_key(schema_name, ws_id, field, foreign_id, pk)
 end
 
 local function item_key_prefix(schema_name, ws_id)
-  return string_format("%s|%s|*|", schema_name, ws_id)
+  return string_format("%s|*|%s|", schema_name, ws_id)
 end
 
 
