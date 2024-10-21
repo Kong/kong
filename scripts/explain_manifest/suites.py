@@ -16,6 +16,8 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
 
     expect("/etc/kong/kong.logrotate", "includes logrotate config").exists()
 
+    expect("/lib/systemd/system/kong.service", "includes systemd unit file").exists()
+
     expect("/usr/local/kong/include/openssl/**.h", "includes OpenSSL headers").exists()
 
     # binary correctness
