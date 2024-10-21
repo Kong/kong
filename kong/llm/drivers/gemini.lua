@@ -32,6 +32,14 @@ local function to_gemini_generation_config(request_table)
   }
 end
 
+local function is_content_safety_failure(content)
+  return content
+          and content.candidates
+          and #content.candidates > 0
+          and content.candidates[1].finishReason
+          and content.candidates[1].finishReason == "SAFETY"
+end
+
 local function is_response_content(content)
   return content
         and content.candidates
@@ -210,8 +218,6 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
     new_r.tools = request_table.tools and to_tools(request_table.tools)
   end
 
-  kong.log.warn(cjson.encode(new_r))
-
   return new_r, "application/json", nil
 end
 
@@ -229,7 +235,16 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   messages.choices = {}
 
   if response.candidates and #response.candidates > 0 then
-    if is_response_content(response) then
+    -- for transformer plugins only
+    if model_info.source
+          and (model_info.source == "ai-request-transformer" or model_info.source == "ai-response-transformer")
+          and is_content_safety_failure(response) then
+      local err = "transformation generation candidate breached Gemini content safety"
+      ngx.log(ngx.ERR, err)
+      
+      return nil, err
+
+    elseif is_response_content(response) then
       messages.choices[1] = {
         index = 0,
         message = {
@@ -269,14 +284,6 @@ local function from_gemini_chat_openai(response, model_info, route_type)
         total_tokens = response.usageMetadata.totalTokenCount,
       }
     end
-
-  elseif response.candidates
-           and #response.candidates > 0
-           and response.candidates[1].finishReason
-           and response.candidates[1].finishReason == "SAFETY" then
-    local err = "transformation generation candidate breached Gemini content safety"
-    ngx.log(ngx.ERR, err)
-    return nil, err
 
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Gemini, or max_tokens too short"
