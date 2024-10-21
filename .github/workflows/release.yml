@@ -613,11 +613,8 @@ jobs:
         fail_build: true
 
     - name: Upload SBOM assets
-      # ensure that this does not run twice (once for the scheduled job,
-      # another for the `nightly` tag push)
       if: |
-        (startsWith(github.ref, 'refs/tags/') && github.ref_name != 'nightly') ||
-        github.event.inputs.version == 'nightly'
+        github.event.inputs.official == 'true' || github.event.inputs.version == 'nightly'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       uses: softprops/action-gh-release@v2
@@ -625,7 +622,7 @@ jobs:
         name: "${{ needs.metadata.outputs.gh-release-name }}"
         body: "${{ needs.metadata.outputs.gh-release-name }} ${{ needs.metadata.outputs.release-label }}"
         tag_name: "${{ needs.metadata.outputs.gh-release-tag-name }}"
-        prerelease: true
+        prerelease: false
         files: |
             kong-*-${{ matrix.label }}-linux-*-cis-report.json
             kong-*-${{ matrix.label }}-linux-*-cve-report.json
