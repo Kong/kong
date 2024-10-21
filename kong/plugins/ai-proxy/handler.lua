@@ -4,7 +4,7 @@ local deep_copy = require "kong.tools.table".deep_copy
 
 local _M = deep_copy(require("kong.llm.proxy.handler"))
 _M.init_worker = function()
-    _M:init_worker_for_plugin("ai-proxy")
+    _M:init_worker_shared("ai-proxy")
 end
 
 _M.PRIORITY = 770

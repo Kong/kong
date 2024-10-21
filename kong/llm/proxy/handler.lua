@@ -486,7 +486,7 @@ end
 
 
 
-function _M:init_worker_for_plugin(plugin_name)
+function _M:init_worker_shared(plugin_name)
   -- TODO: remove nasty hacks once we have singleton phases support in core
   local sni_cache_key = "ai:llm:cert_enabled_snis:" .. plugin_name
   local orig_ssl_client_hello = Kong.ssl_client_hello   -- luacheck: ignore
