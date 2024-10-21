@@ -10,6 +10,7 @@ local buffer = require("string.buffer")
 local table_insert = table.insert
 local string_lower = string.lower
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local ai_plugin_base = require("kong.llm.plugin.base")
 --
 
 -- globals
@@ -31,6 +32,14 @@ local function to_gemini_generation_config(request_table)
     ["topK"] = request_table.top_k,
     ["topP"] = request_table.top_p,
   }
+end
+
+local function is_content_safety_failure(content)
+  return content
+          and content.candidates
+          and #content.candidates > 0
+          and content.candidates[1].finishReason
+          and content.candidates[1].finishReason == "SAFETY"
 end
 
 local function is_response_content(content)
@@ -215,8 +224,6 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
     new_r.tools = request_table.tools and to_tools(request_table.tools)
   end
 
-  kong.log.warn(cjson.encode(new_r))
-
   return new_r, "application/json", nil
 end
 
@@ -237,7 +244,17 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   messages.choices = {}
 
   if response.candidates and #response.candidates > 0 then
-    if is_response_content(response) then
+    -- for transformer plugins only
+    if is_content_safety_failure(response) and
+      (ai_plugin_base.has_filter_executed("ai-request-transformer-transform-request") or
+        ai_plugin_base.has_filter_executed("ai-response-transformer-transform-response")) then
+
+      local err = "transformation generation candidate breached Gemini content safety"
+      ngx.log(ngx.ERR, err)
+
+      return nil, err
+
+    elseif is_response_content(response) then
       messages.choices[1] = {
         index = 0,
         message = {
@@ -278,14 +295,6 @@ local function from_gemini_chat_openai(response, model_info, route_type)
       }
     end
 
-  elseif response.candidates
-           and #response.candidates > 0
-           and response.candidates[1].finishReason
-           and response.candidates[1].finishReason == "SAFETY" then
-    local err = "transformation generation candidate breached Gemini content safety"
-    ngx.log(ngx.ERR, err)
-    return nil, err
-
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Gemini, or max_tokens too short"
     ngx.log(ngx.ERR, err)
@@ -314,7 +323,10 @@ function _M.from_format(response_string, model_info, route_type)
   end
 
   local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
-  if not ok or err then
+  if not ok then
+    err = response_string
+  end
+  if err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
                     route_type,

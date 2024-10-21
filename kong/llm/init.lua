@@ -4,6 +4,10 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local EMPTY = require("kong.tools.table").EMPTY
 
+local EMPTY_ARRAY = {
+  EMPTY,
+}
+
 
 -- The module table
 local _M = {
@@ -142,10 +146,10 @@ do
     if err then
       return nil, err
     end
-    
+
     -- run the shared logging/analytics/auth function
     ai_shared.pre_request(self.conf, ai_request)
-    
+
     -- send it to the ai service
     local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false, self.identity_interface)
     if err then
@@ -166,7 +170,7 @@ do
       return nil, "failed to convert AI response to JSON: " .. err
     end
 
-    local new_request_body = ((ai_response.choices or EMPTY)[1].message or EMPTY).content
+    local new_request_body = (((ai_response.choices or EMPTY_ARRAY)[1] or EMPTY).message or EMPTY).content
     if not new_request_body then
       return nil, "no 'choices' in upstream AI service response"
     end

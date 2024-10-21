@@ -165,7 +165,10 @@ function _M.from_format(response_string, model_info, route_type)
     model_info,
     route_type
   )
-  if not ok or err then
+  if not ok then
+    err = response_string
+  end
+  if err then
     return nil, fmt("transformation failed from type %s://%s: %s", model_info.provider, route_type, err or "unexpected_error")
   end
 
