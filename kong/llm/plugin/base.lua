@@ -202,6 +202,10 @@ function _M.register_filter(f)
   return f
 end
 
+function _M.has_filter_executed(name)
+  return ngx.ctx.ai_executed_filters and ngx.ctx.ai_executed_filters[name]
+end
+
 -- enable the filter for current sub plugin
 function _M:enable(filter)
   if type(filter) ~= "table" or not filter.NAME then
