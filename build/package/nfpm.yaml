@@ -31,6 +31,8 @@ contents:
   dst: /etc/kong
 - src: bin/kong
   dst: /usr/local/bin/kong
+- src: build/package/kong.service
+  dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
 scripts:

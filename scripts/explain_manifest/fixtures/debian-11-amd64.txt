@@ -1,5 +1,7 @@
 - Path      : /etc/kong/kong.logrotate
 
+- Path      : /lib/systemd/system/kong.service
+
 - Path      : /usr/local/kong/include/google
   Type      : directory
 
