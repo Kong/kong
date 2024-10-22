@@ -260,20 +260,41 @@ local function each_enabled_plugin(entity, plugin_name)
   return iterator
 end
 
+local workspaces_iter
+do
+  local pok = pcall(require, "kong.workspaces")
+  if not pok then
+    -- no workspace support, that's fine
+    workspaces_iter = function(_) return next, { default = {} }, nil end
+
+  else
+    workspaces_iter = function(db)
+      ngx.log(ngx.ERR, "using workspace support")
+      return db.workspaces:each(1000)
+    end
+  end
+end
+
 function _M.build_ssl_route_filter_set(plugin_name)
   kong.log.debug("building ssl route filter set for plugin name " .. plugin_name)
   local db = kong.db
   local snis = {}
+  local options = {}
 
-  local options = { workspace = null }
-  for plugin, err in each_enabled_plugin(db.plugins, plugin_name) do
+  for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, "could not load plugins: " .. err
     end
 
-    local err = get_snis_for_plugin(db, plugin, snis, options)
-    if err then
-      return nil, err
+    if plugin.enabled and plugin.name == plugin_name then
+      local err = get_snis_for_plugin(db, plugin, snis, options)
+      if err then
+        return nil, err
+      end
+
+      if snis["*"] then
+        break
+      end
     end
   end
 
