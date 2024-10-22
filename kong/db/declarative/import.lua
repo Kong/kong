@@ -264,7 +264,10 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   local dao = kong.db[entity_name]
   local schema = dao.schema
   local pk = pk_string(schema, item)
-  local ws_id = workspace_id(schema, options)
+
+  -- If the item belongs to a specific workspace,
+  -- use it directly without using the default one.
+  local ws_id = item.ws_id or workspace_id(schema, options)
 
   local itm_key = item_key(entity_name, ws_id, pk)
 
