@@ -38,6 +38,11 @@ _mt.__index = _mt
 local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
 
 
+local function need_follow(ws_id)
+  return ws_id == "*"
+end
+
+
 local function get_default_workspace()
   if kong.default_workspace == UNINIT_WORKSPACE_ID then
     local res = kong.db.workspaces:select_by_name("default")
@@ -173,7 +178,7 @@ local function page(self, size, offset, options)
     offset = token
   end
 
-  return page_for_prefix(self, prefix, size, offset, options, false)
+  return page_for_prefix(self, prefix, size, offset, options, need_follow(ws_id))
 end
 
 
@@ -183,7 +188,7 @@ local function select(self, pk, options)
   local ws_id = workspace_id(schema, options)
   local pk = pk_string(schema, pk)
   local key = item_key(schema.name, ws_id, pk)
-  return select_by_key(schema, key, false)
+  return select_by_key(schema, key, need_follow(ws_id))
 end
 
 
