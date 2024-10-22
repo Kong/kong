@@ -1,0 +1,4 @@
+---
+message: Added Ubuntu 24.04 (Noble Numbat) FIPS packages and image.
+type: dependency
+scope: Core

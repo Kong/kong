@@ -40,6 +40,11 @@ build-packages:
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-24.04-arm64
+- label: ubuntu-24.04-fips
+  image: ubuntu:24.04
+  package: deb
+  bazel-args: --//:fips=true
+  check-manifest-suite: ubuntu-24.04-amd64-fips
 
 
 # Debian
@@ -135,9 +140,10 @@ build-images:
   docker-platforms: linux/amd64, linux/arm64
   check-manifest-suite: docker-image-ubuntu-24.04
 - label: ubuntu-fips
-  base-image: ubuntu:22.04
+  base-image: ubuntu:24.04
   package: deb
-  artifact-from: ubuntu-22.04-fips
+  artifact-from: ubuntu-24.04-fips
+  check-manifest-suite: docker-image-ubuntu-24.04
 
 # Debian
 - label: debian
@@ -221,6 +227,12 @@ release-packages:
   artifact-version: 24.04
   artifact-type: ubuntu
   artifact: kong.arm64.deb
+- label: ubuntu-24.04-fips
+  package: deb
+  artifact-from: ubuntu-24.04-fips
+  artifact-version: 24.04
+  artifact-type: ubuntu
+  artifact: kong.amd64.deb
 
 # Debian
 - label: debian-11

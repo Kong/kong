@@ -153,6 +153,7 @@ targets = {
                 "libcxx_max_version": "3.4.29",
                 "cxxabi_max_version": "1.3.13",
             },
+            ee_suites: {},
         }
     ),
     "debian-11-amd64": ExpectSuite(
@@ -219,7 +220,7 @@ for target in list(targets.keys()):
         # ubuntu-22.04-arm64
         targets[target.replace("-amd64", "-arm64")] = e
 
-    if target in ("el8-amd64", "el9-amd64", "ubuntu-20.04-amd64", "ubuntu-22.04-amd64"):
+    if target in ("el8-amd64", "el9-amd64", "ubuntu-20.04-amd64", "ubuntu-22.04-amd64", "ubuntu-24.04-amd64"):
         e = deepcopy(targets[target])
         e.manifest = e.manifest.replace("-amd64.txt", "-amd64-fips.txt")
         # Ubuntu 22.04 (amd64) FIPS
