@@ -798,7 +798,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         plugins = "bundled,ctx-checker-last,ctx-checker," .. PLUGIN_NAME,
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
-        log_level = "info",
       }, nil, nil, fixtures))
     end)
 
