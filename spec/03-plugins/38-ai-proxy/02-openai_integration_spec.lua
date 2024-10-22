@@ -336,9 +336,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 chat good with statistics disabled
       local chat_good_no_stats = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good-without-stats" }
+        paths = { "/openai/llm/v1/chat/good-without-stats" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -376,9 +377,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 chat good with all logging enabled
       local chat_good_log_payloads = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good-with-payloads" }
+        paths = { "/openai/llm/v1/chat/good-with-payloads" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -416,9 +418,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 chat bad upstream response with one option
       local chat_bad_upstream = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/bad_upstream_response" }
+        paths = { "/openai/llm/v1/chat/bad_upstream_response" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -445,9 +448,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 completions good with one option
       local completions_good = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/good" }
+        paths = { "/openai/llm/v1/completions/good" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -474,9 +478,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 completions good using query param key
       local completions_good_one_query_param = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/query-param-auth" }
+        paths = { "/openai/llm/v1/completions/query-param-auth" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -504,9 +509,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 completions good using query param key with no allow override
       local completions_good_one_query_param_no_allow_override = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/query-param-auth-no-allow-override" }
+        paths = { "/openai/llm/v1/completions/query-param-auth-no-allow-override" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -536,9 +542,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 embeddings (preserve route mode) good
       local chat_good = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/embeddings/good" }
+        paths = { "/openai/llm/v1/embeddings/good" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -569,9 +576,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 chat good but no model set in plugin config
       local chat_good_no_model = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https"},
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good-no-model-param" }
+        paths = { "/openai/llm/v1/chat/good-no-model-param" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -613,9 +621,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 completions good using post body key
       local completions_good_post_body_key = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https"},
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/post-body-auth" }
+        paths = { "/openai/llm/v1/completions/post-body-auth" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -643,9 +652,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 completions good using post body key
       local completions_good_post_body_key_no_allow_override = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/post-body-auth-no-allow-override" }
+        paths = { "/openai/llm/v1/completions/post-body-auth-no-allow-override" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -675,9 +685,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 401 unauthorized
       local chat_401 = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/unauthorized" }
+        paths = { "/openai/llm/v1/chat/unauthorized" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -704,9 +715,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 400 bad request chat
       local chat_400 = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/bad_request" }
+        paths = { "/openai/llm/v1/chat/bad_request" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -733,9 +745,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 400 bad request completions
       local chat_400_comp = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/completions/bad_request" }
+        paths = { "/openai/llm/v1/completions/bad_request" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -762,9 +775,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 500 internal server error
       local chat_500 = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/internal_server_error" }
+        paths = { "/openai/llm/v1/chat/internal_server_error" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -798,6 +812,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         plugins = "bundled,ctx-checker-last,ctx-checker," .. PLUGIN_NAME,
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+        log_level = "info",
       }, nil, nil, fixtures))
     end)
 
@@ -1070,7 +1085,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       it("good request with http2", function()
         local curl_command = string.format("curl -X GET -k --resolve example.test:%s:127.0.0.1  -H 'Content-Type: application/json' https://example.test:%s/openai/llm/v1/chat/good -d @spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json", helpers.get_proxy_port(true), helpers.get_proxy_port(true))
         local output = io.popen(curl_command):read("*a")
+        ngx.log(ngx.ERR, output)
         local json = assert(cjson.decode(output))
+
         -- in this case, origin is "undxpected error" message
         assert.equals(json.message, nil)
         assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
