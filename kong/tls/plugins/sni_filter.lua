@@ -246,6 +246,7 @@ local function each_enabled_plugin(entity, plugin_name)
 
   local iter = entity:each(1000, options)
   local function iterator()
+    if not iter then return end
     local element, err = iter()
     if err then return nil, err end
     if element == nil then return end

@@ -97,6 +97,9 @@ function _M.execute(snis_set)
 end
 
 function _M.execute_client_hello(snis_set, options)
+  if not snis_set then
+    return
+  end
 
   if not options then
     return
