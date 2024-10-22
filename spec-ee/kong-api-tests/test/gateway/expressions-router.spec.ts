@@ -13,7 +13,7 @@ import {
   getKongContainerName,
 } from '@support';
 
-describe('Expressions Router Tests', function () {
+describe('@oss: Expressions Router Tests', function () {
   const serviceName = 'expressionsService';
   const simpleExpression = '(http.path == "/first_path") || (http.path == "/second_path")';
   const simpleExpressionUpdate = encodeURIComponent('(http.path == "/third_path" && http.method == "PUT")');

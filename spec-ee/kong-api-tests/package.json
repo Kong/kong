@@ -12,7 +12,8 @@
     "test-smoke": "TEST_APP=gateway mocha -g @smoke --recursive",
     "test-non-smoke": "TEST_APP=gateway mocha --invert -g @smoke --recursive",
     "test-koko": "TEST_APP=koko TEST_ENV=dev mocha -g @koko --recursive",
-    "test-gke": "TEST_APP=gateway mocha -g @gke --recursive"
+    "test-gke": "TEST_APP=gateway mocha -g @gke --recursive",
+    "test-oss": "TEST_APP=gateway mocha -g @oss --recursive"
   },
   "dependencies": {
     "@kong/kauth-test-utils": "^0.0.23",

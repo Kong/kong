@@ -32,6 +32,7 @@ export {
   isLocalDatabase,
   vars,
   isGwNative,
+  isKongOSS,
   getKongContainerName,
   getKongVersion,
   getDataPlaneDockerImage,

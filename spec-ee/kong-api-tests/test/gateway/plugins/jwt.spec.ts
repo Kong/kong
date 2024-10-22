@@ -18,7 +18,7 @@ import {
   waitForConfigRebuild,
 } from '@support';
 
-describe('Gateway Plugins: jwt', function () {
+describe('@oss: Gateway Plugins: jwt', function () {
   const path = '/jwt';
   const serviceName = 'jwt-service';
   const algorithms = ['ES512', 'PS256', 'PS384', 'PS512', 'RS256', 'RS384', 'RS512', 'ES256', 'ES384'];

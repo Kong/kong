@@ -66,6 +66,14 @@ export const isGwHybrid = (): boolean => {
 };
 
 /**
+ * Check if current gateway mode is OSS
+ * @returns {boolean} - true if gateway runs in oss mode
+ */
+export const isKongOSS = (): boolean => {
+  return process.env.IS_KONG_OSS === 'true' ? true : false;
+};
+
+/**
  * Check if gateway is installed natively (package tests)
  * @returns {boolean} - true if gateway is installed using a package
  */

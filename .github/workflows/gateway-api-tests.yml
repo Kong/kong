@@ -27,6 +27,11 @@ on:
         required: false
         type: boolean
         default: false
+      is_kong_oss:
+        description: 'Run tests for Kong OSS'
+        required: false
+        type: boolean
+        default: false
 
   workflow_call:
     inputs:
@@ -53,6 +58,11 @@ on:
         required: false
         type: boolean
         default: false
+      is_kong_oss:
+        description: 'Run tests for Kong OSS'
+        required: false
+        type: boolean
+        default: false
 
 env:
   GW_IMAGE: ${{ inputs.control_plane_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
@@ -75,6 +85,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
       VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
       RUN_SPEC: ${{ inputs.target_test || 'all' }}
+      IS_KONG_OSS: ${{ inputs.is_kong_oss || 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -118,25 +129,33 @@ jobs:
           if ${{ contains(env.GW_IMAGE, 'fips') }}; then FIPS_MODE=on; else FIPS_MODE=off; fi;
           echo "FIPS_MODE=$FIPS_MODE" >> $GITHUB_ENV
 
-          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' ]]; then
+          if [[ $IS_KONG_OSS == "true" ]]; then
+            RUN_SPEC="oss"
+          fi
+
+          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' || $RUN_SPEC == 'oss' ]]; then
             CUSTOM_PLUGIN=true
           else
             CUSTOM_PLUGIN=false
           fi
+
           echo "CUSTOM_PLUGIN_VAR=$CUSTOM_PLUGIN" >> $GITHUB_ENV
           echo "CUSTOM_PLUGIN is $CUSTOM_PLUGIN"
+          echo "RUN_SPEC=$RUN_SPEC" >> $GITHUB_ENV
+          echo "RUN_SPEC" is $RUN_SPEC
 
 
       - name: Start Gateway
         run: cd gateway-docker-compose-generator && make generate && cat docker-compose.yml && make start_ci
         env:
           EE_LICENSE: false
+          GW_ENTERPRISE: ${{ env.IS_KONG_OSS == 'false' && true || false }}
           PKI: true
-          INFLUXDB: true
+          INFLUXDB: ${{ env.IS_KONG_OSS == 'false' && true || false }}
           REDIS_MODE: standalone
           SWAGGER: true
           GW_HOST: localhost
-          HCV: true
+          HCV: ${{ env.IS_KONG_OSS == 'false' && true || false }}
           JAEGER: true
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
           KEYCLOAK: true
@@ -144,7 +163,7 @@ jobs:
           PROMETHEUS: true
           WASM: true
           AZURE_VAULT: true
-          APP_D: true
+          APP_D: ${{ env.IS_KONG_OSS == 'false' && true || false }}
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
@@ -179,6 +198,8 @@ jobs:
             npm run test-smoke;
           elif [[ $RUN_SPEC == 'non-smoke' ]]; then
             npm run test-non-smoke;
+          elif [[ $RUN_SPEC == 'oss' ]]; then
+            npm run test-oss;
           else
             TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi

@@ -9,7 +9,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('@gke: Gateway Admin API: Key-Sets For jwe-decrypt plugin', function () {
+describe('@gke @oss: Gateway Admin API: Key-Sets For jwe-decrypt plugin', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/key-sets`;

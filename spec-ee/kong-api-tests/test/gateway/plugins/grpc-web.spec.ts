@@ -15,7 +15,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Gateway Plugins: gRPC-web', function () {
+describe('@oss: Gateway Plugins: gRPC-web', function () {
   const grpcUrl = 'grpc://grpcbin:9000';
   const grpcSecureUrl = 'grpcs://grpcbin:9001';
   const protoFile = 'hello.proto';

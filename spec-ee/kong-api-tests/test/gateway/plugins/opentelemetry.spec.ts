@@ -21,7 +21,7 @@ import {
   retryRequest,
 } from '@support';
 
-describe('Gateway Plugins: OpenTelemetry', function () {
+describe('@oss: Gateway Plugins: OpenTelemetry', function () {
   this.timeout(50000);
 
   const isHybrid = isGwHybrid();

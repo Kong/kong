@@ -27,6 +27,7 @@ import {
   eventually,
   isFipsMode,
   isGwNative,
+  isKongOSS
 } from '@support';
 
 const agent = new https.Agent({
@@ -51,7 +52,7 @@ const currentHost = getGatewayHost();
 
 const isLocalDb = isLocalDatabase();
 
-describe('@smoke @koko @gke: Router Functionality Tests', function () {
+describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
   const proxyUrl = `${getBasePath({
     app: 'gateway',
     environment: Environment.gateway.proxySec,
@@ -92,39 +93,35 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
       name: serviceReq.name,
     };
 
-    const workspaceReq = await axios({
-      method: 'POST',
-      url: `${adminUrl}/workspaces`,
-      data: {
-        name: randomString(),
-      },
-      validateStatus: null,
-    });
-
-    expect(workspaceReq.status, 'Status should be 201').equal(201);
-    workspaceName = workspaceReq.data.name;
-
-    //create service in new workspace
-    const serviceReq2 = await axios({
-      method: 'POST',
-      url: `${adminUrl}/${workspaceName}/services`,
-      data: {
-        name: serviceName2,
-        url: 'http://mockbin.org',
-      },
-    })
-    logResponse(serviceReq2);
-
-    service2Details = {
-      id: serviceReq2.data.id,
-      name: serviceReq2.data.name,
-    };
-
-    const resp = await axios({
-      method: 'get',
-      url: `${adminUrl}/services/${serviceDetails.id}/routes`,
-    });
-    logResponse(resp);
+    if (!isKongOSS() && !isKoko()) {
+        const workspaceReq = await axios({
+          method: 'POST',
+          url: `${adminUrl}/workspaces`,
+          data: {
+            name: randomString(),
+          },
+          validateStatus: null,
+        });
+    
+        expect(workspaceReq.status, 'Status should be 201').equal(201);
+        workspaceName = workspaceReq.data.name;
+  
+        //create service in new workspace
+        const serviceReq2 = await axios({
+          method: 'POST',
+          url: `${adminUrl}/${workspaceName}/services`,
+          data: {
+            name: serviceName2,
+            url: 'http://mockbin.org',
+          },
+        })
+        logResponse(serviceReq2);
+  
+        service2Details = {
+          id: serviceReq2.data.id,
+          name: serviceReq2.data.name,
+        };
+      }
   });
 
   it('should create a route with header', async function () {
@@ -451,37 +448,39 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
     });
   }
 
-  it('should perform route validation when creating a duplicate route in a different workspace', async function () {
-    // duplicate routes cannot be created when route validation is on
-    const resp = await axios({ 
-      method: 'post',
-      url: `${adminUrl}/services/${serviceDetails.id}/routes`,
-      data: {
-        ...routePayload,
-        name: routePayload.name,
-      },
-      validateStatus: null,
-    });
-    expect(resp.status, 'Status should be 201').to.equal(201);
+  if((!isGwNative() || !isFipsMode()) && (!isKongOSS() && !isKoko())) {
+    // skip workspace related tests for OSS as workspace is not supported in oss mode
+    it('should perform route validation when creating a duplicate route in a different workspace', async function () {
+      // duplicate routes cannot be created when route validation is on
+      const resp = await axios({ 
+        method: 'post',
+        url: `${adminUrl}/services/${serviceDetails.id}/routes`,
+        data: {
+          ...routePayload,
+          name: routePayload.name,
+        },
+        validateStatus: null,
+      });
+      expect(resp.status, 'Status should be 201').to.equal(201);
+  
+      await eventually(async () => {
+        // attempt to create route in second workspace
+        const respRepeat = await axios({ 
+          method: 'post',
+          url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+          data: {
+            ...routePayload,
+            name: routePayload.name,
+          },
+          validateStatus: null,
+        });
 
-    waitForConfigRebuild();
-
-    // attempt to create route in second workspace
-    const respRepeat = await axios({ 
-      method: 'post',
-      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
-      data: {
-        ...routePayload,
-        name: routePayload.name,
-      },
-      validateStatus: null,
-    });
-    logResponse(respRepeat);
-    expect(respRepeat.status, 'Status should be 409').to.equal(409);
-    expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
-  })
-
-  if(!isGwNative() && !isFipsMode()) {
+        logResponse(respRepeat);
+        expect(respRepeat.status, 'Status should be 409').to.equal(409);
+        expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
+        })
+    })
+  
     it('should update router to not perform route validation', async function () {
       await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
       if (isHybrid) {
@@ -528,19 +527,22 @@ describe('@smoke @koko @gke: Router Functionality Tests', function () {
         headers: { testHeader: 'test' },
       });
       logResponse(resp);
-      expect(resp.status, 'Status should be 200').to.equal(200);
-    })  
+      expect(resp.status, 'Status should be 200').to.equal(200); 
+    })
   }
 
   after(async function () {
     await clearAllKongResources();
     await clearAllKongResources(workspaceName);
-    await deleteWorkspace(workspaceName);
-    if(!isGwNative() && !isFipsMode()) {
-      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
-      // reset data plane
-      if (isHybrid) {
-        await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, 'kong-dp1');
+    if (!isKongOSS() && !isKoko()) {
+      await deleteWorkspace(workspaceName);
+
+      if((!isGwNative() || !isFipsMode())) {
+        await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
+        // reset data plane
+        if (isHybrid) {
+          await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, 'kong-dp1');
+        }
       }
     }
   });

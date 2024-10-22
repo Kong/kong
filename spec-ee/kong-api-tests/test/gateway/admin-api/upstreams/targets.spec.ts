@@ -12,7 +12,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('@gke: Gateway Admin API: Targets', function () {
+describe('@gke @oss: Gateway Admin API: Targets', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/upstreams`;

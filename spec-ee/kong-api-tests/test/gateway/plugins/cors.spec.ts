@@ -15,7 +15,7 @@ import {
   eventually,
 } from '@support';
 
-describe('@gke: Gateway Plugins: CORS', function () {
+describe('@gke @oss: Gateway Plugins: CORS', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;

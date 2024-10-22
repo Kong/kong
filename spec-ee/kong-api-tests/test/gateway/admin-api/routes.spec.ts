@@ -10,11 +10,12 @@ import {
     randomString,
     deleteGatewayService,
     wait,
-    eventually
+    eventually,
+    isKongOSS
 } from '@support';
 import axios, { AxiosResponse } from 'axios';
   
-describe('@smoke @gke: Gateway Admin API: Routes', function () {
+describe('@smoke @gke @oss: Gateway Admin API: Routes', function () {
     let serviceId: string
     let routeId: string;
 
@@ -44,6 +45,8 @@ describe('@smoke @gke: Gateway Admin API: Routes', function () {
         strip_path: true,
         preserve_host: false,
     };
+
+    const isGwOSS = isKongOSS();
   
     const assertRespDetails = (response: AxiosResponse) => {
         const resp = response.data;
@@ -71,8 +74,12 @@ describe('@smoke @gke: Gateway Admin API: Routes', function () {
         expect(resp.data.name, 'Should have correct service name').equal(
             servicePayload.name
         );
-        expect(resp.headers, 'Should include request id in header').to.have.property('x-kong-admin-request-id');
-        expect(resp.headers['x-kong-admin-request-id'], 'request id should be a string').to.be.a('string')
+        
+        if (!isGwOSS) {
+            expect(resp.headers, 'Should include request id in header').to.have.property('x-kong-admin-request-id');
+            expect(resp.headers['x-kong-admin-request-id'], 'request id should be a string').to.be.a('string')
+        }
+        
         serviceId = resp.data.id
     });
   

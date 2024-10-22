@@ -15,7 +15,7 @@ import {
   eventually
 } from '@support';
 
-describe('Gateway Plugins: standard webhooks', function () {
+describe('@oss: Gateway Plugins: standard webhooks', function () {
   this.timeout(50000)
   const path = '/wh';
   const serviceName = 'webhook-service';

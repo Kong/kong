@@ -22,7 +22,7 @@ import {
 const adminUrl = `${getBasePath({ environment: isGateway() ? Environment.gateway.admin : undefined })}`;
 const deckFileName = 'kong.json';
 
-describe('decK: Sanity Tests', function () {
+describe('@oss: decK: Sanity Tests', function () {
   const name = randomString();
 
   before(async function () {

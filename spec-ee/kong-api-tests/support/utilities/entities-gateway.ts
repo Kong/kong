@@ -5,6 +5,7 @@ import { logResponse } from './logging';
 import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
 import { getNegative } from './negative-axios';
+import { isKongOSS } from '@support';
 
 export const getUrl = (endpoint: string, workspaceNameOrId?: string) => {
   let basePath = getBasePath({
@@ -615,11 +616,10 @@ export const createPlugin = async (
   workspace?: string
 ) => {
 
-  // In Koko we don't set 'default' workspace name in URL
-  if (isGateway()) {
-    workspace = workspace ? workspace : 'default'
-  } else if (isKoko()) {
+  if(isKoko() || isKongOSS()) {
     workspace = ''
+  } else if (isGateway()){
+    workspace = workspace ? workspace : 'default'
   }
 
   const endpoint = `${workspace}/plugins`;

@@ -28,8 +28,8 @@ import axios from 'axios';
  * IMPORTANT NOTE
  * For this test to work, you need to add '127.0.0.1 domain.test' to your /etc/hosts file
  */
-describe('Gateway Plugins: ACME', function () {
-  console.info(`Don't forget to add '127.0.0.1 domain.test' to your /etc/hosts file`)
+describe('@oss: Gateway Plugins: ACME', function () {
+  console.info(`Don't forget to add '127.0.0.1 domain.test' to your /etc/hosts file for ACME tests to work`);
 
   let serviceId: string;
 

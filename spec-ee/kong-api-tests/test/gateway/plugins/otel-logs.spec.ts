@@ -24,7 +24,7 @@ import {
   deleteTargetFile,
 } from '@support';
 
-describe('Gateway Plugins: OpenTelemetry Logs', function () {
+describe('@oss: Gateway Plugins: OpenTelemetry Logs', function () {
   const isHybrid = isGwHybrid();
   const gwContainerName = getKongContainerName();
   const otelColContainerName = 'opentelemetry-collector'

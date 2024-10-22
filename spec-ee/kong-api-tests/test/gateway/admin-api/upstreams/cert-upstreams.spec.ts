@@ -10,7 +10,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('@gke: Gateway Admin API: Cert-Associated Upstreams', function () {
+describe('@gke @oss: Gateway Admin API: Cert-Associated Upstreams', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/certificates`;

@@ -23,9 +23,10 @@ import {
   wait,
   waitForConfigRebuild,
   checkLogPropertyAndValue,
+  isKongOSS,
 } from '@support';
 
-describe('Gateway Plugins: file-log', function () {
+describe('@oss: Gateway Plugins: file-log', function () {
   const gwContainerName = isGwHybrid() ? 'kong-dp1' : getKongContainerName();
   const logFolder = `tmp/`;
   const fixLogFileName = `file-log.log`;
@@ -114,8 +115,11 @@ describe('Gateway Plugins: file-log', function () {
     routeId = route.id;
     const consumer = await createConsumer(consumerName);
     consumerId = consumer.id;
-    const consumerGroup = await createConsumerGroup(consumerGroupName);
-    consumerGroupId = consumerGroup.id
+
+    if(!isKongOSS()) {
+      const consumerGroup = await createConsumerGroup(consumerGroupName);
+      consumerGroupId = consumerGroup.id
+    }
 
     await waitForConfigRebuild();
     basePayload = {
@@ -336,14 +340,16 @@ describe('Gateway Plugins: file-log', function () {
     pluginId = resp.data.id;
   });
 
-  it('should not be able to enable file-log plugin in consumer group level', async function () {
-    basePayload.consumer_group = { id: consumerGroupId };
-    const resp = await postNegative(pluginUrl, basePayload);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 400').to.equal(400);
-    expect(resp.data.message, 'Should have correct error message').to.contain('consumer_group: value must be null');
-  });
+  if (!isKongOSS()) {
+    it('should not be able to enable file-log plugin in consumer group level', async function () {
+      basePayload.consumer_group = { id: consumerGroupId };
+      const resp = await postNegative(pluginUrl, basePayload);
+      logResponse(resp);
+  
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.message, 'Should have correct error message').to.contain('consumer_group: value must be null');
+    });
+  }
 
   after(async function () {
     await clearAllKongResources();

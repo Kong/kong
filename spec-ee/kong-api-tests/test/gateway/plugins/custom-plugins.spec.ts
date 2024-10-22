@@ -21,7 +21,7 @@ const isPackageTest = isGwNative();
 const currentDockerImage = getControlPlaneDockerImage();
 
 // skip custom plugin tests for amazonlinux-2 distro and for package tests
-((currentDockerImage?.endsWith('amazonlinux-2') || isPackageTest) ? describe.skip : describe)('@smoke: Gateway Custom Plugins: js-hello, go-hello', function () {
+((currentDockerImage?.endsWith('amazonlinux-2') || isPackageTest) ? describe.skip : describe)('@smoke @oss: Gateway Custom Plugins: js-hello, go-hello', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;

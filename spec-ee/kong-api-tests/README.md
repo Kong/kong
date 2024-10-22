@@ -109,6 +109,8 @@ The default Gateway mode is `classic`. If you want to run tests against `hybrid`
 GW_MODE=hybrid
 ```
 
+If you want to run tests against **Kong OSS**, make sure to set `IS_KONG_OSS=true` in your `.env` file or in the GH workflow that you trigger.
+
 ### Verbose Response Logging
 
 `export VERBOSE_RESPONSE_LOGS=false` to disable response logging (default is `true`).
@@ -132,6 +134,12 @@ npm run test-spec --spec=service
 
 ```bash
 npm run test-smoke
+```
+
+- Kong OSS tests
+
+```bash
+npm run test-oss
 ```
 
 - Release package tests

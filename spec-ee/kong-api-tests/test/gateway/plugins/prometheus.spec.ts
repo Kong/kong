@@ -22,10 +22,11 @@ import {
   deletePlugin,
   deleteConsumer,
   wait,
-  createPolly
+  createPolly,
+  isKongOSS
 } from '@support';
 
-describe('Gateway Plugins: Prometheus', function () {
+describe('@oss: Gateway Plugins: Prometheus', function () {
   const serviceName = 'prometheus-service';
   const routeName = 'prometheus-route';
   const routePath = '/api-prom'
@@ -115,29 +116,32 @@ describe('Gateway Plugins: Prometheus', function () {
     await waitForConfigRebuild();
   });
 
-  it('should see kong_db_entities_total metric after enabling prometheus plugin', async function () {
-    await eventually(async () => {
-      let resp: any
-      // the initial metrics differ in case of traditional and hybrid gateway modes
-      // here we assert that a metric exists which is unique to each gateway mode
-      if(isGwHybrid()) {
-        resp = await queryPrometheusMetrics('kong_data_plane_version_compatible')
-      } else {
-        resp = await queryPrometheusMetrics('kong_db_entities_total')
-      }
-
-      expect(JSON.parse(resp.result[0].value[1]), 'should kong_db_entities_total number').to.be.gte(1)
+  // below 2 metrics are enterprise only
+  if(!isKongOSS()) {
+    it('should see kong_db_entities_total metric after enabling prometheus plugin', async function () {
+      await eventually(async () => {
+        let resp: any
+        // the initial metrics differ in case of traditional and hybrid gateway modes
+        // here we assert that a metric exists which is unique to each gateway mode
+        if(isGwHybrid()) {
+          resp = await queryPrometheusMetrics('kong_data_plane_version_compatible')
+        } else {
+          resp = await queryPrometheusMetrics('kong_db_entities_total')
+        }
+  
+        expect(JSON.parse(resp.result[0].value[1]), 'should kong_db_entities_total number').to.be.gte(1)
+      });
     });
-  });
 
-  it('should see kong_enterprise_license_features metric after enabling prometheus plugin', async function () {
-    await eventually(async () => {
-      const resp = await queryPrometheusMetrics('kong_enterprise_license_features')
-      expect(resp.result.length).to.equal(2)
-      expect(resp.result[0].metric.feature).to.equal("ee_entity_read")
-      expect(resp.result[1].metric.feature).to.equal("ee_entity_write")
+    it('should see kong_enterprise_license_features metric after enabling prometheus plugin', async function () {
+      await eventually(async () => {
+        const resp = await queryPrometheusMetrics('kong_enterprise_license_features')
+        expect(resp.result.length).to.equal(2)
+        expect(resp.result[0].metric.feature).to.equal("ee_entity_read")
+        expect(resp.result[1].metric.feature).to.equal("ee_entity_write")
+      });
     });
-  });
+  }
 
   it('should enable the prometheus plugin latency_metrics', async function () {
     pluginPayload = { ...pluginPayload, config: { latency_metrics: true } }

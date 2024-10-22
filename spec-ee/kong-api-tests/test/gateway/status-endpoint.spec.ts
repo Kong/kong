@@ -21,7 +21,7 @@ const isPackageTest = isGwNative();
 
 // skip tests for package mode due to failures in the last test
 // needs to be investigated why the kong-ee-database throws cert access denied error and doesn't start
-(isPackageTest ? describe.skip : describe)('/status Endpoint tests', function () {
+(isPackageTest ? describe.skip : describe)('@oss: /status Endpoint tests', function () {
   before(async function () {
     if (!isLocalDb) {
       this.skip();

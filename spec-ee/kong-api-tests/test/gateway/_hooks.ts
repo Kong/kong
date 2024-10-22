@@ -1,4 +1,4 @@
-import { clearAllKongResources, createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild } from '@support';
+import { clearAllKongResources, createRedisClient, gatewayAuthHeader, isCI, isKongOSS, waitForConfigRebuild } from '@support';
 import {
   postGatewayEeLicense,
   deleteGatewayEeLicense,
@@ -12,7 +12,8 @@ export const mochaHooks: Mocha.RootHookObject = {
         const { authHeaderKey, authHeaderValue } = gatewayAuthHeader();
         axios.defaults.headers[authHeaderKey] = authHeaderValue;
         createRedisClient();
-      if (isCI()) {
+
+      if (isCI() && !isKongOSS()) {
         // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beginning of all tests to allow us test the functionality of license endpoint
         await postGatewayEeLicense();
         // Wait for the license propagation to complete before release to the test
@@ -29,7 +30,8 @@ export const mochaHooks: Mocha.RootHookObject = {
 
   afterAll: async function (this: Mocha.Context) {
     // Gateway for API tests starts without EE_LICENSE in CI, hence, we delete license at the end of all tests to allow test rerun from clean state
-    if (isCI()) {
+    // Skipping this step for OSS tests
+    if (isCI() && !isKongOSS()) {
       await deleteGatewayEeLicense();
     }
   },

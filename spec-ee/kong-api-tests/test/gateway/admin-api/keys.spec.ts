@@ -70,7 +70,7 @@ describe('@gke: Gateway Admin API: Keys For jwe-decrypt plugin', function () {
     expect(
       resp.data.fields.pem,
       'Should indicate public key field is missing'
-    ).to.match(/could not load public key.+/);
+    ).to.match(/could not load public key/);
   });
 
   it('should not create keys if private key field violates schema', async function () {

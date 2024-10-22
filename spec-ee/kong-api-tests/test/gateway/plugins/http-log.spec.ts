@@ -17,7 +17,7 @@ import {
   isGateway
 } from '@support';
 
-describe('Gateway Plugins: http-log', function () {
+describe('@oss: Gateway Plugins: http-log', function () {
   const path = `/${randomString()}`;
 
   let serviceId: string;
