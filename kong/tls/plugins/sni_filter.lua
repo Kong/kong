@@ -12,7 +12,6 @@ local chain_lib    = require "resty.openssl.x509.chain"
 local _M = {}
 
 local kong = kong
-local null = ngx.null
 local ipairs = ipairs
 local new_tab = require("table.new")
 
@@ -232,47 +231,6 @@ function _M.sni_cache_l1_serializer(snis)
   end
 
   return snis
-end
-
-local function each_enabled_plugin(entity, plugin_name)
-  local options = {
-    show_ws_id = true,
-    workspace = null,
-    search_fields = {
-      name = { eq = plugin_name },
-      enabled = { eq = true }
-    }
-  }
-
-  local iter = entity:each(1000, options)
-  local function iterator()
-    if not iter then return end
-    local element, err = iter()
-    if err then return nil, err end
-    if element == nil then return end
-    -- XXX
-    -- `search_fields` is PostgreSQL-backed instances only.
-    -- We also need a backstop here for Cassandra or DBless.
-    if element.name == plugin_name and element.enabled then return element, nil end
-    return iterator()
-  end
-
-  return iterator
-end
-
-local workspaces_iter
-do
-  local pok = pcall(require, "kong.workspaces")
-  if not pok then
-    -- no workspace support, that's fine
-    workspaces_iter = function(_) return next, { default = {} }, nil end
-
-  else
-    workspaces_iter = function(db)
-      ngx.log(ngx.ERR, "using workspace support")
-      return db.workspaces:each(1000)
-    end
-  end
 end
 
 function _M.build_ssl_route_filter_set(plugin_name)
