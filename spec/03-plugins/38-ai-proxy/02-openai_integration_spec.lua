@@ -300,9 +300,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- 200 chat good with one option
       local chat_good_no_allow_override = assert(bp.routes:insert {
         service = empty_service,
-        protocols = { "http" },
+        protocols = { "http", "https" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good-no-allow-override" }
+        paths = { "/openai/llm/v1/chat/good-no-allow-override" },
+        snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,

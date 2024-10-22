@@ -487,7 +487,20 @@ end
 
 
 function _M:init_worker_shared(plugin_name)
-  -- TODO: remove nasty hacks once we have singleton phases support in core
+  -- do not execute if the kong configuration doesn't have any http2 listeners
+  local http2_enabled = false
+  for _, listener in ipairs(kong.configuration.proxy_listeners) do
+    if listener.http2 then
+      http2_enabled = true
+      break
+    end
+  end
+
+  if not http2_enabled then
+    ngx.log(ngx.INFO, "no http2 listeners found, skipping LLM plugin initialization")
+    return
+  end
+
   local sni_cache_key = "ai:llm:cert_enabled_snis:" .. plugin_name
   local orig_ssl_client_hello = Kong.ssl_client_hello   -- luacheck: ignore
   Kong.ssl_client_hello = function()                   -- luacheck: ignore
