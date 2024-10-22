@@ -1,4 +1,4 @@
 message: |
-  Fixed an issue where the `kong.request.enable_buffering` can not be used when dowstream use HTTP/2.
+  Fixed an issue where the `kong.request.enable_buffering` can not be used when downstream uses HTTP/2.
 type: bugfix
 scope: Core

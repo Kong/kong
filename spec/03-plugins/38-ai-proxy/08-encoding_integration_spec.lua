@@ -376,4 +376,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   ----
 
 end end
-end
+end -- for _, client_protocol
