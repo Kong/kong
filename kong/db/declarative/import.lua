@@ -30,14 +30,17 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 
 
+local GLOBAL_WORKSPACE_TAG = "*"
+
+
 -- Generates the appropriate workspace ID for current operating context
 -- depends on schema settings
 --
 -- Non-workspaceable entities are always placed under the "default"
 -- workspace
 --
--- If the query explicitly set options.workspace == null, then "default"
--- workspace shall be used
+-- If the query explicitly set options.workspace == null, then all
+-- workspaces shall be used
 --
 -- If the query explicitly set options.workspace == "some UUID", then
 -- it will be returned
@@ -53,10 +56,8 @@ local function workspace_id(schema, options)
     return get_workspace_id()
   end
 
-  -- options.workspace == null must be handled by caller by querying
-  -- all available workspaces one by one
   if options.workspace == null then
-    return kong.default_workspace
+    return GLOBAL_WORKSPACE_TAG
   end
 
   -- options.workspace is a UUID
@@ -292,13 +293,20 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   -- store serialized entity into lmdb
   t:set(itm_key, itm_value)
 
+  -- for global query
+  local global_key = item_key(entity_name, GLOBAL_WORKSPACE_TAG, pk)
+  t:set(global_key, idx_value)
+
   -- select_by_cache_key
   if schema.cache_key then
     local cache_key = dao:cache_key(item)
-    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
 
-    -- store item_key or nil into lmdb
-    t:set(key, idx_value)
+    for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
+      local key = unique_field_key(entity_name, wid, "cache_key", cache_key)
+
+      -- store item_key or nil into lmdb
+      t:set(key, idx_value)
+    end
   end
 
   for fname, fdata in schema:each_field() do
@@ -328,10 +336,12 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
         ws_id = kong.default_workspace
       end
 
-      local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
+      for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
+        local key = unique_field_key(entity_name, wid, fname, value_str or value)
 
-      -- store item_key or nil into lmdb
-      t:set(key, idx_value)
+        -- store item_key or nil into lmdb
+        t:set(key, idx_value)
+      end
     end
 
     if is_foreign then
@@ -340,10 +350,12 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
 
       value_str = pk_string(kong.db[fdata_reference].schema, value)
 
-      local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
+      for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
+        local key = foreign_field_key(entity_name, wid, fname, value_str, pk)
 
-      -- store item_key or nil into lmdb
-      t:set(key, idx_value)
+        -- store item_key or nil into lmdb
+        t:set(key, idx_value)
+      end
     end
 
     ::continue::
