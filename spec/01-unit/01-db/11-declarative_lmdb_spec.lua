@@ -204,9 +204,9 @@ describe("#off preserve nulls", function()
 
     -- format changed after incremental sync
     local cache_key = concat({
-      "basicauth_credentials|*|",
+      "basicauth_credentials|",
       item.ws_id,
-      "|",
+      "|*|",
       id
     })
 
@@ -227,9 +227,9 @@ describe("#off preserve nulls", function()
 
         -- format changed after incremental sync
         cache_key = concat({
-          "plugins|route|",
+          "plugins|",
           plugin.ws_id,
-          "|",
+          "|route|",
           plugin.route.id,
           "|",
           plugin.id
