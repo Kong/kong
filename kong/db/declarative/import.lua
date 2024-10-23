@@ -31,6 +31,20 @@ local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPAC
 
 
 local GLOBAL_WORKSPACE_TAG = "*"
+local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
+
+
+local function get_default_workspace()
+  -- in init phase we can not access lmdb
+  if kong.default_workspace == UNINIT_WORKSPACE_ID and
+     get_phase() ~= "init"
+  then
+    local res = kong.db.workspaces:select_by_name("default")
+    kong.default_workspace = assert(res and res.id)
+  end
+
+  return kong.default_workspace
+end
 
 
 -- Generates the appropriate workspace ID for current operating context
@@ -48,7 +62,7 @@ local GLOBAL_WORKSPACE_TAG = "*"
 -- Otherwise, the current workspace ID will be returned
 local function workspace_id(schema, options)
   if not schema.workspaceable then
-    return kong.default_workspace
+    return get_default_workspace()
   end
 
   -- options.workspace does not exist
