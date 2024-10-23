@@ -486,7 +486,7 @@ end
 
 
 
-function _M:init_worker_shared(plugin_name)
+function _M:build_http2_alpn_filter(plugin_name)
   -- do not execute if the kong configuration doesn't have any http2 listeners
   local http2_enabled = false
   for _, listener in ipairs(kong.configuration.proxy_listeners) do
