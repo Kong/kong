@@ -1,0 +1,3 @@
+message: "**OAS-validation**: Fixed an issue where the error message was omitted if `notify_only_request_body_validation_failure` or `notify_only_response_body_validation_failure` was set to `false`."
+scope: Plugin
+type: bugfix

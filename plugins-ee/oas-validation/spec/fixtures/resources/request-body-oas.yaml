@@ -13,6 +13,7 @@ paths:
   /notify-with-body:
     post:
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -20,6 +21,8 @@ paths:
               properties:
                 key:
                   type: string
+              required:
+                - key
       responses:
         '200':
           description: OK

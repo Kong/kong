@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local cjson = require "cjson.safe"
 
 local PLUGIN_NAME = "oas-validation"
 
@@ -42,7 +43,8 @@ local fixtures = {
 
 for _, strategy in helpers.each_strategy() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
-    local client
+    local client, admin
+    local plugin2
 
     lazy_setup(function()
       local bp, db = helpers.get_db_utils(strategy, {
@@ -73,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "test2.test" },
         service = service1,
       }))
-      assert(db.plugins:insert {
+      plugin2 = assert(db.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route2.id },
         config = {
@@ -111,11 +113,16 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       client = helpers.proxy_client()
+      admin = helpers.admin_client()
     end)
 
     after_each(function()
       if client then
         client:close()
+      end
+
+      if admin then
+        admin:close()
       end
     end)
 
@@ -159,6 +166,45 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
+      end)
+
+      describe("should fail with invalid request body", function()
+        before_each(function()
+          helpers.clean_logfile()
+        end)
+        local notify_only = { false, true }
+        for _, notify in ipairs(notify_only) do
+          it("and logs error when notify_only_request_validation_failure=" .. tostring(notify) , function()
+            local res = assert(admin:send {
+              method = "PATCH",
+              path = "/plugins/" .. plugin2.id,
+              headers = {
+                ["Content-Type"] = "application/json",
+              },
+              body = {
+                config = { notify_only_request_validation_failure = notify, },
+              }
+            })
+            helpers.wait_for_all_config_update({disable_ipv6 = true})
+            assert.res_status(200, res)
+            res = assert(client:send {
+              method = "POST",
+              path = "/notify-with-body",
+              headers = {
+                host = "test2.test",
+                ["Content-Type"] = "application/json",
+              },
+            })
+            if notify then
+              assert.response(res).has.status(200)
+            else
+              local body = assert(cjson.decode(assert.res_status(400, res)))
+              assert.equal("request param doesn't conform to schema", body.message)
+            end
+
+            assert.logfile().has.line("request body validation failed with error")
+          end)
+        end
       end)
 
       it("multiple-content-types", function()

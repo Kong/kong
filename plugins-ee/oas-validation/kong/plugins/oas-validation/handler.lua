@@ -455,14 +455,14 @@ local function handle_validate_error(err, default_message, http_code, options)
 
   emit_event_hook(err)
 
+  local level = options.log_level or "err"
+  kong.log[level](err)
+
   if options.interrupt_request then
     local message = options.verbose and err or default_message
     kong.response.exit(http_code, { message = message })
     return
   end
-
-  local level = options.log_level or "err"
-  kong.log[level](err)
 end
 
 
