@@ -8,4 +8,5 @@ def atc_router_repositories():
         name = "atc_router",
         branch = KONG_VAR["ATC_ROUTER"],
         remote = "https://github.com/Kong/atc-router",
+        build_file = "//build/openresty/atc_router:BUILD.atc_router.bazel",
     )

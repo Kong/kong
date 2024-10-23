@@ -48,6 +48,12 @@ rules_foreign_cc_dependencies(
     register_preinstalled_tools = True,  # use preinstalled toolchains like make
 )
 
+http_archive(
+    name = "rules_rust",
+    integrity = "sha256-JLN47ZcAbx9wEr5Jiib4HduZATGLiDgK7oUi/fvotzU=",
+    urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.42.1/rules_rust-v0.42.1.tar.gz"],
+)
+
 load("//build:kong_bindings.bzl", "load_bindings")
 
 load_bindings(name = "kong_bindings")
@@ -56,6 +62,20 @@ load("//build/openresty:repositories.bzl", "openresty_repositories")
 
 openresty_repositories()
 
+# [[ BEGIN: must happen after any Rust repositories are loaded
+load("//build/kong_crate:deps.bzl", "kong_crate_repositories")
+
+kong_crate_repositories(
+    cargo_home_isolated = False,
+    cargo_lockfile = "//:Cargo.Bazel.lock",
+    lockfile = "//:Cargo.Bazel.lock.json",
+)
+
+load("//build/kong_crate:crates.bzl", "kong_crates")
+
+kong_crates()
+## END: must happen after any Rust repositories are loaded ]]
+
 load("//build/nfpm:repositories.bzl", "nfpm_repositories")
 
 nfpm_repositories()
@@ -63,18 +83,6 @@ nfpm_repositories()
 load("@simdjson_ffi//build:repos.bzl", "simdjson_ffi_repositories")
 
 simdjson_ffi_repositories()
-
-load("@atc_router//build:repos.bzl", "atc_router_repositories")
-
-atc_router_repositories()
-
-load("@atc_router//build:deps.bzl", "atc_router_dependencies")
-
-atc_router_dependencies(cargo_home_isolated = False)  # TODO: set cargo_home_isolated=True for release
-
-load("@atc_router//build:crates.bzl", "atc_router_crates")
-
-atc_router_crates()
 
 load("//build:repositories.bzl", "build_repositories")
 
