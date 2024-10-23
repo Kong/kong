@@ -1,0 +1,4 @@
+message: >-
+  **openid-connect**: Fixed an `500` error caused by JSON `null` from the request body when parsing bearer tokens or client IDs.
+type: bugfix
+scope: Plugin

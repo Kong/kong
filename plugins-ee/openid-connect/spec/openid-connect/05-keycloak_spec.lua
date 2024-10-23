@@ -3183,6 +3183,181 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
+    describe("JSON body", function()
+      local proxy_client
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(
+          strategy == "off" and "postgres" or strategy,
+          {
+            "routes",
+            "services",
+            "plugins",
+          },
+          {
+            PLUGIN_NAME,
+          }
+        )
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+
+        local route = bp.routes:insert {
+          service = service,
+          paths   = { "/oidc" },
+        }
+        bp.plugins:insert {
+          route   = route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "bearer",
+            },
+            bearer_token_param_type = {
+              "header",
+              "body",
+            },
+            display_errors = true,
+          },
+        }
+
+        local route2 = bp.routes:insert {
+          service = service,
+          paths   = { "/oidc2" },
+        }
+        bp.plugins:insert {
+          route   = route2,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+              "0d0413e8-8471-4ee5-a736-692428b9eaa2",
+              "68470bc0-1290-4304-ba1e-04859923ed66",
+              "4f72580e-c568-4a7a-a6aa-1157d0955551"
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "bearer",
+            },
+            bearer_token_param_type = {
+              "header",
+            },
+            display_errors = true,
+          },
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = PLUGIN_NAME,
+          declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+          pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
+          nginx_worker_processes = 1,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("detect JSON null on reques", function ()
+        local res = proxy_client:post("/oidc", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = "null",
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+      it("detect JSON null on multiple clients", function ()
+        local res = proxy_client:post("/oidc2", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = "null",
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+      it("detect bad JSON string", function()
+        local res = proxy_client:post("/oidc", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = '"null"',
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+
+      it("detect bad JSON number", function()
+        local res = proxy_client:post("/oidc", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = 5,
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+
+      it("detect bad JSON bool", function()
+        local res = proxy_client:post("/oidc", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = true,
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+
+      it("detect valid JSON data", function()
+        local res = proxy_client:post("/oidc", {
+          headers = {
+            ["Authorization"] = "Bearer ",
+            ["Content-Type"] = "application/json",
+          },
+          body = { hello = "world" },
+        })
+        assert.response(res).has.status(401)
+        local json = assert.response(res).has.jsonbody()
+        assert.are_equal("Unauthorized (no suitable authorization credentials were provided)", json.message)
+      end)
+    end)
+
     describe("FTI-2737", function()
       local proxy_client
       lazy_setup(function()

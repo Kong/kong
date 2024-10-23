@@ -231,7 +231,8 @@ local function create_get_arg(args)
     end
 
     local all_args = args()
-    if not all_args then
+    all_args = get_value(all_args)
+    if type(all_args) ~= "table" then
       return nil
     end
 
