@@ -14,7 +14,17 @@ runs:
         echo "WASM_FILTER_PATH=$WASM_FILTER_PATH" >> $GITHUB_ENV
         echo "WASM_FIXTURE_PATH=$WASM_FILTER_PATH/build" >> $GITHUB_ENV
         echo "WASM_FILTER_CARGO_LOCK=$WASM_FILTER_PATH/Cargo.lock" >> $GITHUB_ENV
-        echo "WASM_FILTER_CACHE_PREFIX=wasm-test-filters::v3::${{ runner.os }}" >> $GITHUB_ENV
+        echo "WASM_FILTER_TARGET=wasm32-wasip1" >> "$GITHUB_ENV"
+
+    - name: Setup cache key
+      shell: bash
+      env:
+        FILE_HASH: "${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}"
+        CACHE_VERSION: "4"
+      run: |
+        CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${{ runner.os }}::${WASM_FILTER_TARGET}"
+        echo "CACHE_PREFIX=${CACHE_PREFIX}" >> $GITHUB_ENV
+        echo "CACHE_KEY=${CACHE_PREFIX}::${FILE_HASH}" >> $GITHUB_ENV
 
     - name: Restore Cache
       uses: actions/cache/restore@v4
@@ -26,8 +36,8 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
-        restore-keys: ${{ env.WASM_FILTER_CACHE_PREFIX }}
+        key: ${{ env.CACHE_KEY }}
+        restore-keys: ${{ env.CACHE_PREFIX }}
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
@@ -64,7 +74,7 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.WASM_FILTER_CACHE_PREFIX }}::${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
+        key: ${{ env.CACHE_KEY }}
 
     - name: Create a symlink to the target directory
       shell: bash
