@@ -34,7 +34,7 @@ on:
       gateway_version:
         description: 'Kong Version'
         required: false
-        default: '3.8.0.0'
+        default: '3.9.0.0'
       repo_visibility:
         description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false
@@ -51,11 +51,12 @@ on:
         description: 'Send test result notifications to slack'
         required: false
         type: string
-        default: 'false'
+        default: 'true'
       target_test:
         description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
         type: string
+        default: 'smoke'
       target_package:
         description: 'Run tests only for the given package/artifact'
         required: false
@@ -68,6 +69,7 @@ on:
         description: 'Run only the given test matrix "postgres | docker | package", default is all'
         required: false
         type: 'string'
+        default: 'package'
       gateway_image:
         description: 'Docker Image with tag for matrix test run'
         required: false
@@ -76,10 +78,15 @@ on:
         description: 'Kong Version'
         required: false
         type: 'string'
+        default: '3.9.0.0'
       repo_visibility:
         description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false
         type: 'string'
+        default: 'private'
+
+  schedule:
+    - cron: '0 9 * * 6'
 
 env:
   SEND_SLACK_RESULTS: ${{ inputs.send_slack_results }}
