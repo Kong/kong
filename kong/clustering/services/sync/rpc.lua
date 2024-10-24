@@ -87,7 +87,7 @@ function _M:init_cp(manager)
     end
 
     local latest_version, err = self.strategy:get_latest_version()
-    if not latest_version then
+    if latest_version == nil or latest_version == ngx_null then
       return nil, err
     end
 
