@@ -81,7 +81,7 @@ function _M:insert_delta(deltas)
     buf:putf("(new_version, %s, %s, %s, %s)",
              self.connector:escape_literal(d.type),
              self.connector:escape_literal(d.id),
-             self.connector:escape_literal(d.ws_id),
+             self.connector:escape_literal(d.ws_id or kong.default_workspace),
              self.connector:escape_literal(cjson_encode(d.row)))
   end
 
