@@ -44,3 +44,4 @@ spec/fixtures/proxy_wasm_filters/target
 bazel-*
 # remove it after migrating from WORKSPACE to Bzlmod
 MODULE.bazel.lock
+spec/fixtures/external_plugins/go/go-hello
