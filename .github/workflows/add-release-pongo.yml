@@ -9,6 +9,7 @@ jobs:
   set_vars:
     name: Set Vars
     runs-on: ubuntu-latest-kong
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     outputs:
       code_base: ${{ steps.define_vars.outputs.CODE_BASE }}
       tag_version: ${{ steps.define_vars.outputs.TAG_VERSION }}
@@ -33,6 +34,7 @@ jobs:
   add_release_to_pongo:
     name: Add Release to Pongo
     runs-on: ubuntu-latest-kong
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs:
     - set_vars
     env:
