@@ -124,6 +124,7 @@ function _M:access(conf)
   local http_opts = create_http_opts(conf)
   conf.llm.__plugin_id = conf.__plugin_id
   conf.llm.__key__ = conf.__key__
+  conf.llm.model.source = "ai-response-transformer"
   local ai_driver, err = llm.new_driver(conf.llm, http_opts, identity_interface)
 
   if not ai_driver then
