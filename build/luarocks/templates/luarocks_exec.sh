@@ -34,13 +34,26 @@ OPENSSL_DIR=$root_path/$openssl_path
 # but the linker expects `libexpat.so` to be present.
 # So we create a symlink to the actual file
 # if it doesn't exist.
-if ! test -e $EXPAT_DIR/lib/libexpat.so; then
-    so=$(ls $EXPAT_DIR/lib/libexpat.*)
-    if [[ -z $so ]]; then
-        echo "No expat library found in $EXPAT_DIR/lib"
-        exit 1
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS uses `.dylib``
+    if ! test -e $EXPAT_DIR/lib/libexpat.dylib; then
+        dylib=$(ls $EXPAT_DIR/lib/libexpat.*)
+        if [[ -z $dylib ]]; then
+            echo "No expat library found in $EXPAT_DIR/lib"
+            exit 1
+        fi
+        ln -s $dylib $EXPAT_DIR/lib/libexpat.dylib
     fi
-    ln -s $so $EXPAT_DIR/lib/libexpat.so
+else
+    # Linux uses `.so``
+    if ! test -e $EXPAT_DIR/lib/libexpat.so; then
+        so=$(ls $EXPAT_DIR/lib/libexpat.*)
+        if [[ -z $so ]]; then
+            echo "No expat library found in $EXPAT_DIR/lib"
+            exit 1
+        fi
+        ln -s $so $EXPAT_DIR/lib/libexpat.so
+    fi
 fi
 
 # we use system libyaml on macos
