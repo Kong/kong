@@ -86,6 +86,8 @@ jobs:
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
+        echo "docker-test-image=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+
         cat $GITHUB_OUTPUT
 
         echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
