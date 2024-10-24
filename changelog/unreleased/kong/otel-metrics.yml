@@ -1,0 +1,3 @@
+message: "**OpenTelemetry:** Added support for OpenTelemetry metrics."
+type: feature
+scope: Plugin
