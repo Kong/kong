@@ -38,8 +38,22 @@ describe("Admin API endpoints added via plugins #" .. strategy, function()
       path = "/method_without_exit",
       headers = { ["Content-Type"] = "application/json" }
     })
-    local body = assert.res_status(201 , res)
+    local body = assert.res_status(201, res)
     assert.same("hello", body)
+  end)
+
+  it("nested parameters can be parsed correctly when using form-urlencoded requests", function()
+    local res = assert(client:send{
+      method = "POST",
+      path = "/parsed_params",
+      body = ngx.encode_args{
+        ["items[1]"] = "foo",
+        ["items[2]"] = "bar",
+      },
+      headers = { ["Content-Type"] = "application/x-www-form-urlencoded" }
+    })
+    local body = assert.res_status(200, res)
+    assert.same('{"items":["foo","bar"]}', body)
   end)
 end)
 
