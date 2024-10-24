@@ -246,7 +246,7 @@ local function do_sync()
     local delta_row = delta.row
     local ev
 
-    -- item must have ws_it to generate the correct lmdb key
+    -- item must have ws_id to generate the correct lmdb key
     assert(delta.ws_id)
 
     if delta_row ~= ngx_null then
