@@ -1,7 +1,7 @@
 local Queue = require "kong.tools.queue"
 local propagation = require "kong.observability.tracing.propagation"
 local tracing_context = require "kong.observability.tracing.tracing_context"
-local otlp = require "kong.plugins.opentelemetry.otlp"
+local otlp = require "kong.observability.otlp"
 local otel_utils = require "kong.plugins.opentelemetry.utils"
 local clone = require "table.clone"
 
