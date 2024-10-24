@@ -11,6 +11,7 @@ local concurrency = require("kong.concurrency")
 local insert_entity_for_txn = declarative.insert_entity_for_txn
 local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 
@@ -217,6 +218,16 @@ local function do_sync()
     return true
   end
 
+  -- we should find the correct default workspace
+  -- and replace the old one with it
+  for _, delta in ipairs(ns_delta.deltas) do
+    if delta.type == "workspaces" and delta.row.name == "default" then
+      kong.default_workspace = delta.row.id
+      break
+    end
+  end
+  assert(type(kong.default_workspace) == "string")
+
   local t = txn.begin(512)
 
   local wipe = ns_delta.wipe
@@ -234,6 +245,9 @@ local function do_sync()
     local delta_type = delta.type
     local delta_row = delta.row
     local ev
+
+    -- item must have ws_it to generate the correct lmdb key
+    assert(delta.ws_id)
 
     if delta_row ~= ngx_null then
       -- upsert the entity
@@ -287,7 +301,12 @@ local function do_sync()
     end
   end -- for _, delta
 
+  -- store current sync version
   t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
+
+  -- store the correct default workspace uuid
+  t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
+
   local ok, err = t:commit()
   if not ok then
     return nil, err
