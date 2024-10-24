@@ -25,6 +25,28 @@ impl TestHttp {
         self.set_property(vec![ns, prop], value);
     }
 
+    fn update_metrics(&self) {
+        let base: u64 = 2;
+
+        let s_name = self.get_prop("kong", "service_name");
+        let r_name = self.get_prop("kong", "route_name");
+
+        let labeled_c = format!("a_labeled_counter_s_id={}_r_id={}", s_name, r_name);
+        let labeled_g = format!("a_labeled_gauge_s_id={}_r_id={}", s_name, r_name);
+        let labeled_h = format!("a_labeled_histogram_s_id={}_r_id={}", s_name, r_name);
+
+        metrics::increment_counter("a_counter").unwrap();
+        metrics::increment_counter(&labeled_c).unwrap();
+
+        metrics::record_gauge("a_gauge", 1).unwrap();
+        metrics::record_gauge(&labeled_g, 1).unwrap();
+
+        for i in 0..18 {
+            metrics::record_histogram("a_histogram", base.pow(i)).unwrap();
+            metrics::record_histogram(&labeled_h, base.pow(i)).unwrap();
+        }
+    }
+
     fn send_http_dispatch(&mut self, config: TestConfig) -> Action {
         let mut timeout = Duration::from_secs(0);
         let mut headers = Vec::new();
@@ -137,6 +159,7 @@ impl TestHttp {
 
                         return self.send_http_dispatch(config);
                     }
+                    "update_metrics" => self.update_metrics(),
                     _ => (),
                 }
             }
