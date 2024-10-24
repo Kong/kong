@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-require "kong.plugins.opentelemetry.proto"
+require "kong.observability.otlp.proto"
 local helpers = require "spec.helpers"
 local kong_table = require "kong.tools.table"
 local ngx_re = require "ngx.re"
@@ -164,10 +164,10 @@ for _, strategy in helpers.each_strategy() do
           tracing_instrumentations = "all",
           tracing_sampling_rate = 0.00005,
         })
-    
+
         proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())
         proxy_url_enable_traceid = fmt("http://%s:%s/enable_response_header_traceid", helpers.get_proxy_ip(), helpers.get_proxy_port())
-    
+
         local httpc = http.new()
         for i = 1, 100 do
           local res, err = httpc:request_uri(proxy_url_enable_traceid)

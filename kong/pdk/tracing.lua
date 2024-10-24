@@ -241,13 +241,7 @@ local function link_span(tracer, span, name, options)
   span.linked = true
 
   -- insert the span to ctx
-  local ctx = ngx.ctx
-  local spans = ctx.KONG_SPANS
-  if not spans then
-    spans = tablepool_fetch(POOL_SPAN_STORAGE, 10, 0)
-    spans[0] = 0 -- span counter
-    ctx.KONG_SPANS = spans
-  end
+  local spans = tracer.get_spans()
 
   local len = spans[0] + 1
   spans[len] = span
@@ -328,7 +322,8 @@ function span_mt:set_attribute(key, value)
    vtyp = type(value)
   end
 
-  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" and vtyp ~= nil then
+  -- TODO: any invalid type left?
+  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" and vtyp ~= "table" and vtyp ~= nil then
     -- we should not error out here, as most of the caller does not catch
     -- errors, and they are hooking to core facilities, which may cause
     -- unexpected behavior.
@@ -434,14 +429,19 @@ local noop_tracer = {}
 noop_tracer.name = "noop"
 noop_tracer.start_span = function() return noop_span end
 noop_tracer.create_span = function() return noop_span end
+noop_tracer.get_spans = NOOP
+noop_tracer.get_root_span = NOOP
+noop_tracer.init_spans = NOOP
 noop_tracer.link_span = NOOP
 noop_tracer.active_span = NOOP
 noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
 noop_tracer.set_should_sample = NOOP
 noop_tracer.get_sampling_decision = NOOP
+noop_tracer.spans_table_key = "noop"
 
 local VALID_TRACING_PHASES = {
+  ssl_cert = true,
   rewrite = true,
   access = true,
   header_filter = true,
@@ -453,9 +453,11 @@ local VALID_TRACING_PHASES = {
 --- New Tracer
 local function new_tracer(name, options)
   name = name or "default"
+  local namespace = options and options.namespace or "KONG"
+  local cache_key = namespace .. "_" .. name
 
-  if tracer_memo[name] then
-    return tracer_memo[name]
+  if tracer_memo[cache_key] then
+    return tracer_memo[cache_key]
   end
 
   local self = {
@@ -470,7 +472,8 @@ local function new_tracer(name, options)
 
   options.sampling_rate = options.sampling_rate or 1.0
   self.sampler = get_trace_id_based_sampler(options.sampling_rate)
-  self.active_span_key = name .. "_" .. "active_span"
+  self.active_span_key = namespace .. "_" .. "active_span"
+  self.spans_table_key = namespace .. "_" .. "SPANS"
 
   --- Get the active span
   -- Returns the root span by default
@@ -508,7 +511,7 @@ local function new_tracer(name, options)
   -- @function kong.tracing.start_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam string name span name
-  -- @tparam table options TODO(mayo)
+  -- @tparam table options
   -- @treturn table span
   function self.start_span(...)
     if not VALID_TRACING_PHASES[ngx.get_phase()] then
@@ -526,6 +529,26 @@ local function new_tracer(name, options)
     return link_span(...)
   end
 
+  function self.init_spans()
+    local spans = tablepool_fetch(POOL_SPAN_STORAGE, 10, 0)
+    spans[0] = 0 -- span counter
+    ngx.ctx[self.spans_table_key] = spans
+    return spans
+  end
+
+  function self.get_spans()
+    return ngx.ctx[self.spans_table_key] or self.init_spans()
+  end
+
+  function self.get_root_span()
+    local spans = self.get_spans()
+    if not spans then
+      return
+    end
+
+    return spans[1]
+  end
+
   --- Batch process spans
   -- Please note that socket is not available in the log phase, use `ngx.timer.at` instead
   --
@@ -539,12 +562,12 @@ local function new_tracer(name, options)
       error("processor must be a function", 2)
     end
 
-    local ctx = ngx.ctx
-    if not ctx.KONG_SPANS then
+    local spans = self.get_spans()
+    if not spans then
       return
     end
 
-    for _, span in ipairs(ctx.KONG_SPANS) do
+    for _, span in ipairs(spans) do
       if span.tracer and span.tracer.name == self.name then
         processor(span, ...)
       end
@@ -556,12 +579,12 @@ local function new_tracer(name, options)
   -- @function kong.tracing:set_should_sample
   -- @tparam bool should_sample value for the sample parameter
   function self:set_should_sample(should_sample)
-    local ctx = ngx.ctx
-    if not ctx.KONG_SPANS then
+    local spans = self.get_spans()
+    if not spans then
       return
     end
 
-    for _, span in ipairs(ctx.KONG_SPANS) do
+    for _, span in ipairs(spans) do
       if span.is_recording ~= false then
         span.should_sample = should_sample
       end
@@ -586,7 +609,7 @@ local function new_tracer(name, options)
     local ctx = ngx.ctx
 
     local sampled
-    local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+    local root_span = self.get_root_span()
     local trace_id = tracing_context.get_raw_trace_id(ctx)
     local sampling_rate = plugin_sampling_rate or kong.configuration.tracing_sampling_rate
 
@@ -624,11 +647,11 @@ noop_tracer.new = new_tracer
 
 local global_tracer
 tracer_mt.set_global_tracer = function(tracer)
-  if type(tracer) ~= "table" or getmetatable(tracer) ~= tracer_mt then
+  if type(tracer) ~= "table" or
+      (getmetatable(tracer) ~= tracer_mt and tracer.name ~= "noop") then
     error("invalid tracer", 2)
   end
 
-  tracer.active_span_key = "active_span"
   global_tracer = tracer
   -- replace kong.pdk.tracer
   if kong then

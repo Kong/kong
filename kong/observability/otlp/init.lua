@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-require "kong.plugins.opentelemetry.proto"
+require "kong.observability.otlp.proto"
 local pb = require "pb"
 local new_tab = require "table.new"
 local nkeys = require "table.nkeys"
@@ -41,6 +41,31 @@ local TYPE_TO_ATTRIBUTE_TYPES = {
   boolean = "bool_value",
 }
 
+local function transform_value(key, value)
+  if type(value) == "table" then
+    if kong_table.is_array(value) then
+      local entries = new_tab(#value, 0)
+      for _, v in ipairs(value) do
+        insert(entries, transform_value(nil, v))
+      end
+      return { array_value = { values = entries } }
+    else
+      local entries = new_tab(nkeys(value), 0)
+      for k, v in pairs(value) do
+        insert(entries, {
+          key = k,
+          value = transform_value(k, v)
+        })
+      end
+      return { kvlist_value = { values = entries } }
+    end
+  end
+
+  local attribute_type = key and KEY_TO_ATTRIBUTE_TYPES[key]
+                         or TYPE_TO_ATTRIBUTE_TYPES[type(value)]
+  return attribute_type and { [attribute_type] = value } or EMPTY_TAB
+end
+
 local function transform_attributes(attr)
   if type(attr) ~= "table" then
     error("invalid attributes", 2)
@@ -48,12 +73,9 @@ local function transform_attributes(attr)
 
   local pb_attributes = new_tab(nkeys(attr), 0)
   for k, v in pairs(attr) do
-
-    local attribute_type = KEY_TO_ATTRIBUTE_TYPES[k] or TYPE_TO_ATTRIBUTE_TYPES[type(v)]
-
     insert(pb_attributes, {
       key = k,
-      value = attribute_type and { [attribute_type] = v } or EMPTY_TAB
+      value = transform_value(k, v),
     })
   end
 

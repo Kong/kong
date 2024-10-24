@@ -184,6 +184,14 @@ describe("Tracer PDK", function()
       assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
 
       assert.error(function() span:set_attribute(123, 123) end)
+
+      -- array attribute value is allowed
+      span:set_attribute("key1", { "value1", "value2" })
+      assert.same({ "value1", "value2" }, span.attributes["key1"])
+
+      -- map attribute value is allowed
+      span:set_attribute("key1", { key1 = "value1", key2 = "value2" })
+      assert.same({ key1 = "value1", key2 = "value2" }, span.attributes["key1"])
     end)
 
     it("fails add_event", function ()

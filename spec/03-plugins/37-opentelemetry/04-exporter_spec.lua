@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-require "kong.plugins.opentelemetry.proto"
+require "kong.observability.otlp.proto"
 local helpers = require "spec.helpers"
 local pb = require "pb"
 local pl_file = require "pl.file"
@@ -352,7 +352,7 @@ for _, strategy in helpers.each_strategy() do
 
     -- this test is not meant to check that the sampling rate is applied
     -- precisely (we have unit tests for that), but rather that the config
-    -- option is properly handled by the plugin and has an effect on the 
+    -- option is properly handled by the plugin and has an effect on the
     -- sampling decision.
     for _, global_sampling_rate in ipairs{ 0, 0.001, 1} do
       describe("With config.sampling_rate set, using global sampling rate: " .. global_sampling_rate, function ()
