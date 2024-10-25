@@ -247,7 +247,7 @@ local function do_sync()
     local delta_row = delta.row
     local ev
 
-    -- item must have ws_id to generate the correct lmdb key
+    -- delta must have ws_id to generate the correct lmdb key
     -- set the correct workspace for item
     opts.workspace = assert(delta.ws_id)
 
