@@ -252,15 +252,15 @@ local function new(self)
     local buf = ffi_new("unsigned char[?]", SIZE)
     local res = C.gethostname(buf, SIZE)
 
-    if res == 0 then
-      local hostname = ffi_str(buf, SIZE)
-      return gsub(hostname, "%z+$", "")
+    if res ~= 0 then
+      -- Return an empty string "" instead of nil and error message,
+      -- because strerror is not thread-safe and the behavior of strerror_r
+      -- is inconsistent across different systems.
+      return ""
     end
 
-    local f = io.popen("/bin/hostname")
-    local hostname = f:read("*a") or ""
-    f:close()
-    return gsub(hostname, "\n$", "")
+    local hostname = ffi_str(buf, SIZE)
+    return gsub(hostname, "%z+$", "")
   end
 
 

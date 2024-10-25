@@ -1,0 +1,2 @@
+message: "**loggly**: fixed the error caused by the missing `/bin/hostname`."
+type: bugfix
