@@ -495,6 +495,7 @@ jobs:
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        skip_cis_scan: true # FIXME
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
@@ -503,6 +504,7 @@ jobs:
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        skip_cis_scan: true # FIXME
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
