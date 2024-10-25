@@ -93,7 +93,7 @@ function _M:init_cp(manager)
     end
 
     -- is the node empty? If so, just do a full sync to bring it up to date faster
-    if default_namespace_version == 0 or latest_version == ngx_null or
+    if default_namespace_version == 0 or
        latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
     then
       -- we need to full sync because holes are found
@@ -295,8 +295,10 @@ local function do_sync()
     crud_events_n = crud_events_n + 1
     crud_events[crud_events_n] = ev
 
-    -- XXX TODO: could delta.version be nil or ngx.null
-    if type(delta.version) == "number" and delta.version ~= version then
+    -- delta.version should not be nil or ngx.null
+    assert(type(delta.version) == "number")
+
+    if delta.version ~= version then
       version = delta.version
     end
   end -- for _, delta
