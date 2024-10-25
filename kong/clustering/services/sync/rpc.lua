@@ -6,6 +6,7 @@ local txn = require("resty.lmdb.transaction")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local concurrency = require("kong.concurrency")
+local isempty = require("table.isempty")
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
@@ -213,7 +214,7 @@ local function do_sync()
     return nil, "default namespace does not exist inside params"
   end
 
-  if #ns_delta.deltas == 0 then
+  if isempty(ns_delta.deltas) then
     ngx_log(ngx_DEBUG, "no delta to sync")
     return true
   end
