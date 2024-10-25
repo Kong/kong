@@ -6,6 +6,7 @@ local txn = require("resty.lmdb.transaction")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local concurrency = require("kong.concurrency")
+local isempty = require("table.isempty")
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
@@ -93,7 +94,7 @@ function _M:init_cp(manager)
     end
 
     -- is the node empty? If so, just do a full sync to bring it up to date faster
-    if default_namespace_version == 0 or latest_version == ngx_null or
+    if default_namespace_version == 0 or
        latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
     then
       -- we need to full sync because holes are found
@@ -118,7 +119,7 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if #res == 0 then
+    if isempty(res) then
       ngx_log(ngx_DEBUG,
               "[kong.sync.v2] no delta for node_id: ", node_id,
               ", current_version: ", default_namespace_version,
@@ -213,16 +214,18 @@ local function do_sync()
     return nil, "default namespace does not exist inside params"
   end
 
-  if #ns_delta.deltas == 0 then
+  if isempty(ns_delta.deltas) then
     ngx_log(ngx_DEBUG, "no delta to sync")
     return true
   end
 
   -- we should find the correct default workspace
   -- and replace the old one with it
+  local default_ws_changed
   for _, delta in ipairs(ns_delta.deltas) do
     if delta.type == "workspaces" and delta.row.name == "default" then
       kong.default_workspace = delta.row.id
+      default_ws_changed = true
       break
     end
   end
@@ -297,8 +300,10 @@ local function do_sync()
     crud_events_n = crud_events_n + 1
     crud_events[crud_events_n] = ev
 
-    -- XXX TODO: could delta.version be nil or ngx.null
-    if type(delta.version) == "number" and delta.version ~= version then
+    -- delta.version should not be nil or ngx.null
+    assert(type(delta.version) == "number")
+
+    if delta.version ~= version then
       version = delta.version
     end
   end -- for _, delta
@@ -307,7 +312,9 @@ local function do_sync()
   t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
 
   -- store the correct default workspace uuid
-  t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
+  if default_ws_changed then
+    t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
+  end
 
   local ok, err = t:commit()
   if not ok then

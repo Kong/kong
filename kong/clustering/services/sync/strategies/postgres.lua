@@ -8,6 +8,7 @@ local buffer = require("string.buffer")
 
 local string_format = string.format
 local cjson_encode = cjson.encode
+local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
@@ -99,7 +100,12 @@ function _M:get_latest_version()
     return nil, err
   end
 
-  return res[1] and res[1].max_version
+  local ver = res[1] and res[1].max_version
+  if ver == ngx_null then
+    return 0
+  end
+
+  return ver
 end
 
 
