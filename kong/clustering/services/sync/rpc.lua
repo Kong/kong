@@ -119,7 +119,7 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if #res == 0 then
+    if isempty(res) then
       ngx_log(ngx_DEBUG,
               "[kong.sync.v2] no delta for node_id: ", node_id,
               ", current_version: ", default_namespace_version,
@@ -221,9 +221,11 @@ local function do_sync()
 
   -- we should find the correct default workspace
   -- and replace the old one with it
+  local default_ws_changed
   for _, delta in ipairs(ns_delta.deltas) do
     if delta.type == "workspaces" and delta.row.name == "default" then
       kong.default_workspace = delta.row.id
+      default_ws_changed = true
       break
     end
   end
@@ -308,7 +310,9 @@ local function do_sync()
   t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
 
   -- store the correct default workspace uuid
-  t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
+  if default_ws_changed then
+    t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
+  end
 
   local ok, err = t:commit()
   if not ok then
