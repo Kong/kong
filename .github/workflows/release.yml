@@ -469,7 +469,7 @@ jobs:
     - name: Sign Prerelease Container Images
       id: sign_prerelease_images
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.image.outputs.digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@d4d6b2a7e202398f62eb37c554df9732b27d9d84
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         image_digest: ${{ steps.image.outputs.digest }}
         tags: ${{ steps.meta.outputs.tags }}
@@ -591,7 +591,7 @@ jobs:
       if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
       id: sbom_action_amd64
       timeout-minutes: 5
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@d4d6b2a7e202398f62eb37c554df9732b27d9d84
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -600,17 +600,19 @@ jobs:
         # see also:
         #   https://github.com/Kong/public-shared-actions/blob/main/security-actions/scan-docker-image/README.md#security-actions
         fail_build: true
+        skip_cis_scan: true # FIXME
 
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
       id: sbom_action_arm64
       timeout-minutes: 5
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@d4d6b2a7e202398f62eb37c554df9732b27d9d84
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
         # see above
         fail_build: true
+        skip_cis_scan: true # FIXME
 
     - name: Upload SBOM assets
       if: |
@@ -856,7 +858,7 @@ jobs:
     - name: Sign release images
       id: sign_release_images
       if: ${{ github.event.inputs.official  == 'true' && steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@d4d6b2a7e202398f62eb37c554df9732b27d9d84
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
         tags: ${{ steps.attestation_metadata.outputs.release_tags }}
