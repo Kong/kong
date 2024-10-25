@@ -238,6 +238,7 @@ local function do_sync()
   local db = kong.db
 
   local version = 0
+  local opts = {}
   local crud_events = {}
   local crud_events_n = 0
 
@@ -247,7 +248,8 @@ local function do_sync()
     local ev
 
     -- item must have ws_id to generate the correct lmdb key
-    assert(delta.ws_id)
+    -- set the correct workspace for item
+    opts.workspace = assert(delta.ws_id)
 
     if delta_row ~= ngx_null then
       -- upsert the entity
@@ -261,13 +263,13 @@ local function do_sync()
 
       -- If we will wipe lmdb, we don't need to delete it from lmdb.
       if old_entity and not wipe then
-        local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
+        local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
         if not res then
           return nil, err
         end
       end
 
-      local res, err = insert_entity_for_txn(t, delta_type, delta_row, nil)
+      local res, err = insert_entity_for_txn(t, delta_type, delta_row, opts)
       if not res then
         return nil, err
       end
@@ -283,7 +285,7 @@ local function do_sync()
 
       -- If we will wipe lmdb, we don't need to delete it from lmdb.
       if old_entity and not wipe then
-        local res, err = delete_entity_for_txn(t, delta_type, old_entity, nil)
+        local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
         if not res then
           return nil, err
         end
