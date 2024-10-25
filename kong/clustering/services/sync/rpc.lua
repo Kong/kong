@@ -88,7 +88,7 @@ function _M:init_cp(manager)
     end
 
     local latest_version, err = self.strategy:get_latest_version()
-    if latest_version == nil then
+    if not latest_version then
       return nil, err
     end
 
