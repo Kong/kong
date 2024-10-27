@@ -93,14 +93,14 @@ end
 
 
 function _M:get_latest_version()
-  local sql = "SELECT MAX(version) AS max_version FROM clustering_sync_version"
+  local sql = "SELECT MAX(version) FROM clustering_sync_version"
 
   local res, err = self.connector:query(sql)
   if not res then
     return nil, err
   end
 
-  local ver = res[1] and res[1].max_version
+  local ver = res[1] and res[1].max
   if ver == ngx_null then
     return 0
   end

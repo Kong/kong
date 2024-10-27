@@ -17,7 +17,6 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 
 
-local pairs = pairs
 local ipairs = ipairs
 local fmt = string.format
 local ngx_null = ngx.null
@@ -44,7 +43,8 @@ function _M:init_cp(manager)
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
-  -- { { namespace = "default", version = 1000, }, }
+  --
+  -- example: { default = { version = 1000, }, }
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
   local function gen_delta_result(res, wipe)
@@ -195,6 +195,9 @@ local function do_sync()
     return true
   end
 
+  -- ns_deltas should look like:
+  -- { default = { deltas = { ... }, wipe = true, }, }
+
   local ns_delta = ns_deltas.default
   if not ns_delta then
     return nil, "default namespace does not exist inside params"
@@ -233,6 +236,8 @@ local function do_sync()
   local crud_events = {}
   local crud_events_n = 0
 
+  -- delta should look like:
+  -- { type = ..., row = { ... }, version = 1, ws_id = ..., }
   for _, delta in ipairs(deltas) do
     local delta_type = delta.type
     local delta_row = delta.row
