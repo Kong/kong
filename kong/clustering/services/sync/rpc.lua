@@ -59,13 +59,7 @@ function _M:init_cp(manager)
       rpc_peers = kong.rpc:get_peers()
     end
 
-    local default_namespace
-    for namespace, v in pairs(current_versions) do
-      if namespace == "default" then
-        default_namespace = v
-        break
-      end
-    end
+    local default_namespace = current_versions.default
 
     if not default_namespace then
       return nil, "default namespace does not exist inside params"
@@ -128,7 +122,7 @@ function _M:init_cp(manager)
     end
 
     -- some deltas are returned, are they contiguous?
-    if res[1].version == default_namespace.version + 1 then
+    if res[1].version == default_namespace_version + 1 then
       -- doesn't wipe dp lmdb, incremental sync
       return gen_delta_result(res, false)
     end
@@ -201,20 +195,14 @@ local function do_sync()
     return true
   end
 
-  local ns_delta
-
-  for namespace, delta in pairs(ns_deltas) do
-    if namespace == "default" then
-      ns_delta = delta
-      break   -- should we break here?
-    end
-  end
-
+  local ns_delta = ns_deltas.default
   if not ns_delta then
     return nil, "default namespace does not exist inside params"
   end
 
-  if isempty(ns_delta.deltas) then
+  local deltas = ns_delta.deltas
+
+  if isempty(deltas) then
     ngx_log(ngx_DEBUG, "no delta to sync")
     return true
   end
@@ -222,7 +210,7 @@ local function do_sync()
   -- we should find the correct default workspace
   -- and replace the old one with it
   local default_ws_changed
-  for _, delta in ipairs(ns_delta.deltas) do
+  for _, delta in ipairs(deltas) do
     if delta.type == "workspaces" and delta.row.name == "default" then
       kong.default_workspace = delta.row.id
       default_ws_changed = true
@@ -245,7 +233,7 @@ local function do_sync()
   local crud_events = {}
   local crud_events_n = 0
 
-  for _, delta in ipairs(ns_delta.deltas) do
+  for _, delta in ipairs(deltas) do
     local delta_type = delta.type
     local delta_row = delta.row
     local ev
