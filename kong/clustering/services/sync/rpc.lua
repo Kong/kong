@@ -40,17 +40,16 @@ end
 
 
 function _M:init_cp(manager)
-  -- CP
-  -- Method: kong.sync.v2.get_delta
-  -- Params: versions: list of current versions of the database
-  --
-  -- example: { default = { version = 1000, }, }
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
   local function gen_delta_result(res, wipe)
     return { default = { deltas = res, wipe = wipe, }, }
   end
 
+  -- CP
+  -- Method: kong.sync.v2.get_delta
+  -- Params: versions: list of current versions of the database
+  -- example: { default = { version = 1000, }, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
 
@@ -65,7 +64,7 @@ function _M:init_cp(manager)
       return nil, "default namespace does not exist inside params"
     end
 
-    -- { { namespace = "default", version = 1000, }, }
+    -- { default = { version = 1000, }, }
     local default_namespace_version = default_namespace.version
 
     -- XXX TODO: follow update_sync_status() in control_plane.lua
@@ -151,7 +150,7 @@ function _M:init_dp(manager)
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
-  -- { { new_version = 1000, }, }, possible field: namespace = "default"
+  -- { default = { new_version = 1000, }, }
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
     local default_new_version = new_versions.default
