@@ -17,7 +17,7 @@ local stream_available, stream_api = pcall(require, "kong.tools.stream_api")
 
 local role = kong.configuration.role
 
-local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000 }
+local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000, 3000, 6000 }
 local UPSTREAM_LATENCY_BUCKETS = { 25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
 local AI_LLM_PROVIDER_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
 local IS_PROMETHEUS_ENABLED
