@@ -79,7 +79,7 @@ function _M:entity_delta_writer(row, name, options, ws_id, is_delete)
   local deltas = {
     {
       type = name,
-      pk = row.id,
+      pk = { id = row.id },
       ws_id = ws_id,
       row = is_delete and ngx_null or row,
     },

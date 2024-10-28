@@ -9,7 +9,7 @@ return {
       CREATE TABLE IF NOT EXISTS clustering_sync_delta (
         "version" INT NOT NULL,
         "type" TEXT NOT NULL,
-        "pk" UUID NOT NULL,
+        "pk" JSON NOT NULL,
         "ws_id" UUID NOT NULL,
         "row" JSON,
         FOREIGN KEY (version) REFERENCES clustering_sync_version(version) ON DELETE CASCADE
