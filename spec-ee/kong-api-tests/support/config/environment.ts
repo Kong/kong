@@ -256,6 +256,14 @@ export const isKoko = (): boolean => {
 };
 
 /**
+ * Check if running on GKE cluster
+ * @returns {boolean} if GKE - true; else - false
+ */
+export const isGKE = (): boolean => {
+  return process.env.GKE === 'true' ? true : false;
+}
+
+/**
  * Check if the current app is KAuth
  * @returns {boolean} if KAuth - true; else - false
  */

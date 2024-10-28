@@ -17,6 +17,7 @@ export {
   isREST,
   Protocol,
   isKoko,
+  isGKE,
   isKAuth,
   isKAuthV2,
   isKAuthV3,
