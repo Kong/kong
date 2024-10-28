@@ -57,7 +57,9 @@ end
 
 
 local function new(self)
-  local _NODE = {}
+  local _NODE = {
+    hostname = nil,
+  }
 
 
   ---
@@ -247,20 +249,23 @@ local function new(self)
   -- @usage
   -- local hostname = kong.node.get_hostname()
   function _NODE.get_hostname()
-    local SIZE = 253 -- max number of chars for a hostname
+    if not _NODE.hostname then
+      local SIZE = 253 -- max number of chars for a hostname
 
-    local buf = ffi_new("unsigned char[?]", SIZE)
-    local res = C.gethostname(buf, SIZE)
+      local buf = ffi_new("unsigned char[?]", SIZE)
+      local res = C.gethostname(buf, SIZE)
 
-    if res ~= 0 then
-      -- Return an empty string "" instead of nil and error message,
-      -- because strerror is not thread-safe and the behavior of strerror_r
-      -- is inconsistent across different systems.
-      return ""
+      if res ~= 0 then
+        -- Return an empty string "" instead of nil and error message,
+        -- because strerror is not thread-safe and the behavior of strerror_r
+        -- is inconsistent across different systems.
+        return ""
+      end
+
+      _NODE.hostname = gsub(ffi_str(buf, SIZE), "%z+$", "")
     end
 
-    local hostname = ffi_str(buf, SIZE)
-    return gsub(hostname, "%z+$", "")
+    return _NODE.hostname
   end
 
 
