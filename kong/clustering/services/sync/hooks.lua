@@ -76,10 +76,16 @@ end
 
 
 function _M:entity_delta_writer(row, name, options, ws_id, is_delete)
+  -- composite key, like { id = ... }
+  local schema = kong.db[name].schema
+  local pk = schema:extract_pk_values(row)
+
+  assert(schema:validate_primary_key(pk))
+
   local deltas = {
     {
       type = name,
-      pk = { id = row.id },
+      pk = pk,
       ws_id = ws_id,
       row = is_delete and ngx_null or row,
     },
