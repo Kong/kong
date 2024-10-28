@@ -67,21 +67,21 @@ local NEW_VERSION_QUERY = [[
     new_version integer;
   BEGIN
     INSERT INTO clustering_sync_version DEFAULT VALUES RETURNING version INTO new_version;
-    INSERT INTO clustering_sync_delta (version, type, id, ws_id, row) VALUES %s;
+    INSERT INTO clustering_sync_delta (version, type, pk, ws_id, row) VALUES %s;
   END $$;
 ]]
 
 
 -- deltas: {
---   { type = "service", "id" = "d78eb00f-8702-4d6a-bfd9-e005f904ae3e", "ws_id" = "73478cf6-964f-412d-b1c4-8ac88d9e85e9", row = "JSON", }
---   { type = "route", "id" = "0a5bac5c-b795-4981-95d2-919ba3390b7e", "ws_id" = "73478cf6-964f-412d-b1c4-8ac88d9e85e9", row = "JSON", }
+--   { type = "service", "pk" = { id = "d78eb00f..." }, "ws_id" = "73478cf6...", row = "JSON", }
+--   { type = "route", "pk" = { id = "0a5bac5c..." }, "ws_id" = "73478cf6...", row = "JSON", }
 -- }
 function _M:insert_delta(deltas)
   local buf = buffer.new()
   for _, d in ipairs(deltas) do
     buf:putf("(new_version, %s, %s, %s, %s)",
              self.connector:escape_literal(d.type),
-             self.connector:escape_literal(d.id),
+             self.connector:escape_literal(cjson_encode(d.pk)),
              self.connector:escape_literal(d.ws_id or kong.default_workspace),
              self.connector:escape_literal(cjson_encode(d.row)))
   end

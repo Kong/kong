@@ -274,7 +274,7 @@ local function do_sync()
 
     else
       -- delete the entity
-      local old_entity, err = kong.db[delta_type]:select({ id = delta.id, }) -- TODO: composite key
+      local old_entity, err = kong.db[delta_type]:select(delta.pk) -- composite key
       if err then
         return nil, err
       end
