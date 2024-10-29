@@ -8,6 +8,7 @@
 local cjson = require "cjson"
 local sandbox = require "kong.tools.sandbox".sandbox
 local kong_meta = require "kong.meta"
+local get_host_name = kong.node.get_hostname
 
 
 local kong = kong
@@ -21,15 +22,6 @@ local insert = table.insert
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
-
-local function get_host_name()
-  local f = io.popen("/bin/hostname")
-  local hostname = f:read("*a") or ""
-  f:close()
-  hostname = string.gsub(hostname, "\n$", "")
-  return hostname
-end
 
 
 local HOSTNAME = get_host_name()
