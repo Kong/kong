@@ -73,7 +73,7 @@ describe("Admin API - tags", function()
         end
       end)
 
-      it("filter by emtpy tag", function()
+      it("filter by empty tag", function()
         local res = assert(client:send {
           method = "GET",
           path = "/consumers?tags="
