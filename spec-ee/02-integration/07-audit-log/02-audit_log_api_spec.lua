@@ -335,6 +335,138 @@ for _, strategy in helpers.each_strategy() do
               assert.same(B_ID, json.data[1].request_id)
               assert.same(D_ID, json.data[2].request_id)
             end)
+
+            describe("check pagination with filtering both by before & after", function()
+              local res, json
+              local count, size = 5, 2
+              local before = luatz.timetable.new(2024, 3, 11, 14, 31, 9):timestamp()
+              local after = luatz.timetable.new(2024, 3, 9, 0):timestamp()
+
+              it("with sort_desc=true", function()
+                local req_ids = {}
+                local expected_order = { B_ID, D_ID, F_ID, A_ID, C_ID } -- sorted desc by ts
+                local next_page = string.format("/audit/requests?beofore=%s&after=%s&size=%s&sort_desc=%s",
+                  before, after, size, true)
+                -- page 1
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 2
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 3
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page == cjson.null)
+                assert.same(1, #json.data)
+
+                assert.same(count, #req_ids)
+                for id = 1, count do
+                  assert.equal(expected_order[id], req_ids[id])
+                end
+              end)
+
+              it("with sort_desc=nil", function()
+                local req_ids = {}
+                local expected_order = { B_ID, D_ID, F_ID, A_ID, C_ID } -- sorted desc by ts
+                local next_page = string.format("/audit/requests?beofore=%s&after=%s&size=%s",
+                  before, after, size)
+                -- page 1
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 2
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 3
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page == cjson.null)
+                assert.same(1, #json.data)
+
+                assert.same(count, #req_ids)
+                -- check order
+                for id = 1, count do
+                  assert.equal(expected_order[id], req_ids[id])
+                end
+              end)
+
+              it("with sort_desc=false", function()
+                local req_ids = {}
+                local expected_order = { C_ID, A_ID, F_ID, D_ID, B_ID } -- sorted asc by ts
+                local next_page = string.format("/audit/requests?beofore=%s&after=%s&size=%s&sort_desc=%s",
+                  before, after, size, false)
+                -- page 1
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 2
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page ~= cjson.null)
+                assert.same(size, #json.data)
+
+                -- page 3
+                res = assert(admin_client:send { path = next_page })
+                json = cjson.decode(assert.res_status(200, res))
+                for _, obj in ipairs(json.data) do
+                  table.insert(req_ids, obj.request_id)
+                end
+                next_page = json.next
+                assert(next_page == cjson.null)
+                assert.same(1, #json.data)
+
+                assert.same(count, #req_ids)
+                -- check order
+                for id = 1, count do
+                  assert.equal(expected_order[id], req_ids[id])
+                end
+              end)
+            end)
           end)
 
           describe("when using date", function()

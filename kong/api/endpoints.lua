@@ -397,14 +397,17 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     if args.sort_by then
       next_page_sort = "&sort_by=" .. (type(args.sort_by) == "table" and args.sort_by[1] or args.sort_by)
       if args.sort_desc then
+        next_page_sort = next_page_sort .. "&sort_desc=" .. tostring(args.sort_desc)
+      else
         next_page_sort = next_page_sort .. "&sort_desc=true"
       end
     end
 
     local next_page_search = ""
     for k, v in pairs(args) do
+      local extracted_k = extract_LHS_query(k)
       -- ignore tags (search including foreign key)
-      local is_searchable = schema.fields[k] and schema.fields[k].indexed
+      local is_searchable = schema.fields[extracted_k] and schema.fields[extracted_k].indexed
       if k ~= "tags" and is_searchable then
         local safe_v
         if type(v) == "table" then
