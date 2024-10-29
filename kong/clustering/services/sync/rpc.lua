@@ -334,7 +334,7 @@ local function sync_handler(premature)
   end
 
   local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
-    -- here must be 2 times
+    -- must be 2 times for retrieving the latest delta version and latest deltas
     for _ = 1, 2 do
       local ok, err = do_sync()
       if not ok then
