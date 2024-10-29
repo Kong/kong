@@ -214,16 +214,14 @@ local function truncate_tables(db, tables)
 end
 
 
-local function bootstrap_database(db, reset)
+local function bootstrap_database(db)
+  -- Drop all schema and data
+  assert(db:schema_reset())
   local schema_state = assert(db:schema_state())
-
-  if reset then
-    assert(db:schema_reset())
-    schema_state = assert(db:schema_state())
-  end
 
   if schema_state.needs_bootstrap then
     assert(db:schema_bootstrap())
+    schema_state = assert(db:schema_state())
   end
 
   if schema_state.new_migrations then
@@ -281,7 +279,7 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations, reset_schema)
+local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   strategy = strategy or conf.database
   conf.database = strategy  -- overwrite kong.configuration.database
 
@@ -319,7 +317,7 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations, 
   assert(db:init_connector())
 
   if not skip_migrations then
-    bootstrap_database(db, reset_schema)
+    bootstrap_database(db)
   end
 
   db:truncate("plugins")
