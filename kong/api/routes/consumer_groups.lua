@@ -98,7 +98,11 @@ return {
       GET = function(self, db)
         set_consumer_groups(self, db)
         --get plugins and consumers
-        local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
+        local consumers = nil
+        local args = self.args.uri
+        if args.list_consumers == nil or tostring(args.list_consumers) == "true" then
+          consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
+        end
         local plugins = consumer_group_helpers.get_plugins_in_group(self.consumer_group.id)
         return kong.response.exit(200,
           {

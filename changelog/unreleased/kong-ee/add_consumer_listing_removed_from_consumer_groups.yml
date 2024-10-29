@@ -1,0 +1,4 @@
+message: |
+  Added the ability to remove the consumer list from the return value for consumer groups Admin API `/consumer_groups/:consumer_groups` when `list_consumers=false`.
+type: feature
+scope: Admin API

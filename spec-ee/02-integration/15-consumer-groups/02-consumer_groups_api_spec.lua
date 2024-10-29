@@ -285,6 +285,37 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.plugins[1].id, consumer_group_plugin.id)
         end)
 
+        it("The endpoint should list consumers and plugins by a group id with list_consumers=true", function()
+          local res = get_request("/consumer_groups/" .. consumer_group.id.. "?list_consumers=true")
+
+          assert.same(res.consumer_group.id, consumer_group.id)
+          assert.same(res.consumers[1].id, consumer.id)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
+        end)
+
+        it("The endpoint should list consumers and plugins by a group name with list_consumers=true", function()
+          local res = get_request("/consumer_groups/" .. consumer_group.name .. "?list_consumers=true")
+
+          assert.same(res.consumer_group.name, consumer_group.name)
+          assert.same(res.consumers[1].id, consumer.id)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
+        end)
+
+        it("The endpoint should not list consumers by a consumer group id with list_consumers=false", function()
+          local res = get_request("/consumer_groups/" .. consumer_group.id .. "?list_consumers=false")
+
+          assert.same(res.consumer_group.id, consumer_group.id)
+          assert.same(res.consumers, nil)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
+        end)
+
+        it("The endpoint should not list consumers by a consumer group name with list_consumers=false", function()
+          local res = get_request("/consumer_groups/" .. consumer_group.name .. "?list_consumers=false")
+
+          assert.same(res.consumer_group.name, consumer_group.name)
+          assert.same(res.consumers, nil)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
+        end)
       end)
 
       describe("DELETE", function()
