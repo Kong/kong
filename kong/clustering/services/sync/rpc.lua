@@ -335,6 +335,9 @@ local function sync_handler(premature)
 
   local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
     -- must be 2 times for retrieving the latest delta version and latest deltas
+    --
+    -- The second call to do_sync() on `kong.sync.v2.get_delta` retrieves the
+    -- latest delta version directly, without requiring additional API calls.
     for _ = 1, 2 do
       local ok, err = do_sync()
       if not ok then
