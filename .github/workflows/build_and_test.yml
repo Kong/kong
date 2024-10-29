@@ -428,7 +428,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 6381:6379
+          - 6385:6379
         env:
           REDIS_ARGS: "--requirepass passdefault"
 

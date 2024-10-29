@@ -60,13 +60,13 @@ services:
   redis-auth:
     image: redis/redis-stack-server
     ports:
-      - 127.0.0.1::6381
+      - 127.0.0.1::6385
     environment:
-      - REDIS_ARGS=--requirepass passdefault
+      - REDIS_ARGS=--requirepass passdefault --port 6385
     volumes:
       - redis-auth-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--pass", "passdefault", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6385", "--pass", "passdefault", "ping"]
       interval: 5s
       timeout: 10s
       retries: 10
