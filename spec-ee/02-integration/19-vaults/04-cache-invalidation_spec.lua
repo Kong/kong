@@ -70,10 +70,6 @@ describe("vault cache invalidation (#" .. attachment_point .. "_" .. vault.name 
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "360")
 
-    helpers.test_conf.loaded_plugins = {
-      dummy = true,
-    }
-
     vault:setup()
     vault:create_secret(secret, "init")
 

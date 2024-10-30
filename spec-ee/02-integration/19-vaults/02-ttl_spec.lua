@@ -76,10 +76,6 @@ describe("vault ttl and rotation (#" .. attachment_point .. "_" .. vault.name ..
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
 
-    helpers.test_conf.loaded_plugins = {
-      dummy = true,
-    }
-
     vault:setup()
     vault:create_secret(secret, "init")
     vault:create_secret(secret_2, "init")

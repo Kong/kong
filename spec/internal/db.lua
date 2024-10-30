@@ -308,8 +308,10 @@ end
 
 local function bootstrap_database(db)
   local schema_state = assert(db:schema_state())
+
   if schema_state.needs_bootstrap then
     assert(db:schema_bootstrap())
+    schema_state = assert(db:schema_state())
   end
 
   if schema_state.new_migrations then
@@ -403,6 +405,8 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   assert(db:init_connector())
 
   if not skip_migrations then
+    -- Drop all schema and data
+    assert(db:schema_reset())
     bootstrap_database(db)
   end
 

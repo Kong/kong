@@ -319,8 +319,8 @@ for _, strategy in strategies() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
       mock:stop()
+      helpers.stop_kong()
     end)
 
     before_each(function()

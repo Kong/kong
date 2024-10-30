@@ -21,6 +21,8 @@ for _, strategy in helpers.each_strategy() do
             "routes",
             "services",
             "plugins",
+          }, {
+            "saml",
           })
 
           local service = bp.services:insert()
