@@ -713,6 +713,7 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
 
       - name: Retry Failed E2E Package API Tests
         if: steps.execute_tests.outcome == 'failure'
@@ -727,6 +728,7 @@ jobs:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           TEST_APP: gateway
+          FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}

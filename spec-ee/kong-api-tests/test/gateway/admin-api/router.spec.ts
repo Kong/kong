@@ -100,8 +100,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
           url: `${adminUrl}/workspaces`,
           data: {
             name: randomString(),
-          },
-          validateStatus: null,
+          }
         });
     
         expect(workspaceReq.status, 'Status should be 201').equal(201);
@@ -136,8 +135,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
     const resp = await axios({
       method: 'post',
       url: `${adminUrl}/services/${serviceDetails.id}/routes`,
-      data: payload,
-      validateStatus: null,
+      data: payload
     });
 
     logResponse(resp);
@@ -226,7 +224,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
     it(`should route a request with correct header: ${header}:${value}`, async function () {
       const resp = await axios({
         url: `${proxyUrl}${routePayload.paths[0]}`,
-        headers: { [header]: value },
+        headers: { [header]: value }
       });
       logResponse(resp);
       expect(resp.status, 'Status should be 200').equal(200);
@@ -450,7 +448,6 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
   }
 
   if((!isGwNative() || !isFipsMode()) && (!isKongOSS() && !isKoko())) {
-    // skip workspace related tests for OSS as workspace is not supported in oss mode
     it('should perform route validation when creating a duplicate route in a different workspace', async function () {
       // duplicate routes cannot be created when route validation is on
       const resp = await axios({ 
@@ -459,8 +456,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         data: {
           ...routePayload,
           name: routePayload.name,
-        },
-        validateStatus: null,
+        }
       });
       expect(resp.status, 'Status should be 201').to.equal(201);
   
@@ -479,75 +475,67 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         expect(respRepeat.status, 'Status should be 409').to.equal(409);
         expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
       })
-
-      await waitForConfigRebuild();
     })
+
+    // skip below 3 tests for GKE runs
+    if(!isGKE()) {
+      it('should update router to not perform route validation', async function () {
+        await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
+        if (isHybrid) {
+          await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
+        }
+
+        await eventually(async () => {
+          // ensure that route validation is set to off
+          const resp = await axios({
+            method: 'get',
+            url: `${adminUrl}`,
+          });
+          logResponse(resp);
+          expect(resp.status, 'Status should be 200').to.equal(200);
+          expect(resp.data.configuration.route_validation_strategy, 'Route validation should be off').to.equal('off');
+        });
+      })
+    
+      it('should create a duplicate route when route validation is off', async function () {
+        const resp = await axios({ 
+          method: 'post',
+          url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+          data: {
+            ...routePayload,
+            name: routePayload.name,
+          },
+        });
+        expect(resp.status, 'Status should be 201').to.equal(201); 
+
+        await eventually(async () => {
+          // validate route was created
+          const respGet = await axios({
+            method: 'get',
+            url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
+          });
+          expect(respGet.status, 'Status should be 200').to.equal(200);
+          expect(respGet.data.data.length, 'Should have correct number of routes').to.equal(1);
+          expect(respGet.data.data[0].name, 'Should have correct route name').to.equal(routePayload.name);
+        });
+      })
+    
+      it('should be able to send request to duplicate route', async function () {
+        const resp = await axios({
+          method: 'get',
+          url: `${proxyUrl}${routePayload.paths[0]}`,
+          headers: { testHeader: 'test' },
+        });
+        logResponse(resp);
+        expect(resp.status, 'Status should be 200').to.equal(200);
+      })
+    }
   }
-
-  it('should update router to not perform route validation', async function () {
-    if (isGKE()) {
-      this.skip();
-    }
-
-    await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, kongContainerName);
-    if (isHybrid) {
-      await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
-    }
-
-    await eventually(async () => {
-    // ensure that route validation is set to off
-    const resp = await axios({
-      method: 'get',
-      url: `${adminUrl}`,
-    });
-    logResponse(resp);
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.configuration.route_validation_strategy, 'Route validation should be off').to.equal('off');
-    });
-  })
-
-  it('should create a duplicate route when route validation is off', async function () {
-    if (isGKE()) {
-      this.skip();
-    }
-    const resp = await axios({ 
-      method: 'post',
-      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
-      data: {
-        ...routePayload,
-        name: routePayload.name,
-      },
-    });
-    expect(resp.status, 'Status should be 201').to.equal(201); 
-
-    // validate route was created
-    const respGet = await axios({
-      method: 'get',
-      url: `${adminUrl}/${workspaceName}/services/${service2Details.id}/routes`,
-    });
-    expect(respGet.status, 'Status should be 200').to.equal(200);
-    expect(respGet.data.data.length, 'Should have correct number of routes').to.equal(1);
-    expect(respGet.data.data[0].name, 'Should have correct route name').to.equal(routePayload.name);
-  })
-
-  it('should be able to send request to duplicate route', async function () {
-    if (isGKE()) {
-      this.skip();
-    }
-
-    const resp = await axios({
-      method: 'get',
-      url: `${proxyUrl}${routePayload.paths[0]}`,
-      headers: { testHeader: 'test' },
-    });
-    logResponse(resp);
-    expect(resp.status, 'Status should be 200').to.equal(200);
-  })
 
   after(async function () {
     await clearAllKongResources();
-    await clearAllKongResources(workspaceName);
     if (!isKongOSS() && !isKoko()) {
+      await clearAllKongResources(workspaceName);
       await deleteWorkspace(workspaceName);
       if((!isGwNative() || !isFipsMode()) && !isGKE()) {
         await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
