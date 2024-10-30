@@ -213,8 +213,8 @@ local function do_sync()
   -- and replace the old one with it
   local default_ws_changed
   for _, delta in ipairs(deltas) do
-    if delta.type == "workspaces" and delta.row.name == "default" then
-      kong.default_workspace = delta.row.id
+    if delta.type == "workspaces" and delta.entity.name == "default" then
+      kong.default_workspace = delta.entity.id
       default_ws_changed = true
       break
     end
@@ -236,20 +236,20 @@ local function do_sync()
   local crud_events_n = 0
 
   -- delta should look like:
-  -- { type = ..., row = { ... }, version = 1, ws_id = ..., }
+  -- { type = ..., entity = { ... }, version = 1, ws_id = ..., }
   for _, delta in ipairs(deltas) do
     local delta_type = delta.type
-    local delta_row = delta.row
+    local delta_entity = delta.entity
     local ev
 
     -- delta must have ws_id to generate the correct lmdb key
     -- set the correct workspace for item
     opts.workspace = assert(delta.ws_id)
 
-    if delta_row ~= ngx_null then
+    if delta_entity ~= ngx_null then
       -- upsert the entity
       -- does the entity already exists?
-      local old_entity, err = db[delta_type]:select(delta_row)
+      local old_entity, err = db[delta_type]:select(delta_entity)
       if err then
         return nil, err
       end
@@ -264,12 +264,12 @@ local function do_sync()
         end
       end
 
-      local res, err = insert_entity_for_txn(t, delta_type, delta_row, opts)
+      local res, err = insert_entity_for_txn(t, delta_type, delta_entity, opts)
       if not res then
         return nil, err
       end
 
-      ev = { delta_type, crud_event_type, delta_row, old_entity, }
+      ev = { delta_type, crud_event_type, delta_entity, old_entity, }
 
     else
       -- delete the entity
@@ -319,7 +319,7 @@ local function do_sync()
 
   else
     for _, event in ipairs(crud_events) do
-      -- delta_type, crud_event_type, delta.row, old_entity
+      -- delta_type, crud_event_type, delta.entity, old_entity
       db[event[1]]:post_crud_event(event[2], event[3], event[4])
     end
   end
