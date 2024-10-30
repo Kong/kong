@@ -387,14 +387,14 @@ end
 --
 -- This function sets the following:
 --
--- * <entity_name>|*|*|<pk_string> => serialized item
--- * <entity_name>|<ws_id>|*|<pk_string> => actual item key
+-- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
+-- * <entity_name>|*|*|<pk_string> => actual item key
 --
--- * <entity_name>|*|<unique_field_name>|sha256(field_value) => actual item key
 -- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => actual item key
+-- * <entity_name>|*|<unique_field_name>|sha256(field_value) => actual item key
 --
--- * <entity_name>|*|<foreign_field_name>|<foreign_key>|<pk_string> => actual item key
 -- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> => actual item key
+-- * <entity_name>|*|<foreign_field_name>|<foreign_key>|<pk_string> => actual item key
 --
 -- DO NOT touch `item`, or else the entity will be changed
 local function insert_entity_for_txn(t, entity_name, item, options)
