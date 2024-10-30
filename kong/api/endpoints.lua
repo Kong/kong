@@ -156,8 +156,8 @@ local function extract_options(db, args, schema, context)
     end
 
     if schema.fields.tags and args.tags ~= nil and context == "page" then
-      if args.tags == null then
-        local error_message = "tags cannot be null (or empty string)"
+      if args.tags == null or #args.tags == 0 then
+        local error_message = "cannot be null"
         return nil, error_message, db[schema.name].errors:invalid_options({tags = error_message})
       end
 

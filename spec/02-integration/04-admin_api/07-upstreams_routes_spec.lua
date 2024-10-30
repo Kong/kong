@@ -645,7 +645,7 @@ describe("Admin API: #" .. strategy, function()
         })
         res = assert.res_status(400, res)
         local json = cjson.decode(res)
-        assert.same("invalid option (tags: tags cannot be null (or empty string))", json.message)
+        assert.same("invalid option (tags: cannot be null)", json.message)
       end)
 
       describe("empty results", function()

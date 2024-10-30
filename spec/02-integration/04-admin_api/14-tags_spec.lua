@@ -80,7 +80,17 @@ describe("Admin API - tags", function()
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same("invalid option (tags: tags cannot be null (or empty string))", json.message)
+        assert.same("invalid option (tags: cannot be null)", json.message)
+      end)
+
+      it("filter by empty string tag", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers?tags=''"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(0, #json.data)
       end)
 
       it("filter by multiple tags with AND", function()
