@@ -41,7 +41,7 @@
     "@pollyjs/adapter-node-http": "^6.0.6",
     "@pollyjs/core": "^6.0.6",
     "@pollyjs/persister-fs": "^6.0.6",
-    "@tsconfig/recommended": "^1.0.7",
+    "@tsconfig/recommended": "^1.0.8",
     "@types/chai": "^4.3.9",
     "@types/chai-arrays": "^2.0.2",
     "@types/chai-as-promised": "^7.1.7",
