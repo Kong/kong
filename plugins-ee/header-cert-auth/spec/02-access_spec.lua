@@ -1341,6 +1341,7 @@ for _, strategy in strategies() do if strategy ~= "cassandra" then
             }
           })
 
+          res:read_body()
           return res.status ~= 404
         end)
 
