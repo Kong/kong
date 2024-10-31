@@ -2674,6 +2674,10 @@
                                 # `route_validation_strategy` is set to `path`.
                                 #
                                 #
+                                # **Note:** The collision detection is only supported
+                                # for plain text routes, do not rely on this feature
+                                # to validate regex routes.
+                                #
                                 # Example
                                 # For Pattern `/$(workspace)/v%d/.*` valid paths
                                 # are:
