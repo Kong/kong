@@ -314,13 +314,12 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   -- select_by_cache_key
   if schema.cache_key then
     local cache_key = dao:cache_key(item)
-
-    for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
-      local key = unique_field_key(entity_name, wid, "cache_key", cache_key)
-
-      -- store item_key or nil into lmdb
-      t:set(key, idx_value)
-    end
+    -- The second parameter (ws_id) is a placeholder here, because the cache_key
+    -- is already unique globally.
+    local key = unique_field_key(entity_name, get_default_workspace(),
+                                 "cache_key", cache_key)
+    -- store item_key or nil into lmdb
+    t:set(key, idx_value)
   end
 
   for fname, fdata in schema:each_field() do
