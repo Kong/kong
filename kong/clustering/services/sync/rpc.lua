@@ -246,7 +246,7 @@ local function do_sync()
     -- set the correct workspace for item
     opts.workspace = assert(delta.ws_id)
 
-    if delta_entity ~= ngx_null then
+    if delta_entity ~= nil and delta_entity ~= ngx_null then
       -- upsert the entity
       -- does the entity already exists?
       local old_entity, err = db[delta_type]:select(delta_entity)
