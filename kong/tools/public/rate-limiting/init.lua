@@ -19,7 +19,6 @@ local ERR   = ngx.ERR
 local WARN  = ngx.WARN
 
 
-local locks_shm = ngx.shared.kong_locks
 local timer_handle
 
 
@@ -86,6 +85,7 @@ local function new_instance(instance_name, options)
     end
 
     local dict = ngx.shared[cfg.dict]
+    local locks_shm = ngx.shared[cfg.lock_dict]
 
     -- mutex so only one worker fetches from the cluster and
     -- updates our shared zone
@@ -177,6 +177,7 @@ local function new_instance(instance_name, options)
       cfg.seen_map[cfg.seen_map_ctr] = new_tab(seen_map_old_idx, seen_map_old_idx)
 
       local diffs = new_tab(seen_map_old_idx, seen_map_old_idx)
+      local locks_shm = ngx.shared[cfg.lock_dict]
 
       for i = 1, seen_map_old_idx do
         local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
@@ -507,6 +508,7 @@ local function new_instance(instance_name, options)
       return
     end
 
+    local locks_shm = ngx.shared[cfg.lock_dict]
     local rl_maint_key = "rl-maint-" .. namespace
     local ok, err = locks_shm:add(rl_maint_key, true, DEFAULT_MAINTENANCE_CYCLE_LOCK_TTL)
     if not ok then
@@ -568,6 +570,14 @@ local function new_instance(instance_name, options)
       error("given dictionary reference must be a string")
     end
 
+    if opts.lock_dict ~= nil and type(opts.lock_dict) ~= "string" then
+      error("given lock dictionary reference must be a string")
+    end
+
+    if opts.lock_dict == nil or opts.lock_dict == "" then
+      opts.lock_dict = "kong_locks"
+    end
+
     if type(opts.sync_rate) ~= "number" then
       error("sync rate must be a number")
     end
@@ -594,6 +604,7 @@ local function new_instance(instance_name, options)
 
     config[namespace] = {
       dict         = opts.dict,
+      lock_dict    = opts.lock_dict,
       sync_rate    = opts.sync_rate,
       strategy     = strategy_class and strategy_class.new(opts.db, opts.strategy_opts),
       seen_map     = {{}},

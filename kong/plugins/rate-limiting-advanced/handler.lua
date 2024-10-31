@@ -199,6 +199,13 @@ local function new_namespace(config, timer_id)
     end
   end
 
+  local lock_dict_name = config.lock_dictionary_name
+  if type(lock_dict_name) ~= "string" or lock_dict_name == "" then
+    lock_dict_name = "kong_locks"
+  end
+  kong.log.notice("[rate-limiting-advanced] using independent lock dict ", lock_dict_name,
+    " when new namespace")
+
   -- if dictionary name was passed but doesn't exist, fallback to kong
   if ngx.shared[dict_name] == nil then
     kong.log.notice("[rate-limiting-advanced] specified shared dictionary '", dict_name,
@@ -215,6 +222,7 @@ local function new_namespace(config, timer_id)
       strategy      = strategy,
       strategy_opts = strategy_opts,
       dict          = dict_name,
+      lock_dict     = lock_dict_name,
       window_sizes  = merge_consumer_groups_window_size(config),
       db            = kong.db,
       timer_id      = timer_id,
@@ -272,6 +280,13 @@ local function update_namespace(config, timer_id)
   kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
+  local lock_dict_name = config.lock_dictionary_name
+  if type(lock_dict_name) ~= "string" or lock_dict_name == "" then
+    lock_dict_name = "kong_locks"
+  end
+  kong.log.notice("[rate-limiting-advanced] using independent lock dict ", lock_dict_name,
+    " when update namespace")
+
   local ok, err = pcall(function()
     ratelimiting.update({
       namespace     = config.namespace,
@@ -279,6 +294,7 @@ local function update_namespace(config, timer_id)
       strategy      = strategy,
       strategy_opts = strategy_opts,
       dict          = dict_name,
+      lock_dict     = lock_dict_name,
       window_sizes  = merge_consumer_groups_window_size(config),
       db            = kong.db,
       timer_id      = timer_id,

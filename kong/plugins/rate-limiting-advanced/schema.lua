@@ -63,6 +63,11 @@ return {
             default = "kong_rate_limiting_counters",
             required = true,
           }},
+          {
+            lock_dictionary_name = { description = "The shared dictionary where concurrency control locks are stored. The default shared dictionary is `kong_locks`. The shared dictionary should be declare in nginx-kong.conf.", type = "string",
+            default = "kong_locks",
+            required = true,
+          }},
           { hide_client_headers = { description = "Optionally hide informative response headers that would otherwise provide information about the current status of limits and counters.", type = "boolean",
             default = false,
           }},
@@ -152,6 +157,13 @@ return {
 
         if config.dictionary_name ~= nil then
           local ok, err = check_shdict(config.dictionary_name)
+          if not ok then
+            return nil, err
+          end
+        end
+
+        if kong.configuration.role ~= "control_plane" and config.lock_dictionary_name ~= nil then
+          local ok, err = check_shdict(config.lock_dictionary_name)
           if not ok then
             return nil, err
           end

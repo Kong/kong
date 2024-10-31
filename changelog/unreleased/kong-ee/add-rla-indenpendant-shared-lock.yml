@@ -1,0 +1,4 @@
+message: |
+  **rate-limiting-advanced**: Added a new configuration field `lock_dictionary_name` to support specifying an independent shared memory for storing locks.
+type: feature
+scope: Plugin

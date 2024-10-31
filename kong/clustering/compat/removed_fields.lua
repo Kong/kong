@@ -459,4 +459,11 @@ return {
       "queue.concurrency_limit",
     },
   },
+
+  -- Any dataplane older than 3.9.0
+  [3009000000] = {
+    rate_limiting_advanced = {
+      "lock_dictionary_name"
+    },
+  }
 }

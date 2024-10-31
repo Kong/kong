@@ -119,6 +119,31 @@ describe("rate-limiting-advanced schema", function()
     assert.is_nil(err)
   end)
 
+  it("accepts a minimal config with lock_name", function()
+    local config, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      lock_dictionary_name = "kong_test_rla_schema_abcd",
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(config)
+    assert.equal("local", config.config.strategy)
+    assert.equal("kong_test_rla_schema_abcd", config.config.lock_dictionary_name)
+  end)
+
+  it("accepts a minimal config without lock_name, fallback to kong_locks", function()
+    local config, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(config)
+    assert.equal("local", config.config.strategy)
+    assert.equal("kong_locks", config.config.lock_dictionary_name)
+  end)
+
   it("accepts a minimal config", function()
     local config, err = v({
       window_size = { 60 },
