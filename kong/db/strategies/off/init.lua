@@ -208,7 +208,9 @@ local function select_by_field(self, field, value, options)
     _, value = next(value)
   end
 
-  local unique_across_ws = schema.fields[field].unique_across_ws
+  local schema_field = schema.fields[field]
+  local unique_across_ws = schema_field and schema_field.unique_across_ws
+
   -- only accept global query by field if field is unique across workspaces
   assert(not options or options.workspace ~= null or unique_across_ws)
 
