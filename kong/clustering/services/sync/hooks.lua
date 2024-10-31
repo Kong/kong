@@ -59,6 +59,8 @@ function _M:notify_all_nodes()
     return
   end
 
+  ngx_log(ngx_DEBUG, "[rpc:sync] notifying all nodes of new version: ", latest_version)
+
   local msg = { default = { new_version = latest_version, }, }
 
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do
@@ -112,6 +114,7 @@ end
 -- only control plane has these delta operations
 function _M:register_dao_hooks()
   local function is_db_export(name)
+    ngx_log(ngx_DEBUG, "[rpc:sync] name: ", name, " db_export: ", kong.db[name].schema.db_export)
     local db_export = kong.db[name].schema.db_export
     return db_export == nil or db_export == true
   end
@@ -131,6 +134,7 @@ function _M:register_dao_hooks()
       return
     end
 
+    ngx_log(ngx_DEBUG, "[rpc:sync] failed. Canceling ", name)
     local res, err = self.strategy:cancel_txn()
     if not res then
       ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
@@ -142,6 +146,7 @@ function _M:register_dao_hooks()
       return entity
     end
 
+    ngx_log(ngx_DEBUG, "[rpc:sync] new delta due to writing ", name)
     return self:entity_delta_writer(entity, name, options, ws_id)
   end
 
@@ -150,7 +155,8 @@ function _M:register_dao_hooks()
       return entity
     end
 
-    -- set lmdb value to ngx_null then return entity
+    ngx_log(ngx_DEBUG, "[rpc:sync] new delta due to deleting ", name)
+    -- set lmdb value to ngx_null then return row
     return self:entity_delta_writer(entity, name, options, ws_id, true)
   end
 
