@@ -31,7 +31,7 @@
     "influx": "^5.9.3",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
-    "mocha": "^10.7.3",
+    "mocha": "^10.8.2",
     "mocha-multi-reporters": "^1.5.1",
     "promise-ws": "^1.0.0-1",
     "redis": "^4.7.0",
