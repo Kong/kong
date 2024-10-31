@@ -1,0 +1,4 @@
+message: >-
+  **openid-connect**: Fixed an issue where the configured Redis database was ignored.
+type: bugfix
+scope: Plugin

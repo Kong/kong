@@ -147,6 +147,7 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     describe("authentication", function()
+      local custom_redis_db = 15
       local proxy_client
       local jane
       local jack
@@ -530,6 +531,41 @@ for _, strategy in helpers.all_strategies() do
             session_redis_port = REDIS_PORT,
             -- This will allow for testing with a secured redis instance
             session_redis_password = os.getenv("REDIS_PASSWORD") or nil,
+          },
+        }
+
+        local route_redis_session_db = bp.routes:insert {
+          service = service,
+          paths   = { "/redis-session-db" },
+        }
+
+        bp.plugins:insert {
+          route   = route_redis_session_db,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "client_credentials",
+              "session",
+            },
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            session_storage = "redis",
+            redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+              database = custom_redis_db,
+            },
           },
         }
 
@@ -1998,6 +2034,50 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_not_nil(json.headers.authorization)
           assert.equal(redis_client_token, sub(json.headers.authorization, 8))
+        end)
+
+        it("store session data in specified Redis database", function()
+          local ok, res, err
+
+          ok, err = red:select(custom_redis_db)
+          assert.is_nil(err)
+          assert.is_truthy(ok)
+          res, err = red:scan(0)
+          assert.is_nil(err)
+          assert.is_not_nil(res)
+          assert.are_equal('0', res[1])
+          assert.are_equal(nil, next(res[2]))
+
+          res = assert(proxy_client:get("/redis-session-db", {
+            headers = {
+              Authorization = CLIENT_CREDENTIALS,
+            },
+          }))
+          assert.response(res).has.status(200)
+          -- the session 'remember' is not enabled
+          local session_cookies = res.headers["Set-Cookie"]
+          local session_cookies_header = { sub(session_cookies, 1, find(session_cookies, ";", 1, true) -1) }
+          local json_body = assert.response(res).has.jsonbody()
+          local bearer_token = sub(json_body.headers.authorization, 8)
+
+          res = proxy_client:get("/redis-session-db", {
+            headers = {
+              Cookie = session_cookies_header,
+            },
+          })
+          assert.response(res).has.status(200)
+          json_body = assert.response(res).has.jsonbody()
+          assert.is_not_nil(json_body.headers.authorization)
+          assert.equal(bearer_token, sub(json_body.headers.authorization, 8))
+
+          res, err = red:scan(0)
+          assert.is_nil(err)
+          assert.is_not_nil(res)
+          assert.are_equal('0', res[1])
+          assert.is_table(res[2])
+          assert.matches("session:%S+", res[2][1])
+
+          red:flushdb()
         end)
 
         it("is allowed with valid client session [redis] using ACL", function()

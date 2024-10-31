@@ -118,6 +118,7 @@ local function new(args, secret)
               port              = redis_conf["port"],
               username          = redis_conf["username"],
               password          = redis_conf["password"],
+              database          = redis_conf["database"],
               connect_timeout   = redis_conf["connect_timeout"],
               read_timeout      = redis_conf["read_timeout"],
               send_timeout      = redis_conf["send_timeout"],
