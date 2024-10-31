@@ -148,6 +148,8 @@ do
   end
 
 
+  -- { ["1"] = "a", ["2"] = "b" } becomes {"a", "b"}
+  -- { "a", "b" }  becomes { "a", "b" }
   local function decode_array(t)
     local keys = {}
     local len  = 0
@@ -167,7 +169,7 @@ do
       if keys[i] ~= i then
         return nil
       end
-      new_t[i] = t[tostring(i)]
+      new_t[i] = t[tostring(i)] or t[i]
     end
 
     return new_t
