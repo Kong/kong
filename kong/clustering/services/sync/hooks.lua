@@ -59,7 +59,7 @@ function _M:notify_all_nodes()
     return
   end
 
-  ngx_log(ngx_DEBUG, "[rpc:sync] notifying all nodes of new version: ", latest_version)
+  ngx_log(ngx_DEBUG, "[kong.sync.v2] notifying all nodes of new version: ", latest_version)
 
   local msg = { default = { new_version = latest_version, }, }
 
@@ -114,7 +114,8 @@ end
 -- only control plane has these delta operations
 function _M:register_dao_hooks()
   local function is_db_export(name)
-    ngx_log(ngx_DEBUG, "[rpc:sync] name: ", name, " db_export: ", kong.db[name].schema.db_export)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] name: ", name, " db_export: ", kong.db[name].schema.db_export)
+
     local db_export = kong.db[name].schema.db_export
     return db_export == nil or db_export == true
   end
@@ -134,7 +135,8 @@ function _M:register_dao_hooks()
       return
     end
 
-    ngx_log(ngx_DEBUG, "[rpc:sync] failed. Canceling ", name)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] failed. Canceling ", name)
+
     local res, err = self.strategy:cancel_txn()
     if not res then
       ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
@@ -146,7 +148,8 @@ function _M:register_dao_hooks()
       return entity
     end
 
-    ngx_log(ngx_DEBUG, "[rpc:sync] new delta due to writing ", name)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to writing ", name)
+
     return self:entity_delta_writer(entity, name, options, ws_id)
   end
 
@@ -155,7 +158,8 @@ function _M:register_dao_hooks()
       return entity
     end
 
-    ngx_log(ngx_DEBUG, "[rpc:sync] new delta due to deleting ", name)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
+
     -- set lmdb value to ngx_null then return row
     return self:entity_delta_writer(entity, name, options, ws_id, true)
   end
@@ -180,6 +184,21 @@ function _M:register_dao_hooks()
     ["dao:upsert:pre"]  = pre_hook_func,
     ["dao:upsert:fail"] = fail_hook_func,
     ["dao:upsert:post"] = post_hook_writer_func,
+
+    -- dao:upsert_by
+    ["dao:upsert_by:pre"]  = pre_hook_func,
+    ["dao:upsert_by:fail"] = fail_hook_func,
+    ["dao:upsert_by:post"] = post_hook_writer_func,
+
+    -- dao:delete_by
+    ["dao:delete_by:pre"]  = pre_hook_func,
+    ["dao:delete_by:fail"] = fail_hook_func,
+    ["dao:delete_by:post"] = post_hook_delete_func,
+
+    -- dao:update_by
+    ["dao:update_by:pre"]  = pre_hook_func,
+    ["dao:update_by:fail"] = fail_hook_func,
+    ["dao:update_by:post"] = post_hook_writer_func,
   }
 
   for ev, func in pairs(dao_hooks) do
