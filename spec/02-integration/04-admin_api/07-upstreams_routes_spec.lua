@@ -644,6 +644,16 @@ describe("Admin API: #" .. strategy, function()
         })
         assert.res_status(200, res)
       end)
+      it("returns bad request for empty tags", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams",
+          query = { tags = ngx.null}
+        })
+        res = assert.res_status(400, res)
+        local json = cjson.decode(res)
+        assert.same("invalid option (tags: cannot be null)", json.message)
+      end)
 
       describe("empty results", function()
         lazy_setup(function()

@@ -170,7 +170,7 @@ local function extract_LHS_query(query_param_key)
   return query_param, lhs
 end
 
-local function extract_options(args, schema, context)
+local function extract_options(db, args, schema, context)
   local options = {
     nulls = true,
     pagination = {
@@ -204,6 +204,11 @@ local function extract_options(args, schema, context)
     --]] EE
 
     if schema.fields.tags and args.tags ~= nil and context == "page" then
+      if args.tags == null or #args.tags == 0 then
+        local error_message = "cannot be null"
+        return nil, error_message, db[schema.name].errors:invalid_options({tags = error_message})
+      end
+
       local tags = args.tags
       if type(tags) == "table" then
         tags = tags[1]
@@ -287,7 +292,11 @@ local function query_entity(context, self, db, schema, method)
     args = self.args.uri
   end
 
-  local opts = extract_options(args, schema, context)
+  local opts, err, err_t = extract_options(db, args, schema, context)
+  if err then
+    return nil, err, err_t
+  end
+
   local schema_name = schema.name
   local dao = db[schema_name]
 
