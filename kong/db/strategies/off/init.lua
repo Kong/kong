@@ -208,23 +208,16 @@ local function select_by_field(self, field, value, options)
     _, value = next(value)
   end
 
-  local ws_id
+  local schema_field = schema.fields[field]
+  local unique_across_ws = schema_field and schema_field.unique_across_ws
 
-  if field == "cache_key" then
-    -- align with cache_key insertion logic in _set_entity_for_txn
-    ws_id = get_default_workspace()
+  -- only accept global query by field if field is unique across workspaces
+  assert(not options or options.workspace ~= null or unique_across_ws)
 
-  else
-    ws_id = workspace_id(schema, options)
-
-    local unique_across_ws = schema.fields[field].unique_across_ws
-    -- only accept global query by field if field is unique across workspaces
-    assert(not options or options.workspace ~= null or unique_across_ws)
-
-    if unique_across_ws then
-      ws_id = get_default_workspace()
-    end
-  end
+  -- align with cache_key insertion logic in _set_entity_for_txn
+  local ws_id = (unique_across_ws or field == "cache_key") and
+                get_default_workspace() or
+                workspace_id(schema, options)
 
   local key = unique_field_key(schema.name, ws_id, field, value)
 
