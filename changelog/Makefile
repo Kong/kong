@@ -107,7 +107,7 @@ push_changelog:
 		touch $(VERSION)/$$i/.gitkeep ; \
 	done
 	@git add .
-	@git commit -m "docs(release): genereate $(VERSION) changelog"
+	@git commit -m "docs(release): generate $(VERSION) changelog"
 	@git push -fu origin HEAD
 
 	@echo
