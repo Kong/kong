@@ -124,7 +124,11 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
       return nil, err
     end
 
+    -- it will be ngx.null when the table clustering_sync_version is empty
     sync_version = assert(ok[1].max)
+    if sync_version == null then
+      sync_version = 0
+    end
   end
 
   emitter:emit_toplevel({
@@ -359,7 +363,8 @@ local sync_emitter = {
 
   emit_entity = function(self, entity_name, entity_data)
     self.out_n = self.out_n + 1
-    self.out[self.out_n] = { type = entity_name , row = entity_data, version = self.sync_version, }
+    self.out[self.out_n] = { type = entity_name , entity = entity_data, version = self.sync_version,
+                             ws_id = kong.default_workspace, }
   end,
 
   done = function(self)
