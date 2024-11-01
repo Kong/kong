@@ -70,7 +70,7 @@ do
       CACHED_OUT = request_aware_table.new()
     end
 
-    CACHED_OUT.clear()
+    CACHED_OUT:clear()
     for i = 1, count do
       local k = primary_key[i]
       insert(CACHED_OUT, tostring(object[k]))

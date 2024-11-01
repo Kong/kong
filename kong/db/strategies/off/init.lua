@@ -46,6 +46,11 @@ _mt.__index = _mt
 local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
 
 
+local function need_follow(ws_id)
+  return ws_id == "*"
+end
+
+
 local function get_default_workspace()
   if kong.default_workspace == UNINIT_WORKSPACE_ID then
     local res = kong.db.workspaces:select_by_name("default")
@@ -115,10 +120,17 @@ local function select_by_key(schema, key, follow)
 end
 
 
+local LMDB_MIN_PAGE_SIZE = 2
+
+
 local function page_for_prefix(self, prefix, size, offset, options, follow)
   if not size then
     size = self.connector:get_page_size(options)
   end
+
+  -- LMDB 'page_size' can not be less than 2
+  -- see: https://github.com/Kong/lua-resty-lmdb?tab=readme-ov-file#page
+  size = math.max(size, LMDB_MIN_PAGE_SIZE)
 
   offset = offset or prefix
 
@@ -174,7 +186,7 @@ local function page(self, size, offset, options)
     offset = token
   end
 
-  return page_for_prefix(self, prefix, size, offset, options, false)
+  return page_for_prefix(self, prefix, size, offset, options, need_follow(ws_id))
 end
 
 
@@ -184,7 +196,7 @@ local function select(self, pk, options)
   local ws_id = workspace_id(schema, options)
   local pk = pk_string(schema, pk)
   local key = item_key(schema.name, ws_id, pk)
-  return select_by_key(schema, key, false)
+  return select_by_key(schema, key, need_follow(ws_id))
 end
 
 
@@ -204,18 +216,18 @@ local function select_by_field(self, field, value, options)
     _, value = next(value)
   end
 
-  local ws_id = workspace_id(schema, options)
+  local schema_field = schema.fields[field]
+  local unique_across_ws = schema_field and schema_field.unique_across_ws
 
-  local key
-  local unique_across_ws = schema.fields[field].unique_across_ws
   -- only accept global query by field if field is unique across workspaces
   assert(not options or options.workspace ~= null or unique_across_ws)
 
-  if unique_across_ws then
-    ws_id = get_default_workspace()
-  end
+  -- align with cache_key insertion logic in _set_entity_for_txn
+  local ws_id = (unique_across_ws or field == "cache_key") and
+                get_default_workspace() or
+                workspace_id(schema, options)
 
-  key = unique_field_key(schema.name, ws_id, field, value)
+  local key = unique_field_key(schema.name, ws_id, field, value)
 
   return select_by_key(schema, key, true)
 end
