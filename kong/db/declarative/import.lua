@@ -326,6 +326,8 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
     local is_foreign = fdata.type == "foreign"
     local fdata_reference = fdata.reference
     local value = item[fname]
+    -- avoid overriding the outer ws_id
+    local field_ws_id = fdata.unique_across_ws and kong.default_workspace or ws_id
 
     -- value may be null, we should skip it
     if not value or value == null then
@@ -345,11 +347,7 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
         value_str = pk_string(kong.db[fdata_reference].schema, value)
       end
 
-      if fdata.unique_across_ws then
-        ws_id = kong.default_workspace
-      end
-
-      for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
+      for _, wid in ipairs {field_ws_id, GLOBAL_WORKSPACE_TAG} do
         local key = unique_field_key(entity_name, wid, fname, value_str or value)
 
         -- store item_key or nil into lmdb
@@ -363,7 +361,7 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
 
       value_str = pk_string(kong.db[fdata_reference].schema, value)
 
-      for _, wid in ipairs {ws_id, GLOBAL_WORKSPACE_TAG} do
+      for _, wid in ipairs {field_ws_id, GLOBAL_WORKSPACE_TAG} do
         local key = foreign_field_key(entity_name, wid, fname, value_str, pk)
 
         -- store item_key or nil into lmdb
