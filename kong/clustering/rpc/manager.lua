@@ -57,14 +57,16 @@ end
 
 
 function _M:_add_socket(socket, capabilities_list)
-  local sockets = self.clients[socket.node_id]
+  local node_id = socket.node_id
+
+  local sockets = self.clients[node_id]
   if not sockets then
-    assert(self.concentrator:_enqueue_subscribe(socket.node_id))
+    assert(self.concentrator:_enqueue_subscribe(node_id))
     sockets = setmetatable({}, { __mode = "k", })
-    self.clients[socket.node_id] = sockets
+    self.clients[node_id] = sockets
   end
 
-  self.client_capabilities[socket.node_id] = {
+  self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
