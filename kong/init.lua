@@ -999,12 +999,8 @@ function Kong.init_worker()
     -- rpc and incremental sync
     if kong.rpc and is_http_module then
 
-      if is_data_plane(kong.configuration) then
-        kong.rpc:try_connect()
-
-      else -- control_plane
-        kong.rpc.concentrator:start()
-      end
+      -- rpc init connection
+      kong.rpc:init_worker()
 
       -- init incremental sync
       if kong.sync then

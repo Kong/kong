@@ -286,6 +286,18 @@ function _M:try_connect(reconnection_delay)
 end
 
 
+function _M:init_worker()
+  if self.conf.role == "data_plane" then
+    -- data_plane will try to connect to cp
+    self:try_connect()
+
+  else
+    -- control_plane
+    self.concentrator:start()
+  end
+end
+
+
 function _M:connect(premature, node_id, host, path, cert, key)
   if premature then
     return
