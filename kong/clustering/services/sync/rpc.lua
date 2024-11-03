@@ -381,6 +381,8 @@ end
 
 
 function _M:sync_once(delay)
+  --- XXX TODO: check rpc connection is ready
+
   return start_sync_timer(ngx.timer.at, delay or 0)
 end
 
