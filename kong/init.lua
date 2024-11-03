@@ -997,12 +997,15 @@ function Kong.init_worker()
 
   if kong.clustering then
     -- rpc and incremental sync
-    if kong.rpc and is_http_module then
+    if is_http_module then
 
-      -- rpc init connection
-      kong.rpc:init_worker()
+      -- init rpc connection
+      if kong.rpc then
+        kong.rpc:init_worker()
+      end
 
       -- init incremental sync
+      -- should run after rpc init successfully
       if kong.sync then
         kong.sync:init_worker()
       end
