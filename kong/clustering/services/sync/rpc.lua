@@ -46,6 +46,16 @@ function _M:init_cp(manager)
     return { default = { deltas = res, wipe = wipe, }, }
   end
 
+  local function full_sync_result()
+    local deltas, err = declarative.export_config_sync()
+    if not deltas then
+      return nil, err
+    end
+
+    -- wipe dp lmdb, full sync
+    return gen_delta_result(deltas, true)
+  end
+
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
@@ -97,14 +107,7 @@ function _M:init_cp(manager)
               ", current_version: ", default_namespace_version,
               ", forcing a full sync")
 
-
-      local deltas, err = declarative.export_config_sync()
-      if not deltas then
-        return nil, err
-      end
-
-      -- wipe dp lmdb, full sync
-      return gen_delta_result(deltas, true)
+      return full_sync_result()
     end
 
     local res, err = self.strategy:get_delta(default_namespace_version)
@@ -135,13 +138,7 @@ function _M:init_cp(manager)
             ", current_version: ", default_namespace_version,
             ", forcing a full sync")
 
-    local deltas, err = declarative.export_config_sync()
-    if not deltas then
-      return nil, err
-    end
-
-    -- wipe dp lmdb, full sync
-    return gen_delta_result(deltas, true)
+    return full_sync_result()
   end)
 end
 
