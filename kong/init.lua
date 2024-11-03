@@ -999,17 +999,8 @@ function Kong.init_worker()
     -- rpc and incremental sync
     if kong.rpc and is_http_module then
 
-      -- only available in http subsystem
-      local cluster_tls = require("kong.clustering.tls")
-
       if is_data_plane(kong.configuration) then
-        ngx.timer.at(0, function(premature)
-          kong.rpc:connect(premature,
-                           "control_plane", kong.configuration.cluster_control_plane,
-                           "/v2/outlet",
-                           cluster_tls.get_cluster_cert(kong.configuration).cdata,
-                           cluster_tls.get_cluster_cert_key(kong.configuration))
-        end)
+        kong.rpc:try_connect()
 
       else -- control_plane
         kong.rpc.concentrator:start()

@@ -274,6 +274,18 @@ function _M:handle_websocket()
 end
 
 
+function _M:try_connect(reconnection_delay)
+  ngx.timer.at(reconnection_delay or 0, function(premature)
+    self:connect(premature,
+                 "control_plane", -- node_id
+                 self.conf.cluster_control_plane, -- host
+                 "/v2/outlet",  -- path
+                 self.cluster_cert.cdata,
+                 self.cluster_cert_key)
+  end)
+end
+
+
 function _M:connect(premature, node_id, host, path, cert, key)
   if premature then
     return
@@ -350,9 +362,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   if not exiting() then
-    ngx.timer.at(reconnection_delay, function(premature)
-      self:connect(premature, node_id, host, path, cert, key)
-    end)
+    self:try_connect(reconnection_delay)
   end
 end
 
