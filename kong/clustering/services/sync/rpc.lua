@@ -159,15 +159,31 @@ function _M:init_dp(manager)
       return nil, "default namespace does not exist inside params"
     end
 
+    ngx_log(ngx_INFO,
+            "[kong.sync.v2] notify_new_version: ", node_id,
+            ", new_version of CP is ", default_new_version)
+
     local version = default_new_version.new_version
     if not version then
       return nil, "'new_version' key does not exist"
     end
 
     local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+
+    ngx_log(ngx_INFO,
+            "[kong.sync.v2] notify_new_version: ", node_id,
+            ", current_version is ", lmdb_ver)
+
     if lmdb_ver < version then
+      ngx_log(ngx_INFO,
+              "[kong.sync.v2] notify_new_version: ", node_id,
+              ", start a sync.")
       return self:sync_once()
     end
+
+    ngx_log(ngx_INFO,
+            "[kong.sync.v2] notify_new_version: ", node_id,
+            ", dose not start a sync.")
 
     return true
   end)
