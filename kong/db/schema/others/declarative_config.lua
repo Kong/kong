@@ -60,9 +60,18 @@ do
     end
 
     CACHED_OUT:clear()
+
+    -- The logic comes from get_cache_key_value(), which uses `id` directly to
+    -- extract foreign key.
     for i = 1, count do
       local k = primary_key[i]
-      insert(CACHED_OUT, tostring(object[k]))
+      local v = object[k]
+
+      if type(v) == "table" and schema.fields[k].type == "foreign" then
+        v = v.id
+      end
+
+      insert(CACHED_OUT, tostring(v or ""))
     end
 
     return concat(CACHED_OUT, ":")
