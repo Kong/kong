@@ -17,6 +17,7 @@ local PHASES = {
   --init            = 0x00000001,
   init_worker       = 0x00000001,
   certificate       = 0x00000002,
+  client_hello      = 0x00000008,
   --set             = 0x00000004,
   rewrite           = 0x00000010,
   access            = 0x00000020,
