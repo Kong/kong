@@ -33,6 +33,11 @@ local schema = {
               description = "Ignore and discard any assistant prompts when Vectorizing the request",
               type = "boolean",
               default = false }},
+          {
+            ignore_tool_prompts = {
+              description = "Ignore and discard any tool prompts when Vectorizing the request",
+              type = "boolean",
+              default = false }},
           { stop_on_failure = {
               description = "Halt the LLM request process in case of a caching system failure",
               type = "boolean",

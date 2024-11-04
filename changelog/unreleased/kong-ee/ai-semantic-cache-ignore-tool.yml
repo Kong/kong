@@ -1,0 +1,4 @@
+message: |
+  **ai-semantic-cache**: Added `ignore_tool` configuration option to discard tool role prompts from the input text.
+type: "feature"
+scope: "Plugin"

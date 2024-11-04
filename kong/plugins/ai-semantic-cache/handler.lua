@@ -109,7 +109,7 @@ local function cacheable_request(conf, cc)
 end
 
 -- Formats chat messages into a vectorizable string
-local function format_chat(messages, countback, discard_system, discard_assistant)
+local function format_chat(messages, countback, discard_system, discard_assistant, discard_tool)
   local buf = buffer.new()
 
   for i = #messages, #messages - countback + 1, -1 do
@@ -121,6 +121,8 @@ local function format_chat(messages, countback, discard_system, discard_assistan
         buf:putf("%s: %s\n\n", message.role, message.content)
       elseif message.role == "user" then
         buf:putf("%s\n\n", message.content)
+      elseif message.role == "tool" and not discard_tool then
+        buf:putf("%s: %s\n\n", message.role, message.content)
       end
     end
   end
@@ -303,7 +305,8 @@ function AISemanticCaching:access(conf)
   local formatted_chat = format_chat(request_table.messages,
                                     conf.message_countback,
                                     conf.ignore_system_prompts,
-                                    conf.ignore_assistant_prompts)
+                                    conf.ignore_assistant_prompts,
+                                    conf.ignore_tool_prompts)
 
   local cache_key = sha256_hex(formatted_chat)
   kong.ctx.plugin.semantic_cache_key = cache_key

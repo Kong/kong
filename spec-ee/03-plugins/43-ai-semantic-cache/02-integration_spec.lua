@@ -44,6 +44,11 @@ local MOCK_FIXTURE = [[
           ngx.print("bad request somehow")
         end
 
+        if body.input:match("tool") then
+          ngx.status = 401
+          ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/unauthorized.json"))
+        end
+
         if body.model == "text-embedding-3-large" and token == "Bearer openai-key" then
           ngx.status = 200
           if body.input:match("what") then
@@ -220,6 +225,7 @@ local DIMENSIONS_LOOKUP = {
 local TEST_SCANARIOS = {
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b6", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200 },
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b8", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, model = "gpt-4-turbo" },
+  { id = "97a884ab-5b8f-442a-8011-89dce47a68b3", desc = "good caching with ignore tool",vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good-with-tool", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, model = "gpt-4-turbo" },
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b1", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, enable_buffer_proxy = true },
   { id = "4819bbfb-7669-4d7d-a7b8-1c60dc71d2a8", desc = "stream request rest response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_request = true },
   { id = "e73873a3-aec5-429d-b36d-8cfc6bcaed3a", desc = "rest request stream response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_response = true },
@@ -294,6 +300,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 message_countback = TEST_SCENARIO.message_countback or 10,
                 ignore_assistant_prompts = true,
                 ignore_system_prompts = true,
+                ignore_tool_prompts = true,
                 stop_on_failure = TEST_SCENARIO.stop_on_failure or true,
                 embeddings = {
                   auth = {

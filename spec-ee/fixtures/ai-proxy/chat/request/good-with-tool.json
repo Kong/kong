@@ -1,0 +1,13 @@
+{
+    "messages": [
+      {
+        "role": "user",
+        "content": "Question about trains."
+      },
+      {
+        "role": "tool",
+        "content": "ai-proxy"
+      }
+    ]
+  }
+  

@@ -129,6 +129,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           message_countback = 10,
           ignore_assistant_prompts = true,
           ignore_system_prompts = true,
+          ignore_tool_prompts = true,
           stop_on_failure = true,
           embeddings = EMBEDDINGS_SETUP,
           vectordb = VECTORDB_SETUP,
