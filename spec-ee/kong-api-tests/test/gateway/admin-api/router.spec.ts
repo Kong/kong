@@ -459,6 +459,8 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         }
       });
       expect(resp.status, 'Status should be 201').to.equal(201);
+
+      await waitForConfigRebuild()
   
       await eventually(async () => {
         // attempt to create route in second workspace
@@ -485,6 +487,8 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
           await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'off' }, 'kong-dp1');
         }
 
+        await waitForConfigRebuild()
+
         await eventually(async () => {
           // ensure that route validation is set to off
           const resp = await axios({
@@ -506,7 +510,9 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
             name: routePayload.name,
           },
         });
-        expect(resp.status, 'Status should be 201').to.equal(201); 
+        expect(resp.status, 'Status should be 201').to.equal(201);
+
+        await waitForConfigRebuild()
 
         await eventually(async () => {
           // validate route was created
