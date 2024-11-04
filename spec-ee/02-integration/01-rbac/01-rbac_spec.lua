@@ -673,7 +673,9 @@ for _, strategy in spec_helpers.each_strategy() do
     end)
     describe("check_cascade", function()
       local entities
+      local old_conf
       setup(function()
+        old_conf = kong.configuration
         kong.configuration= {
           rbac = "both",
         }
@@ -703,7 +705,7 @@ for _, strategy in spec_helpers.each_strategy() do
         }
       end)
       teardown(function()
-        kong.configuration = nil
+        kong.configuration = old_conf
       end)
 
       it("all entities allowed", function()

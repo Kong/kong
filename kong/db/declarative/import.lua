@@ -439,10 +439,17 @@ end
 --     _transform: true,
 --   }
 local function load_into_cache(entities, meta, hash)
+  meta = meta or {}
+
   local default_workspace_id = assert(find_ws(entities, "default"))
   local should_transform = meta._transform == nil and true or meta._transform
 
+  local fallback_workspace = meta._workspace  -- XXX EE
+                             and find_ws(entities, meta._workspace)
+                             or  default_workspace_id
+
   assert(type(default_workspace_id) == "string")
+  assert(type(fallback_workspace) == "string")
 
   -- set it for insert_entity_for_txn()
   kong.default_workspace = default_workspace_id
@@ -470,7 +477,7 @@ local function load_into_cache(entities, meta, hash)
 
     for _, item in pairs(items) do
       if not schema.workspaceable or item.ws_id == null or item.ws_id == nil then
-        item.ws_id = default_workspace_id
+        item.ws_id = fallback_workspace     -- XXX EE
       end
 
       assert(type(item.ws_id) == "string")

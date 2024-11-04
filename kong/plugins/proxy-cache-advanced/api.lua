@@ -22,7 +22,7 @@ end
 
 
 local function each_by_name(entity, name)
-  local iter = entity:each(1000)
+  local iter = entity:each()  -- like each(page_size)
   local function iterator()
     local element, err = iter()
     if err then return nil, err end

@@ -70,7 +70,7 @@ function DeGraphQLHandler:update_router(force)
 
   local routers = {}
 
-  for route, err in kong.db.degraphql_routes:each(1000) do
+  for route, err in kong.db.degraphql_routes:each() do  -- like each(page_size)
     if err then
       kong.log.err("Degraphql plugin could not load routes: ", err)
       -- Break when error and try again on the next update_router

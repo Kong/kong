@@ -195,7 +195,8 @@ local function get_plugins_count()
     ["kafka-upstream"] = 0,
   }
 
-  for plugin, err in kong.db.plugins:each(1000, GLOBAL_QUERY_OPTS) do
+  -- like each(page_size,)
+  for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       kong.log.err("failed to list plugins: ", err)
       return nil

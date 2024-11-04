@@ -951,6 +951,7 @@ describe("Admin API #off", function()
         local config = assert(lyaml.load(json.config))
         config.workspaces[1].id = "<uuid>" -- see below
         config.workspaces[1].created_at = 12345 -- see below
+        config.workspaces[1].ws_id = nil -- see below
         config.consumers[1].ws_id = "<uuid>" -- see below
         assert:set_parameter("TableFormatLevel", -1)
         assert.same({

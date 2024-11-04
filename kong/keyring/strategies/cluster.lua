@@ -178,7 +178,7 @@ function _M.init(config)
 
   load_envelope_keys(config)
 
-  local r, err = kong.db.keyring_meta:each(1)
+  local r, err = kong.db.keyring_meta:each()
   if err then
     error(err)
   end

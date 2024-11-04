@@ -409,7 +409,8 @@ end
 
 
 local function export_config_sync()
-  return export_from_db_impl(sync_emitter.new(), false, false, true)
+  -- XXX EE: has extra parameter @skip_ttl
+  return export_from_db_impl(sync_emitter.new(), false, false, false, true)
 end
 
 
