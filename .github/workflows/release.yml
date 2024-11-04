@@ -943,7 +943,7 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    uses: Kong/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@2aa2df00d2b576473784570fa96a6b2344ba75ae # v2_node20
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['digest'][matrix.label] }}"
@@ -980,7 +980,7 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    uses: Kong/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@2aa2df00d2b576473784570fa96a6b2344ba75ae # v2_node20
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['digest'][matrix.label] }}"
