@@ -12,7 +12,7 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
-for _, inc_sync in ipairs { "on" } do
+for _, inc_sync in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
 
 -- labels are no longer supported
@@ -740,7 +740,6 @@ describe("CP/DP config sync #" .. strategy, function()
   end)
 end)
 
--- the feature is no longer supported
 skip_inc_sync("CP/DP labels #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
