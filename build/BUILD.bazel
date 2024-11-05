@@ -74,6 +74,37 @@ kong_rules_group(
     visibility = ["//visibility:public"],
 )
 
+# Hermetic targets for caching
+# For local development, you could run the following command to warm up the cache:
+# bazel build //build:cacheable-targets --remote_cache=<your_local_cache_server>
+# And then run another build command with the same remote cache server to use the cache.
+# bazel build //:kong --remote_cache=<your_local_cache_server> --remote_upload_local_results=false
+# The `--remote_upload_local_results=false` flag is used to avoid uploading
+# the build results to the remote cache server, this is to avoid polluting the cache.
+kong_rules_group(
+    name = "cacheable-targets",
+    propagates = [
+        "@openssl",
+        "@libexpat",
+        "@atc_router",
+        "@simdjson_ffi",
+        "@snappy",
+        "@brotli",
+        "@pcre",
+        "@openresty",
+        # [[ BEGIN: EE only targets
+        "@msgpack_c",
+        "@jq",
+        "@libxslt",
+        "@passwdqc",
+        "@json_threat_protection",
+        "@jsonschema//:lua_resty_jsonschema_rs",
+        "@curl",
+        # END:  EE only targets ]]
+    ],
+    visibility = ["//visibility:public"],
+)
+
 # OpenResty
 
 kong_install(
