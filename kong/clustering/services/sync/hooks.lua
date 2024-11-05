@@ -114,9 +114,10 @@ end
 -- only control plane has these delta operations
 function _M:register_dao_hooks()
   local function is_db_export(name)
-    ngx_log(ngx_DEBUG, "[kong.sync.v2] name: ", name, " db_export: ", kong.db[name].schema.db_export)
-
     local db_export = kong.db[name].schema.db_export
+
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] name: ", name, " db_export: ", db_export)
+
     return db_export == nil or db_export == true
   end
 
