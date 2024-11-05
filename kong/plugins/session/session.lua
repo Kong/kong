@@ -23,8 +23,6 @@ local _M = {}
 --- Open a session based on plugin config
 -- @returns resty.session session object
 function _M.open_session(conf)
-  kong.log.inspect(conf.response_headers)
-
   return resty_session.open({
     secret                    = conf.secret,
     audience                  = conf.audience,
