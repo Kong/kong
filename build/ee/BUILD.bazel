@@ -4,8 +4,10 @@ kong_template_genrule(
     name = "luarocks_install_ee_plugins",
     srcs = [
         "@kong//:plugins_ee_rockspec_srcs",
+        "@kong_gql//:all_srcs",  # will not build anything, just make sure it has been downloaded
         "@luarocks//:luarocks_exec",
         "@luarocks//:luarocks_make",  # don't let them run concurrently
+        "@resty_openapi3_deserializer//:all_srcs",  # will not build anything, just make sure it has been downloaded
     ],
     output = "luarocks_install_ee_plugins.log",
     progress_message = "Luarocks: Install EE plugins",

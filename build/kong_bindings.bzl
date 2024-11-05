@@ -85,16 +85,6 @@ def _check_sanity(ctx):
              "Please rerun this build with:\n" +
              "export USER=" + user.replace("@", "_") + " bazel build <target>")
 
-    for sub_dir in ["kong-gql", "lua-resty-openapi3-deserializer"]:
-        mod = ctx.workspace_root.get_child("./distribution/%s" % sub_dir)
-        if not mod.exists:
-            continue
-        if len(mod.readdir()) == 0:
-            fail("Please run following commmand to initialize submodules, as 'distribution/" + sub_dir + "' is empty:\n" +
-                 "git submodule update --init\n\n" +
-                 "If you frequently switch between different branches, consider set git to automatically fetch submodules:\n" +
-                 "git config submodule.recurse true")
-
 def _load_bindings_impl(ctx):
     _check_sanity(ctx)
 

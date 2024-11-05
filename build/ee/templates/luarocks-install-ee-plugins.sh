@@ -1,15 +1,19 @@
 #!/bin/bash -e
 
-# template variables starts
+# [[ BEGIN template variables starts
 luarocks_exec="{{@@luarocks//:luarocks_exec}}"
-# template variables ends
+# the kong_template_genrule always render the shortest path of the given list of labels
+# So we need to get the parent directory to install the rockspec files
+resty_openapi3_deserializer="$(dirname {{@@resty_openapi3_deserializer//:all_srcs}})"
+kong_gql="$(dirname {{@@kong_gql//:all_srcs}})"
+# END template variables ]]
 
 touch $@.tmp
 
 cwd=$(pwd)
-for dir in lua-resty-openapi3-deserializer kong-gql; do
+for dir in $resty_openapi3_deserializer $kong_gql; do
     echo "Installing library: $dir" >> $cwd/$@.tmp
-    pushd distribution/$dir >> $cwd/$@.tmp
+    pushd $dir >> $cwd/$@.tmp
         $cwd/$luarocks_exec make *.rockspec >> $cwd/$@.tmp
     popd >> $cwd/$@.tmp
 done
