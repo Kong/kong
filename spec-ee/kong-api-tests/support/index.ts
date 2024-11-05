@@ -75,7 +75,7 @@ export {
   KokoAuthHeaders,
   Consumer
 } from './interfaces';
-export { constructDeckCommand, read_deck_config } from './utilities/deck';
+export { constructDeckCommand, executeDeckCommand, readDeckConfig, modifyDeckConfig, backupJsonFile, restoreJsonFile } from './utilities/deck';
 export * from './utilities/entities-gateway';
 export * from './utilities/entities-rbac-gateway';
 export * from './utilities/gw-vaults';

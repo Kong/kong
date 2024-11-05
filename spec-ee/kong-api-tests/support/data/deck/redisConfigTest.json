@@ -1,0 +1,103 @@
+{
+  "_format_version": "3.0",
+  "services": [
+    {
+      "connect_timeout": 60000,
+      "host": "httpbin",
+      "name": "httpbinRedisDeck",
+      "port": 80,
+      "protocol": "http",
+      "read_timeout": 60000,
+      "retries": 5,
+      "write_timeout": 60000,
+      "enabled": true,
+      "routes": [
+        {
+          "name": "dummyRedisDeckRoute",
+          "paths": [
+            "/dummyRedisDeckRoute"
+          ],
+          "path_handling": "v0",
+          "preserve_host": false,
+          "protocols": [
+            "http",
+            "https"
+          ],
+          "regex_priority": 0,
+          "strip_path": true,
+          "https_redirect_status_code": 426,
+          "request_buffering": true,
+          "response_buffering": true
+        },
+        {
+          "name": "redisDeckMock",
+          "paths": [
+            "/redisDeckMock"
+          ],
+          "path_handling": "v0",
+          "preserve_host": false,
+          "protocols": [
+            "http",
+            "https"
+          ],
+          "regex_priority": 0,
+          "strip_path": true,
+          "https_redirect_status_code": 426,
+          "request_buffering": true,
+          "response_buffering": true
+        }
+      ]
+    }
+  ],
+  "plugins": [
+    {
+      "name": "rate-limiting",
+      "config": {
+        "day": null,
+        "error_code": 429,
+        "error_message": "API rate limit exceeded",
+        "fault_tolerant": true,
+        "header_name": "X-Limit-Hit",
+        "hide_client_headers": false,
+        "hour": null,
+        "limit_by": "header",
+        "minute": 1,
+        "month": null,
+        "path": null,
+        "policy": "redis",
+        "redis": {
+          "database": 0,
+          "host": "redis",
+          "password": "redispassword",
+          "port": 6379,
+          "server_name": null,
+          "ssl": false,
+          "ssl_verify": false,
+          "timeout": 2000,
+          "username": "redisuser"
+        },
+        "redis_database": 0,
+        "redis_host": "redis",
+        "redis_password": "redispassword",
+        "redis_port": 6379,
+        "redis_server_name": null,
+        "redis_ssl": false,
+        "redis_ssl_verify": false,
+        "redis_timeout": 2000,
+        "redis_username": "redisuser",
+        "second": null,
+        "sync_rate": -1,
+        "year": null
+      },
+      "service": "httpbinRedisDeck",
+      "route": "redisDeckMock",
+      "enabled": true,
+      "protocols": [
+        "grpc",
+        "grpcs",
+        "http",
+        "https"
+      ]
+    }
+  ]
+}

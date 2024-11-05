@@ -11,11 +11,11 @@ import {
   randomString,
   getBasePath,
   logResponse,
-  constructDeckCommand,
+  executeDeckCommand,
   createPlugin,
   execCustomCommand,
   getNegative,
-  read_deck_config,
+  readDeckConfig,
   isGateway
 } from '@support';
 
@@ -51,17 +51,15 @@ describe('@oss: decK: Sanity Tests', function () {
   });
 
   it('should do a ping', async function () {
-    const result = execCustomCommand(constructDeckCommand('ping'));
+    const result = executeDeckCommand('ping');
     expect(result.stderr, 'deck ping error').to.be.undefined;
   });
 
   it('should do a dump', async function () {
-    const result = execCustomCommand(
-      constructDeckCommand('dump --format json --yes "-o=kong"')
-    );
+    const result = executeDeckCommand('dump --format json --yes "-o=kong"');
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
-    const conf = read_deck_config(deckFileName);
+    const conf = readDeckConfig(deckFileName);
 
     let service_matched = false;
     let route_matched = false;
@@ -133,7 +131,7 @@ describe('@oss: decK: Sanity Tests', function () {
   });
 
   it('should reset the db', async function () {
-    const result = execCustomCommand(constructDeckCommand('reset --force'));
+    const result = executeDeckCommand('reset --force');
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
     /* check if our previously created service is really gone */
@@ -144,9 +142,7 @@ describe('@oss: decK: Sanity Tests', function () {
   });
 
   it('should sync the db', async function () {
-    const result = execCustomCommand(
-      constructDeckCommand(`sync ./${deckFileName}`)
-    );
+    const result = executeDeckCommand(`sync ./${deckFileName}`);
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
     /* check if our previously created service is really back */
@@ -157,21 +153,17 @@ describe('@oss: decK: Sanity Tests', function () {
   });
 
   it('should detect drift', async function () {
-    let result = execCustomCommand(
-      constructDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`)
-    );
+    let result = executeDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`);
 
     expect(result.stderr, 'deck ping error').to.be.undefined;
 
     /* introduce drift */
-    const config = read_deck_config(deckFileName);
+    const config = readDeckConfig(deckFileName);
     config.services[0].port = 4242;
 
     fs.writeFileSync(`./${deckFileName}`, JSON.stringify(config));
 
-    result = execCustomCommand(
-      constructDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`)
-    );
+    result = executeDeckCommand(`diff ./${deckFileName} --non-zero-exit-code`);
 
     expect(result.stderr, 'deck diff failed').to.be.not.undefined;
     expect(
@@ -182,7 +174,7 @@ describe('@oss: decK: Sanity Tests', function () {
 
   after(async function () {
     // after test run use deck reset to remove all of the created entities from kong and remove deck file
-    execCustomCommand(constructDeckCommand('reset --force'));
+    executeDeckCommand('reset --force');
 
     if (fs.existsSync(`./${deckFileName}`)) {
       execCustomCommand(`rm ./${deckFileName}`);
