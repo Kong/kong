@@ -1,0 +1,3 @@
+message: Added an option for GitHub Actions to build nginx/OpenResty with debug symbols.
+type: "feature"
+scope: "Core"

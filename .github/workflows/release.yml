@@ -30,6 +30,11 @@ on:  # yamllint disable-line rule:truthy
         description: 'Release version, e.g. `3.0.0.0-beta.2`'
         required: true
         type: string
+      debug:
+        description: 'Build OpenResty/nginx debug enabled.'
+        required: true
+        type: boolean
+        default: false
 
 # `commit-ly` is a flag that indicates whether the build should be run per commit.
 
@@ -68,6 +73,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build Info
       id: build-info
+      env:
+        OFFICIAL: ${{ github.event.inputs.official }}
       run: |
         KONG_VERSION=$(bash scripts/grep-kong-version.sh)
         echo "kong-version=$KONG_VERSION" >> $GITHUB_OUTPUT
@@ -77,7 +84,9 @@ jobs:
         fi
 
         matrix_file=".github/matrix-commitly.yml"
-        if [ "$FULL_RELEASE" == "true" ]; then
+        if [[ "${{ github.event.inputs.debug }}" == "true" ]]; then
+          matrix_file=".github/matrix-debug.yml"
+        elif [ "$FULL_RELEASE" == "true" ]; then
           matrix_file=".github/matrix-full.yml"
         fi
 
@@ -93,7 +102,16 @@ jobs:
           echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         fi
 
-        if [ "${{ github.event.inputs.official }}" == "true" ]; then
+        if [[ "${{ github.event.inputs.debug }}" == "true" ]]; then
+          echo "::warning title=Debug Build::Do not distribute unless explicitly required."
+
+          if [ "$OFFICIAL" == "true" ]; then
+            echo "::warning title=Unofficial Build::both 'official' and 'debug' inputs were true. Proceeding as unofficial build."
+            export OFFICIAL='false'
+          fi
+        fi
+
+        if [[ "$OFFICIAL" == "true" ]]; then
           release_desc="$KONG_VERSION (official)"
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT

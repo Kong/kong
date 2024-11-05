@@ -212,7 +212,7 @@ class NginxInfo(ElfFileInfo):
                         self.nginx_modules.append(mname)
                     else:
                         self.nginx_modules.append(os.path.join(pdir, mname))
-                self.nginx_modules = sorted(self.nginx_modules)
+                self.nginx_modules = sorted(list(set(self.nginx_modules)))
             elif m := re.match("^built with (.+) \(running with", s):
                 self.nginx_compiled_openssl = m.group(1).strip()
 

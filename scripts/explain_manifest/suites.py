@@ -20,7 +20,7 @@ def read_requirements(path=None):
         lines = [re.findall("(.+)=([^# ]+)", d) for d in f.readlines()]
         return {l[0][0]: l[0][1].strip() for l in lines if l}
 
-def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdjson_ffi: bool = False):
+def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdjson_ffi: bool = False, skip_nginx_debug: bool = False):
     # file existence
     expect("/usr/local/kong/include/google/protobuf/**.proto",
            "includes Google protobuf headers").exists()
@@ -51,8 +51,12 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
         .needed_libraries.do_not().contain_match("libpcre.+.so.+") \
         .needed_libraries.do_not().contain_match("libpcre2\-(8|16|32).so.+") \
 
-    expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should not be compiled with debug flag") \
-        .nginx_compile_flags.do_not().match("with\-debug")
+    if skip_nginx_debug:
+        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should be compiled with debug flag") \
+            .nginx_compile_flags.match("with\-debug")
+    else:
+        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should not be compiled with debug flag") \
+            .nginx_compile_flags.do_not().match("with\-debug")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should include Kong's patches") \
         .functions \

@@ -229,3 +229,15 @@ for target in list(targets.keys()):
 
         # ubuntu-22.04-amd64-fips
         targets[target + "-fips"] = e
+
+for target in list(targets.keys()):
+    e = deepcopy(targets[target])
+
+    # Ubuntu 24.04 (amd64) debug
+    e.name = e.name + " Debug"
+    e.tests[common_suites] = {
+        'skip_nginx_debug': True,
+    }
+
+    # ubuntu-24.04-debug
+    targets[target + "-debug"] = e

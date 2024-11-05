@@ -1,0 +1,191 @@
+# This matrix is meant to be used for when a build of nginx/openresty built
+# with "--with-debug" is needed. Since this is a separate matrix file, it can
+# be populated with only the platforms necessary for a specific customer of a
+# specific incident.
+#
+# "-debug" suites for the "check-manifest-suite" are dynamically added in
+# explain_manifest.
+#
+# please see matrix-full.yml for meaning of each field
+build-packages:
+# Ubuntu
+- label: ubuntu-20.04
+  image: ubuntu:20.04
+  package: deb
+  bazel-args: --//:debug=true
+  check-manifest-suite: ubuntu-20.04-amd64-debug
+- label: ubuntu-20.04-fips
+  image: ubuntu:20.04
+  package: deb
+  bazel-args: --//:debug=true --//:fips=true
+  check-manifest-suite: ubuntu-20.04-amd64-fips-debug
+- label: ubuntu-22.04
+  image: ubuntu:22.04
+  package: deb
+  bazel-args: --//:debug=true
+  check-manifest-suite: ubuntu-22.04-amd64-debug
+- label: ubuntu-22.04-arm64
+  image: ubuntu:22.04
+  package: deb
+  bazel-args: --//:debug=true --platforms=//:generic-crossbuild-aarch64
+  check-manifest-suite: ubuntu-22.04-arm64-debug
+- label: ubuntu-22.04-fips
+  image: ubuntu:22.04
+  package: deb
+  bazel-args: --//:debug=true --//:fips=true
+  check-manifest-suite: ubuntu-22.04-amd64-fips-debug
+- label: ubuntu-24.04
+  image: ubuntu:24.04
+  package: deb
+  bazel-args: --//:debug=true
+  check-manifest-suite: ubuntu-24.04-amd64-debug
+- label: ubuntu-24.04-arm64
+  image: ubuntu:24.04
+  package: deb
+  bazel-args: --//:debug=true --platforms=//:generic-crossbuild-aarch64
+  check-manifest-suite: ubuntu-24.04-arm64-debug
+- label: ubuntu-24.04-fips
+  image: ubuntu:24.04
+  package: deb
+  bazel-args: --//:debug=true --//:fips=true
+  check-manifest-suite: ubuntu-24.04-amd64-fips-debug
+
+
+# Debian
+- label: debian-11
+  image: debian:11
+  package: deb
+  bazel-args: --//:debug=true
+  check-manifest-suite: debian-11-amd64-debug
+- label: debian-11-arm64
+  image: debian:11
+  package: deb
+  bazel-args: --//:debug=true --platforms=//:generic-crossbuild-aarch64 --//:brotli=False
+  check-manifest-suite: debian-11-arm64-debug
+- label: debian-12
+  image: debian:12
+  package: deb
+  bazel-args: --//:debug=true
+  check-manifest-suite: debian-12-amd64-debug
+- label: debian-12-arm64
+  image: debian:12
+  package: deb
+  bazel-args: --//:debug=true --platforms=//:generic-crossbuild-aarch64 --//:brotli=False
+  check-manifest-suite: debian-12-arm64-debug
+
+# RHEL
+- label: rhel-8
+  image: rockylinux:8
+  package: rpm
+  package-type: el8
+  bazel-args: --//:debug=true
+  check-manifest-suite: el8-amd64-debug
+- label: rhel-8-fips
+  image: rockylinux:8 # note we are not using ubi8 here as some packages needs subscription
+  package: rpm
+  package-type: el8
+  bazel-args: --//:debug=true --//:fips=true
+  check-manifest-suite: el8-amd64-fips-debug
+- label: rhel-9
+  image: rockylinux:9
+  package: rpm
+  package-type: el9
+  bazel-args: --//:debug=true
+  check-manifest-suite: el9-amd64-debug
+- label: rhel-9-fips
+  image: rockylinux:9 # note we are not using ubi9 here as some packages needs subscription
+  package: rpm
+  package-type: el9
+  bazel-args: --//:debug=true --//:fips=true
+  check-manifest-suite: el9-amd64-fips-debug
+- label: rhel-9-arm64
+  package: rpm
+  package-type: el9
+  bazel-args: --//:debug=true --platforms=//:rhel9-crossbuild-aarch64 --//:brotli=False
+  check-manifest-suite: el9-arm64-debug
+
+# Amazon Linux
+- label: amazonlinux-2
+  package: rpm
+  package-type: aws2
+  check-manifest-suite: amazonlinux-2-amd64-debug
+  # simdjson doesn't compile on gcc7.3.1 (needs 7.4)
+  bazel-args: --//:debug=true --platforms=//:aws2-crossbuild-x86_64 --//:simdjson=False
+- label: amazonlinux-2-arm64
+  package: rpm
+  package-type: aws2
+  bazel-args: --//:debug=true --platforms=//:aws2-crossbuild-aarch64 --//:brotli=False --//:simdjson=False
+  check-manifest-suite: amazonlinux-2-arm64-debug
+- label: amazonlinux-2023
+  image: amazonlinux:2023
+  package: rpm
+  package-type: aws2023
+  bazel-args: --//:debug=true
+  check-manifest-suite: amazonlinux-2023-amd64-debug
+- label: amazonlinux-2023-arm64
+  package: rpm
+  package-type: aws2023
+  bazel-args: --//:debug=true --platforms=//:aws2023-crossbuild-aarch64 --//:brotli=False
+  check-manifest-suite: amazonlinux-2023-arm64-debug
+
+build-images:
+# Ubuntu
+- label: ubuntu
+  base-image: ubuntu:24.04
+  package: deb
+  artifact-from: ubuntu-24.04
+  artifact-from-alt: ubuntu-24.04-arm64
+  docker-platforms: linux/amd64, linux/arm64
+  check-manifest-suite: docker-image-ubuntu-24.04-debug
+- label: ubuntu-fips
+  base-image: ubuntu:24.04
+  package: deb
+  artifact-from: ubuntu-24.04-fips
+  check-manifest-suite: docker-image-ubuntu-24.04-debug
+
+# Debian
+- label: debian
+  base-image: debian:12-slim
+  package: deb
+  artifact-from: debian-12
+  artifact-from-alt: debian-12-arm64
+  docker-platforms: linux/amd64, linux/arm64
+  check-manifest-suite: docker-image-debug
+
+# RHEL
+- label: rhel
+  base-image: registry.access.redhat.com/ubi9
+  package: rpm
+  package-distro: el9
+  artifact-from: rhel-9
+  artifact-from-alt: rhel-9-arm64
+  docker-platforms: linux/amd64, linux/arm64
+  check-manifest-suite: docker-image-debug
+- label: rhel-fips
+  base-image: registry.access.redhat.com/ubi9
+  package: rpm
+  package-distro: el9
+  artifact-from: rhel-9-fips
+  check-manifest-suite: docker-image-debug
+
+# Amazon Linux
+- label: amazonlinux-2
+  base-image: amazonlinux:2
+  package: rpm
+  package-distro: aws2
+  artifact-from: amazonlinux-2
+  artifact-from-alt: amazonlinux-2-arm64
+  docker-platforms: linux/amd64,linux/arm64
+  check-manifest-suite: docker-image-debug
+- label: amazonlinux-2023
+  base-image: amazonlinux:2023
+  package: rpm
+  package-distro: aws2023
+  artifact-from: amazonlinux-2023
+  artifact-from-alt: amazonlinux-2023-arm64
+  docker-platforms: linux/amd64,linux/arm64
+  check-manifest-suite: docker-image-debug
+
+release-packages:
+
+release-images:
