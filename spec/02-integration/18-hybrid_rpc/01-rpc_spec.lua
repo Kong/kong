@@ -63,8 +63,6 @@ for _, strategy in helpers.each_strategy() do
               return true
             end
           end
-
-          return true
         end, 10)
       end)
     end)
