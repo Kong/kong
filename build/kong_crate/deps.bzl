@@ -4,21 +4,11 @@ load("@rules_rust//crate_universe:defs.bzl", "crates_repository")
 load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
 load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains", "rust_repository_set")
 
-def kong_crate_repositories(cargo_lockfile, lockfile, cargo_home_isolated = True):
+def kong_crate_repositories(cargo_home_isolated = True):
     """
     Setup Kong Crates repostories
 
     Args:
-        cargo_lockfile (label): Label to the Cargo.Bazel.lock file,
-        the document of the crate_universe says that this is to make sure that
-        Bazel and Cargo are using the same crate versions.
-        However, we just need the source of the Rust dependencies, we don't need the
-        `Cargo.lock` file, but this is a mandatory argument, so we just pass the path
-        to the `Cargo.Bazel.lock` file to make it happy.
-
-        lockfile (label): Label to the Cargo.Bazel.lock.json file,
-        this is the lockfile for reproducible builds.
-
         cargo_home_isolated (bool): `False` to reuse system CARGO_HOME
         for faster builds. `True` is default and will use isolated
         Cargo home, which takes about 2 minutes to bootstrap.
@@ -42,15 +32,31 @@ def kong_crate_repositories(cargo_lockfile, lockfile, cargo_home_isolated = True
     crate_universe_dependencies()
 
     crates_repository(
-        name = "kong_crate_index",
-        cargo_lockfile = cargo_lockfile,
+        name = "atc_router_crate_index",
+        cargo_lockfile = "//:crate_locks/atc_router.Cargo.lock",
         isolated = cargo_home_isolated,
-        lockfile = lockfile,
+        lockfile = "//:crate_locks/atc_router.lock",
         manifests = [
             "@atc_router//:Cargo.toml",
-            # [[ BEGIN EE ONLY
+        ],
+    )
+
+    crates_repository(
+        name = "json_threat_protection_crate_index",
+        cargo_lockfile = "//:crate_locks/json_threat_protection.Cargo.lock",
+        isolated = cargo_home_isolated,
+        lockfile = "//:crate_locks/json_threat_protection.lock",
+        manifests = [
             "@json_threat_protection//:Cargo.toml",
+        ],
+    )
+
+    crates_repository(
+        name = "jsonschema_crate_index",
+        cargo_lockfile = "//:crate_locks/jsonschema.Cargo.lock",
+        isolated = cargo_home_isolated,
+        lockfile = "//:crate_locks/jsonschema.lock",
+        manifests = [
             "@jsonschema//:Cargo.toml",
-            # END EE ONLY ]]
         ],
     )

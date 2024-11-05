@@ -65,11 +65,7 @@ openresty_repositories()
 # [[ BEGIN: must happen after any Rust repositories are loaded
 load("//build/kong_crate:deps.bzl", "kong_crate_repositories")
 
-kong_crate_repositories(
-    cargo_home_isolated = False,
-    cargo_lockfile = "//:Cargo.Bazel.lock",
-    lockfile = "//:Cargo.Bazel.lock.json",
-)
+kong_crate_repositories(cargo_home_isolated = False)
 
 load("//build/kong_crate:crates.bzl", "kong_crates")
 

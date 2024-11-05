@@ -1,4 +1,4 @@
-load("@kong_crate_index//:defs.bzl", "aliases", "all_crate_deps")
+load("@jsonschema_crate_index//:defs.bzl", "aliases", "all_crate_deps")
 load("@rules_rust//rust:defs.bzl", "rust_shared_library")
 
 filegroup(
@@ -21,7 +21,6 @@ rust_shared_library(
     srcs = [":rust_srcs"],
     aliases = aliases(),
     proc_macro_deps = all_crate_deps(
-        package_name = "lua-resty-jsonschema-rs",
         proc_macro = True,
     ),
     rustc_flags = [
@@ -29,7 +28,6 @@ rust_shared_library(
     ],
     visibility = ["//visibility:public"],
     deps = all_crate_deps(
-        package_name = "lua-resty-jsonschema-rs",
         normal = True,
     ),
 )

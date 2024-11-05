@@ -11,5 +11,5 @@ def json_threat_protection_repositories():
         # so we'd better use the same protocol instead of HTTPS
         # for private repositories.
         remote = "git@github.com:Kong/json-threat-protection.rs.git",
-        build_file = "//build/openresty/json-threat-protection:BUILD.json_threat_proection.bazel",
+        build_file = "//build/openresty/json_threat_protection:BUILD.json_threat_proection.bazel",
     )
