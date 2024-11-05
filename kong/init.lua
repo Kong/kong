@@ -886,7 +886,7 @@ function Kong.init_worker()
 
   if kong.clustering then
     -- full sync dp
-    
+
     local is_dp_full_sync_agent = process.type() == "privileged agent" and not kong.sync
 
     if is_control_plane(kong.configuration) or -- CP needs to support both full and incremental sync
@@ -894,7 +894,7 @@ function Kong.init_worker()
     then
       kong.clustering:init_worker()
     end
-  
+
     -- DP full sync agent skips the rest of the init_worker
     if is_dp_full_sync_agent then
       return
@@ -995,20 +995,18 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  if kong.clustering then
-    -- rpc and incremental sync
-    if is_http_module then
+  -- rpc and incremental sync
+  if is_http_module then
 
-      -- init rpc connection
-      if kong.rpc then
-        kong.rpc:init_worker()
-      end
+    -- init rpc connection
+    if kong.rpc then
+      kong.rpc:init_worker()
+    end
 
-      -- init incremental sync
-      -- should run after rpc init successfully
-      if kong.sync then
-        kong.sync:init_worker()
-      end
+    -- init incremental sync
+    -- should run after rpc init successfully
+    if kong.sync then
+      kong.sync:init_worker()
     end
   end
 
