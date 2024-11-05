@@ -41,11 +41,6 @@ local foreign_children = {}
 
 do
   local tb_nkeys = require("table.nkeys")
-  local tb_clear = require("table.clear")
-
-  -- We couldn't use "kong.tools.request_aware_table" as an upvalue table here
-  -- because its :clear() couldn't actually clear its contents in debug mode.
-  local CACHED_OUT = {}
 
   -- Generate a stable and unique string key from primary key defined inside
   -- schema, supports both non-composite and composite primary keys
@@ -57,10 +52,11 @@ do
       return tostring(object[primary_key[1]])
     end
 
-    tb_clear(CACHED_OUT)
+    local CACHED_OUT = {}
 
     -- The logic comes from get_cache_key_value(), which uses `id` directly to
     -- extract foreign key.
+    -- TODO: extract primary key recursively using pk_string(), KAG-5750
     for i = 1, count do
       local k = primary_key[i]
       local v = object[k]
