@@ -123,7 +123,12 @@ return function(options)
       local error = error
 
       local get_req_headers = ngx.req.get_headers
+      local set_req_header = ngx.req.set_header
+      local clear_req_header = ngx.req.clear_header
+      local add_req_header = require("ngx.req").add_header
       local get_resp_headers = ngx.resp.get_headers
+      local add_resp_header = require("ngx.resp").add_header
+      local read_req_body = ngx.req.read_body
       local get_uri_args = ngx.req.get_uri_args
       local get_post_args = ngx.req.get_post_args
       local decode_args = ngx.decode_args
@@ -140,6 +145,65 @@ return function(options)
       local MAX_POST_ARGS
       local MAX_DECODE_ARGS
 
+      -- helper function to handle header cache layer [
+
+      local REQ_HEADER_CACHE = "req_headers_cache"
+      local RESP_HEADER_CACHE = "resp_headers_cache"
+
+      -- set cache headers by group[request/response]
+      local function set_cache_headers(group, values)
+          -- if no key specified, assign the whole cache group value
+          ngx.ctx[group] = values
+          if not ngx.ctx[group .. "_flag"] then
+              ngx.ctx[group .. "_flag"] = true
+          end
+      end
+
+      -- set cache header
+      local function set_cache_header(group, key, value, override)
+          if not ngx.ctx[group] then
+              ngx.ctx[group] = {}
+          end
+          local fields = ngx.ctx[group]
+      
+          -- if override mode, or cache field doesn't exist, just assign it
+          if override or not fields[key] then
+              fields[key]  = value
+              return
+          end
+      
+          -- field exists for adding, change single value to list
+          if type(fields[key]) ~= "table" then
+              fields[key] = { fields[key] }
+          end
+      
+          -- values insert
+          if type(value) == "table" then
+              for i, v in ipairs(value) do
+                  table.insert(fields[key], v)
+              end
+          else
+              table.insert(fields[key], value)
+          end
+          -- ngx.print(name .. ": " .. value)
+      end
+      
+      -- get cache headers by group[request/response]
+      local function get_cache_headers(group)
+          -- if headers has not been fully got before, return nil
+          return ngx.ctx[group .. "_flag"] and ngx.ctx[group]
+      end
+      
+      -- get cache header
+      local function get_cache_header(group, key)
+          local fields = ngx.ctx[group]
+          if fields then
+              return ngx.ctx[group][key]
+          end
+          return fields
+      end
+      -- ]
+
       -- REQUEST HEADERS [
       local function get_req_headers_real(max_req_headers, ...)
         local request_headers, err = get_req_headers(max_req_headers or MAX_REQ_HEADERS or DEFAULT_MAX_REQ_HEADERS, ...)
@@ -153,9 +217,30 @@ return function(options)
         if not get_request() then
           error("no request found")
         end
+        local cached_headers = get_cache_headers(REQ_HEADER_CACHE)
+        if cached_headers then
+          return cached_headers
+        end
         MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
         _G.ngx.req.get_headers = get_req_headers_real
-        return get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        local headers = get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        set_cache_headers(REQ_HEADER_CACHE, headers)
+        return headers;
+      end
+
+      _G.ngx.req.set_header = function(header_name, header_value)
+        set_req_header(header_name, header_value)
+        set_cache_header(REQ_HEADER_CACHE, header_name, header_value, true)
+      end
+
+      _G.ngx.req.clear_header = function(header_name)
+        clear_req_header(header_name)
+        set_cache_header(REQ_HEADER_CACHE, header_name, nil, true)
+      end
+
+      _G.ngx.req.add_header = function(header_name, header_value)
+        add_req_header(header_name, header_value)
+        set_cache_header(REQ_HEADER_CACHE, header_name, header_value)
       end
       -- ]
 
@@ -172,9 +257,51 @@ return function(options)
         if not get_request() then
           error("no request found")
         end
+        local cached_headers = get_cache_headers(RESP_HEADER_CACHE)
+        if cached_headers then
+          return cached_headers
+        end
         MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
         _G.ngx.resp.get_headers = get_resp_headers_real
-        return get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
+        local headers = get_resp_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        set_cache_headers(RESP_HEADER_CACHE, headers)
+        return headers;
+      end
+
+      _G.ngx.resp.add_header = function(header_name, header_value)
+        add_resp_header(header_name, header_value)
+        set_cache_header(RESP_HEADER_CACHE, header_name, header_value)
+      end
+
+      -- patch resp header getter/setter `ngx.header.HEADER`
+      do
+        local resp_header = ngx.header
+        local mt = table.new(0, 2)
+        
+        mt.__index = function(t, k)
+            local value = get_cache_header(RESP_HEADER_CACHE, k)
+            if not value then
+              value = resp_header[k]
+              set_cache_header(RESP_HEADER_CACHE, k, value, true)
+            end
+            return value
+        end
+        mt.__newindex = function(t, k, v)
+            resp_header[k] = v
+            set_cache_header(RESP_HEADER_CACHE, k, v, true)
+        end
+        
+        ngx.header = setmetatable(table.new(0, 0), mt)
+      end
+      -- ]
+
+      -- READ REQUEST BODY [
+      _G.ngx.req.read_body = function()
+        -- for the same request, only one `read_body` call is needed
+        if not ngx.ctx.body_read then
+          read_req_body()
+          ngx.ctx.body_read = true
+        end
       end
       -- ]
 

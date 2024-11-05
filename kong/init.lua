@@ -620,6 +620,12 @@ local function list_migrations(migtable)
   return table.concat(list, " ")
 end
 
+local function clear_headers_cache()
+  ngx.ctx.req_headers_cache = nil
+  ngx.ctx.req_headers_cache_flag = nil
+  ngx.ctx.resp_headers_cache = nil
+  ngx.ctx.resp_headers_cache_flag = nil
+end
 
 -- Kong public context handlers.
 -- @section kong_handlers
@@ -1202,6 +1208,8 @@ function Kong.access()
 
   execute_collecting_plugins_iterator(plugins_iterator, "access", ctx)
 
+  -- clear headers cache after access phase execution
+  clear_headers_cache()
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
