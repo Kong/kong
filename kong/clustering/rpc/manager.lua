@@ -117,6 +117,9 @@ function _M:_find_node_and_check_capability(node_id, cap)
     return "local"
   end
 
+  -- now we are on cp side
+  assert(self.concentrator)
+
   -- does concentrator knows more about this client?
   local res, err = kong.db.clustering_data_planes:select({ id = node_id })
   if err then
