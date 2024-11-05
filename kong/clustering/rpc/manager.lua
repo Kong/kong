@@ -286,7 +286,9 @@ function _M:handle_websocket()
   self:_add_socket(s, rpc_capabilities)
 
   -- store DP's ip addr
-  self.client_ips[node_id] = ngx_var.remote_addr
+  if self.client_ips then
+    self.client_ips[node_id] = ngx_var.remote_addr
+  end
 
   s:start()
   local res, err = s:join()
