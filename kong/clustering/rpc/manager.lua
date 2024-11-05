@@ -92,10 +92,10 @@ function _M:_remove_socket(socket)
 
   if table_isempty(sockets) then
     self.clients[node_id] = nil
-    self.client_ips[node_id] = nil
     self.client_capabilities[node_id] = nil
 
     if self.concentrator then
+      self.client_ips[node_id] = nil
       assert(self.concentrator:_enqueue_unsubscribe(node_id))
     end
   end
