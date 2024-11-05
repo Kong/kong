@@ -72,7 +72,7 @@ do
 
     local str = concat(CACHED_OUT, ":")
 
-    -- releae table for next usage
+    -- release table for next usage
     tb_pool.release("dc_cached_pk", CACHED_OUT)
 
     return str
