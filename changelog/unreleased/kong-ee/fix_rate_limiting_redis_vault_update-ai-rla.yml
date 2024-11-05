@@ -1,0 +1,4 @@
+message: |
+  "**ai-rate-limiting-advanced**: Fixed an issue where the plugin may fail to authenticate to Redis correctly with vault-referenced redis configuration."
+type: bugfix
+scope: Plugin

@@ -34,6 +34,16 @@ local function window_floor(size, time)
 end
 
 
+local function connect_redis(options)
+  if kong and kong.vault then
+    return kong.vault.try(redis.connection, options)
+
+  else
+    return redis.connection(options)
+  end
+end
+
+
 function _M.new(_, opts)
   local conf = cycle_aware_deep_copy(opts)
 
@@ -56,7 +66,7 @@ function _M:push_diffs(diffs)
     return true
   end
 
-  local red, err = redis.connection(self.config)
+  local red, err = connect_redis(self.config)
   if not red then
     return nil, fmt("failed to connect to redis: %s", err)
   end
@@ -103,7 +113,7 @@ end
 
 
 function _M:get_counters(namespace, window_sizes, time)
-  local red, err = redis.connection(self.config)
+  local red, err = connect_redis(self.config)
   if not red then
     return nil, fmt("failed to connect to redis: %s", err)
   end
@@ -190,7 +200,7 @@ end
 
 
 function _M:get_window(key, namespace, window_start, window_size)
-  local red, err = redis.connection(self.config)
+  local red, err = connect_redis(self.config)
   if not red then
     return nil, fmt("failed to connect to redis: %s", err)
   end
