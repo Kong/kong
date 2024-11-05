@@ -41,6 +41,7 @@ local foreign_children = {}
 
 do
   local tb_nkeys = require("table.nkeys")
+  local tb_pool = require("tablepool")
 
   -- Generate a stable and unique string key from primary key defined inside
   -- schema, supports both non-composite and composite primary keys
@@ -52,7 +53,8 @@ do
       return tostring(object[primary_key[1]])
     end
 
-    local CACHED_OUT = {}
+    -- get a table for reuse purpose
+    local CACHED_OUT = tb_pool.fetch("dc_cached_pk", 2, 0)
 
     -- The logic comes from get_cache_key_value(), which uses `id` directly to
     -- extract foreign key.
@@ -68,7 +70,12 @@ do
       insert(CACHED_OUT, tostring(v or ""))
     end
 
-    return concat(CACHED_OUT, ":")
+    local str = concat(CACHED_OUT, ":")
+
+    -- releae table for next usage
+    tb_pool.release("dc_cached_pk", CACHED_OUT)
+
+    return str
   end
 end
 
