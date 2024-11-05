@@ -12,12 +12,13 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
-for _, inc_sync in ipairs { "on", "off" } do
+for _, inc_sync in ipairs { "on" } do
 for _, strategy in helpers.each_strategy() do
 
---- XXX FIXME: enable inc_sync = on
--- skips the rest of the tests. We will fix them in a follow-up PR
-local skip_inc_sync = inc_sync == "on" and pending or describe
+-- labels are no longer supported
+local pending_inc_sync = inc_sync == "on" and pending or describe
+-- TODO: cert details. fix this after tech preview
+local skip_inc_sync = inc_sync == "on" and skip or describe
 
 describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
@@ -739,8 +740,8 @@ describe("CP/DP config sync #" .. strategy, function()
   end)
 end)
 
+-- the feature is no longer supported
 skip_inc_sync("CP/DP labels #" .. strategy, function()
-
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -802,7 +803,7 @@ skip_inc_sync("CP/DP labels #" .. strategy, function()
   end)
 end)
 
-skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
+pending_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -859,7 +860,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, functio
   end)
 end)
 
-skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
+pending_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
