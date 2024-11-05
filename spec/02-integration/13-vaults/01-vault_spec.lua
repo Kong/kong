@@ -4,6 +4,25 @@ local cjson = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
+  describe("vaults: #" .. strategy, function ()
+    local db
+    lazy_setup(function ()
+      local _
+      _, db = helpers.get_db_utils(strategy, {
+        "vaults",
+      },
+      nil, {
+        "env",
+        "mock",
+      })
+    end)
+
+    it("generate correct cache key", function ()
+      local cache_key = db.vaults:cache_key("test")
+      assert.equal("vaults:test:::::", cache_key)
+    end)
+  end)
+
   describe("/certificates with DB: #" .. strategy, function()
     local client
     local db
@@ -174,11 +193,6 @@ for _, strategy in helpers.each_strategy() do
       assert.is_equal("{vault://unknown/cert}", certificate.cert_alt)
       assert.is_equal("{vault://unknown/missing-key}", certificate.key_alt)
       assert.is_nil(certificate["$refs"])
-    end)
-
-    it("generate correct cache key", function ()
-      local cache_key = db.vaults:cache_key("test")
-      assert.equal("vaults:test:::::", cache_key)
     end)
   end)
 end

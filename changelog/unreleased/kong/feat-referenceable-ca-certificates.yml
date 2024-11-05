@@ -1,0 +1,3 @@
+message: The `cert` field of CA certificates entity is now referenceable.
+type: feature
+scope: Core

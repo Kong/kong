@@ -1,8 +1,10 @@
 local typedefs      = require "kong.db.schema.typedefs"
 local openssl_x509  = require "resty.openssl.x509"
+local is_reference = require "kong.pdk.vault".is_reference
 
 local find          = string.find
 local ngx_time      = ngx.time
+local null          = ngx.null
 local to_hex        = require("resty.string").to_hex
 
 local CERT_TAG      = "-----BEGIN CERTIFICATE-----"
@@ -17,7 +19,7 @@ return {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },
-    { cert = typedefs.certificate { required = true }, },
+    { cert = typedefs.certificate { required = true, referenceable = true }, },
     { cert_digest = { type = "string", unique = true }, },
     { tags = typedefs.tags },
   },
@@ -26,11 +28,15 @@ return {
     {
       input = { "cert" },
       on_write = function(cert)
-        local digest = openssl_x509.new(cert):digest("sha256")
-        if not digest then
-          return nil, "cannot create digest value of certificate"
+        if not is_reference(cert) then
+          local digest = openssl_x509.new(cert):digest("sha256")
+          if not digest then
+            return nil, "cannot create digest value of certificate"
+          end
+          return { cert_digest = to_hex(digest) }
+        else
+          return {}
         end
-        return { cert_digest = to_hex(digest) }
       end,
     },
   },
@@ -62,6 +68,20 @@ return {
 
         return true
       end,
-    } }
+    } }, {
+      custom_entity_check = {
+        field_sources = { "cert", "cert_digest" },
+        run_with_vault_reference = true,
+        fn = function(entity)
+          local cert = entity.cert
+          local digest = entity.cert_digest
+          if is_reference(cert) and (digest == nil or digest == null) then
+            return nil, "the cert_digest of a vault referenced CA certificate must be provided manually"
+          end
+
+          return true
+        end,
+      }
+    }
   }
 }
