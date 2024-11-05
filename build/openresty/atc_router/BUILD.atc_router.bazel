@@ -1,4 +1,4 @@
-load("@kong_crate_index//:defs.bzl", "aliases", "all_crate_deps")
+load("@atc_router_crate_index//:defs.bzl", "aliases", "all_crate_deps")
 load("@rules_rust//rust:defs.bzl", "rust_shared_library")
 
 filegroup(

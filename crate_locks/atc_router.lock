@@ -1,5 +1,5 @@
 {
-  "checksum": "8374b41763bef26d4f617b2183d2c0e94616f961822b5b6f31c4d8ada177b48c",
+  "checksum": "71a528ead48a5f4f3d5eda359189caaecdd17e47fe58e6e0e5ab3a90d010e3d4",
   "crates": {
     "aho-corasick 1.1.3": {
       "name": "aho-corasick",
@@ -106,7 +106,7 @@
               "target": "pest"
             },
             {
-              "id": "regex 1.11.0",
+              "id": "regex 1.11.1",
               "target": "regex"
             },
             {
@@ -818,7 +818,7 @@
               "target": "memchr"
             },
             {
-              "id": "thiserror 1.0.65",
+              "id": "thiserror 1.0.68",
               "target": "thiserror"
             },
             {
@@ -951,7 +951,7 @@
               "target": "quote"
             },
             {
-              "id": "syn 2.0.82",
+              "id": "syn 2.0.87",
               "target": "syn"
             }
           ],
@@ -1156,14 +1156,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "regex 1.11.0": {
+    "regex 1.11.1": {
       "name": "regex",
-      "version": "1.11.0",
+      "version": "1.11.1",
       "package_url": "https://github.com/rust-lang/regex",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/regex/1.11.0/download",
-          "sha256": "38200e5ee88914975b69f657f0801b6f6dccafd44fd9326302a4aaeecfacb1d8"
+          "url": "https://static.crates.io/crates/regex/1.11.1/download",
+          "sha256": "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
         }
       },
       "targets": [
@@ -1229,7 +1229,7 @@
           "selects": {}
         },
         "edition": "2021",
-        "version": "1.11.0"
+        "version": "1.11.1"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1434,14 +1434,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "syn 2.0.82": {
+    "syn 2.0.87": {
       "name": "syn",
-      "version": "2.0.82",
+      "version": "2.0.87",
       "package_url": "https://github.com/dtolnay/syn",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/syn/2.0.82/download",
-          "sha256": "83540f837a8afc019423a8edb95b52a8effe46957ee402287f4292fae35be021"
+          "url": "https://static.crates.io/crates/syn/2.0.87/download",
+          "sha256": "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
         }
       },
       "targets": [
@@ -1492,7 +1492,7 @@
           "selects": {}
         },
         "edition": "2021",
-        "version": "2.0.82"
+        "version": "2.0.87"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1501,14 +1501,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "thiserror 1.0.65": {
+    "thiserror 1.0.68": {
       "name": "thiserror",
-      "version": "1.0.65",
+      "version": "1.0.68",
       "package_url": "https://github.com/dtolnay/thiserror",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/thiserror/1.0.65/download",
-          "sha256": "5d11abd9594d9b38965ef50805c5e469ca9cc6f197f883f717e0269a3057b3d5"
+          "url": "https://static.crates.io/crates/thiserror/1.0.68/download",
+          "sha256": "02dd99dc800bbb97186339685293e1cc5d9df1f8fae2d0aecd9ff1c77efea892"
         }
       },
       "targets": [
@@ -1545,7 +1545,7 @@
         "deps": {
           "common": [
             {
-              "id": "thiserror 1.0.65",
+              "id": "thiserror 1.0.68",
               "target": "build_script_build"
             }
           ],
@@ -1555,13 +1555,13 @@
         "proc_macro_deps": {
           "common": [
             {
-              "id": "thiserror-impl 1.0.65",
+              "id": "thiserror-impl 1.0.68",
               "target": "thiserror_impl"
             }
           ],
           "selects": {}
         },
-        "version": "1.0.65"
+        "version": "1.0.68"
       },
       "build_script_attrs": {
         "data_glob": [
@@ -1575,14 +1575,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "thiserror-impl 1.0.65": {
+    "thiserror-impl 1.0.68": {
       "name": "thiserror-impl",
-      "version": "1.0.65",
+      "version": "1.0.68",
       "package_url": "https://github.com/dtolnay/thiserror",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/thiserror-impl/1.0.65/download",
-          "sha256": "ae71770322cbd277e69d762a16c444af02aa0575ac0d174f0b9562d3b37f8602"
+          "url": "https://static.crates.io/crates/thiserror-impl/1.0.68/download",
+          "sha256": "a7c61ec9a6f64d2793d8a45faba21efbe3ced62a886d44c36a009b2b519b4c7e"
         }
       },
       "targets": [
@@ -1615,14 +1615,14 @@
               "target": "quote"
             },
             {
-              "id": "syn 2.0.82",
+              "id": "syn 2.0.87",
               "target": "syn"
             }
           ],
           "selects": {}
         },
         "edition": "2021",
-        "version": "1.0.65"
+        "version": "1.0.68"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -2016,7 +2016,7 @@
     "lazy_static 1.5.0",
     "pest 2.7.14",
     "pest_derive 2.7.14",
-    "regex 1.11.0",
+    "regex 1.11.1",
     "uuid 1.11.0"
   ],
   "direct_dev_deps": []
