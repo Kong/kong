@@ -1,7 +1,7 @@
 --- NOTE: tool is designed to assist with **detecting** request contamination
 -- issues on CI, during test runs. It does not offer security safeguards.
 --
--- In debug mode,
+-- TODO: need to resolve the following issues in debug mode,
 --  1. `:clear` could not clear elements inserted by `table.insert()`
 --  2. `table.concat()` couldn't work for elements assigned using `indexing`
 
