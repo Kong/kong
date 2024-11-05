@@ -29,7 +29,7 @@ end
 
 
 -- we need incremental sync to verify rpc
-for _, inc_sync in ipairs { "on"  } do
+for _, inc_sync in ipairs { "on" } do
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC over DB concentrator #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
