@@ -182,11 +182,12 @@ function _M:call(node_id, method, ...)
   if res == "local" then
     res, err = self:_local_call(node_id, method, params)
 
-    ngx_log(ngx_DEBUG, "[rpc] ", method, " err: ", err)
-
     if not res then
+      ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
       return nil, err
     end
+
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
 
     return res
   end
@@ -199,15 +200,19 @@ function _M:call(node_id, method, ...)
 
   local ok, err = fut:wait(5)
 
-  ngx_log(ngx_DEBUG, "[rpc] ", method, " err: ", err)
-
   if err then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
+
     return nil, err
   end
 
   if ok then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
+
     return fut.result
   end
+
+  ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", fut.error.message)
 
   return nil, fut.error.message
 end
