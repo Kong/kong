@@ -85,12 +85,10 @@ local function gen_delta(entity, name, options, ws_id, is_delete)
   assert(schema:validate_primary_key(pk))
 
   local delta = {
-    {
       type = name,
       pk = pk,
       ws_id = ws_id,
       entity = is_delete and ngx_null or entity,
-    },
   }
 
   return delta
@@ -98,9 +96,9 @@ end
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
-  local d = gen_delta(entity, name, options, ws_id, is_delete)
+  local deltas = { gen_delta(entity, name, options, ws_id, is_delete) }
 
-  local res, err = self.strategy:insert_delta(d)
+  local res, err = self.strategy:insert_delta(deltas)
   if not res then
     self.strategy:cancel_txn()
     return nil, err
@@ -170,21 +168,10 @@ function _M:register_dao_hooks()
 
     -- set lmdb value to ngx_null then return entity
 
-    local d = gen_delta(entity, name, options, ws_id, true)
-
-    local res, err = self.strategy:insert_delta(d)
-    if not res then
-      self.strategy:cancel_txn()
-      return nil, err
-    end
-
-    -- only one entity deleted
-    if not cascade_entries then
-      goto done
-    end
+    local deltas = { gen_delta(entity, name, options, ws_id, true) }
 
     -- delete other related entities
-    for _, item in ipairs(cascade_entries) do
+    for i, item in ipairs(cascade_entries or EMPTY) do
       local e = item.entity
       local name = item.dao.schema.name
 
@@ -192,14 +179,15 @@ function _M:register_dao_hooks()
 
       local d = gen_delta(e, name, options, e.ws_id, true)
 
-      local res, err = self.strategy:insert_delta(d)
-      if not res then
-        self.strategy:cancel_txn()
-        return nil, err
-      end
+      -- #1 item is initial entity
+      deltas[i + 1] = d
     end
 
-    ::done::
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
 
     res, err = self.strategy:commit_txn()
     if not res then

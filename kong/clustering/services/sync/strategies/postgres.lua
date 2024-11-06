@@ -78,15 +78,26 @@ local NEW_VERSION_QUERY = [[
 -- }
 function _M:insert_delta(deltas)
   local buf = buffer.new()
-  for _, d in ipairs(deltas) do
+
+  local count = #deltas
+  for i = 1, count do
+    local d = deltas[i]
+
     buf:putf("(new_version, %s, %s, %s, %s)",
              self.connector:escape_literal(d.type),
              self.connector:escape_literal(cjson_encode(d.pk)),
              self.connector:escape_literal(d.ws_id or kong.default_workspace),
              self.connector:escape_literal(cjson_encode(d.entity)))
+
+    -- sql values should be separated by comma
+    if i < count then
+      buf:put(",")
+    end
   end
 
   local sql = string_format(NEW_VERSION_QUERY, buf:get())
+
+  ngx_log(ngx_DEBUG, "[incremental] insert_delta sql: ", sql)
 
   return self.connector:query(sql)
 end
