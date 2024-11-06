@@ -1,6 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct TestConfig {
     pub map: HashMap<String, String>,
 }
@@ -16,6 +17,16 @@ impl FromStr for TestConfig {
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
         })
+    }
+}
+
+impl std::fmt::Display for TestConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut values: Vec<String> = self.map.iter().map(|(k, v)| format!("{k}={v}")).collect();
+
+        values.sort();
+
+        write!(f, "{}", values.join(" "))
     }
 }
 

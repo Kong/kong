@@ -17,7 +17,7 @@ end
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
 describe("wasm admin API [#" .. strategy .. "]", function()
-  local admin
+  local admin, proxy
   local bp, db
   local service, route
 
@@ -57,10 +57,13 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
 
     admin = helpers.admin_client()
+    proxy = helpers.proxy_client()
+    proxy.reopen = true
   end)
 
   lazy_teardown(function()
     if admin then admin:close() end
+    if proxy then proxy:close() end
     helpers.stop_kong()
   end)
 
@@ -179,12 +182,21 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
     describe("PATCH", function()
       local chain
+      local host
 
-      lazy_setup(function()
+      before_each(function()
+        host = "wasm-" .. uuid.uuid() .. ".test"
         chain = bp.filter_chains:insert({
-          service = assert(bp.services:insert({})),
+          route = assert(bp.routes:insert({
+            hosts = { host },
+          })),
           filters = { { name = "tests" } },
         }, { nulls = true })
+      end)
+
+      after_each(function()
+        admin:delete("/filter-chains/" .. chain.id)
+        admin:delete("/routes/" .. chain.route.id)
       end)
 
       it("updates a filter chain in-place", function()
@@ -210,6 +222,57 @@ describe("wasm admin API [#" .. strategy .. "]", function()
                     patched.filters[1])
         assert.same({ name = "tests", config = "456", enabled = false },
                     patched.filters[2])
+      end)
+
+      it("updates filter configuration #only", function()
+        helpers.wait_for_all_config_update()
+
+        local function await_filter_response(body, context)
+          assert.eventually(function()
+            local res = proxy:get("/", {
+              headers = {
+                ["Host"] = host,
+                ["X-PW-Test"] = "dump_config",
+              }
+            })
+
+            local got = res:read_body()
+            -- something is adding a trailing newline to the response body
+            got = got and got:gsub("%s*$", "")
+
+            return res.status == 200 and body == got,
+                   { status = res.status, body = got }
+          end)
+          .is_truthy("(" .. context .. ") expected 200 response code and "
+                     .. "body == '" .. body .. "'")
+        end
+
+        local function update_filters(filters)
+          local res = admin:patch("/filter-chains/" .. chain[key], json {
+            filters = filters,
+          })
+          assert.response(res).has.status(200)
+        end
+
+        local function update_config(config)
+          update_filters({
+            { name = "tests", config = config },
+          })
+        end
+
+        await_filter_response("", "after setup")
+
+        update_config("a=1 b=2")
+        await_filter_response("a=1 b=2", "after adding filter config")
+
+        update_config("a=1 b=2 c=3")
+        await_filter_response("a=1 b=2 c=3", "after updating filter config")
+
+        update_filters({
+          { name = "tests", config = "a=1 b=2 c=3", enabled = false },
+          { name = "tests", config = "foo=bar" },
+        })
+        await_filter_response("foo=bar", "after updating the filter chain")
       end)
     end)
 
