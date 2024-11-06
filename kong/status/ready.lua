@@ -103,7 +103,7 @@ end
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
-      local unready, err = kong_shm:get(KONG_STATUS_UNREADY)
+      local unready = kong_shm:get(KONG_STATUS_UNREADY)
       if unready == nil then
         kong_shm:set(KONG_STATUS_UNREADY, false)
       end
