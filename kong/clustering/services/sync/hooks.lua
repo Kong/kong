@@ -96,7 +96,8 @@ end
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
-  local deltas = { gen_delta(entity, name, options, ws_id, is_delete) }
+  local d = gen_delta(entity, name, options, ws_id, is_delete)
+  local deltas = { d, }
 
   local res, err = self.strategy:insert_delta(deltas)
   if not res then
@@ -168,7 +169,8 @@ function _M:register_dao_hooks()
 
     -- set lmdb value to ngx_null then return entity
 
-    local deltas = { gen_delta(entity, name, options, ws_id, true) }
+    local d = gen_delta(entity, name, options, ws_id, true)
+    local deltas = { d, }
 
     -- delete other related entities
     for i, item in ipairs(cascade_entries or EMPTY) do
@@ -177,7 +179,7 @@ function _M:register_dao_hooks()
 
       ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to cascade deleting ", name)
 
-      local d = gen_delta(e, name, options, e.ws_id, true)
+      d = gen_delta(e, name, options, e.ws_id, true)
 
       -- #1 item is initial entity
       deltas[i + 1] = d
