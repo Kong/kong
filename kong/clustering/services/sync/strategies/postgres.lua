@@ -11,7 +11,6 @@ local cjson_encode = cjson.encode
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
-local ngx_DEBUG = ngx.DEBUG
 
 
 local KEEP_VERSION_COUNT = 100
