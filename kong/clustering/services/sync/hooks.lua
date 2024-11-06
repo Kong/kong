@@ -169,11 +169,47 @@ function _M:register_dao_hooks()
     ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
 
     -- set lmdb value to ngx_null then return entity
+
+    local d = gen_delta(entity, name, options, ws_id, true)
+
+    local res, err = self.strategy:insert_delta(d)
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    -- only one entity deleted
     if not cascade_entries then
-      return self:entity_delta_writer(entity, name, options, ws_id, true)
+      goto done
     end
 
     -- delete other related entities
+    for _, item in ipairs(cascade_entries) do
+      local e = item.entity
+      local name = item.dao.schema.name
+
+      ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to cascade deleting ", name)
+
+      local d = gen_delta(e, name, options, e.ws_id, true)
+
+      local res, err = self.strategy:insert_delta(d)
+      if not res then
+        self.strategy:cancel_txn()
+        return nil, err
+      end
+    end
+
+    ::done::
+
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    self:notify_all_nodes()
+
+    return entity -- for other hooks
   end
 
   local dao_hooks = {
