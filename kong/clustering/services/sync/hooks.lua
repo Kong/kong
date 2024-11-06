@@ -77,14 +77,14 @@ function _M:notify_all_nodes()
 end
 
 
-function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+local function gen_delta(entity, name, options, ws_id, is_delete)
   -- composite key, like { id = ... }
   local schema = kong.db[name].schema
   local pk = schema:extract_pk_values(entity)
 
   assert(schema:validate_primary_key(pk))
 
-  local deltas = {
+  local delta = {
     {
       type = name,
       pk = pk,
@@ -93,7 +93,14 @@ function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
     },
   }
 
-  local res, err = self.strategy:insert_delta(deltas)
+  return delta
+end
+
+
+function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+  local d = gen_delta(entity, name, options, ws_id, is_delete)
+
+  local res, err = self.strategy:insert_delta(d)
   if not res then
     self.strategy:cancel_txn()
     return nil, err
@@ -161,8 +168,12 @@ function _M:register_dao_hooks()
 
     ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
 
-    -- set lmdb value to ngx_null then return row
-    return self:entity_delta_writer(entity, name, options, ws_id, true)
+    -- set lmdb value to ngx_null then return entity
+    if not cascade_entries then
+      return self:entity_delta_writer(entity, name, options, ws_id, true)
+    end
+
+    -- delete other related entities
   end
 
   local dao_hooks = {
