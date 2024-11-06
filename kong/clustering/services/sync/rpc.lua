@@ -240,6 +240,7 @@ local function do_sync()
   -- delta should look like:
   -- { type = ..., entity = { ... }, version = 1, ws_id = ..., }
   for _, delta in ipairs(deltas) do
+    local delta_version = delta.version
     local delta_type = delta.type
     local delta_entity = delta.entity
     local ev
@@ -273,7 +274,8 @@ local function do_sync()
 
       ngx_log(ngx_DEBUG,
               "[kong.sync.v2] update entity",
-              ", type ", delta_type,
+              ", version: ", delta_version,
+              ", type: ", delta_type,
               ", pk:", cjson_encode(delta.pk))
 
       ev = { delta_type, crud_event_type, delta_entity, old_entity, }
@@ -295,7 +297,8 @@ local function do_sync()
 
       ngx_log(ngx_DEBUG,
               "[kong.sync.v2] delete entity",
-              ", type ", delta_type,
+              ", version: ", delta_version,
+              ", type: ", delta_type,
               ", pk:", cjson_encode(delta.pk))
 
       ev = { delta_type, "delete", old_entity, }
@@ -305,10 +308,10 @@ local function do_sync()
     crud_events[crud_events_n] = ev
 
     -- delta.version should not be nil or ngx.null
-    assert(type(delta.version) == "number")
+    assert(type(delta_version) == "number")
 
-    if delta.version ~= version then
-      version = delta.version
+    if delta_version ~= version then
+      version = delta_version
     end
   end -- for _, delta
 
