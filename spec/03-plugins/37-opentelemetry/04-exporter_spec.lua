@@ -567,6 +567,8 @@ for _, strategy in helpers.each_strategy() do
           resource_attributes = {
             ["service.name"] = "kong_oss",
             ["os.version"] = "debian",
+            ["host.name"] = "$(headers.host)",
+            ["validstr"] = "$($@#)",
           }
         })
         mock = helpers.http_mock(HTTP_SERVER_PORT_TRACES, { timeout = HTTP_MOCK_TIMEOUT })
@@ -608,13 +610,17 @@ for _, strategy in helpers.each_strategy() do
         local res_attr = decoded.resource_spans[1].resource.attributes
         sort_by_key(res_attr)
         -- resource attributes
-        assert.same("os.version", res_attr[1].key)
-        assert.same({string_value = "debian", value = "string_value"}, res_attr[1].value)
-        assert.same("service.instance.id", res_attr[2].key)
-        assert.same("service.name", res_attr[3].key)
-        assert.same({string_value = "kong_oss", value = "string_value"}, res_attr[3].value)
-        assert.same("service.version", res_attr[4].key)
-        assert.same({string_value = kong.version, value = "string_value"}, res_attr[4].value)
+        assert.same("host.name", res_attr[1].key)
+        assert.same({string_value = "0.0.0.0:" .. PROXY_PORT, value = "string_value"}, res_attr[1].value)
+        assert.same("os.version", res_attr[2].key)
+        assert.same({string_value = "debian", value = "string_value"}, res_attr[2].value)
+        assert.same("service.instance.id", res_attr[3].key)
+        assert.same("service.name", res_attr[4].key)
+        assert.same({string_value = "kong_oss", value = "string_value"}, res_attr[4].value)
+        assert.same("service.version", res_attr[5].key)
+        assert.same({string_value = kong.version, value = "string_value"}, res_attr[5].value)
+        assert.same("validstr", res_attr[6].key)
+        assert.same({string_value = "$($@#)", value = "string_value"}, res_attr[6].value)
 
         local scope_spans = decoded.resource_spans[1].scope_spans
         assert.is_true(#scope_spans > 0, scope_spans)

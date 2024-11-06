@@ -1,0 +1,4 @@
+message: | 
+  **Opentelemetry**: Support variable resource attributes
+type: feature
+scope: Plugin
