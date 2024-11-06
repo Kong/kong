@@ -1,7 +1,6 @@
 use crate::*;
 use std::collections::HashMap;
 
-#[derive(Default)]
 pub struct TestConfig {
     pub map: HashMap<String, String>,
 }

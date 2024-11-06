@@ -138,13 +138,8 @@ impl TestHttp {
                         return self.send_http_dispatch(config);
                     }
                     "dump_config" => {
-                        let res = self
-                            .config
-                            .as_ref()
-                            .map(|config| config.to_string())
-                            .unwrap_or_default();
-                        log::warn!("config: '{res}'");
-                        self.send_plain_response(StatusCode::OK, Some(&res))
+                        let res = self.config.as_ref().map(|config| config.to_string());
+                        self.send_plain_response(StatusCode::OK, res.as_deref());
                     }
                     _ => (),
                 }
