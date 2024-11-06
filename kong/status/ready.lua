@@ -23,6 +23,7 @@ local PLUGINS_REBUILD_COUNTER_KEY = constants.PLUGINS_REBUILD_COUNTER_KEY
 local ROUTERS_REBUILD_COUNTER_KEY = constants.ROUTERS_REBUILD_COUNTER_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
+local KONG_STATUS_UNREADY = "kong:status:unready"
 
 local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
   if router_rebuilds < worker_count then
@@ -75,16 +76,16 @@ local function is_ready()
   if not ok then
     return false, "failed to connect to database"
   end
-  
+
   kong.db:close()
 
   if is_control_plane then
     return true
   end
 
-  local router_rebuilds = 
+  local router_rebuilds =
       tonumber(kong_shm:get(ROUTERS_REBUILD_COUNTER_KEY)) or 0
-  local plugins_iterator_rebuilds = 
+  local plugins_iterator_rebuilds =
       tonumber(kong_shm:get(PLUGINS_REBUILD_COUNTER_KEY)) or 0
 
   local err
@@ -102,6 +103,16 @@ end
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
+      local unready, err = kong_shm:get(KONG_STATUS_UNREADY)
+      if unready == nil then
+        kong_shm:set(KONG_STATUS_UNREADY, false)
+      end
+
+      if unready == true then
+        ngx_log(ngx_DEBUG, "not ready for proxying: unready")
+        return kong.response.exit(503, { message = "unready" })
+      end
+
       local ok, err = is_ready()
       if ok then
         ngx_log(ngx_DEBUG, "ready for proxying")
@@ -111,6 +122,13 @@ return {
         ngx_log(ngx_NOTICE, "not ready for proxying: ", err)
         return kong.response.exit(503, { message = err })
       end
+    end
+  },
+
+  ["/status/unready"] = {
+    POST = function(self, dao, helpers)
+      kong_shm:set(KONG_STATUS_UNREADY, true)
+      return kong.response.exit(204)
     end
   }
 }
