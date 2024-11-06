@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local cjson = require("cjson.safe")
 local txn = require("resty.lmdb.transaction")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
@@ -24,6 +25,7 @@ local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
+local cjson_encode = cjson.encode
 
 
 -- number of versions behind before a full sync is forced
@@ -269,6 +271,11 @@ local function do_sync()
         return nil, err
       end
 
+      ngx_log(ngx_DEBUG,
+              "[kong.sync.v2] update entity",
+              ", type ", delta_type,
+              ", pk:", cjson_encode(delta.pk))
+
       ev = { delta_type, crud_event_type, delta_entity, old_entity, }
 
     else
@@ -285,6 +292,11 @@ local function do_sync()
           return nil, err
         end
       end
+
+      ngx_log(ngx_DEBUG,
+              "[kong.sync.v2] delete entity",
+              ", type ", delta_type,
+              ", pk:", cjson_encode(delta.pk))
 
       ev = { delta_type, "delete", old_entity, }
     end
