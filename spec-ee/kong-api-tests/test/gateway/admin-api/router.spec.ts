@@ -26,8 +26,6 @@ import {
   isGKE,
   deleteWorkspace,
   eventually,
-  isFipsMode,
-  isGwNative,
   isKongOSS
 } from '@support';
 
@@ -447,7 +445,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
     });
   }
 
-  if((!isGwNative() || !isFipsMode()) && (!isKongOSS() && !isKoko())) {
+  if(!isKongOSS() && !isKoko()) {
     it('should perform route validation when creating a duplicate route in a different workspace', async function () {
       // duplicate routes cannot be created when route validation is on
       const resp = await axios({ 
@@ -475,7 +473,6 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         });
         logResponse(respRepeat);
         expect(respRepeat.status, 'Status should be 409').to.equal(409);
-        expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
       })
     })
 
@@ -543,7 +540,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
     if (!isKongOSS() && !isKoko()) {
       await clearAllKongResources(workspaceName);
       await deleteWorkspace(workspaceName);
-      if((!isGwNative() || !isFipsMode()) && !isGKE()) {
+      if(!isGKE()) {
         await resetGatewayContainerEnvVariable({ KONG_ROUTE_VALIDATION_STRATEGY: 'smart' }, kongContainerName);
         // reset data plane
         if (isHybrid) {

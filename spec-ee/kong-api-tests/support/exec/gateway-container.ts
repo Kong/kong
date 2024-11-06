@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getKongContainerName, isGwNative } from 'support/config/gateway-vars';
+import { getKongContainerName, isGwNative, isFipsMode } from 'support/config/gateway-vars';
 import axios from 'axios';
 import { expect } from 'chai';
 import { eventually, getGatewayBasePath } from 'support';
@@ -27,7 +27,8 @@ export const resetGatewayContainerEnvVariable = async (
 
   const finalVars = newVars.join(' ');
 
-  if (isKongNative) {
+  // in FIPS mode, kong restart wipes credentials 
+  if (isKongNative && !isFipsMode()) {
     restartCommand =
       containerName === 'kong-dp1'
         ? `kong restart -c kong-dp.conf`
