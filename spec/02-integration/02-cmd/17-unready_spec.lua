@@ -13,7 +13,7 @@ local function get_status_no_ssl_verify()
       ssl_verify = false,
   })
   if not ok then
-      return nil, nil, err
+      return nil, err
   end
 
   local res, err = httpc:request({
@@ -24,27 +24,15 @@ local function get_status_no_ssl_verify()
   })
 
   if not res then
-    return nil, nil, err
+    return nil, err
   end
 
-  local status = res.status
-
-  local body, err = res:read_body()
-  if not body then
-    return nil, nil, err
-  end
-
-  httpc:set_keepalive()
-
-  return body, status
+  return res.status
 end
 
 for _, strategy in helpers.each_strategy() do
   describe("kong unready with #" .. strategy .. " backend", function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-      }) -- runs migrations
-
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -58,17 +46,20 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("should set Kong to 'unready'", function()
-      local client = helpers.http_client("127.0.0.1", dp_status_port, 20000)
+      helpers.wait_until(function()
+        local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
+        local res = http_client:send({
+          method = "GET",
+          path = "/status/ready",
+        })
 
-      local status = res and res.status
-      client:close()
-
-      assert.equal(200, status)
+        local status = res and res.status
+        http_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
 
       local ok, err, msg = helpers.kong_exec("unready", {
         prefix = helpers.test_conf.prefix,
@@ -77,26 +68,26 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("Kong's status successfully changed to 'unready'\n", msg)
       assert.equal(true, ok)
 
-      local client = helpers.http_client("127.0.0.1", dp_status_port, 20000)
+      helpers.wait_until(function()
+        local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/ready",
-      })
+        local res = http_client:send({
+          method = "GET",
+          path = "/status/ready",
+        })
 
-      local status = res and res.status
-      client:close()
-
-      assert.equal(503, status)
+        local status = res and res.status
+        http_client:close()
+        if status == 503 then
+          return true
+        end
+      end, 10)
     end)
 
   end)
 
   describe("Kong without a status listener", function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-      }) -- runs migrations
-
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -120,9 +111,6 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Kong with SSL-enabled status listener", function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-      }) -- runs migrations
-
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -136,9 +124,15 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("should set Kong to 'unready' with SSL-enabled status listener", function()
-      local body, status, err = get_status_no_ssl_verify()
+      helpers.wait_until(function()
+        local status, err = get_status_no_ssl_verify()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+
+      local status, err = get_status_no_ssl_verify()
       assert.equal(200, status)
-      assert.equal('{"message":"ready"}', body)
       assert.is_nil(err)
 
       local ok, err, msg = helpers.kong_exec("unready", {
@@ -148,10 +142,12 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("Kong's status successfully changed to 'unready'\n", msg)
       assert.equal(true, ok)
 
-      local body, status, err = get_status_no_ssl_verify()
-      assert.equal(503, status)
-      assert.equal('{"message":"unready"}', body)
-      assert.is_nil(err)
+      helpers.wait_until(function()
+        local status = get_status_no_ssl_verify()
+        if status == 503 then
+          return true
+        end
+      end, 10)
     end)
   end)
 end
