@@ -224,7 +224,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
                     patched.filters[2])
       end)
 
-      it("updates filter configuration #only", function()
+      it("updates filter configuration", function()
         helpers.wait_for_all_config_update()
 
         local function await_filter_response(body, context)
