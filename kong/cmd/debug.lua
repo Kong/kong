@@ -33,7 +33,7 @@ local NEEDS_DEBUG_LISTEN_MSG =
 local function request_unix_domain_socket(params)
   -- connect to the unix domain socket
   local httpc = resty_http.new()
-  httpc:set_timeout(DEFAULT_TIMEOUT)
+  httpc:set_timeout(params.http_timeout or DEFAULT_TIMEOUT)
 
   local ok, err = httpc:connect({
     host = params.socket_path,
@@ -120,11 +120,13 @@ local function profiling_handler(socket_path, args, options)
 
   if not ((profiler == "cpu" or profiler == "memory") and
           (action == "start" or action == "stop" or action == "status")) and
-     not (profiler == "gc-snapshot" and not action)
+     not (profiler == "gc-snapshot" and not action) and
+     not (profiler == "memory-analyzer" and (action == "start" or action == "status" or not action))
   then
     error("Invalid profiling commands\n" ..
           "Usage: kong debug profiling cpu|memory start|stop|status\n" ..
-          "       kong debug profiling gc-snapshot")
+          "       kong debug profiling gc-snapshot\n" ..
+          "       kong debug profiling memory-analyzer [start|status]")
   end
 
   if profiler == "cpu" then
@@ -134,6 +136,44 @@ local function profiling_handler(socket_path, args, options)
     elseif options.mode == "instructions" and options.interval then
       error("--interval option cannot be used for `instructions` mode")
     end
+  end
+
+  if profiler == "memory-analyzer" then
+    if not action then
+      log("Available actions for memory-analyzer:")
+      log("  start   - Start the memory analyzer")
+      log("  status  - Check the status of the memory analyzer")
+      return EC_SUCCESS
+    end
+
+    local method = action == "start" and "POST" or "GET"
+    local path = "/debug/profiling/memory-analyzer"
+
+    local params = {
+      socket_path = socket_path,
+      path = path,
+      method = method,
+      body = method == "POST" and cjson.encode(options) or nil,
+      verbose = args.v,
+      http_timeout = 60000, -- 60s
+    }
+
+    -- request to the gateway
+    local res = request_unix_domain_socket(params)
+
+    if method == "POST" and res.status == 201 then
+      log(res.body.message)
+      return EC_SUCCESS
+    elseif method == "GET" and res.status == 200 then
+      log("Memory analyzer status:")
+      for k, v in pairs(res.body) do
+        log(string.format("  %s: %s", k, v))
+      end
+      return EC_SUCCESS
+    end
+
+    log.error(res.body.message)
+    return EC_FAILURE
   end
 
   -- construct the request
@@ -383,6 +423,17 @@ The available commands are:
                                         original level after the timeout (in
                                         seconds).
                                         default: 60
+
+  profiling memory-analyzer <start|status>
+                                        Trigger memory analyzer and generate
+                                        memory profiling data.
+
+    --timeout   (optional number)       Timeout for memory analyzer in seconds.
+                                        Default is 120 seconds.
+
+    --pid       (optional number)       Specific worker process ID to analyze.
+                                        If not provided, the current worker
+                                        process will be used.
 
   log_level get                         Get the logging level.
 

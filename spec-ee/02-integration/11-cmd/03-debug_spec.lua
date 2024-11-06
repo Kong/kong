@@ -236,6 +236,31 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
     assert.same(EC_FAILURE, code)
     assert.matches("Invalid profiling commands", stderr)
   end)
+
+  it("kong debug profiling memory-analyzer", function ()
+    code, stdout, stderr = kong_debug_exec("profiling memory-analyzer")
+    assert.same(EC_SUCCESS, code)
+    assert.same([[
+Available actions for memory-analyzer:
+  start   - Start the memory analyzer
+  status  - Check the status of the memory analyzer
+]], stdout)
+  end)
+
+  it("kong debug profiling memory-analyzer status", function ()
+    code, stdout, stderr = kong_debug_exec("profiling memory-analyzer status")
+    assert.same(EC_SUCCESS, code)
+    assert.same([[
+Memory analyzer status:
+  status: stopped
+]], stdout)
+  end)
+
+  it("kong debug profiling memory-analyzer start", function ()
+    code, stdout, stderr = kong_debug_exec("profiling memory-analyzer start --timeout 1")
+    assert.same(EC_SUCCESS, code)
+    assert.matches("Running memory analyzer on pid: ", stdout)
+  end)
 end)
 
 end

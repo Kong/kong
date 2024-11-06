@@ -151,7 +151,7 @@ function _M.analyze(path, timeout)
     If the timeout is reached, the function will return false and an error message.
     The timeout is not precise, and the actual time may be longer than the timeout.
   --]]
-  
+
   local ok, err = ma.analyze(path, timeout)
 
   if not ok then
