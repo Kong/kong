@@ -158,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
   end
 end
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("kong unready in hybrid mode", function()
     local bp = helpers.get_db_utils(strategy, {
       "services",
