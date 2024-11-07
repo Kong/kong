@@ -6,8 +6,9 @@ local md5 = ngx.md5
 local TCP_PORT = helpers.get_available_port()
 
 
+for _, client_protocol in ipairs({ "http", "https", "http2" }) do
 for _, strategy in helpers.each_strategy() do
-  describe("Buffered Proxying [#" .. strategy .. "]", function()
+  describe("Buffered Proxying [#" .. strategy .. "] [#" .. client_protocol .. "]", function()
 
     -- TODO: http2 / grpc does not currently work with
     -- ngx.location.capture that buffered proxying uses
@@ -155,7 +156,13 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        proxy_client = helpers.proxy_client()
+        if client_protocol == "http" then
+          proxy_client = helpers.proxy_client()
+        elseif client_protocol == "https" then
+          proxy_client = helpers.proxy_ssl_client()
+        elseif client_protocol == "http2" then
+          proxy_client = helpers.proxy_ssl_client(nil, nil, 2)
+        end
         proxy_ssl_client = helpers.proxy_ssl_client()
       end)
 
@@ -272,3 +279,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+end -- for _, client_protocol

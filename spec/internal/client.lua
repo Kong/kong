@@ -12,7 +12,7 @@ local cjson = require("cjson.safe")
 local http = require("resty.http")
 local kong_table = require("kong.tools.table")
 local uuid = require("kong.tools.uuid").uuid
-
+local reqwest = require("reqwest")
 
 local CONSTANTS = require("spec.internal.constants")
 local conf = require("spec.internal.conf")
@@ -138,6 +138,34 @@ function resty_http_proxy_mt:send(opts, is_reopen)
     opts.query = nil
   end
 
+  if self.options.http_version and self.options.http_version == 2 then
+    local url = self.options.scheme .. "://" .. self.options.host .. ":" .. self.options.port .. opts.path
+    local reqwest_opt = {
+      version = 2,
+      method = opts.method,
+      body = opts.body,
+      headers = opts.headers,
+      tls_verify = false,
+    }
+    local res, err = reqwest.request(url, reqwest_opt)
+    if not res then
+      return nil, err
+    end
+    local headers_mt = {
+      __index = function(t, k)
+        return rawget(t, string.lower(k))
+      end
+    }
+    local res_headers = setmetatable(res.headers, headers_mt)
+    return {
+      status = res.status,
+      headers = res_headers,
+      read_body = function()
+        return res.body, nil
+      end
+    }
+  end
+
   local res, err = self:request(opts)
   if res then
     -- wrap the read_body() so it caches the result and can be called multiple
@@ -174,6 +202,10 @@ function resty_http_proxy_mt:_connect()
     opts.connect_timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
     opts.send_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
     opts.read_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
+  end
+
+  if opts.http_version and opts.http_version == 2 then
+    return
   end
 
   local _, err = self:connect(opts)
@@ -310,15 +342,25 @@ end
 -- @param timeout (optional, number) the timeout to use
 -- @param forced_port (optional, number) if provided will override the port in
 -- the Kong configuration with this port
-local function proxy_client(timeout, forced_port, forced_ip)
+-- @param forced_ip (optional, string) if provided will override the ip in
+-- the Kong configuration with this ip
+-- @param http_version (optional, number) the http version to use
+local function proxy_client(timeout, forced_port, forced_ip, http_version)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
+  local opts_http_version
+  if http_version == 2 then
+    opts_http_version = 2
+    proxy_ip = get_proxy_ip(false, true)
+    proxy_port = get_proxy_port(false, true)
+  end
   assert(proxy_ip, "No http-proxy found in the configuration")
   return http_client_opts({
     scheme = "http",
     host = forced_ip or proxy_ip,
     port = forced_port or proxy_port,
     timeout = timeout or 60000,
+    http_version = opts_http_version,
   })
 end
 
@@ -327,9 +369,16 @@ end
 -- @function proxy_ssl_client
 -- @param timeout (optional, number) the timeout to use
 -- @param sni (optional, string) the sni to use
-local function proxy_ssl_client(timeout, sni)
+-- @param http_version (optional, number) the http version to use
+local function proxy_ssl_client(timeout, sni, http_version)
   local proxy_ip = get_proxy_ip(true, true)
   local proxy_port = get_proxy_port(true, true)
+  local opts_http_version
+  if http_version == 2 then
+    opts_http_version = 2
+    proxy_ip = get_proxy_ip(true, true)
+    proxy_port = get_proxy_port(true, true)
+  end
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client_opts({
     scheme = "https",
@@ -338,6 +387,7 @@ local function proxy_ssl_client(timeout, sni)
     timeout = timeout or 60000,
     ssl_verify = false,
     ssl_server_name = sni,
+    http_version = opts_http_version,
   })
     return client
 end
