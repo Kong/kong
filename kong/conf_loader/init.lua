@@ -490,9 +490,8 @@ local function load(path, custom_conf, opts)
               end
 
               -- not that fatal if resolving fails during stopping (e.g. missing environment variables)
-              if opts.stopping then
-                conf[k] = ""
-                break
+              if opts.stopping or opts.pre_cmd then
+                conf[k][i] = "_INVALID_VAULT_KONG_REFERENCE"
               end
 
             else
@@ -508,13 +507,28 @@ local function load(path, custom_conf, opts)
             end
 
             -- not that fatal if resolving fails during stopping (e.g. missing environment variables)
-            if opts.stopping then
+            if opts.stopping or opts.pre_cmd then
               conf[k] = ""
               break
             end
 
           else
             conf[k] = deref
+          end
+        end
+      end
+
+      -- remove invalid references and leave valid ones for
+      -- pre_cmd or non-fatal stopping scenarios
+      -- this adds some robustness if the vault reference is
+      -- inside an array style config field and the config field
+      -- is also needed by vault, for example the `lua_ssl_trusted_certificate`
+      if opts.stopping or opts.pre_cmd then
+        for k, v in pairs(refs) do
+          if type(v) == "table" then
+            conf[k] = setmetatable(tablex.filter(conf[k], function(v)
+              return v ~= "_INVALID_VAULT_KONG_REFERENCE"
+            end), nil)
           end
         end
       end
