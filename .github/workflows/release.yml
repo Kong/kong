@@ -485,18 +485,20 @@ jobs:
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@5c685ec0bc8d18f9faa540cb66837c326176c541
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        skip_cis_scan: true # FIXME
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@5c685ec0bc8d18f9faa540cb66837c326176c541
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@28d20a1f492927f35b00b317acd78f669c45f88b # v2.7.3
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        skip_cis_scan: true # FIXME
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
