@@ -202,13 +202,14 @@ local function do_sync()
     return nil, "rpc is not ready"
   end
 
-  local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
-                                       { default =
-                                         { version =
-                                           tonumber(declarative.get_current_hash()) or 0,
-                                           node = kong.version, -- cp need this info
-                                         },
-                                       })
+  local msg = { default =
+                 { version =
+                   tonumber(declarative.get_current_hash()) or 0,
+                   node = kong.version, -- cp need this info
+                 },
+               }
+
+  local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta", msg)
   if not ns_deltas then
     ngx_log(ngx_ERR, "sync get_delta error: ", err)
     return true
