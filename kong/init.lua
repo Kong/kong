@@ -699,10 +699,6 @@ function Kong.init()
         kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
         kong.sync:init(kong.rpc)
       end
-
-      if is_data_plane(config) then
-        require("kong.clustering.services.debug").init(kong.rpc)
-      end
     end
   end
 
@@ -884,12 +880,21 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  if process.type() == "privileged agent" and not kong.sync then
-    if kong.clustering then
-      -- full sync cp/dp
+  if kong.clustering then
+    -- full sync dp
+    
+    local is_dp_full_sync_agent = process.type() == "privileged agent" and not kong.sync
+
+    if is_control_plane(kong.configuration) or -- CP needs to support both full and incremental sync
+      is_dp_full_sync_agent -- full sync is only enabled for DP if incremental sync is disabled
+    then
       kong.clustering:init_worker()
     end
-    return
+  
+    -- DP full sync agent skips the rest of the init_worker
+    if is_dp_full_sync_agent then
+      return
+    end
   end
 
   kong.vault.init_worker()
@@ -987,12 +992,6 @@ function Kong.init_worker()
   end
 
   if kong.clustering then
-
-    -- full sync cp/dp
-    if not kong.sync then
-      kong.clustering:init_worker()
-    end
-
     -- rpc and incremental sync
     if kong.rpc and is_http_module then
 
@@ -1056,6 +1055,10 @@ function Kong.ssl_certificate()
   kong.table.clear(ngx.ctx)
 end
 
+function Kong.ssl_client_hello()
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
+  ctx.KONG_PHASE = PHASES.client_hello
+end
 
 function Kong.preread()
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
@@ -1249,9 +1252,8 @@ function Kong.access()
 
 
   if ctx.buffered_proxying then
-    local version = ngx.req.http_version()
     local upgrade = var.upstream_upgrade or ""
-    if version < 2 and upgrade == "" then
+    if upgrade == "" then
       if has_timing then
         req_dyn_hook_run_hook("timing", "after:access")
       end
@@ -1259,11 +1261,7 @@ function Kong.access()
       return Kong.response()
     end
 
-    if version >= 2 then
-      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
-    else
-      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
-    end
+    ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
 
     ctx.buffered_proxying = nil
   end

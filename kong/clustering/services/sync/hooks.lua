@@ -59,6 +59,8 @@ function _M:notify_all_nodes()
     return
   end
 
+  ngx_log(ngx_DEBUG, "[kong.sync.v2] notifying all nodes of new version: ", latest_version)
+
   local msg = { default = { new_version = latest_version, }, }
 
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do
@@ -75,13 +77,19 @@ function _M:notify_all_nodes()
 end
 
 
-function _M:entity_delta_writer(row, name, options, ws_id, is_delete)
+function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+  -- composite key, like { id = ... }
+  local schema = kong.db[name].schema
+  local pk = schema:extract_pk_values(entity)
+
+  assert(schema:validate_primary_key(pk))
+
   local deltas = {
     {
       type = name,
-      id = row.id,
+      pk = pk,
       ws_id = ws_id,
-      row = is_delete and ngx_null or row,
+      entity = is_delete and ngx_null or entity,
     },
   }
 
@@ -99,7 +107,7 @@ function _M:entity_delta_writer(row, name, options, ws_id, is_delete)
 
   self:notify_all_nodes()
 
-  return row -- for other hooks
+  return entity -- for other hooks
 end
 
 
@@ -107,6 +115,9 @@ end
 function _M:register_dao_hooks()
   local function is_db_export(name)
     local db_export = kong.db[name].schema.db_export
+
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] name: ", name, " db_export: ", db_export)
+
     return db_export == nil or db_export == true
   end
 
@@ -125,27 +136,33 @@ function _M:register_dao_hooks()
       return
     end
 
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] failed. Canceling ", name)
+
     local res, err = self.strategy:cancel_txn()
     if not res then
       ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", tostring(err))
     end
   end
 
-  local function post_hook_writer_func(row, name, options, ws_id)
+  local function post_hook_writer_func(entity, name, options, ws_id)
     if not is_db_export(name) then
-      return row
+      return entity
     end
 
-    return self:entity_delta_writer(row, name, options, ws_id)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to writing ", name)
+
+    return self:entity_delta_writer(entity, name, options, ws_id)
   end
 
-  local function post_hook_delete_func(row, name, options, ws_id, cascade_entries)
+  local function post_hook_delete_func(entity, name, options, ws_id, cascade_entries)
     if not is_db_export(name) then
-      return row
+      return entity
     end
 
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
+
     -- set lmdb value to ngx_null then return row
-    return self:entity_delta_writer(row, name, options, ws_id, true)
+    return self:entity_delta_writer(entity, name, options, ws_id, true)
   end
 
   local dao_hooks = {
@@ -168,6 +185,21 @@ function _M:register_dao_hooks()
     ["dao:upsert:pre"]  = pre_hook_func,
     ["dao:upsert:fail"] = fail_hook_func,
     ["dao:upsert:post"] = post_hook_writer_func,
+
+    -- dao:upsert_by
+    ["dao:upsert_by:pre"]  = pre_hook_func,
+    ["dao:upsert_by:fail"] = fail_hook_func,
+    ["dao:upsert_by:post"] = post_hook_writer_func,
+
+    -- dao:delete_by
+    ["dao:delete_by:pre"]  = pre_hook_func,
+    ["dao:delete_by:fail"] = fail_hook_func,
+    ["dao:delete_by:post"] = post_hook_delete_func,
+
+    -- dao:update_by
+    ["dao:update_by:pre"]  = pre_hook_func,
+    ["dao:update_by:fail"] = fail_hook_func,
+    ["dao:update_by:post"] = post_hook_writer_func,
   }
 
   for ev, func in pairs(dao_hooks) do

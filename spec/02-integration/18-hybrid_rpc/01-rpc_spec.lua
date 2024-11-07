@@ -1,7 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
-for _, inc_sync in ipairs { "on", "off"  } do
+-- we need incremental sync to verify rpc
+for _, inc_sync in ipairs { "on" } do
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
@@ -50,12 +51,15 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          assert(json)
+
+          -- TODO: perhaps need a new test method
           for _, v in pairs(json.data) do
             if v.ip == "127.0.0.1" and v.rpc_capabilities and #v.rpc_capabilities ~= 0 then
               table.sort(v.rpc_capabilities)
               assert.near(14 * 86400, v.ttl, 3)
-              -- kong.debug.log_level.v1 should be the first rpc service
-              assert.same("kong.debug.log_level.v1", v.rpc_capabilities[1])
+              -- check the available rpc service
+              assert.same("kong.sync.v2", v.rpc_capabilities[1])
               return true
             end
           end

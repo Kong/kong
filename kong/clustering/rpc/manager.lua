@@ -18,6 +18,7 @@ local cjson = require("cjson.safe")
 
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
@@ -172,11 +173,21 @@ function _M:call(node_id, method, ...)
 
   local params = {...}
 
+  ngx_log(ngx_DEBUG,
+    "[rpc] calling ", method,
+    "(node_id: ", node_id, ")",
+    " via ", res == "local" and "local" or "concentrator"
+  )
+
   if res == "local" then
     res, err = self:_local_call(node_id, method, params)
+
     if not res then
+      ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
       return nil, err
     end
+
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
 
     return res
   end
@@ -188,13 +199,20 @@ function _M:call(node_id, method, ...)
   assert(fut:start())
 
   local ok, err = fut:wait(5)
+
   if err then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
+
     return nil, err
   end
 
   if ok then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
+
     return fut.result
   end
+
+  ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", fut.error.message)
 
   return nil, fut.error.message
 end

@@ -12,9 +12,12 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
---- XXX FIXME: enable inc_sync = on
-for _, inc_sync in ipairs { "off"  } do
+for _, inc_sync in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
+
+--- XXX FIXME: enable inc_sync = on
+-- skips the rest of the tests. We will fix them in a follow-up PR
+local skip_inc_sync = inc_sync == "on" and pending or describe
 
 describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
@@ -736,7 +739,7 @@ describe("CP/DP config sync #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP labels #" .. strategy, function()
+skip_inc_sync("CP/DP labels #" .. strategy, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
@@ -773,12 +776,12 @@ describe("CP/DP labels #" .. strategy, function()
 
   describe("status API", function()
     it("shows DP status", function()
-      helpers.wait_until(function()
-        local admin_client = helpers.admin_client()
-        finally(function()
-          admin_client:close()
-        end)
+      local admin_client = helpers.admin_client()
+      finally(function()
+        admin_client:close()
+      end)
 
+      helpers.wait_until(function()
         local res = assert(admin_client:get("/clustering/data-planes"))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -799,7 +802,7 @@ describe("CP/DP labels #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
+skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -856,7 +859,7 @@ describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
+skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 

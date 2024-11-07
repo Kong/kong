@@ -98,7 +98,6 @@ build = {
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
 
-    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
     ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
     ["kong.clustering.services.sync.rpc"] = "kong/clustering/services/sync/rpc.lua",
     ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
@@ -182,6 +181,9 @@ build = {
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",
+
+    ["kong.tls.plugins.certificate"] = "kong/tls/plugins/certificate.lua",
+    ["kong.tls.plugins.sni_filter"] = "kong/tls/plugins/sni_filter.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
@@ -595,8 +597,6 @@ build = {
     ["kong.plugins.opentelemetry.migrations.001_331_to_332"] = "kong/plugins/opentelemetry/migrations/001_331_to_332.lua",
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
-    ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
-    ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
     ["kong.plugins.opentelemetry.traces"] = "kong/plugins/opentelemetry/traces.lua",
     ["kong.plugins.opentelemetry.logs"] = "kong/plugins/opentelemetry/logs.lua",
     ["kong.plugins.opentelemetry.utils"] = "kong/plugins/opentelemetry/utils.lua",
@@ -670,6 +670,9 @@ build = {
     ["kong.observability.tracing.tracing_context"] = "kong/observability/tracing/tracing_context.lua",
 
     ["kong.observability.logs"] = "kong/observability/logs.lua",
+
+    ["kong.observability.otlp.proto"] = "kong/observability/otlp/proto.lua",
+    ["kong.observability.otlp"] = "kong/observability/otlp/init.lua",
 
     ["kong.timing"] = "kong/timing/init.lua",
     ["kong.timing.context"] = "kong/timing/context.lua",
