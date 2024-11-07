@@ -62,7 +62,7 @@ function _M:init_cp(manager)
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
-  -- example: { default = { version = 1000, }, }
+  -- example: { default = { version = 1000, node = "3.9.0"}, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
 
@@ -85,7 +85,7 @@ function _M:init_cp(manager)
       last_seen = ngx.time(),
       hostname = node_id,
       ip = kong.rpc:get_peer_ip(node_id),   -- try to get the correct ip
-      version = current_versions.node_version,    -- get from rpc call
+      version = default_namespace.node,    -- get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = fmt("%032d", default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
@@ -206,9 +206,8 @@ local function do_sync()
                                        { default =
                                          { version =
                                            tonumber(declarative.get_current_hash()) or 0,
+                                           node = kong.version, -- cp need this info
                                          },
-                                         -- cp need this info
-                                         node_version = kong.version,
                                        })
   if not ns_deltas then
     ngx_log(ngx_ERR, "sync get_delta error: ", err)
