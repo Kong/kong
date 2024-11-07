@@ -119,16 +119,9 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
 
   local sync_version
   if emitter.want_sync_version then
-    ok, err = db.connector:query("SELECT max(version) from clustering_sync_version", "read")
-    if not ok then
-      return nil, err
-    end
+    local strategy = require("kong.clustering.services.sync.strategies.postgres").new(db)
 
-    -- it will be ngx.null when the table clustering_sync_version is empty
-    sync_version = assert(ok[1].max)
-    if sync_version == null then
-      sync_version = 0
-    end
+    sync_version = strategy:get_latest_version()
   end
 
   emitter:emit_toplevel({

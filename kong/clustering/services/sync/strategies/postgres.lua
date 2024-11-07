@@ -100,7 +100,7 @@ end
 function _M:get_latest_version()
   local sql = "SELECT MAX(version) FROM clustering_sync_version"
 
-  local res, err = self.connector:query(sql)
+  local res, err = self.connector:query(sql, "read")
   if not res then
     return nil, err
   end
