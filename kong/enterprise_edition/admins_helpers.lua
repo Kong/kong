@@ -15,6 +15,7 @@ local rbac = require "kong.rbac"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local Errors = require "kong.db.errors"
 local workspaces   = require "kong.workspaces"
+local counters     = require "kong.workspaces.counters"
 local tablex    = require("pl.tablex")
 
 local emails = kong.admin_emails
@@ -92,7 +93,7 @@ local function sanitize_params(params)
   return sanitized_params
 end
 
-local function retrieve_belong_workspace(rbac_user)
+local function retrieve_default_role(rbac_user)
   local roles = rbac.get_user_roles(kong.db, rbac_user, ngx.null)
   local default_role
   for _, role in ipairs(roles or {}) do
@@ -102,9 +103,7 @@ local function retrieve_belong_workspace(rbac_user)
     end
   end
 
-  default_role = default_role or { ws_id = ngx.ctx.workspace }
-
-  return workspaces.select_workspace_by_id_with_cache(default_role.ws_id)
+  return default_role
 end
 
 function _M.find_all(all_workspaces)
@@ -122,7 +121,7 @@ function _M.find_all(all_workspaces)
   setmetatable(ws_admins, cjson.empty_array_mt)
   for _, v in ipairs(all_admins) do
     local rbac_user = kong.db.rbac_users:select(v.rbac_user, { workspace = null, show_ws_id = true })
-    v.belong_workspace = retrieve_belong_workspace(rbac_user)
+    v.belong_workspace = workspaces.select_workspace_by_id_with_cache(rbac_user.ws_id)
 
     if all_workspaces or v.belong_workspace.id == ngx.ctx.workspace then
       v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
@@ -573,6 +572,36 @@ function _M.update_token(admin, params)
   return { code = 200, body = { token = token, message = "Token reset successfully" }}
 end
 
+function _M.update_belong_workspace(admin, params)
+  local workspace = workspaces.select_workspace_with_cache(params.workspaces)
+
+  -- 1.update the admin's workspace
+  local default_role = retrieve_default_role(admin.rbac_user)
+  local _, err = kong.db.admins:update_workspaces(admin, default_role, workspace)
+  if err then
+    return nil, err
+  end
+
+  -- 2.invalidate the rbac_user related's cache
+  local rbac_user_roles_cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
+  kong.cache:invalidate(rbac_user_roles_cache_key)
+
+  -- If the administrator logs into Kong Manager first, the cache key 
+  -- for caching consumers will be generated using the default workspace ID. 
+  -- Therefore, it is necessary to clear the consumer's cache to ensure that the latest consumer data is loaded.
+  local default_workspace = workspaces.select_workspace_with_cache("default")
+  local consumer_cache_key = kong.db.consumers:cache_key(admin.consumer.id, nil, nil, nil, nil, default_workspace.id)
+  kong.cache:invalidate(consumer_cache_key)
+
+  -- clean the consumer's cache with the current workspace
+  consumer_cache_key = kong.db.consumers:cache_key(admin.consumer.id, nil, nil, nil, nil, admin.consumer.ws_id)
+  kong.cache:invalidate(consumer_cache_key)
+
+  -- 3.recount the number of each entities.
+  counters.initialize_counters(kong.db)
+
+  return _M.find_by_username_or_id(admin.id, true, false)
+end
 
 function _M.delete(admin_to_delete, opts)
   -- we need a full admin here, not a prettified one
@@ -621,15 +650,13 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
 
   local wss, _, err = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
 
-  admin.workspaces = wss
-  admin.groups = rbac.get_user_groups(kong.db, rbac_user)
-
   if err then
     return nil, err
   end
 
   admin.workspaces = wss
-  admin.belong_workspace = retrieve_belong_workspace(rbac_user)
+  admin.groups = rbac.get_user_groups(kong.db, rbac_user)
+  admin.belong_workspace = workspaces.select_workspace_by_id_with_cache(rbac_user.ws_id)
 
   local c_ws_id = ngx.ctx.workspace
 

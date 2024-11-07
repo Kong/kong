@@ -31,34 +31,7 @@ local UNAUTHED_ERR = { message = "Unauthorized" }
 local kong = kong
 
 local _M = {}
-
-local auth_plugins = {
-  ["basic-auth"] = {
-    name = "basic-auth",
-    dao = "basicauth_credentials",
-    credential_key = "password",
-  },
-  ["oauth2"] = {
-     name = "oauth2",
-     dao = "oauth2_credentials",
-  },
-  ["hmac-auth"] = {
-    name = "hmac-auth",
-    dao = "hmacauth_credentials"
-  },
-  ["jwt"] = {
-    name = "jwt",
-    dao = "jwt_secrets"
-  },
-  ["key-auth"] = {
-    name = "key-auth",
-    dao = "keyauth_credentials",
-    credential_key = "key"
-  },
-  ["openid-connect"] = {
-    name = "openid-connect"
-  },
-}
+local auth_plugins = constants.AUTH_PLUGINS[ee_api.apis.PORTAL]
 
 local oidc_redirect_map = {
   forbidden = {

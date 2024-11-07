@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local get_request = require("resty.core.base").get_request
-
+local utils = require "kong.tools.utils"
 
 local workspaces = {}
 
@@ -71,6 +71,13 @@ function workspaces.get_workspace_id(ctx)
   return (ctx or ngx.ctx).workspace or kong.default_workspace
 end
 
+function workspaces.select_workspace_with_cache(id_or_name)
+  if utils.is_valid_uuid(id_or_name) then
+    return workspaces.select_workspace_by_id_with_cache(id_or_name)
+  end
+
+  return workspaces.select_workspace_by_name_with_cache(id_or_name)
+end
 
 function workspaces.select_workspace_by_name_with_cache(ws_name)
   local ws_cache_key = kong.db.workspaces:cache_key(ws_name)

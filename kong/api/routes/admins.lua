@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local enums      = require "kong.enterprise_edition.dao.enums"
+local constants  = require "kong.constants"
 local rbac       = require "kong.rbac"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
@@ -33,20 +34,7 @@ local _log_prefix = "[admins] "
 -- can create credentials for.
 --
 --["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
-local auth_plugins = {
-  ["basic-auth"] = {
-    name = "basic-auth",
-    dao = "basicauth_credentials",
-    credential_key = "password"
-  },
-  ["key-auth"] =   {
-    name = "key-auth",
-    dao = "keyauth_credentials",
-    credential_key = "key"
-  },
-  ["ldap-auth-advanced"] = { name = "ldap-auth-advanced" },
-  ["openid-connect"] = { name = "openid-connect" },
-}
+local auth_plugins = constants.AUTH_PLUGINS[ee_api.apis.ADMIN]
 
 
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
@@ -140,6 +128,31 @@ return {
       end
 
       return kong.response.exit(res.code, res.body)
+    end
+  },
+
+  ["/admins/:admins/workspaces/:workspaces"] = {
+    before = function(self, db, helpers, parent)
+      local err
+
+      self.admin, err = admins.find_by_username_or_id(
+        ngx.unescape_uri(self.params.admins), true)
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      if not self.admin then
+        return kong.response.exit(404, { message = "Not found" })
+      end
+    end,
+
+    PATCH = function(self, db, helpers, parent)
+      local admin, err = admins.update_belong_workspace(self.admin, self.params)
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      return kong.response.exit(200, admin)
     end
   },
 

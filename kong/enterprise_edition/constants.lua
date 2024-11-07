@@ -250,4 +250,21 @@ return {
   },
 
   PORTAL_VITALS_ALLOWED_CACHE_KEY = 'kong:portal_vitals_allowed',
+
+  AUTH_PLUGINS = {
+    admin =  {
+      ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
+      ["key-auth"] = { name = "key-auth", dao = "keyauth_credentials", credential_key = "key" },
+      ["ldap-auth-advanced"] = { name = "ldap-auth-advanced" },
+      ["openid-connect"] = { name = "openid-connect" },
+    },
+    portal = {
+      ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
+      ["oauth2"] = { name = "oauth2", dao = "oauth2_credentials" },
+      ["hmac-auth"] = { name = "hmac-auth", dao = "hmacauth_credentials" },
+      ["jwt"] = { name = "jwt", dao = "jwt_secrets" },
+      ["key-auth"] = { name = "key-auth", dao = "keyauth_credentials", credential_key = "key" },
+      ["openid-connect"] = { name = "openid-connect" },
+    }
+  },
 }

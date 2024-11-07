@@ -16,6 +16,7 @@ local ERR = ngx.ERR
 local _log_prefix = "[admins-dao] "
 
 local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
+local AUTH_PLUGINS                   = constants.AUTH_PLUGINS["admin"]
 
 local function rollback_on_create(self, entities)
   local _, err
@@ -263,5 +264,26 @@ function _Admins:select_by_username_ignore_case(username)
   return self:rows_to_entities(admins), nil
 end
 
+local function retrieve_credential(dao, consumer)
+  -- retrieve credentials
+  local credentials = kong.db[dao]:page_for_consumer(consumer, nil, nil, { workspace = ngx.null })
+  local credential = credentials and credentials[1]
+  if credential then
+    return { name = dao, id = credential.id }
+  end
 
+  return nil
+end
+
+function _Admins:update_workspaces(admin, default_role, workspace)
+  local gui_auth = kong.configuration.admin_gui_auth
+  local auth_plugin = AUTH_PLUGINS[gui_auth]
+  local credential
+
+  if auth_plugin and (gui_auth == "basic-auth" or gui_auth == "key-auth") then
+    credential = retrieve_credential(auth_plugin.dao, admin.consumer)
+  end
+
+  return self.strategy:update_workspaces(admin, default_role, workspace, credential)
+end
 return _Admins

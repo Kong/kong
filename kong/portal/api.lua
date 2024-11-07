@@ -37,14 +37,7 @@ local PORTAL_TOKEN_EXP = constants.WORKSPACE_CONFIG.PORTAL_TOKEN_EXP
 -- can create credentials for.
 --
 --["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
-local auth_plugins = {
-  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
-  ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
-  ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
-  ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
-  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials", credential_key = "key" },
-  ["openid-connect"] = { name = "openid-connect" },
-}
+local auth_plugins = constants.AUTH_PLUGINS[ee_api.apis.PORTAL]
 
 
 local function get_workspace()

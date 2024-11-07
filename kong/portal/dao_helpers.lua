@@ -16,6 +16,7 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
 local rbac       = require "kong.rbac"
 local enterprise_utils = require "kong.enterprise_edition.utils"
+local ee_api           = require "kong.enterprise_edition.api_helpers"
 local MetaSchema = require "kong.db.schema.metaschema"
 local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local workspace_config = require "kong.portal.workspace_config"
@@ -32,15 +33,7 @@ local PORTAL_PREFIX = constants.PORTAL_PREFIX
 -- Adds % in front of "special characters" such as -
 local ESCAPED_PORTAL_PREFIX = PORTAL_PREFIX:gsub("([^%w])", "%%%1")
 
-local auth_plugins = {
-  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
-  ["acls"] =       { name = "acl",        dao = "acls" },
-  ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
-  ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
-  ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
-  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
-  ["openid-connect"] = { name = 'openid-connect' },
-}
+local auth_plugins = constants.AUTH_PLUGINS[ee_api.apis.PORTAL]
 
 
 local function set_app_instance_suspension_by_developer(self, developer)

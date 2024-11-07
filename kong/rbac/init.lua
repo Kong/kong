@@ -1761,17 +1761,60 @@ NOT_PERMIT_ROUTE["/rbac/roles/:rbac_roles"] = {
   err = "the admin should not delete their own roles",
 }
 
+NOT_PERMIT_ROUTE["/admins/:admins/workspaces/:workspaces"] = {
+  handler = function (request)
+    local rbac_user  = ngx.ctx.rbac.user
+    local name_or_id = request.params.admins
+    local admin      = find_admin_by_username_or_id(name_or_id)
+    if admin and admin.rbac_user and rbac_user.id == admin.rbac_user.id then
+      return true
+    end
+
+    --validate if the workspace exists.
+    local id_or_name = request.params.workspaces
+    local workspace = workspaces.select_workspace_with_cache(id_or_name)
+    if not workspace then
+      return true, 404, "Not found"
+    end
+
+    --validate if the current admin has permission of the workspace.
+    local wss = _M.find_all_ws_for_rbac_user(rbac_user, null, true)
+    local has_permissions = false
+    local workspace_name = workspace.name
+    
+    for _, ws in ipairs(wss or {}) do
+      if ws.name == workspace_name or ws.name == '*' then
+        has_permissions = true
+        break
+      end
+    end
+
+    if not has_permissions then  
+      local err = fmt("you don't have any permissions for this workspace[name=%s]", workspace_name)
+      return true, 403, err
+    end
+
+    return false
+  end,
+  methods = { PATCH = true, },
+  err = "the admin should not update their own belong workspace",
+}
+
 function _M.validate_permit_update(request)
   local route_name = request.route_name
   if route_name and stringx.startswith(route_name, "workspace_") then
     route_name = stringx.replace(route_name, "workspace_", "")
   end
-  
+
   local route = NOT_PERMIT_ROUTE[route_name]
   if route then
     local method = request.req.method
+    if not route.methods[method] then
+      return
+    end
+
     local ok, status, err = route.handler(request)
-    if route.methods[method] and ok then
+    if ok then
       return kong.response.exit(status or 403, { message = err or route.err })
     end
   end

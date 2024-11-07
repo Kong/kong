@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("the admin should not add an endpoint to its role", function()
           -- post request with role id
-          json = admin_request("POST",
+          local json = admin_request("POST",
             fmt("/%s/rbac/roles/%s/endpoints", workspace.name, admin_role.id),
             {
               endpoint = "/test",
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("admin can add endpoints for other roles except their own roles", function()
           local admin_role = db.rbac_roles:select_by_name("admin", { workspace = workspace.id })
-          json = admin_request("POST",
+          local json = admin_request("POST",
             fmt("/%s/rbac/roles/%s/endpoints", workspace.name, admin_role.id),
             {
               endpoint = "/test",
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("the admin should not delete their own roles", function()
           -- delete request with role id
-          json = admin_request("DELETE",
+          local json = admin_request("DELETE",
             fmt("/%s/rbac/roles/%s", workspace.name, admin_role.id),
             nil,
             403,
@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("the admin should not update or delete endpoint to its own roles", function()
           -- patch request with role id
-          json = admin_request("PATCH",
+          local json = admin_request("PATCH",
             fmt("/%s/rbac/roles/%s/endpoints/%s/*", workspace.name, admin_role.id, workspace.name),
             nil,
             403,
@@ -256,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
           local admin_role = db.rbac_roles:select_by_name("admin", { workspace = workspace.id })
 
           -- retrieve the endpoint `/test` of the role `admin`
-          json = admin_request("GET",
+          local json = admin_request("GET",
             fmt("/%s/rbac/roles/%s/endpoints/%s/test", workspace.name, admin_role.id, workspace.name),
             nil, 200, token)
 
@@ -323,6 +323,17 @@ for _, strategy in helpers.each_strategy() do
             token
           )
           assert.equals(0, #roles.roles)
+        end)
+        
+        it("the admin should not update their own belong workspace", function()
+          -- patch request to try update their own belong workspace
+          local json = admin_request("PATCH",
+            fmt("/%s/admins/%s/workspaces/%s", workspace.name, admin.id, "ws1"),
+            nil,
+            403,
+            token
+          )
+          assert.same("the admin should not update their own belong workspace", json.message)
         end)
       end)
     end

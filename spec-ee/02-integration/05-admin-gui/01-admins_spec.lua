@@ -19,6 +19,7 @@ local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
 local scope = require "kong.enterprise_edition.workspaces.scope"
 local kong_vitals = require "kong.vitals"
+local fmt         = string.format
 
 local post = ee_helpers.post
 local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
@@ -2702,6 +2703,191 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("It is disallowed to reset the token while disabling rbac_token_enabled", json.message)
         end)
       end)
+    end)
+  end)
+
+  describe("Admin API - /admins/:admins/workspaces/:workspaces #" .. strategy, function()
+    local admin_client
+    local db
+    local workspaces = { "default", "ws1", "ws2" }
+    
+    local function insert_admin(db, admin_body, role_name, token, workspace)
+      ngx.ctx.workspace = workspace
+      local admin = assert(db.admins:insert(admin_body))
+
+      local rbac_user = assert(db.rbac_users:update({ id = admin.rbac_user.id }, {
+        user_token = token,
+        user_token_ident = cjson.null,
+      }))
+
+      local admin_role
+      if role_name then
+        admin_role = db.rbac_roles:select_by_name(role_name, { workspace = workspace })
+        assert(db.rbac_user_roles:insert({
+          user = rbac_user,
+          role = admin_role,
+        }))
+      end
+
+      return admin, admin_role
+    end
+
+    local function admin_request(method, path, body, excpected_status, token, headers)
+      local res = assert(admin_client:send {
+        method = method,
+        path = path,
+        headers = headers or {
+          ["Content-Type"] = "application/json",
+          ["Kong-Admin-Token"] = token,
+        },
+        body = body
+      })
+      local response = assert.res_status(excpected_status or 200, res)
+      if not res.has_body then
+        return nil
+      end
+      return cjson.decode(response)
+    end
+
+    lazy_setup(function()
+      _, db = helpers.get_db_utils(strategy, nil, nil, nil, false)
+
+      assert(helpers.start_kong({
+        database               = strategy,
+        admin_gui_auth         = "basic-auth",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+        nginx_conf             = "spec/fixtures/custom_nginx.template",
+        enforce_rbac           = "on",
+      }))
+
+      for _, ws_name in ipairs(workspaces) do
+        if ws_name == "default" then
+          ee_helpers.register_rbac_resources(db)
+        else
+          local ws = assert(db.workspaces:insert({
+            name = ws_name,
+          }))
+          ee_helpers.register_rbac_resources(db, ws_name, ws)
+        end
+      end
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      admin_client = assert(helpers.admin_client())
+    end)
+
+    after_each(function()
+      if admin_client then admin_client:close() end
+    end)
+    
+    it("the super-admin can update the belong workspace of the admin", function()
+      local workspace = db.workspaces:select_by_name("default")
+      local token = "super_admin_handyshake"
+      insert_admin(db, {
+        username = workspace.name .. "-super-admin",
+        custom_id = workspace.name .. "-super-admin",
+        email = workspace.name .. "_super-admin@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      }, "super-admin", token, workspace.id)
+
+      local another_admin1 = insert_admin(db, {
+        username = "another_admin1",
+        custom_id = "another_admin1",
+        email = "another_admin1@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED
+      }, nil, "another_admin_token1", workspace.id)
+
+      db.basicauth_credentials:insert {
+        username = "another_admin1",
+        password = "kong",
+        consumer = { id = another_admin1.consumer.id },
+      }
+
+      local json = admin_request("GET", 
+        fmt("/%s/admins/%s", workspace.name, another_admin1.id),
+        nil,
+        200,
+        token
+      )
+      assert.equals("default", json.belong_workspace.name)
+
+      json = admin_request("PATCH",
+        fmt("/%s/admins/%s/workspaces/%s", workspace.name, another_admin1.id, "ws1"),
+        {},
+        200,
+        token
+      )
+
+      assert.equals("ws1", json.belong_workspace.name)
+
+      -- validate if the admin `another_admin1` login works well after belong_workspace was updated.
+      local res = assert(admin_client:send {
+        method = "GET",
+        path = "/auth",
+        headers = {
+          ["Authorization"] = "Basic " .. ngx.encode_base64("another_admin1:kong"),
+          ["Kong-Admin-User"] = "another_admin1"
+        },
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("the admin's belong_workspace can't be updated to a workspace without any permissions", function()
+      local ws1_workspace = db.workspaces:select_by_name("ws1")
+      local token = "ws1_super_admin_handyshake"
+      insert_admin(db, {
+        username = ws1_workspace.name .. "-super-admin",
+        custom_id = ws1_workspace.name .. "-super-admin",
+        email = ws1_workspace.name .. "_super-admin@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      }, "super-admin", token, ws1_workspace.id)
+
+      local another_admin1 = insert_admin(db, {
+        username = ws1_workspace.name .. "_another_admin1",
+        custom_id = ws1_workspace.name .. "_another_admin1",
+        email = ws1_workspace.name .. "_another_admin1@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED
+      }, nil, ws1_workspace.name .. "_another_admin_token1", ws1_workspace.id)
+
+      local json = admin_request("PATCH",
+        fmt("/%s/admins/%s/workspaces/%s", ws1_workspace.name, another_admin1.id, "default"),
+        {},
+        403,
+        token
+      )
+
+      assert.equals("you don't have any permissions for this workspace[name=default]", json.message)
+    end)
+
+    it("the admin's belong_workspace cannot be updated to a non-existent workspace", function()
+      local ws2_workspace = db.workspaces:select_by_name("ws2")
+      local token = "ws2_super_admin_handyshake"
+      insert_admin(db, {
+        username = ws2_workspace.name .. "-super-admin",
+        custom_id = ws2_workspace.name .. "-super-admin",
+        email = ws2_workspace.name .. "_super-admin@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      }, "super-admin", token, ws2_workspace.id)
+
+      local another_admin1 = insert_admin(db, {
+        username = ws2_workspace.name .. "_another_admin1",
+        custom_id = ws2_workspace.name .. "_another_admin1",
+        email = ws2_workspace.name .. "_another_admin1@test.com",
+        status = enums.CONSUMERS.STATUS.APPROVED
+      }, nil, ws2_workspace.name .. "_another_admin_token1", ws2_workspace.id)
+
+      local json = admin_request("PATCH",
+        fmt("/%s/admins/%s/workspaces/%s", ws2_workspace.name, another_admin1.id, "ws3"),
+        {},
+        404,
+        token
+      )
+
+      assert.equals("Not found", json.message)
     end)
   end)
 end

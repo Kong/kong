@@ -12,6 +12,7 @@ local endpoints    = require "kong.api.endpoints"
 local portal_smtp_client = require "kong.portal.emails"
 local crud_helpers = require "kong.portal.crud_helpers"
 local enums   = require "kong.enterprise_edition.dao.enums"
+local ee_api  = require "kong.enterprise_edition.api_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers = require "kong.portal.dao_helpers"
 local workspace_config = require "kong.portal.workspace_config"
@@ -30,14 +31,7 @@ local ESCAPED_PORTAL_PREFIX = PORTAL_PREFIX:gsub("([^%w])", "%%%1")
 local unescape_uri = ngx.unescape_uri
 local ws_constants = constants.WORKSPACE_CONFIG
 
-local auth_plugins = {
-  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", credential_key = "password" },
-  ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
-  ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
-  ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
-  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials", credential_key = "key" },
-  ["openid-connect"] = { name = "openid-connect" },
-}
+local auth_plugins = constants.AUTH_PLUGINS[ee_api.apis.PORTAL]
 
 
 local app_auth_plugins = {
