@@ -36,6 +36,8 @@ for _, strategy in helpers.each_strategy() do
     -- skip the "off" strategy, as dbless has its own test suite
     describe("kong unready with #" .. strategy .. " backend", function()
       lazy_setup(function()
+        helpers.get_db_utils(strategy, {}) -- runs migrations
+
         assert(helpers.start_kong({
           database = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
