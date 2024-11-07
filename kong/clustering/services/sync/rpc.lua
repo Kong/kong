@@ -120,10 +120,7 @@ function _M:init_cp(manager)
     end
 
     if isempty(res) then
-      ngx_log(ngx_DEBUG,
-              "[kong.sync.v2] no delta for node_id: ", node_id,
-              ", current_version: ", default_namespace_version,
-              ", node is already up to date" )
+      -- node is already up to date
       return inc_sync_result(res)
     end
 
@@ -206,7 +203,7 @@ local function do_sync()
   local deltas = ns_delta.deltas
 
   if isempty(deltas) then
-    ngx_log(ngx_DEBUG, "no delta to sync")
+    -- no delta to sync
     return true
   end
 
