@@ -1,0 +1,11 @@
+message: |
+  Bumped `kong-redis-cluster` to `1.5.5`.
+
+  1. Currently, the timeout for acquiring a lock is fixed to `5s`.
+     We added a new option `lock_timeout` to make it configurable.
+  2. The lock timeout parameter was incorrectly set to `time_out = 0`.
+     We fix it to `timeout = 0`. This would improve perf as there is no
+     need for each instance to refresh the slots.
+  3. Returned detailed error message to downstream
+     component (e.g. Kong Gateway) for better debuggability.
+type: dependency
