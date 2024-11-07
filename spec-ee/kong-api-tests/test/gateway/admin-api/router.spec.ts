@@ -473,6 +473,7 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         });
         logResponse(respRepeat);
         expect(respRepeat.status, 'Status should be 409').to.equal(409);
+        expect(respRepeat.data.message, 'Should have correct error message').to.equal('API route collides with an existing API');
       })
     })
 
