@@ -88,7 +88,7 @@ function _M:init_cp(manager)
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = fmt("%032d", default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
-    }, { ttl = purge_delay, no_broadcast_crud_event = true })
+    }, { ttl = purge_delay, })
     if not ok then
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
     end
