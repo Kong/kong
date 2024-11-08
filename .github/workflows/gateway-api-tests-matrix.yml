@@ -51,7 +51,7 @@ on:
         description: 'Send test result notifications to slack'
         required: false
         type: string
-        default: 'true'
+        default: 'false'
       target_test:
         description: 'Run only a single test by spec name, smoke, non-smoke or all tests'
         required: false
@@ -89,9 +89,9 @@ on:
     - cron: '0 9 * * 6'
 
 env:
-  SEND_SLACK_RESULTS: ${{ inputs.send_slack_results }}
+  SEND_SLACK_RESULTS: ${{ inputs.send_slack_results || 'true' }}
   GW_INPUT_IMAGE: ${{ inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
-  RUN_SPEC: ${{ inputs.target_test || 'all' }}
+  RUN_SPEC: ${{ inputs.target_test || 'smoke' }}
   VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
@@ -164,7 +164,7 @@ jobs:
 
   define_package_matrix:
     runs-on: ${{ vars.RUNS_ON }}
-    if: ${{ inputs.target_matrix  == 'package' }}
+    if: ${{ inputs.target_matrix  == 'package' || github.event_name == 'schedule' }}
     outputs:
       package_matrix: ${{ steps.define-package-matrix.outputs.package_matrix }}
       package_install_method_matrix: ${{ steps.define-package-matrix.outputs.package_install_method_matrix }}
@@ -571,11 +571,11 @@ jobs:
     needs: define_package_matrix
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
     # skip centos package test runs untill it is removed from matrix-full.yml
-    if: (inputs.target_matrix == 'all' || inputs.target_matrix == 'package')
+    if: (inputs.target_matrix == 'all' || inputs.target_matrix == 'package' || github.event_name == 'schedule')
     runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-latest-arm64-kong' || vars.RUNS_ON }}
     timeout-minutes: 50
     env:
-      KONG_VERSION: ${{ inputs.gateway_version || '3.6.0.0' }}
+      KONG_VERSION: ${{ inputs.gateway_version || '3.9.0.0' }}
       GW_MODE: ${{ matrix.gateway_mode }}
       PACKAGE_INSTALL_METHOD: ${{ inputs.package_install_method || 'all'}}
     defaults:
