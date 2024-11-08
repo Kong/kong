@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
 end
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("kong unready in hybrid mode", function()
+  describe("kong unready in hybrid mode #" .. strategy, function()
     local bp = helpers.get_db_utils(strategy, {
       "services",
     })
@@ -192,7 +192,6 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         prefix = "serve_cp",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-
         status_listen = "127.0.0.1:" .. cp_status_port
       }))
     end)
@@ -221,6 +220,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       -- set dp to unready
       local ok, err, msg = helpers.kong_exec("unready --prefix serve_dp", {
         prefix = helpers.test_conf.prefix,
+        database = "off",
       })
       assert.equal("", err)
       assert.equal("Kong's status successfully changed to 'unready'\n", msg)
