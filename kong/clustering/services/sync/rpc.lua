@@ -39,12 +39,24 @@ function _M.new(strategy)
 end
 
 
+local function inc_sync_result(res)
+  return { default = { deltas = res, wipe = false, }, }
+end
+
+
+local function full_sync_result()
+  local deltas, err = declarative.export_config_sync()
+  if not deltas then
+    return nil, err
+  end
+
+  -- wipe dp lmdb, full sync
+  return { default = { deltas = deltas, wipe = true, }, }
+end
+
+
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
-
-  local function gen_delta_result(res, wipe)
-    return { default = { deltas = res, wipe = wipe, }, }
-  end
 
   -- CP
   -- Method: kong.sync.v2.get_delta
@@ -97,15 +109,10 @@ function _M:init_cp(manager)
               ", current_version: ", default_namespace_version,
               ", forcing a full sync")
 
-
-      local deltas, err = declarative.export_config_sync()
-      if not deltas then
-        return nil, err
-      end
-
-      -- wipe dp lmdb, full sync
-      return gen_delta_result(deltas, true)
+      return full_sync_result()
     end
+
+    -- do we need an incremental sync?
 
     local res, err = self.strategy:get_delta(default_namespace_version)
     if not res then
@@ -117,13 +124,13 @@ function _M:init_cp(manager)
               "[kong.sync.v2] no delta for node_id: ", node_id,
               ", current_version: ", default_namespace_version,
               ", node is already up to date" )
-      return gen_delta_result(res, false)
+      return inc_sync_result(res)
     end
 
     -- some deltas are returned, are they contiguous?
     if res[1].version == default_namespace_version + 1 then
       -- doesn't wipe dp lmdb, incremental sync
-      return gen_delta_result(res, false)
+      return inc_sync_result(res)
     end
 
     -- we need to full sync because holes are found
@@ -135,13 +142,7 @@ function _M:init_cp(manager)
             ", current_version: ", default_namespace_version,
             ", forcing a full sync")
 
-    local deltas, err = declarative.export_config_sync()
-    if not deltas then
-      return nil, err
-    end
-
-    -- wipe dp lmdb, full sync
-    return gen_delta_result(deltas, true)
+    return full_sync_result()
   end)
 end
 
@@ -364,6 +365,8 @@ end
 
 
 function _M:sync_once(delay)
+  --- XXX TODO: check rpc connection is ready
+
   return start_sync_timer(ngx.timer.at, delay or 0)
 end
 
