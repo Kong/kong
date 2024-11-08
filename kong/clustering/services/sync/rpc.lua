@@ -244,9 +244,10 @@ local function do_sync()
     local delta_entity = delta.entity
     local ev
 
-    -- delta must have ws_id to generate the correct lmdb key
+    -- delta should have ws_id to generate the correct lmdb key
+    -- if entity is workspaceable
     -- set the correct workspace for item
-    opts.workspace = assert(delta.ws_id)
+    opts.workspace = delta.ws_id
 
     if delta_entity ~= nil and delta_entity ~= ngx_null then
       -- upsert the entity
