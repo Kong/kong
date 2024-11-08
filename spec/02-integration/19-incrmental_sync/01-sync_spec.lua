@@ -1,0 +1,195 @@
+local helpers = require "spec.helpers"
+local cjson = require("cjson.safe")
+
+for _, strategy in helpers.each_strategy() do
+
+describe("Incremental Sync RPC #" .. strategy, function()
+
+  lazy_setup(function()
+    helpers.get_db_utils(strategy, {
+      "clustering_data_planes",
+    }) -- runs migrations
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+      cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_incremental_sync = "on", -- incremental sync
+    }))
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_worker_processes = 4, -- multiple workers
+      cluster_incremental_sync = "on", -- incremental sync
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  describe("sync works", function()
+    local route_id
+
+    it("create route on CP", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/service-001/routes", {
+        body = { paths = { "/001" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/001",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+    end)
+
+    it("update route on CP", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "service-002", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/service-002/routes", {
+        body = { paths = { "/002-foo" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/002-foo",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+
+      res = assert(admin_client:put("/services/service-002/routes/" .. route_id, {
+        body = { paths = { "/002-bar" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/002-bar",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+    end)
+
+    it("delete route on CP", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "service-003", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/service-003/routes", {
+        body = { paths = { "/003-foo" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/003-foo",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+
+      res = assert(admin_client:delete("/services/service-003/routes/" .. route_id))
+      local body = assert.res_status(204, res)
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/003-foo",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 404 then
+          return true
+        end
+      end, 10)
+    end)
+  end)
+
+end)
+
+end -- for _, strategy
