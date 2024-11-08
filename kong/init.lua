@@ -997,12 +997,21 @@ function Kong.init_worker()
   kong.cache:invalidate_local(ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY)
   -- ]]
 
-  if process.type() == "privileged agent" and not kong.sync then
-    if kong.clustering then
-      -- full sync cp/dp
+  if kong.clustering then
+    -- full sync dp
+    
+    local is_dp_full_sync_agent = process.type() == "privileged agent" and not kong.sync
+
+    if is_control_plane(kong.configuration) or -- CP needs to support both full and incremental sync
+      is_dp_full_sync_agent -- full sync is only enabled for DP if incremental sync is disabled
+    then
       kong.clustering:init_worker()
     end
-    return
+  
+    -- DP full sync agent skips the rest of the init_worker
+    if is_dp_full_sync_agent then
+      return
+    end
   end
 
   kong.vault.init_worker()
@@ -1099,12 +1108,6 @@ function Kong.init_worker()
   end
 
   if kong.clustering then
-
-    -- full sync cp/dp
-    if not kong.sync then
-      kong.clustering:init_worker()
-    end
-
     -- rpc and incremental sync
     if kong.rpc and is_http_module then
 
