@@ -91,8 +91,6 @@ function _M:insert_delta(deltas)
 
   local sql = string_format(NEW_VERSION_QUERY, buf:get())
 
-  ngx_log(ngx_DEBUG, "[incremental] insert_delta sql: ", sql)
-
   return self.connector:query(sql)
 end
 
