@@ -1458,7 +1458,7 @@ local config = {
           },
           {
             upstream_headers_claims = {
-              description = "The upstream header claims. If multiple values are set, it means the claim is inside a nested object of the token payload.",
+              description = "The upstream header claims. Only top level claims are supported.",
               required = false,
               type = "array",
               elements = {
