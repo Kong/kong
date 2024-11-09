@@ -39,6 +39,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
     helpers.stop_kong()
   end)
 
+  after_each(function()
+    helpers.clean_logfile("servroot2/logs/error.log")
+    helpers.clean_logfile()
+  end)
+
   describe("sync works", function()
     local route_id
 
