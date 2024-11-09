@@ -76,6 +76,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
     end)
 
     it("update route on CP", function()
@@ -133,6 +138,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
     end)
 
     it("delete route on CP", function()
@@ -170,6 +180,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
         end
       end, 10)
 
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
+
       res = assert(admin_client:delete("/services/service-003/routes/" .. route_id))
       assert.res_status(204, res)
 
@@ -187,6 +202,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
     end)
 
     it("update route on CP with name", function()
@@ -243,6 +260,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
     end)
 
     it("delete route on CP with name", function()
@@ -279,6 +301,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
         end
       end, 10)
 
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
+
       res = assert(admin_client:delete("/services/service-005/routes/route-005"))
       assert.res_status(204, res)
 
@@ -296,6 +323,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
     end)
 
     it("cascade delete on CP", function()
@@ -334,6 +363,11 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+      assert.logfile().has.no.line("unable to update clustering data plane status", true)
+
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
 
       -- create consumer and key-auth
 
@@ -393,6 +427,9 @@ describe("Incremental Sync RPC #" .. strategy, function()
           return true
         end
       end, 10)
+
+      assert.logfile().has.line("[kong.sync.v2] new delta due to cascade deleting", true)
+      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
     end)
   end)
 
