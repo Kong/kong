@@ -228,7 +228,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
         body = { name = "route-004", paths = { "/004-foo" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
-      local body = assert.res_status(201, res)
+      assert.res_status(201, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -288,7 +288,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
         body = { name = "route-005", paths = { "/005-foo" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
-      local body = assert.res_status(201, res)
+      assert.res_status(201, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
