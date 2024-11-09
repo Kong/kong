@@ -117,7 +117,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
         body = { paths = { "/002-bar" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -171,7 +171,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       end, 10)
 
       res = assert(admin_client:delete("/services/service-003/routes/" .. route_id))
-      local body = assert.res_status(204, res)
+      assert.res_status(204, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -227,7 +227,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
         body = { paths = { "/004-bar" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -280,7 +280,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       end, 10)
 
       res = assert(admin_client:delete("/services/service-005/routes/route-005"))
-      local body = assert.res_status(204, res)
+      assert.res_status(204, res)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
@@ -293,6 +293,103 @@ describe("Incremental Sync RPC #" .. strategy, function()
         local status = res and res.status
         proxy_client:close()
         if status == 404 then
+          return true
+        end
+      end, 10)
+    end)
+
+    it("cascade delete on CP", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      -- create service and route
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "service-006", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/service-006/routes", {
+        body = { paths = { "/006-foo" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/006-foo",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+
+      -- create consumer and key-auth
+
+      res = assert(admin_client:post("/consumers", {
+        body = { username = "foo", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/consumers/foo/key-auth", {
+        body = { key = "my-key", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+      res = assert(admin_client:post("/plugins", {
+        body = { name = "key-auth",
+                 config = { key_names = {"apikey"} },
+                 route = { id = route_id },
+               },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/006-foo",
+          headers = {["apikey"] = "my-key"},
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+
+      -- delete consumer and key-auth
+
+      res = assert(admin_client:delete("/consumers/foo"))
+      assert.res_status(204, res)
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/006-foo",
+          headers = {["apikey"] = "my-key"},
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 401 then
           return true
         end
       end, 10)
