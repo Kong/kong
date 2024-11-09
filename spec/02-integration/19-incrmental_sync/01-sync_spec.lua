@@ -438,6 +438,30 @@ describe("Incremental Sync RPC #" .. strategy, function()
 
       assert.logfile().has.line("[kong.sync.v2] new delta due to cascade deleting", true)
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
+
+      -- cascade deletion should be the same version
+
+      local ver
+      local count = 0
+      local patt = "delete entity, version: %d+"
+      local f = io.open("servroot2/logs/error.log", "r")
+      while true do
+        local line = f:read("*l")
+
+        if not line then
+          f:close()
+          break
+        end
+
+        local found = line:match(patt)
+        if found then
+          ver = ver or found
+          assert.equal(ver, found)
+          count = count + 1
+        end
+      end
+      assert(count > 1)
+
     end)
   end)
 
