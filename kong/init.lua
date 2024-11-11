@@ -890,16 +890,12 @@ function Kong.init_worker()
       if using_dedicated and process.type() == "privileged agent" then
         -- full sync dp agent
         kong.clustering:init_worker()
+        return
 
       elseif not using_dedicated then
         -- full sync dp
         kong.clustering:init_worker()
       end
-    end
-
-    -- DP full sync agent skips the rest of the init_worker
-    if is_dp_full_sync_agent then
-      return
     end
   end
 
