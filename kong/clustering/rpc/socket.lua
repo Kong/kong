@@ -155,6 +155,8 @@ function _M:start()
       if payload.method then
         -- invoke
 
+        ngx_log(ngx_DEBUG, "[rpc] got RPC call: ", payload.method, " (id: ", payload.id, ")")
+
         local dispatch_cb = self.manager.callbacks.callbacks[payload.method]
         if not dispatch_cb then
           local res, err = self.outgoing:push(new_error(payload.id, jsonrpc.METHOD_NOT_FOUND))
