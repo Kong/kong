@@ -52,9 +52,7 @@ local foreign_children = {}
 
 do
   local tb_nkeys = require("table.nkeys")
-  local request_aware_table = require("kong.tools.request_aware_table")
-
-  local CACHED_OUT
+  local buffer = require("string.buffer")
 
   -- Generate a stable and unique string key from primary key defined inside
   -- schema, supports both non-composite and composite primary keys
@@ -66,17 +64,27 @@ do
       return tostring(object[primary_key[1]])
     end
 
-    if not CACHED_OUT then
-      CACHED_OUT = request_aware_table.new()
-    end
+    local buf = buffer.new()
 
-    CACHED_OUT:clear()
+    -- The logic comes from get_cache_key_value(), which uses `id` directly to
+    -- extract foreign key.
+    -- TODO: extract primary key recursively using pk_string(), KAG-5750
     for i = 1, count do
       local k = primary_key[i]
-      insert(CACHED_OUT, tostring(object[k]))
+      local v = object[k]
+
+      if type(v) == "table" and schema.fields[k].type == "foreign" then
+        v = v.id
+      end
+
+      buf:put(tostring(v or ""))
+
+      if i < count then
+        buf:put(":")
+      end
     end
 
-    return concat(CACHED_OUT, ":")
+    return buf:get()
   end
 end
 
