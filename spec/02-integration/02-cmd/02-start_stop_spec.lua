@@ -1,6 +1,7 @@
 local helpers   = require "spec.helpers"
 local constants = require "kong.constants"
 local pl_file   = require("pl.file")
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 local cjson = require "cjson"
 
@@ -1252,6 +1253,103 @@ describe("kong start/stop #" .. strategy, function()
       assert.logfile(log).has.no.line("[alert]", true, 0)
       assert.logfile(log).has.no.line("[crit]",  true, 0)
       assert.logfile(log).has.no.line("[emerg]", true, 0)
+    end)
+  end)
+
+  describe("start/stop with vault references ", function()
+    before_each(function()
+      helpers.clean_prefix(PREFIX)
+    end)
+
+    it("resolve array-like configuration", function ()
+      helpers.clean_logfile()
+      helpers.setenv("PG_PASSWORD", "dummy")
+      helpers.setenv("CERT", ssl_fixtures.cert)
+      helpers.setenv("KEY", ssl_fixtures.key)
+
+      finally(function()
+        helpers.unsetenv("PG_PASSWORD")
+        helpers.unsetenv("CERT")
+        helpers.unsetenv("KEY")
+      end)
+
+      local _, stderr, stdout = assert(kong_exec("start", {
+        prefix = PREFIX,
+        database = TEST_CONF.database,
+        pg_password = "{vault://env/pg_password}",
+        pg_database = TEST_CONF.pg_database,
+        lua_ssl_trusted_certificate = "{vault://env/cert}, system",
+        ssl_cert_key = "{vault://env/key}",
+        ssl_cert = "{vault://env/cert}",
+        vaults = "env",
+      }))
+
+      assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/cert}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/key}", stderr, nil, true)
+      assert.logfile().has.no.line("[warn]", true)
+      assert.logfile().has.no.line("bad value type", true)
+      assert.logfile().has.no.line("env/pg_password", true)
+      assert.logfile().has.no.line("env/cert", true)
+      assert.logfile().has.no.line("env/key", true)
+      assert.matches("Kong started", stdout, nil, true)
+      assert(kong_exec("stop", {
+        prefix = PREFIX,
+      }))
+    end)
+
+    it("resolve secrets when both http and stream subsystem are enabled", function ()
+      helpers.clean_logfile()
+      helpers.setenv("PG_PASSWORD", "dummy")
+      helpers.setenv("CERT", ssl_fixtures.cert)
+      helpers.setenv("KEY", ssl_fixtures.key)
+      helpers.setenv("CERT_ALT", ssl_fixtures.cert_alt)
+      helpers.setenv("KEY_ALT", ssl_fixtures.key_alt)
+      helpers.setenv("LOGLEVEL", "error")
+
+      finally(function()
+        helpers.unsetenv("PG_PASSWORD")
+        helpers.unsetenv("CERT")
+        helpers.unsetenv("KEY")
+        helpers.unsetenv("LOGLEVEL")
+      end)
+
+      local avail_port = helpers.get_available_port()
+
+      local _, stderr, stdout = assert(kong_exec("start", {
+        prefix = PREFIX,
+        database = TEST_CONF.database,
+        pg_password = "{vault://env/pg_password}",
+        pg_database = TEST_CONF.pg_database,
+        loglevel = "{vault://env/loglevel}",
+        lua_ssl_trusted_certificate = "{vault://env/cert}, system",
+        ssl_cert_key = "{vault://env/key}, {vault://env/key_alt}",
+        ssl_cert = "{vault://env/cert}, {vault://env/cert_alt}",
+        vaults = "env",
+        stream_listen = "127.0.0.1:" .. avail_port .. " reuseport"
+      }))
+
+      assert.not_matches("init_by_lua error", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/cert}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/cert_alt}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/key}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/key_alt}", stderr, nil, true)
+      assert.not_matches("failed to dereference {vault://env/loglevel}", stderr, nil, true)
+
+      assert.logfile().has.no.line("[warn]", true)
+      assert.logfile().has.no.line("bad value type", true)
+      assert.logfile().has.no.line("env/pg_password", true)
+      assert.logfile().has.no.line("env/cert", true)
+      assert.logfile().has.no.line("env/cert_alt", true)
+      assert.logfile().has.no.line("env/key", true)
+      assert.logfile().has.no.line("env/key_alt", true)
+      assert.logfile().has.no.line("env/loglevel", true)
+
+      assert.matches("Kong started", stdout, nil, true)
+      assert(kong_exec("stop", {
+        prefix = PREFIX,
+      }))
     end)
   end)
 
