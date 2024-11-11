@@ -84,21 +84,27 @@ function _M:notify_all_nodes()
 end
 
 
-function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+local function gen_delta(entity, name, options, ws_id, is_delete)
   -- composite key, like { id = ... }
   local schema = kong.db[name].schema
   local pk = schema:extract_pk_values(entity)
 
   assert(schema:validate_primary_key(pk))
 
-  local deltas = {
-    {
+  local delta = {
       type = name,
       pk = pk,
       ws_id = ws_id,
       entity = is_delete and ngx_null or entity,
-    },
   }
+
+  return delta
+end
+
+
+function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+  local d = gen_delta(entity, name, options, ws_id, is_delete)
+  local deltas = { d, }
 
   local res, err = self.strategy:insert_delta(deltas)
   if not res then
@@ -168,8 +174,39 @@ function _M:register_dao_hooks()
 
     ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
 
-    -- set lmdb value to ngx_null then return row
-    return self:entity_delta_writer(entity, name, options, ws_id, true)
+    -- set lmdb value to ngx_null then return entity
+
+    local d = gen_delta(entity, name, options, ws_id, true)
+    local deltas = { d, }
+
+    -- delete other related entities
+    for i, item in ipairs(cascade_entries or EMPTY) do
+      local e = item.entity
+      local name = item.dao.schema.name
+
+      ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to cascade deleting ", name)
+
+      d = gen_delta(e, name, options, e.ws_id, true)
+
+      -- #1 item is initial entity
+      deltas[i + 1] = d
+    end
+
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
+
+    self:notify_all_nodes()
+
+    return entity -- for other hooks
   end
 
   local dao_hooks = {
