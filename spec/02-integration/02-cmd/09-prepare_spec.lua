@@ -44,7 +44,7 @@ describe("kong prepare", function()
     }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-    local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+    local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
     local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
     local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
@@ -103,7 +103,7 @@ describe("kong prepare", function()
         }))
         assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
         local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
         local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
@@ -137,7 +137,7 @@ describe("kong prepare", function()
         }))
         assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
         local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
         local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
