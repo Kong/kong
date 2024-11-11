@@ -294,6 +294,21 @@ local constants = {
     STREAM_TLS_PASSTHROUGH = "sp",
     STREAM_RPC = "rp",
   },
+
+  CACHE_HEADERS = {
+    {
+      KEY = "req_headers_cache",
+      FLAG = "req_headers_cache_flag",
+      -- nginx buildin req headers which only support single value
+      SINGLE_VALUES = {"Host", "Connection", "If-Modified-Since","If-Unmodified-Since","If-Match","If-None-Match","User-Agent","Referer", "Content-Length", "Content-Type", "Range", "If-Range", "Transfer-Encoding", "Expect", "Upgrade", "Accept-Encoding", "Via", "Authorization", "Keep-Alive", "X-Real-IP", "Depth", "Destination", "Overwrite","Date"},
+    },
+    {
+      KEY = "resp_headers_cache",
+      FLAG = "resp_headers_cache_flag",
+      -- nginx buildin resp headers which only support single value
+      SINGLE_VALUES = {"Server", "Date", "Content-Encoding","Location","Refresh","Last-Modified","Content-Range","Accept-Ranges", "WWW-Authenticate", "Expires", "E-Tag", "ETag", "Content-Length", "Content-Type"},
+    },
+  }
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

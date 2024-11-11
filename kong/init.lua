@@ -93,6 +93,7 @@ local pl_file = require "pl.file"
 local req_dyn_hook = require "kong.dynamic_hook"
 local uuid = require("kong.tools.uuid").uuid
 local kong_time = require("kong.tools.time")
+local clear_headers_cache = require("kong.header_cache_utils").clear_headers_cache
 
 
 local kong             = kong
@@ -620,12 +621,6 @@ local function list_migrations(migtable)
   return table.concat(list, " ")
 end
 
-local function clear_headers_cache()
-  ngx.ctx.req_headers_cache = nil
-  ngx.ctx.req_headers_cache_flag = nil
-  ngx.ctx.resp_headers_cache = nil
-  ngx.ctx.resp_headers_cache_flag = nil
-end
 
 -- Kong public context handlers.
 -- @section kong_handlers
