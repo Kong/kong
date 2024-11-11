@@ -31,6 +31,7 @@ local sort = table.sort
 local find = string.find
 local gsub = string.gsub
 local lower = string.lower
+local upper = string.upper
 local match = string.match
 local pairs = pairs
 local assert = assert
@@ -433,12 +434,13 @@ local function load(path, custom_conf, opts)
     local prefix = abspath(conf.prefix or ngx.config.prefix())
     local secret_env
     local secret_file
-    local secrets = getenv("KONG_PROCESS_SECRETS")
+    local secrets_env_var_name = upper("KONG_PROCESS_SECRETS_" .. ngx.config.subsystem)
+    local secrets = getenv(secrets_env_var_name)
     if secrets then
-      secret_env = "KONG_PROCESS_SECRETS"
+      secret_env = secrets_env_var_name
 
     else
-      local secrets_path = pl_path.join(prefix, unpack(conf_constants.PREFIX_PATHS.kong_process_secrets))
+      local secrets_path = pl_path.join(prefix, unpack(conf_constants.PREFIX_PATHS.kong_process_secrets)) .. "_" .. ngx.config.subsystem
       if exists(secrets_path) then
         secrets, err = pl_file.read(secrets_path, true)
         if not secrets then
@@ -456,7 +458,6 @@ local function load(path, custom_conf, opts)
         return nil, err
       end
 
-      -- TODO: remember!
       for k, deref in pairs(secrets) do
         conf[k] = deref
       end

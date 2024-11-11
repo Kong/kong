@@ -84,7 +84,18 @@ local function set_process_secrets_env(kong_conf)
     return nil, err
   end
 
-  return C.setenv("KONG_PROCESS_SECRETS", secrets, 1) == 0
+  local ok_sub_http
+  if kong_conf.role == "control_plane" or #kong_conf.proxy_listeners > 0
+    or #kong_conf.admin_listeners > 0 or #kong_conf.status_listeners > 0 then
+      ok_sub_http = C.setenv("KONG_PROCESS_SECRETS_HTTP", secrets, 1) == 0
+  end
+
+  local ok_sub_stream
+  if #kong_conf.stream_listeners > 0 then
+    ok_sub_stream = C.setenv("KONG_PROCESS_SECRETS_STREAM", secrets, 1) == 0
+  end
+
+  return ok_sub_http or ok_sub_stream
 end
 
 
