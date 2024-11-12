@@ -257,8 +257,6 @@ local function do_sync()
         return nil, err
       end
 
-      local crud_event_type = old_entity and "update" or "create"
-
       -- If we will wipe lmdb, we don't need to delete it from lmdb.
       if old_entity and not wipe then
         local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
@@ -279,7 +277,7 @@ local function do_sync()
 
       -- wipe the whole lmdb, should not have events
       if not wipe then
-        ev = { delta_type, crud_event_type, delta_entity, old_entity, }
+        ev = { delta_type, old_entity and "update" or "create", delta_entity, old_entity, }
       end
 
     else
