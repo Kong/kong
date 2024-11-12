@@ -137,16 +137,34 @@ export const waitForDictUpdate = async (initialValue, dict_name) => {
 /**
  * Querys the target metrics data from prometheus
  * @param {string} query - target query to execute
+ * @param {boolean} allowEmptyResult - allow empty result in the response
  */
-export const queryPrometheusMetrics = async (query) => {
+export const queryPrometheusMetrics = async (query, allowEmptyResult = false) => {
   const url = `${prometheusQueryUrl}?query=${query}`
 
   const resp = await getNegative(url)
 
   expect(resp.status, 'Status should be 200').to.equal(200);
-  expect(resp.data.data.result, `Should receive prometheus query results for ${query}`).to.not.be.empty;
+
+  if (!allowEmptyResult) {
+    expect(resp.data.data.result, `Should receive prometheus query results for ${query}`).to.not.be.empty;
+  }
 
   return resp.data.data
+}
+
+/**
+ * @returns {Array} - array of total request counts
+ */
+export const getCurrentTotalRequestCount = async() => {
+  const totalValues = new Set()
+
+  const resp = await queryPrometheusMetrics('kong_http_requests_total', true)
+  resp.result.forEach((result) => {
+    totalValues.add(result.value[1])
+  })
+
+  return Array.from(totalValues)
 }
 
 /**

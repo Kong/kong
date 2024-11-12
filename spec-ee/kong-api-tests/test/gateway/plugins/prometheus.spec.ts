@@ -23,8 +23,10 @@ import {
   deleteConsumer,
   wait,
   createPolly,
-  isKongOSS
+  isKongOSS,
+  getCurrentTotalRequestCount
 } from '@support';
+
 
 describe('@oss: Gateway Plugins: Prometheus', function () {
   const serviceName = 'prometheus-service';
@@ -44,6 +46,7 @@ describe('@oss: Gateway Plugins: Prometheus', function () {
   let base64credentials: string;
   let upstreamId: string;
   let basicAuthPluginId: string;
+  let promTotalReqCount: any;
 
   before(async function () {
     url = `${getBasePath({
@@ -114,6 +117,13 @@ describe('@oss: Gateway Plugins: Prometheus', function () {
     pluginId = resp.data.id;
 
     await waitForConfigRebuild();
+
+    // get the current count of totoal requests to track this for test retries
+    // need to be defined after the plugin is enabled for the metrics to be visible
+    promTotalReqCount = await getCurrentTotalRequestCount()
+    // during the very first test run when the array is empty, the promTotalReqCount will be NaN hence assigning it to 0
+    promTotalReqCount = Number(promTotalReqCount[0]) || 0 
+    console.log(`Current total request count in prometheus metrics is ${promTotalReqCount}`)
   });
 
   // below 2 metrics are enterprise only
@@ -258,19 +268,19 @@ describe('@oss: Gateway Plugins: Prometheus', function () {
       expect(resp.status, 'Status should be 200').to.equal(200);
     }
 
-    const totalValues = new Set()
+    // increment the total request count by 5 as there were 5 new requests sent above
+    promTotalReqCount += 5
+    console.log(`The new total request count in prometheus metrics should be ${promTotalReqCount}`)
 
     await eventually(async () => {
-      const resp = await queryPrometheusMetrics('kong_http_requests_total')
-      resp.result.forEach((result) => {
-        totalValues.add(result.value[1])
-      })
-    });
+      const totalRequests = await getCurrentTotalRequestCount()
+      console.log(`Pulling the total request count number from prometheus: ${totalRequests[0]}`)
 
-    // expecting at least 5 total requests as we have made 5 requests after enabling the status_code_metrics
-    // the below assertion is made dynamic, meaning if you rerun the test it will find a total greater than 5 from all values
-    const totalExists = Array.from(totalValues).some((value) => Number(value) >= 5)
-    expect(totalExists, 'should see correct kong_http_requests_total value').to.be.true
+      // expecting at least 5 total requests as we have made 5 requests after enabling the status_code_metrics
+      // the below assertion is made dynamic, meaning if you rerun the test it will find a total greater than 5 from all values
+      const totalExists = totalRequests.some((value) => Number(value) >= promTotalReqCount)
+      expect(totalExists, 'should see correct kong_http_requests_total value').to.be.true
+    });
   });
 
   it('should enable the prometheus plugin per_consumer metric', async function () {

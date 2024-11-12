@@ -111,6 +111,7 @@ export {
   waitForConfigHashUpdate,
   waitForDictUpdate,
   queryPrometheusMetrics,
+  getCurrentTotalRequestCount,
   queryAppdynamicsMetrics,
   getAllMetrics
 } from './utilities/metrics';
