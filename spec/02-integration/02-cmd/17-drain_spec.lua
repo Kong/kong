@@ -34,7 +34,7 @@ end
 for _, strategy in helpers.each_strategy() do
   if strategy ~= "off" then
     -- skip the "off" strategy, as dbless has its own test suite
-    describe("kong unready with #" .. strategy .. " backend", function()
+    describe("kong drain with #" .. strategy .. " backend", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {}) -- runs migrations
 
@@ -43,6 +43,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           status_listen = "127.0.0.1:8100",
           nginx_main_worker_processes = 8,
+          log_level = "info",
         }))
       end)
 
@@ -50,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("should set Kong to 'unready'", function()
+      it("should set Kong to 'draining'", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
@@ -66,11 +67,11 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        local ok, err, msg = helpers.kong_exec("unready", {
+        local ok, err, msg = helpers.kong_exec("drain", {
           prefix = helpers.test_conf.prefix,
         })
         assert.equal("", err)
-        assert.equal("Kong's status successfully changed to 'unready'\n", msg)
+        assert.equal("Kong's status successfully changed to 'draining'\n", msg)
         assert.equal(true, ok)
 
         helpers.wait_until(function()
@@ -105,8 +106,8 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("should return an error when trying to set 'unready' without a status listener", function()
-        local ok, err, msg = helpers.kong_exec("unready", {
+      it("should return an error when trying to set 'draining' without a status listener", function()
+        local ok, err, msg = helpers.kong_exec("drain", {
           prefix = helpers.test_conf.prefix,
         })
         assert.equal("", err)
@@ -132,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("should set Kong to 'unready' with SSL-enabled status listener", function()
+      it("should set Kong to 'draining' with SSL-enabled status listener", function()
         helpers.wait_until(function()
           local status = get_status_no_ssl_verify()
           if status == 200 then
@@ -140,11 +141,11 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        local ok, err, msg = helpers.kong_exec("unready", {
+        local ok, err, msg = helpers.kong_exec("drain", {
           prefix = helpers.test_conf.prefix,
         })
         assert.equal("", err)
-        assert.equal("Kong's status successfully changed to 'unready'\n", msg)
+        assert.equal("Kong's status successfully changed to 'draining'\n", msg)
         assert.equal(true, ok)
 
         helpers.wait_until(function()
@@ -159,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
 end
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("kong unready in hybrid mode #" .. strategy, function()
+  describe("kong drain in hybrid mode #" .. strategy, function()
     local bp = helpers.get_db_utils(strategy, {
       "services",
     })
@@ -201,7 +202,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       helpers.stop_kong("serve_cp")
     end)
 
-    it("should set Kong to 'unready'", function()
+    it("should set Kong to 'draining'", function()
       helpers.wait_until(function()
         local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
@@ -217,13 +218,13 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         end
       end, 10)
 
-      -- set dp to unready
-      local ok, err, msg = helpers.kong_exec("unready --prefix serve_dp", {
+      -- set dp to draining
+      local ok, err, msg = helpers.kong_exec("drain --prefix serve_dp", {
         prefix = helpers.test_conf.prefix,
         database = "off",
       })
       assert.equal("", err)
-      assert.equal("Kong's status successfully changed to 'unready'\n", msg)
+      assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
       helpers.wait_until(function()
@@ -241,12 +242,12 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         end
       end, 10)
 
-      -- set cp to unready
-      local ok, err, msg = helpers.kong_exec("unready --prefix serve_cp", {
+      -- set cp to draining
+      local ok, err, msg = helpers.kong_exec("drain --prefix serve_cp", {
         prefix = helpers.test_conf.prefix,
       })
       assert.equal("", err)
-      assert.equal("Kong's status successfully changed to 'unready'\n", msg)
+      assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
       helpers.wait_until(function()

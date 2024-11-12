@@ -109,7 +109,7 @@ return {
       end
 
       if ready == false then
-        return kong.response.exit(503, { message = "unready" })
+        return kong.response.exit(503, { message = "draining" })
       end
 
       local ok, err = is_ready()
@@ -121,13 +121,15 @@ return {
         ngx_log(ngx_NOTICE, "not ready for proxying: ", err)
         return kong.response.exit(503, { message = err })
       end
+    end,
+
+    POST = function(self, dao, helpers)
+      if self.params and self.params.status == "draining" then
+        kong_shm:set(KONG_STATUS_READY, false)
+        return kong.response.exit(204)
+      end
+
+      return kong.response.exit(501)
     end
   },
-
-  ["/status/unready"] = {
-    POST = function(self, dao, helpers)
-      kong_shm:set(KONG_STATUS_READY, false)
-      return kong.response.exit(204)
-    end
-  }
 }

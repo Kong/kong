@@ -1,3 +1,0 @@
-message: Add the `kong unready` CLI command to make the `/status/ready` endpoint return `503 Service Unavailable` response.
-type: feature
-scope: CLI Command

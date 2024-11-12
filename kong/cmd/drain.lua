@@ -5,6 +5,7 @@ local fmt = string.format
 local conf_loader = require "kong.conf_loader"
 local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
+local json_encode = require("cjson.safe").encode
 
 local function execute(args)
   log.disable()
@@ -33,17 +34,20 @@ local function execute(args)
     scheme = "https"
   end
 
-  local url = scheme .. "://" .. status_listener.ip .. ":" .. status_listener.port .. "/status/unready"
+  local url = scheme .. "://" .. status_listener.ip .. ":" .. status_listener.port .. "/status/ready"
 
   local httpc = http.new()
   httpc:set_timeout(1000)
+
 
   local res, err = httpc:request_uri(url, {
     method = "POST",
     headers = {
         ["Content-Type"] = "application/json"
     },
-    body = "{}",
+    body = json_encode({
+      status = "draining"
+    }),
     -- we don't need to verify the SSL certificate for this request
     ssl_verify = false,
   })
@@ -60,17 +64,17 @@ local function execute(args)
     return
   end
 
-  print("Kong's status successfully changed to 'unready'")
+  print("Kong's status successfully changed to 'draining'")
 end
 
 
 local lapp = [[
-Usage: kong unready [OPTIONS]
+Usage: kong drain [OPTIONS]
 
 Make status listeners(`/status/ready`) return 503 Service Unavailable.
 
 Example usage:
- kong unready
+ kong drain
 
 Options:
  -c,--conf    (optional string)  configuration file
