@@ -2137,10 +2137,12 @@ Kong.status_header_filter = Kong.admin_header_filter
 Kong.debug_header_filter = Kong.admin_header_filter
 
 
-function Kong.serve_cluster_listener(options)
-  log_init_worker_errors()
+function Kong.serve_cluster_listener()
+  local ctx = ngx.ctx
 
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+  log_init_worker_errors(ctx)
+
+  ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.clustering:handle_cp_websocket()
 end
@@ -2158,10 +2160,12 @@ function Kong.stream_api()
 end
 
 
-function Kong.serve_cluster_rpc_listener(options)
-  log_init_worker_errors()
+function Kong.serve_cluster_rpc_listener()
+  local ctx = ngx.ctx
 
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+  log_init_worker_errors(ctx)
+
+  ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.rpc:handle_websocket()
 end
