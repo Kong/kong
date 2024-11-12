@@ -1,0 +1,3 @@
+message: "Fix schema validation to handle potential `nil` field case."
+type: bugfix
+scope: Core
