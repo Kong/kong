@@ -293,7 +293,13 @@ local function init_worker()
       end
     end, "openid-connect", "delete-discovery")
 
-  else
+    -- dbless without rpc will not register other events (incremental sync)
+    if not kong.sync then
+      return
+    end
+  end
+
+  do
     kong.worker_events.register(function(data)
       workspaces.set_workspace(data.workspace)
       local operation = data.operation

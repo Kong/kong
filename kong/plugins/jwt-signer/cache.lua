@@ -131,7 +131,12 @@ local function init_worker()
     end
   end
 
-  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+  if not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
+  -- dbless without rpc will not register events (incremental sync)
+  if kong.configuration.database == "off" and not kong.sync then
     return
   end
 
