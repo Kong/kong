@@ -108,13 +108,6 @@ local function new(self)
   -- kong.service.request.enable_buffering()
   request.enable_buffering = function()
     check_phase(access_rewrite_balancer)
-
-    if ngx.req.http_version() >= 2 then
-      error("buffered proxying cannot currently be enabled with http/" ..
-            ngx.req.http_version() .. ", please use http/1.x instead", 2)
-    end
-
-
     ngx.ctx.buffered_proxying = true
   end
 
