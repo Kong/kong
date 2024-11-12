@@ -65,14 +65,16 @@ end
 
 
 function _M:_add_socket(socket, capabilities_list)
-  local sockets = self.clients[socket.node_id]
+  local node_id = socket.node_id
+
+  local sockets = self.clients[node_id]
   if not sockets then
-    assert(self.concentrator:_enqueue_subscribe(socket.node_id))
+    assert(self.concentrator:_enqueue_subscribe(node_id))
     sockets = setmetatable({}, { __mode = "k", })
-    self.clients[socket.node_id] = sockets
+    self.clients[node_id] = sockets
   end
 
-  self.client_capabilities[socket.node_id] = {
+  self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
@@ -299,6 +301,30 @@ function _M:handle_websocket()
 end
 
 
+function _M:try_connect(reconnection_delay)
+  ngx.timer.at(reconnection_delay or 0, function(premature)
+    self:connect(premature,
+                 "control_plane", -- node_id
+                 self.conf.cluster_control_plane, -- host
+                 "/v2/outlet",  -- path
+                 self.cluster_cert.cdata,
+                 self.cluster_cert_key)
+  end)
+end
+
+
+function _M:init_worker()
+  if self.conf.role == "data_plane" then
+    -- data_plane will try to connect to cp
+    self:try_connect()
+
+  else
+    -- control_plane
+    self.concentrator:start()
+  end
+end
+
+
 function _M:connect(premature, node_id, host, path, cert, key)
   if premature then
     return
@@ -375,9 +401,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   if not exiting() then
-    ngx.timer.at(reconnection_delay, function(premature)
-      self:connect(premature, node_id, host, path, cert, key)
-    end)
+    self:try_connect(reconnection_delay)
   end
 end
 
