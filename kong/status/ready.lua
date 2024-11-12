@@ -23,7 +23,7 @@ local PLUGINS_REBUILD_COUNTER_KEY = constants.PLUGINS_REBUILD_COUNTER_KEY
 local ROUTERS_REBUILD_COUNTER_KEY = constants.ROUTERS_REBUILD_COUNTER_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local KONG_STATUS_UNREADY = "kong:status:unready"
+local KONG_STATUS_READY = "kong:status:ready"
 
 local function is_dbless_ready(router_rebuilds, plugins_iterator_rebuilds)
   if router_rebuilds < worker_count then
@@ -103,13 +103,12 @@ end
 return {
   ["/status/ready"] = {
     GET = function(self, dao, helpers)
-      local unready = kong_shm:get(KONG_STATUS_UNREADY)
-      if unready == nil then
-        kong_shm:set(KONG_STATUS_UNREADY, false)
+      local ready = kong_shm:get(KONG_STATUS_READY)
+      if ready == nil then
+        kong_shm:set(KONG_STATUS_READY, true)
       end
 
-      if unready == true then
-        ngx_log(ngx_DEBUG, "not ready for proxying: unready")
+      if ready == false then
         return kong.response.exit(503, { message = "unready" })
       end
 
@@ -127,7 +126,7 @@ return {
 
   ["/status/unready"] = {
     POST = function(self, dao, helpers)
-      kong_shm:set(KONG_STATUS_UNREADY, true)
+      kong_shm:set(KONG_STATUS_READY, false)
       return kong.response.exit(204)
     end
   }
