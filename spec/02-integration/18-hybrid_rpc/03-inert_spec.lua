@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
-        cluster_rpc = "off",
+        cluster_rpc = "off",  -- disable rpc
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
-        cluster_rpc = "off",
+        cluster_rpc = "off",  -- disable rpc
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -95,6 +95,21 @@ for _, strategy in helpers.each_strategy() do
 
         local res = assert(admin_client:get("/clustering/data-planes/" .. dp_node_id .. "/log-level"))
         assert.res_status(404, res)
+      end)
+
+      it("can not get DP RPC capability status", function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:get("/clustering/data-planes"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        for _, v in pairs(json.data) do
+          assert.equal(#v.rpc_capabilities, 0)
+        end
       end)
     end)
   end)

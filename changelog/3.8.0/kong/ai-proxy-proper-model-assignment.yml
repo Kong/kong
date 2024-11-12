@@ -1,5 +1,5 @@
 message: |
-  **AI-proxy**: Fixed an issue where setting OpenAI SDK model parameter "null" caused analytics
+  **AI-proxy-plugin**: Fixed a bug where setting OpenAI SDK model parameter "null" caused analytics 
   to not be written to the logging plugin(s).
 scope: Plugin
 type: bugfix

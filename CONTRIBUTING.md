@@ -451,7 +451,7 @@ assert.same(t1, t2)
 
 #### Writing changelog
 
-Please follow the guidelines in [Changelog Readme](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md)
+Please follow the guidelines in [Changelog Readme](https://github.com/Kong/kong/blob/master/changelog/README.md)
 on how to write a changelog for your change.
 
 [Back to TOC](#table-of-contents)

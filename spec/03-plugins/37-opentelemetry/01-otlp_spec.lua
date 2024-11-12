@@ -1,6 +1,6 @@
 require "spec.helpers"
-require "kong.plugins.opentelemetry.proto"
-local otlp = require "kong.plugins.opentelemetry.otlp"
+require "kong.observability.otlp.proto"
+local otlp = require "kong.observability.otlp"
 local pb = require "pb"
 
 local fmt = string.format
@@ -74,6 +74,18 @@ describe("Plugin: opentelemetry (otlp)", function()
     ngx.ctx.KONG_SPANS = nil
   end)
 
+  local function assert_contains_attribute(span, attr_name, attr_type)
+    assert.is_table(span.attributes)
+    for _, attr in ipairs(span.attributes) do
+      if attr.key == attr_name then
+        assert.is_table(attr.value)
+        assert.not_nil(attr.value[attr_type])
+        return
+      end
+    end
+    assert.fail(fmt("attribute %s not found", attr_name))
+  end
+
   it("encode/decode pb (traces)", function ()
     local N = 10000
 
@@ -112,6 +124,11 @@ describe("Plugin: opentelemetry (otlp)", function()
           int = i,
           bool = (i % 2 == 0 and true) or false,
           double = i / (N * 1000),
+          array = { "one", "two", "three" },
+          map = {
+            key1 = "value1",
+            key2 = "value2",
+          }
         },
       })
 
@@ -120,13 +137,26 @@ describe("Plugin: opentelemetry (otlp)", function()
       span:finish()
 
       insert(test_spans, table.clone(span))
-      span:release()
     end
 
     for _, test_span in ipairs(test_spans) do
       local pb_span = otlp.transform_span(test_span)
       local pb_data = pb_encode_span(pb_span)
       local decoded_span = pb_decode_span(pb_data)
+
+      if decoded_span.name == "full-span" then
+        assert_contains_attribute(decoded_span, "foo", "string_value")
+        assert_contains_attribute(decoded_span, "test", "bool_value")
+        assert_contains_attribute(decoded_span, "version", "double_value")
+
+      else
+        assert_contains_attribute(decoded_span, "str", "string_value")
+        assert_contains_attribute(decoded_span, "int", "double_value")
+        assert_contains_attribute(decoded_span, "bool", "bool_value")
+        assert_contains_attribute(decoded_span, "double", "double_value")
+        assert_contains_attribute(decoded_span, "array", "array_value")
+        assert_contains_attribute(decoded_span, "map", "kvlist_value")
+      end
 
       local ok, err = table_compare(pb_span, decoded_span)
       assert.is_true(ok, err)

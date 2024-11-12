@@ -1,5 +1,5 @@
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
 
 filegroup(
     name = "all_srcs",
@@ -34,8 +34,6 @@ configure_make(
         "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
-    out_include_dir = "include/libexpat",  # don't install headers
-    # out_lib_dir = "lib",
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libexpat.1.dylib",

@@ -1,8 +1,8 @@
 """A module defining the third party dependency WasmX"""
 
-load("//build:build_system.bzl", "git_or_local_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "git_or_local_repository")
 
 wasm_runtime_build_file = """
 filegroup(
@@ -42,12 +42,12 @@ wasm_runtimes = {
     },
     "wasmtime": {
         "linux": {
-            "x86_64": "c2fe82f4d707711523e57c2fc8f67d8fc0311fd3cf15050f811f88b30c254980",
-            "aarch64": "4593a131018a99df3aa16b41b1c63838cbbba9a36771c444a39761b25be73469",
+            "x86_64": "8eff9cf96c2fe86e5f6d55fd92a28fb7a48504fdea54cd588fa4d08f9a95eb36",
+            "aarch64": "8b9212ba5dd2742fdb5d97c49d0f9dce99a7a86cb43a135a1a70d6d355191560",
         },
         "macos": {
-            "x86_64": "2939cdf4eca5ce79c7e179c338c46700deb88bc7906da206a272143c3da0ca5b",
-            "aarch64": "cafff668144d15fdee57645918d06330aa05126b6a28b92b836eb69987842cd9",
+            "x86_64": "bb4778e3e34dbdf4f5cc3f2e508384f45670834276a1085b17558caa2ebfd737",
+            "aarch64": "b3c5903d8d01fa7a71e4cec86fd6b1c7d85e0f90915a49870e7954e4cba0f5b3",
         },
     },
 }

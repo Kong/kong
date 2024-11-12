@@ -1,0 +1,4 @@
+message: |
+  Added a new feature for Kong Manager that supports multiple domains, enabling dynamic cross-origin access for Admin API requests.
+type: feature
+scope: "Core"

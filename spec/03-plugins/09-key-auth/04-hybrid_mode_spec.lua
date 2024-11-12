@@ -1,7 +1,10 @@
 local helpers = require "spec.helpers"
 
+
+-- XXX FIXME: inc_sync = on flaky
+for _, inc_sync in ipairs { "off" } do
 for _, strategy in helpers.each_strategy({"postgres"}) do
-  describe("Plugin: key-auth (access) [#" .. strategy .. "] auto-expiring keys", function()
+  describe("Plugin: key-auth (access) [#" .. strategy .. " inc_sync=" .. inc_sync .. "] auto-expiring keys", function()
     -- Give a bit of time to reduce test flakyness on slow setups
     local ttl = 10
     local inserted_at
@@ -38,6 +41,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         cluster_listen = "127.0.0.1:9005",
         cluster_telemetry_listen = "127.0.0.1:9006",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync,
       }))
 
       assert(helpers.start_kong({
@@ -50,6 +54,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         cluster_control_plane = "127.0.0.1:9005",
         cluster_telemetry_endpoint = "127.0.0.1:9006",
         proxy_listen = "0.0.0.0:9002",
+        cluster_incremental_sync = inc_sync,
       }))
     end)
 
@@ -120,4 +125,5 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
     end)
   end)
-end
+end -- for _, strategy
+end -- for inc_sync

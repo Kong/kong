@@ -1,0 +1,3 @@
+message: "Fix error message for invalid retries variable"
+type: bugfix
+scope: PDK

@@ -935,9 +935,13 @@ local function load(path, custom_conf, opts)
   -- to make it suitable to be used as an origin in headers, we need to
   -- parse and reconstruct the admin_gui_url to ensure it only contains
   -- the scheme, host, and port
-  if conf.admin_gui_url then
-    local parsed_url = socket_url.parse(conf.admin_gui_url)
-    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
+  if conf.admin_gui_url and #conf.admin_gui_url > 0 then
+    local admin_gui_origin = {}
+    for _, url in ipairs(conf.admin_gui_url) do
+      local parsed_url = socket_url.parse(url)
+      table.insert(admin_gui_origin, parsed_url.scheme .. "://" .. parsed_url.authority)
+    end
+    conf.admin_gui_origin = admin_gui_origin
   end
 
   -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
@@ -949,10 +953,10 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  -- TODO: remove this when cluster_rpc is ready for GA
-  if conf.cluster_rpc then
-    log.warn("Cluster RPC has been forcibly disabled")
-    conf.cluster_rpc = "off"
+  if conf.cluster_incremental_sync and not conf.cluster_rpc then
+    log.warn("Cluster incremental sync has been forcibly disabled, " ..
+             "please enable cluster RPC.")
+    conf.cluster_incremental_sync = false
   end
 
   -- initialize the dns client, so the globally patched tcp.connect method

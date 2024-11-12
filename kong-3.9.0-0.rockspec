@@ -33,7 +33,7 @@ dependencies = {
   "lua-protobuf == 0.5.2",
   "lua-resty-healthcheck == 3.1.0",
   "lua-messagepack == 0.5.4",
-  "lua-resty-aws == 1.5.3",
+  "lua-resty-aws == 1.5.4",
   "lua-resty-openssl == 1.5.1",
   "lua-resty-gcp == 0.0.13",
   "lua-resty-counter == 0.2.1",
@@ -42,7 +42,7 @@ dependencies = {
   "lua-resty-session == 4.0.5",
   "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
-  "lua-resty-ljsonschema == 1.1.6-2",
+  "lua-resty-ljsonschema == 1.2.0",
   "lua-resty-snappy == 1.0-1",
   "lua-resty-ada == 1.1.0",
 }
@@ -88,7 +88,6 @@ build = {
     ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
-    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
@@ -98,6 +97,11 @@ build = {
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
+
+    ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
+    ["kong.clustering.services.sync.rpc"] = "kong/clustering/services/sync/rpc.lua",
+    ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
+    ["kong.clustering.services.sync.strategies.postgres"] = "kong/clustering/services/sync/strategies/postgres.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -177,6 +181,9 @@ build = {
 
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",
+
+    ["kong.tls.plugins.certificate"] = "kong/tls/plugins/certificate.lua",
+    ["kong.tls.plugins.sni_filter"] = "kong/tls/plugins/sni_filter.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
@@ -289,7 +296,6 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
-    ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
@@ -316,6 +322,7 @@ build = {
     ["kong.db.migrations.core.021_340_to_350"] = "kong/db/migrations/core/021_340_to_350.lua",
     ["kong.db.migrations.core.022_350_to_360"] = "kong/db/migrations/core/022_350_to_360.lua",
     ["kong.db.migrations.core.023_360_to_370"] = "kong/db/migrations/core/023_360_to_370.lua",
+    ["kong.db.migrations.core.024_380_to_390"] = "kong/db/migrations/core/024_380_to_390.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
@@ -590,8 +597,6 @@ build = {
     ["kong.plugins.opentelemetry.migrations.001_331_to_332"] = "kong/plugins/opentelemetry/migrations/001_331_to_332.lua",
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
-    ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
-    ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
     ["kong.plugins.opentelemetry.traces"] = "kong/plugins/opentelemetry/traces.lua",
     ["kong.plugins.opentelemetry.logs"] = "kong/plugins/opentelemetry/logs.lua",
     ["kong.plugins.opentelemetry.utils"] = "kong/plugins/opentelemetry/utils.lua",
@@ -665,6 +670,9 @@ build = {
     ["kong.observability.tracing.tracing_context"] = "kong/observability/tracing/tracing_context.lua",
 
     ["kong.observability.logs"] = "kong/observability/logs.lua",
+
+    ["kong.observability.otlp.proto"] = "kong/observability/otlp/proto.lua",
+    ["kong.observability.otlp"] = "kong/observability/otlp/init.lua",
 
     ["kong.timing"] = "kong/timing/init.lua",
     ["kong.timing.context"] = "kong/timing/context.lua",

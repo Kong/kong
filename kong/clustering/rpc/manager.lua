@@ -5,7 +5,6 @@ local _MT = { __index = _M, }
 local server = require("resty.websocket.server")
 local client = require("resty.websocket.client")
 local socket = require("kong.clustering.rpc.socket")
-local concentrator = require("kong.clustering.rpc.concentrator")
 local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local callbacks = require("kong.clustering.rpc.callbacks")
@@ -18,6 +17,7 @@ local cjson = require("cjson.safe")
 
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
@@ -49,21 +49,29 @@ function _M.new(conf, node_id)
     callbacks = callbacks.new(),
   }
 
-  self.concentrator = concentrator.new(self, kong.db)
+  if conf.role == "control_plane" then
+    self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
+    self.client_ips = {}  -- store DP node's ip addr
+  end
 
   return setmetatable(self, _MT)
 end
 
 
 function _M:_add_socket(socket, capabilities_list)
-  local sockets = self.clients[socket.node_id]
+  local node_id = socket.node_id
+
+  local sockets = self.clients[node_id]
   if not sockets then
-    assert(self.concentrator:_enqueue_subscribe(socket.node_id))
+    if self.concentrator then
+      assert(self.concentrator:_enqueue_subscribe(node_id))
+    end
+
     sockets = setmetatable({}, { __mode = "k", })
-    self.clients[socket.node_id] = sockets
+    self.clients[node_id] = sockets
   end
 
-  self.client_capabilities[socket.node_id] = {
+  self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
@@ -75,16 +83,21 @@ end
 
 
 function _M:_remove_socket(socket)
-  local sockets = assert(self.clients[socket.node_id])
+  local node_id = socket.node_id
+  local sockets = assert(self.clients[node_id])
 
   assert(sockets[socket])
 
   sockets[socket] = nil
 
   if table_isempty(sockets) then
-    self.clients[socket.node_id] = nil
-    self.client_capabilities[socket.node_id] = nil
-    assert(self.concentrator:_enqueue_unsubscribe(socket.node_id))
+    self.clients[node_id] = nil
+    self.client_capabilities[node_id] = nil
+
+    if self.concentrator then
+      self.client_ips[node_id] = nil
+      assert(self.concentrator:_enqueue_unsubscribe(node_id))
+    end
   end
 end
 
@@ -103,6 +116,9 @@ function _M:_find_node_and_check_capability(node_id, cap)
 
     return "local"
   end
+
+  -- now we are on cp side
+  assert(self.concentrator)
 
   -- does concentrator knows more about this client?
   local res, err = kong.db.clustering_data_planes:select({ id = node_id })
@@ -169,11 +185,21 @@ function _M:call(node_id, method, ...)
 
   local params = {...}
 
+  ngx_log(ngx_DEBUG,
+    "[rpc] calling ", method,
+    "(node_id: ", node_id, ")",
+    " via ", res == "local" and "local" or "concentrator"
+  )
+
   if res == "local" then
     res, err = self:_local_call(node_id, method, params)
+
     if not res then
+      ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
       return nil, err
     end
+
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
 
     return res
   end
@@ -185,13 +211,20 @@ function _M:call(node_id, method, ...)
   assert(fut:start())
 
   local ok, err = fut:wait(5)
+
   if err then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
+
     return nil, err
   end
 
   if ok then
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
+
     return fut.result
   end
+
+  ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", fut.error.message)
 
   return nil, fut.error.message
 end
@@ -255,6 +288,9 @@ function _M:handle_websocket()
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s, rpc_capabilities)
 
+  -- store DP's ip addr
+  self.client_ips[node_id] = ngx_var.remote_addr
+
   s:start()
   local res, err = s:join()
   self:_remove_socket(s)
@@ -265,6 +301,30 @@ function _M:handle_websocket()
   end
 
   return ngx_exit(ngx.OK)
+end
+
+
+function _M:try_connect(reconnection_delay)
+  ngx.timer.at(reconnection_delay or 0, function(premature)
+    self:connect(premature,
+                 "control_plane", -- node_id
+                 self.conf.cluster_control_plane, -- host
+                 "/v2/outlet",  -- path
+                 self.cluster_cert.cdata,
+                 self.cluster_cert_key)
+  end)
+end
+
+
+function _M:init_worker()
+  if self.conf.role == "data_plane" then
+    -- data_plane will try to connect to cp
+    self:try_connect()
+
+  else
+    -- control_plane
+    self.concentrator:start()
+  end
 end
 
 
@@ -344,9 +404,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   if not exiting() then
-    ngx.timer.at(reconnection_delay, function(premature)
-      self:connect(premature, node_id, host, path, cert, key)
-    end)
+    self:try_connect(reconnection_delay)
   end
 end
 
@@ -359,6 +417,11 @@ function _M:get_peers()
   end
 
   return res
+end
+
+
+function _M:get_peer_ip(node_id)
+  return self.client_ips[node_id]
 end
 
 

@@ -1,4 +1,4 @@
-require "kong.plugins.opentelemetry.proto"
+require "kong.observability.otlp.proto"
 local helpers = require "spec.helpers"
 local pb = require "pb"
 local pl_file = require "pl.file"

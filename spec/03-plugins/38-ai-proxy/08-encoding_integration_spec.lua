@@ -111,7 +111,7 @@ local plugin_conf = {
 }
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
-  describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
+  describe(PLUGIN_NAME .. ": (access) [#" .. strategy  .. "]", function()
     local client
 
     lazy_setup(function()

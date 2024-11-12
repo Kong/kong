@@ -695,8 +695,9 @@ function Kong.init()
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
 
-      if is_data_plane(config) then
-        require("kong.clustering.services.debug").init(kong.rpc)
+      if config.cluster_incremental_sync then
+        kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
+        kong.sync:init(kong.rpc)
       end
     end
   end
@@ -745,6 +746,11 @@ function Kong.init()
     if not is_control_plane(config) then
       assert(runloop.build_router("init"))
 
+      ok, err = wasm.check_enabled_filters()
+      if not ok then
+        error("[wasm]: " .. err)
+      end
+
       ok, err = runloop.set_init_versions_in_cache()
       if not ok then
         error("error setting initial versions for router and plugins iterator in cache: " ..
@@ -757,7 +763,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.dedicated_config_processing and is_data_plane(config) then
+  if config.dedicated_config_processing and is_data_plane(config) and not kong.sync then
     -- TODO: figure out if there is better value than 4096
     -- 4096 is for the cocurrency of the lua-resty-timer-ng
     local ok, err = process.enable_privileged_agent(4096)
@@ -874,11 +880,21 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  if process.type() == "privileged agent" then
-    if kong.clustering then
+  if kong.clustering then
+    -- full sync dp
+
+    local is_dp_full_sync_agent = process.type() == "privileged agent" and not kong.sync
+
+    if is_control_plane(kong.configuration) or -- CP needs to support both full and incremental sync
+      is_dp_full_sync_agent -- full sync is only enabled for DP if incremental sync is disabled
+    then
       kong.clustering:init_worker()
     end
-    return
+
+    -- DP full sync agent skips the rest of the init_worker
+    if is_dp_full_sync_agent then
+      return
+    end
   end
 
   kong.vault.init_worker()
@@ -910,6 +926,7 @@ function Kong.init_worker()
       end
 
     elseif declarative_entities then
+
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta,
@@ -974,24 +991,18 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  if kong.clustering then
-    kong.clustering:init_worker()
+  -- rpc and incremental sync
+  if is_http_module then
 
-    local cluster_tls = require("kong.clustering.tls")
+    -- init rpc connection
+    if kong.rpc then
+      kong.rpc:init_worker()
+    end
 
-    if kong.rpc and is_http_module then
-      if is_data_plane(kong.configuration) then
-        ngx.timer.at(0, function(premature)
-          kong.rpc:connect(premature,
-                           "control_plane", kong.configuration.cluster_control_plane,
-                           "/v2/outlet",
-                           cluster_tls.get_cluster_cert(kong.configuration).cdata,
-                           cluster_tls.get_cluster_cert_key(kong.configuration))
-        end)
-
-      else -- control_plane
-        kong.rpc.concentrator:start()
-      end
+    -- init incremental sync
+    -- should run after rpc init successfully
+    if kong.sync then
+      kong.sync:init_worker()
     end
   end
 
@@ -1032,6 +1043,10 @@ function Kong.ssl_certificate()
   kong.table.clear(ngx.ctx)
 end
 
+function Kong.ssl_client_hello()
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
+  ctx.KONG_PHASE = PHASES.client_hello
+end
 
 function Kong.preread()
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
@@ -1225,9 +1240,8 @@ function Kong.access()
 
 
   if ctx.buffered_proxying then
-    local version = ngx.req.http_version()
     local upgrade = var.upstream_upgrade or ""
-    if version < 2 and upgrade == "" then
+    if upgrade == "" then
       if has_timing then
         req_dyn_hook_run_hook("timing", "after:access")
       end
@@ -1235,11 +1249,7 @@ function Kong.access()
       return Kong.response()
     end
 
-    if version >= 2 then
-      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
-    else
-      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
-    end
+    ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
 
     ctx.buffered_proxying = nil
   end
@@ -1952,10 +1962,12 @@ end
 Kong.status_header_filter = Kong.admin_header_filter
 
 
-function Kong.serve_cluster_listener(options)
-  log_init_worker_errors()
+function Kong.serve_cluster_listener()
+  local ctx = ngx.ctx
 
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+  log_init_worker_errors(ctx)
+
+  ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.clustering:handle_cp_websocket()
 end
@@ -1966,10 +1978,12 @@ function Kong.stream_api()
 end
 
 
-function Kong.serve_cluster_rpc_listener(options)
-  log_init_worker_errors()
+function Kong.serve_cluster_rpc_listener()
+  local ctx = ngx.ctx
 
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+  log_init_worker_errors(ctx)
+
+  ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.rpc:handle_websocket()
 end

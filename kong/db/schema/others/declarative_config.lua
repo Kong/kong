@@ -39,15 +39,41 @@ local foreign_references = {}
 local foreign_children = {}
 
 
-function DeclarativeConfig.pk_string(schema, object)
-  if #schema.primary_key == 1 then
-    return tostring(object[schema.primary_key[1]])
-  else
-    local out = {}
-    for _, k in ipairs(schema.primary_key) do
-      insert(out, tostring(object[k]))
+do
+  local tb_nkeys = require("table.nkeys")
+  local buffer = require("string.buffer")
+
+  -- Generate a stable and unique string key from primary key defined inside
+  -- schema, supports both non-composite and composite primary keys
+  function DeclarativeConfig.pk_string(schema, object)
+    local primary_key = schema.primary_key
+    local count = tb_nkeys(primary_key)
+
+    if count == 1 then
+      return tostring(object[primary_key[1]])
     end
-    return concat(out, ":")
+
+    local buf = buffer.new()
+
+    -- The logic comes from get_cache_key_value(), which uses `id` directly to
+    -- extract foreign key.
+    -- TODO: extract primary key recursively using pk_string(), KAG-5750
+    for i = 1, count do
+      local k = primary_key[i]
+      local v = object[k]
+
+      if type(v) == "table" and schema.fields[k].type == "foreign" then
+        v = v.id
+      end
+
+      buf:put(tostring(v or ""))
+
+      if i < count then
+        buf:put(":")
+      end
+    end
+
+    return buf:get()
   end
 end
 
@@ -725,7 +751,7 @@ end
 
 
 local function insert_default_workspace_if_not_given(_, entities)
-  local default_workspace = find_default_ws(entities) or "0dc6f45b-8f8d-40d2-a504-473544ee190b"
+  local default_workspace = find_default_ws(entities) or constants.DECLARATIVE_DEFAULT_WORKSPACE_ID
 
   if not entities.workspaces then
     entities.workspaces = {}

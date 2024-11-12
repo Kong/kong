@@ -1,8 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 local reserved_words = require "kong.plugins.acme.reserved_words"
 local redis_schema = require "kong.tools.redis.schema"
-
-local tablex = require "pl.tablex"
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -41,7 +40,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { auth = {
     type = "string",
     len_min = 0,
-    translate_backwards = {'password'},
     deprecation = {
       replaced_with = { { path = { 'password' } } },
       message = "acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
@@ -52,7 +50,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { ssl_server_name = {
     type = "string",
-    translate_backwards = {'server_name'},
     deprecation = {
       replaced_with = { { path = { 'server_name' } } },
       message = "acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
@@ -64,7 +61,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { namespace = {
     type = "string",
     len_min = 0,
-    translate_backwards = {'extra_options', 'namespace'},
     deprecation = {
       replaced_with = { { path = { 'extra_options', 'namespace' } } },
       message = "acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
@@ -75,7 +71,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { scan_count = {
     type = "integer",
-    translate_backwards = {'extra_options', 'scan_count'},
     deprecation = {
       replaced_with = { { path = { 'extra_options', 'scan_count' } } },
       message = "acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
@@ -86,7 +81,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
 }
 
-local REDIS_STORAGE_SCHEMA = tablex.copy(redis_schema.config_schema.fields)
+local REDIS_STORAGE_SCHEMA = shallow_copy(redis_schema.config_schema.fields)
 table.insert(REDIS_STORAGE_SCHEMA, { extra_options = {
   description = "Custom ACME Redis options",
   type = "record",

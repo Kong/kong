@@ -216,8 +216,10 @@ end
 
 local function bootstrap_database(db)
   local schema_state = assert(db:schema_state())
+
   if schema_state.needs_bootstrap then
     assert(db:schema_bootstrap())
+    schema_state = assert(db:schema_state())
   end
 
   if schema_state.new_migrations then
@@ -277,6 +279,8 @@ end
 -- }
 local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   strategy = strategy or conf.database
+  conf.database = strategy  -- overwrite kong.configuration.database
+
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
   end
@@ -311,13 +315,9 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   assert(db:init_connector())
 
   if not skip_migrations then
+    -- Drop all schema and data
+    assert(db:schema_reset())
     bootstrap_database(db)
-  end
-
-  do
-    local database = conf.database
-    conf.database = strategy
-    conf.database = database
   end
 
   db:truncate("plugins")
