@@ -8,7 +8,8 @@
 local helpers = require "spec.helpers"
 
 
-describe("invalid config are rejected", function()
+for _, inc_sync in ipairs { "on", "off" } do
+describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
   describe("role is control_plane", function()
     it("can not disable admin_listen", function()
       local ok, err = helpers.start_kong({
@@ -18,6 +19,7 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         admin_listen = "off",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -32,6 +34,7 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_listen = "off",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -46,6 +49,7 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = "off",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -60,6 +64,7 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_mtls = "pki",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -76,6 +81,7 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         proxy_listen = "off",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -89,6 +95,7 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -104,7 +111,8 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        cluster_dp_labels = "w@:_a"
+        cluster_dp_labels = "w@:_a",
+        cluster_incremental_sync = inc_sync,
       })
 
       assert.False(ok)
@@ -120,7 +128,8 @@ describe("invalid config are rejected", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         proxy_listen = "0.0.0.0:" .. helpers.get_available_port(),
-        cluster_dp_labels = "Aa-._zZ_key:Aa-._zZ_val"
+        cluster_dp_labels = "Aa-._zZ_key:Aa-._zZ_val",
+        cluster_incremental_sync = inc_sync,
       })
       assert.True(ok)
       helpers.stop_kong("servroot2")
@@ -135,6 +144,7 @@ describe("invalid config are rejected", function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
+          cluster_incremental_sync = inc_sync,
         })
 
         assert.False(ok)
@@ -148,6 +158,7 @@ describe("invalid config are rejected", function()
           database = param[2],
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_incremental_sync = inc_sync,
         })
 
         assert.False(ok)
@@ -158,7 +169,7 @@ describe("invalid config are rejected", function()
 end)
 
 -- note that lagacy modes still error when CP exits
-describe("when CP exits before DP #flaky", function()
+describe("when CP exits before DP #flaky" .. " inc_sync=" .. inc_sync, function()
   local need_exit = true
 
   lazy_setup(function()
@@ -171,6 +182,7 @@ describe("when CP exits before DP #flaky", function()
       cluster_cert = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_listen = "127.0.0.1:9005",
+      cluster_incremental_sync = inc_sync,
     }))
     assert(helpers.start_kong({
       role = "data_plane",
@@ -180,6 +192,7 @@ describe("when CP exits before DP #flaky", function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       database = "off",
+      cluster_incremental_sync = inc_sync,
       -- EE [[
       -- vitals uses the clustering strategy by default, and it logs the exact
       -- same "error while receiving frame from peer" error strings that this
@@ -203,3 +216,4 @@ describe("when CP exits before DP #flaky", function()
     assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
+end -- for inc_sync
