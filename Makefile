@@ -115,6 +115,7 @@ build-openresty: check-bazel
 
 install-dev-rocks: build-venv
 	@. $(VENV) ;\
+	export PATH=$$PATH:$$HOME/.cargo/bin; \
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
