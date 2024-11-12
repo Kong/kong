@@ -197,15 +197,21 @@ function _GLOBAL.init_worker_events(kong_config)
             "negative impact on Kong's response latency and memory usage")
   end
 
+  local enable_privileged_agent = false
+  if kong_config.dedicated_config_processing and
+     kong_config.role == "data_plane" and
+     not kong.sync  -- for incremental sync there is no privileged_agent
+  then
+    enable_privileged_agent = true
+  end
+
   opts = {
     unique_timeout = 5,     -- life time of unique event data in lrucache
     broker_id = 0,          -- broker server runs in nginx worker #0
     listening = listening,  -- unix socket for broker listening
     max_queue_len = 1024 * 50,  -- max queue len for events buffering
     max_payload_len = max_payload_len,  -- max payload size in bytes
-    enable_privileged_agent = kong_config.dedicated_config_processing
-                          and kong_config.role == "data_plane"
-                           or false,
+    enable_privileged_agent = enable_privileged_agent,
   }
 
   worker_events = require "resty.events.compat"
