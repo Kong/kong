@@ -51,7 +51,7 @@ return {
           { http_timeout = { description = "HTTP timeout threshold in milliseconds when communicating with the OCSP server or downloading CRL.", type = "number",
             default = 30000,
           }, },
-          { cert_cache_ttl = { description = "The length of time in milliseconds between refreshes of the revocation check status cache.", type = "number",
+          { cert_cache_ttl = { description = "The length of time in seconds between refreshes of the revocation check status cache.", type = "number",
             default = 60000,
           }, },
           { send_ca_dn = { description = "Sends the distinguished names (DN) of the configured CA list in the TLS handshake message.", type = "boolean",
