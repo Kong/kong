@@ -129,7 +129,7 @@ return {
         return kong.response.exit(204)
       end
 
-      return kong.response.exit(501)
+      return kong.response.exit(400)
     end
   },
 }
