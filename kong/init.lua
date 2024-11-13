@@ -893,6 +893,7 @@ function Kong.init_worker()
         return
 
       end
+
       if not using_dedicated then
         -- full sync dp
         kong.clustering:init_worker()
