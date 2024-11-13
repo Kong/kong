@@ -4,6 +4,7 @@ local _M = {}
 local cjson = require("cjson.safe")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
+local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
 local table_new = require("table.new")
 local string_gsub = string.gsub
@@ -260,6 +261,37 @@ local transformers_from = {
                   and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       messages.usage = stats
+    
+    elseif response_table.message then
+      -- this is a "co.chat"
+
+      messages.choices[1] = {
+        index = 0,
+        message = {
+          role = "assistant",
+          content = response_table.message.tool_plan or response_table.message.content,
+          tool_calls = response_table.message.tool_calls
+        },
+        finish_reason = response_table.finish_reason,
+      }
+      messages.object = "chat.completion"
+      messages.model = model_info.name
+      messages.id = response_table.id
+
+      local stats = {
+        completion_tokens = response_table.usage
+                        and response_table.usage.billed_units
+                        and response_table.usage.billed_units.output_tokens,
+
+        prompt_tokens = response_table.usage
+                    and response_table.usage.billed_units
+                    and response_table.usage.billed_units.input_tokens,
+
+        total_tokens = response_table.usage
+                  and response_table.usage.billed_units
+                  and (response_table.usage.billed_units.output_tokens + response_table.usage.billed_units.input_tokens),
+      }
+      messages.usage = stats
 
     else -- probably a fault
       return nil, "'text' or 'generations' missing from cohere response body"
@@ -359,6 +391,10 @@ end
 
 function _M.to_format(request_table, model_info, route_type)
   ngx.log(ngx.DEBUG, "converting from kong type to ", model_info.provider, "/", route_type)
+
+  if request_table.tools then
+    return openai_driver.to_format(request_table, model_info, route_type)
+  end
 
   if route_type == "preserve" then
     -- do nothing
@@ -500,7 +536,7 @@ function _M.configure_request(conf)
     end
   end
 
-  -- if auth_param_location is "form", it will have already been set in a pre-request hook
+  -- if auth_param_location is "body", it will have already been set in a pre-request hook
   return true, nil
 end
 
