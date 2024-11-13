@@ -121,21 +121,21 @@ for _, strategy in helpers.each_strategy() do
 
     describe("ca_certificates:delete()", function()
       it("can delete ca certificate that is not being referenced", function()
-        local ok, err, err_t = db.ca_certificates:delete({ id = other_ca.id }) 
+        local ok, err, err_t = db.ca_certificates:delete({ id = other_ca.id })
         assert.is_nil(err)
         assert.is_nil(err_t)
         assert(ok)
       end)
 
       it("can't delete ca certificate that is referenced by services", function()
-        local ok, err = db.ca_certificates:delete({ id = ca1.id }) 
+        local ok, err = db.ca_certificates:delete({ id = ca1.id })
         assert.matches(fmt("ca certificate %s is still referenced by services (id = %s)", ca1.id, service.id),
                        err, nil, true)
         assert.is_nil(ok)
       end)
 
       it("can't delete ca certificate that is referenced by plugins", function()
-        local ok, err = db.ca_certificates:delete({ id = ca2.id }) 
+        local ok, err = db.ca_certificates:delete({ id = ca2.id })
         assert.matches(fmt("ca certificate %s is still referenced by plugins (id = %s)", ca2.id, plugin.id),
                        err, nil, true)
         assert.is_nil(ok)

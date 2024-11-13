@@ -358,6 +358,7 @@ local entity_checkers = {
         { fn = { type = "function" } },
         { run_with_missing_fields = { type = "boolean" } },
         { run_with_invalid_fields = { type = "boolean" } },
+        { run_with_vault_reference = { type = "boolean" } },
       }
     }
   },

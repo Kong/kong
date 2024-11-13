@@ -2,6 +2,7 @@ local Schema = require "kong.db.schema"
 local cjson  = require "cjson"
 local helpers = require "spec.helpers"
 local table_copy = require "kong.tools.table".deep_copy
+local is_reference = require "kong.pdk.vault".is_reference
 
 
 local SchemaKind = {
@@ -2757,6 +2758,88 @@ describe("schema", function()
       -- all fields are right
       local ok, err = Test:validate_update({
         aaa = "abcd",
+        bbb = "12345678",
+        ccc = 2
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
+    it("run an #referenceable entity check with flag 'run_with_vault_reference'", function ()
+      local Test = Schema.new({
+        fields = {
+          { aaa = { type = "string", len_min = 4, referenceable = true } },
+          { bbb = { type = "string", len_min = 8 } },
+          { ccc = { type = "number", between = { 0, 10 } } },
+        },
+        entity_checks = {
+          { custom_entity_check = {
+            run_with_missing_fields = true,
+            run_with_vault_reference = true,
+            field_sources = { "aaa", "bbb", "ccc" },
+            fn = function(entity)
+              if is_reference(entity.aaa) and (entity.bbb == nil or entity.bbb == ngx.null) then
+                return nil, "bbb cannot be nil when aaa is a reference"
+              end
+
+              return true
+            end,
+          } }
+        }
+      })
+
+      -- missing field 'aaa'
+      local ok, err = Test:validate_update({
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.is_nil(err["aaa"])
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      -- missing field 'aaa', others are right
+      local ok, err = Test:validate_update({
+        bbb = "12345678",
+        ccc = 2
+      })
+      assert.is_nil(err)
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- has field 'aaa' but not a reference
+      local ok, err = Test:validate_update({
+        aaa = "xxx",
+        bbb = "foo",
+        ccc = 42
+      })
+      assert.falsy(ok)
+      assert.match("length must be at least 4", err["aaa"])
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
+      assert.falsy(err["@entity"])
+
+      -- has field 'aaa' with correct value
+      local ok, err = Test:validate_update({
+        aaa = "xxxx",
+        bbb = "foobarfoobar",
+        ccc = 5
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- has field 'aaa' as a reference but missing 'bbb'
+      local ok, err = Test:validate_update({
+        aaa = "{vault://vault_prefix/test}",
+        ccc = 5
+      })
+      assert.falsy(ok)
+      assert.match("bbb cannot be nil when aaa is a reference", err["@entity"][1])
+
+      -- all fields are right
+      local ok, err = Test:validate_update({
+        aaa = "{vault://another_vault_prefix/test2}",
         bbb = "12345678",
         ccc = 2
       })

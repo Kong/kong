@@ -770,6 +770,7 @@ Schema.entity_checkers = {
   custom_entity_check = {
     run_with_missing_fields = false,
     run_with_invalid_fields = false,
+    run_with_vault_reference = false,
     field_sources = { "field_sources" },
     required_fields = { ["field_sources"] = true },
     fn = function(entity, arg)
@@ -1272,8 +1273,11 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
       all_nil = false
 
       -- Don't run if any of the values is a reference in a referenceable field
+      -- and the check is not allowed to run with vault references
       local field = get_schema_field(self, fname)
-      if field.type == "string" and field.referenceable and is_reference(value) then
+      if field.type == "string" and field.referenceable
+        and is_reference(value) and (not checker.run_with_vault_reference)
+        and (not arg.run_with_vault_reference) then
         return
       end
     end
