@@ -82,8 +82,6 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
   end)
 
   describe("sync works when dedicated_config_processing = " .. dedicated, function()
-    local route_id
-
     it("proxy on DP follows CP config", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
@@ -103,7 +101,6 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
 
-      route_id = json.id
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
