@@ -261,7 +261,7 @@ function _M:handle_cp_websocket(cert)
       cert_details = dp_cert_details,
       -- only update rpc_capabilities if dp_id is connected
       rpc_capabilities = rpc_peers and rpc_peers[dp_id] or {},
-    }, { ttl = purge_delay })
+    }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
     end
