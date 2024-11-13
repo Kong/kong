@@ -1,0 +1,55 @@
+name: Cherry Pick to remote repository
+on:
+  pull_request_target:
+    types: [closed, labeled]
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write # so it can comment
+  pull-requests: write # so it can create pull requests and labels
+jobs:
+  cross-repo-cherrypick:
+    name: Cherry pick to remote repository
+    runs-on: ubuntu-latest
+    # Only run when pull request is merged, or labeled
+    # or when a comment containing `/cherry-pick` is created
+    # and the author is a member, collaborator or owner
+    if: >
+      github.ref == 'refs/heads/master' &&
+      (
+        github.event_name == 'pull_request_target' &&
+        github.event.pull_request.merged
+      ) || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(fromJSON('["MEMBER", "COLLABORATOR", "OWNER"]'), github.event.comment.author_association) &&
+        startsWith(github.event.comment.body, '/cherry-pick')
+      )
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CHERRY_PICK_TOKEN }}
+      - name: Create backport pull requests
+        uses: jschmid1/cross-repo-cherrypick-action@9d2ead0043acba474373992c8175f2b8ffcdb31c #v1.2.0
+        id: cherry_pick
+        with:
+          token: ${{ secrets.CHERRY_PICK_TOKEN }}
+          pull_title: '[cherry-pick -> ${target_branch}] ${pull_title}'
+          merge_commits: 'skip'
+          trigger_label: 'cherry-pick kong-ee' # trigger based on this label
+          pull_description: |-
+            Automated cherry-pick to `${target_branch}`, triggered by a label in https://github.com/${owner}/${repo}/pull/${pull_number} :robot:.
+
+            ## Original description
+
+            ${pull_description}
+          upstream_repo: 'kong/kong-ee'
+          branch_map: |-
+            {
+              "master": "master"
+            }
+      - name: add label
+        if: steps.cherry_pick.outputs.was_successful == 'false'
+        uses: Kong/action-add-labels@81b0a07d6b2ec64d770be1ca94c31ec827418054
+        with:
+          labels: incomplete-cherry-pick

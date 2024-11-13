@@ -1,0 +1,3 @@
+message: Support JSON in Wasm filter configuration
+type: feature
+scope: Core

@@ -1,0 +1,102 @@
+name: PR Diff
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  pr_diff:
+    runs-on: ubuntu-latest
+
+    # Only run when a comment containing `/prdiff` is created
+    # and the author is a member, collaborator or owner
+    if: >
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(fromJSON('["MEMBER", "COLLABORATOR", "OWNER"]'), github.event.comment.author_association) &&
+        startsWith(github.event.comment.body, '/prdiff')
+      )
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Read comment
+      id: read_comment
+      env:
+        COMMENT_BODY: ${{ github.event.comment.body }}
+      run: |
+        if [[ "$COMMENT_BODY" =~ ^/prdiff[[:space:]]([^[:space:]]+) ]]; then
+          CMD_ARG=${BASH_REMATCH[1]}
+          echo "Using cmd argument: $CMD_ARG"
+          echo "other_pr=$CMD_ARG" >> $GITHUB_OUTPUT
+        else
+          echo "Comment does not match format: '/prdiff <pr_url>': ignoring"
+        fi
+
+    - name: Validate input
+      if: steps.read_comment.outputs.other_pr
+      id: validate_url
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const url = `${{ steps.read_comment.outputs.other_pr }}`;
+
+          try {
+            const validUrl = new URL(url);
+            
+            // Check if URL is a GitHub PR URL
+            const regex = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/\d+$/;
+            if (!regex.test(validUrl.href)) {
+              core.setFailed('The provided URL is not a valid GitHub PR URL.');
+            }
+          } catch (error) {
+            core.setFailed('The provided URL is not valid.');
+          }
+
+    - name: Get current PR URL
+      if: success() && steps.read_comment.outputs.other_pr
+      id: get_pr_url
+      run: |
+        PR_URL="https://github.com/${{ github.repository }}/pull/${{ github.event.issue.number }}"
+        echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
+
+    - name: Obtain diff with the PR provided
+      if: success() && steps.read_comment.outputs.other_pr
+      id: run_extension
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh extension install samugi/gh-compr --pin "3785a2d3270c52164fb1f7f63bd3c5df66bedead"
+        OTHER_PR=${{ steps.read_comment.outputs.other_pr }}
+        CURRENT_PR=${{ steps.get_pr_url.outputs.PR_URL }}
+
+        set +e
+        OUTPUT=$(gh compr $OTHER_PR $CURRENT_PR)
+        EXIT_STATUS=$?
+        if [ $EXIT_STATUS -ne 0 ]; then
+          echo "MESSAGE<<EOF"$'\n'"### :memo: PR Diff failed\n\n<pre>$OUTPUT</pre>\n"$'\n'EOF >> "$GITHUB_OUTPUT"
+        else
+          # escape to prepare for assignment to template literal
+          ESCAPED_OUTPUT=$(echo "$OUTPUT" | sed -e 's/`/\\`/g' -e 's/\$/\\\$/g')
+          echo "MESSAGE<<EOF"$'\n'"### :memo: Diff from $OTHER_PR\n<details>\n<summary>Click to expand</summary>\n\n\\\`\\\`\\\`diff\n$ESCAPED_OUTPUT\n\\\`\\\`\\\`\n</details>"$'\n'EOF >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Post result as comment in the PR
+      uses: actions/github-script@v7
+      if: steps.run_extension.outputs.MESSAGE
+      with:
+        script: |
+          const commentBody = `${{ steps.run_extension.outputs.MESSAGE }}`;
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: commentBody
+          })

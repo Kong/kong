@@ -1,0 +1,34 @@
+name: Label community PRs
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check_author:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Label Community PR
+        env:
+          GH_TOKEN: ${{ secrets.COMMUNITY_PRS_TOKEN }}
+          LABEL: "author/community"
+          BOTS: "team-gateway-bot app/dependabot"
+        run: |
+          set +e
+          for id in `gh pr list -S 'draft:false' -s 'open'|awk '{print $1}'`
+          do
+            name=`gh pr view $id --json author -q '.author.login'`
+            ret=`gh api orgs/Kong/members --paginate -q '.[].login'|grep "^${name}$"`
+            if [[ -z $ret && ! "${BOTS[@]}" =~ $name ]]; then
+              gh pr edit $id --add-label "${{ env.LABEL }}"
+            else
+              gh pr edit $id --remove-label "${{ env.LABEL }}"
+            fi
+          done

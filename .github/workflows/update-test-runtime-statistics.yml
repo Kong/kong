@@ -1,0 +1,35 @@
+name: Update test runtime statistics file for test scheduling
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "1 0 * * SAT"
+  # push rule below needed for testing only
+  push:
+    branches:
+      - feat/test-run-scheduler
+
+jobs:
+  process-statistics:
+    name: Download statistics from GitHub and combine them
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+
+      - name: Process statistics
+        uses: Kong/gateway-test-scheduler/analyze@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          workflow-name: build_and_test.yml
+          test-file-runtime-file: .ci/runtimes.json
+          artifact-name-regexp: "^test-runtime-statistics-\\d+$"
+
+      - name: Upload new runtimes file
+        uses: Kong/gh-storage/upload@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json

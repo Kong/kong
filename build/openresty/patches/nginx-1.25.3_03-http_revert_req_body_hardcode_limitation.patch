@@ -1,0 +1,320 @@
+diff --git a/bundle/ngx_lua-0.10.26/README.markdown b/bundle/ngx_lua-0.10.26/README.markdown
+index d6ec8c9..02eb9af 100644
+--- a/bundle/ngx_lua-0.10.26/README.markdown
++++ b/bundle/ngx_lua-0.10.26/README.markdown
+@@ -2722,8 +2722,6 @@ lua_need_request_body
+ 
+ **phase:** *depends on usage*
+ 
+-Due to the stream processing feature of HTTP/2 or HTTP/3, this configuration could potentially block the entire request. Therefore, this configuration is effective only when HTTP/2 or HTTP/3 requests send content-length header. For requests with versions lower than HTTP/2, this configuration can still be used without any problems.
+-
+ Determines whether to force the request body data to be read before running rewrite/access/content_by_lua* or not. The Nginx core does not read the client request body by default and if request body data is required, then this directive should be turned `on` or the [ngx.req.read_body](#ngxreqread_body) function should be called within the Lua code.
+ 
+ To read the request body data within the [$request_body](http://nginx.org/en/docs/http/ngx_http_core_module.html#var_request_body) variable,
+@@ -5426,8 +5424,6 @@ Reads the client request body synchronously without blocking the Nginx event loo
+  local args = ngx.req.get_post_args()
+ ```
+ 
+-Due to the stream processing feature of HTTP/2 or HTTP/3, this api could potentially block the entire request. Therefore, this api is effective only when HTTP/2 or HTTP/3 requests send content-length header. For requests with versions lower than HTTP/2, this api can still be used without any problems.
+-
+ If the request body is already read previously by turning on [lua_need_request_body](#lua_need_request_body) or by using other modules, then this function does not run and returns immediately.
+ 
+ If the request body has already been explicitly discarded, either by the [ngx.req.discard_body](#ngxreqdiscard_body) function or other modules, this function does not run and returns immediately.
+@@ -5643,7 +5639,7 @@ Returns a read-only cosocket object that wraps the downstream connection. Only [
+ 
+ In case of error, `nil` will be returned as well as a string describing the error.
+ 
+-Due to the streaming nature of HTTP2 and HTTP3, this API cannot be used when the downstream connection is HTTP2 and HTTP3.
++**Note:** This method will block while waiting for client request body to be fully received. Block time depends on the [client_body_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_timeout) directive and maximum body size specified by the [client_max_body_size](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size) directive. If read timeout occurs or client body size exceeds the defined limit, this function will not return and `408 Request Time-out` or `413 Request Entity Too Large` response will be returned to the client instead.
+ 
+ The socket object returned by this method is usually used to read the current request's body in a streaming fashion. Do not turn on the [lua_need_request_body](#lua_need_request_body) directive, and do not mix this call with [ngx.req.read_body](#ngxreqread_body) and [ngx.req.discard_body](#ngxreqdiscard_body).
+ 
+diff --git a/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki b/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
+index 305626c..0db9dd5 100644
+--- a/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
++++ b/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
+@@ -4741,8 +4741,7 @@ Returns a read-only cosocket object that wraps the downstream connection. Only [
+ 
+ In case of error, <code>nil</code> will be returned as well as a string describing the error.
+ 
+-Due to the streaming nature of HTTP2 and HTTP3, this API cannot be used when the downstream connection is HTTP2 and HTTP3.
+-
++'''Note:''' This method will block while waiting for client request body to be fully received. Block time depends on the [http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_timeout client_body_timeout] directive and maximum body size specified by the [http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size client_max_body_size] directive. If read timeout occurs or client body size exceeds the defined limit, this function will not return and <code>408 Request Time-out</code> or <code>413 Request Entity Too Large</code> response will be returned to the client instead.
+ The socket object returned by this method is usually used to read the current request's body in a streaming fashion. Do not turn on the [[#lua_need_request_body|lua_need_request_body]] directive, and do not mix this call with [[#ngx.req.read_body|ngx.req.read_body]] and [[#ngx.req.discard_body|ngx.req.discard_body]].
+ 
+ If any request body data has been pre-read into the Nginx core request header buffer, the resulting cosocket object will take care of this to avoid potential data loss resulting from such pre-reading.
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_accessby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_accessby.c
+index 2bf40aa..d40eab1 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_accessby.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_accessby.c
+@@ -137,26 +137,6 @@ ngx_http_lua_access_handler(ngx_http_request_t *r)
+     }
+ 
+     if (llcf->force_read_body && !ctx->read_body_done) {
+-
+-#if (NGX_HTTP_V2)
+-        if (r->main->stream && r->headers_in.content_length_n < 0) {
+-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+-                          "disable lua_need_request_body, since "
+-                          "http2 read_body may break http2 stream process");
+-            goto done;
+-        }
+-#endif
+-
+-#if (NGX_HTTP_V3)
+-        if (r->http_version == NGX_HTTP_VERSION_30
+-            && r->headers_in.content_length_n < 0)
+-        {
+-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+-                          "disable lua_need_request_body, since "
+-                          "http2 read_body may break http2 stream process");
+-            goto done;
+-        }
+-#endif
+         r->request_body_in_single_buf = 1;
+         r->request_body_in_persistent_file = 1;
+         r->request_body_in_clean_file = 1;
+@@ -174,12 +154,6 @@ ngx_http_lua_access_handler(ngx_http_request_t *r)
+         }
+     }
+ 
+-#if defined(NGX_HTTP_V3) || defined(NGX_HTTP_V2)
+-
+-done:
+-
+-#endif
+-
+     dd("calling access handler");
+     return llcf->access_handler(r);
+ }
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_contentby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_contentby.c
+index 2014d52..5e2ae55 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_contentby.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_contentby.c
+@@ -196,26 +196,6 @@ ngx_http_lua_content_handler(ngx_http_request_t *r)
+     }
+ 
+     if (llcf->force_read_body && !ctx->read_body_done) {
+-
+-#if (NGX_HTTP_V2)
+-        if (r->main->stream && r->headers_in.content_length_n < 0) {
+-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+-                          "disable lua_need_request_body, since "
+-                          "http2 read_body may break http2 stream process");
+-            goto done;
+-        }
+-#endif
+-
+-#if (NGX_HTTP_V3)
+-        if (r->http_version == NGX_HTTP_VERSION_30
+-            && r->headers_in.content_length_n < 0)
+-        {
+-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+-                          "disable lua_need_request_body, since "
+-                          "http2 read_body may break http2 stream process");
+-            goto done;
+-        }
+-#endif
+         r->request_body_in_single_buf = 1;
+         r->request_body_in_persistent_file = 1;
+         r->request_body_in_clean_file = 1;
+@@ -234,12 +214,6 @@ ngx_http_lua_content_handler(ngx_http_request_t *r)
+         }
+     }
+ 
+-#if defined(NGX_HTTP_V3) || defined(NGX_HTTP_V2)
+-
+-done:
+-
+-#endif
+-
+     dd("setting entered");
+ 
+     ctx->entered_content_phase = 1;
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_req_body.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_req_body.c
+index 61ab999..5d69735 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_req_body.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_req_body.c
+@@ -85,23 +85,6 @@ ngx_http_lua_ngx_req_read_body(lua_State *L)
+         return luaL_error(L, "request object not found");
+     }
+ 
+-/* http2 read body may break http2 stream process */
+-#if (NGX_HTTP_V2)
+-    if (r->main->stream && r->headers_in.content_length_n < 0) {
+-        return luaL_error(L, "http2 requests are not supported"
+-                          " without content-length header");
+-    }
+-#endif
+-
+-#if (NGX_HTTP_V3)
+-    if (r->http_version == NGX_HTTP_VERSION_30
+-        && r->headers_in.content_length_n < 0)
+-    {
+-        return luaL_error(L, "http3 requests are not supported"
+-                          " without content-length header");
+-    }
+-#endif
+-
+     r->request_body_in_single_buf = 1;
+     r->request_body_in_persistent_file = 1;
+     r->request_body_in_clean_file = 1;
+@@ -349,23 +332,6 @@ ngx_http_lua_ngx_req_get_body_file(lua_State *L)
+         return luaL_error(L, "request object not found");
+     }
+ 
+-/* http2 read body may break http2 stream process */
+-#if (NGX_HTTP_V2)
+-    if (r->main->stream && r->headers_in.content_length_n < 0) {
+-        return luaL_error(L, "http2 requests are not supported"
+-                          " without content-length header");
+-    }
+-#endif
+-
+-#if (NGX_HTTP_V3)
+-    if (r->http_version == NGX_HTTP_VERSION_30
+-        && r->headers_in.content_length_n < 0)
+-    {
+-        return luaL_error(L, "http3 requests are not supported"
+-                          " without content-length header");
+-    }
+-#endif
+-
+     ngx_http_lua_check_fake_request(L, r);
+ 
+     if (r->request_body == NULL || r->request_body->temp_file == NULL) {
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_rewriteby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_rewriteby.c
+index c56bba5..4109f28 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_rewriteby.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_rewriteby.c
+@@ -140,12 +140,7 @@ ngx_http_lua_rewrite_handler(ngx_http_request_t *r)
+         return NGX_DONE;
+     }
+ 
+-/* http2 read body may break http2 stream process */
+-#if (NGX_HTTP_V2)
+-    if (llcf->force_read_body && !ctx->read_body_done && !r->main->stream) {
+-#else
+     if (llcf->force_read_body && !ctx->read_body_done) {
+-#endif
+         r->request_body_in_single_buf = 1;
+         r->request_body_in_persistent_file = 1;
+         r->request_body_in_clean_file = 1;
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_server_rewriteby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_server_rewriteby.c
+index 997262e..be86069 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_server_rewriteby.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_server_rewriteby.c
+@@ -102,13 +102,8 @@ ngx_http_lua_server_rewrite_handler(ngx_http_request_t *r)
+         return NGX_DONE;
+     }
+ 
+-/* TODO: lscf do not have force_read_body
+- * http2 read body may break http2 stream process */
+-#if (NGX_HTTP_V2)
+-    if (llcf->force_read_body && !ctx->read_body_done && !r->main->stream) {
+-#else
++    /* TODO: lscf do not have force_read_body */
+     if (llcf->force_read_body && !ctx->read_body_done) {
+-#endif
+         r->request_body_in_single_buf = 1;
+         r->request_body_in_persistent_file = 1;
+         r->request_body_in_clean_file = 1;
+diff --git a/bundle/ngx_lua-0.10.26/t/023-rewrite/request_body.t b/bundle/ngx_lua-0.10.26/t/023-rewrite/request_body.t
+index 32c02e1..b867d3a 100644
+--- a/bundle/ngx_lua-0.10.26/t/023-rewrite/request_body.t
++++ b/bundle/ngx_lua-0.10.26/t/023-rewrite/request_body.t
+@@ -170,26 +170,3 @@ Expect: 100-Continue
+ http finalize request: 500, "/echo_body?" a:1, c:2
+ http finalize request: 500, "/echo_body?" a:1, c:0
+ --- log_level: debug
+---- skip_eval: 4:$ENV{TEST_NGINX_USE_HTTP3}
+-
+-
+-
+-=== TEST 9: test HTTP2 reading request body was disabled
+---- config
+-    location /echo_body {
+-        lua_need_request_body on;
+-        rewrite_by_lua_block {
+-            ngx.print(ngx.var.request_body or "nil")
+-        }
+-        content_by_lua 'ngx.exit(ngx.OK)';
+-    }
+---- http2
+---- request eval
+-"POST /echo_body
+-hello\x00\x01\x02
+-world\x03\x04\xff"
+---- more_headers
+-Content-Length:
+---- response_body eval
+-"nil"
+---- no_error_log
+diff --git a/bundle/ngx_lua-0.10.26/t/024-access/request_body.t b/bundle/ngx_lua-0.10.26/t/024-access/request_body.t
+index 0aa12c8..fa03195 100644
+--- a/bundle/ngx_lua-0.10.26/t/024-access/request_body.t
++++ b/bundle/ngx_lua-0.10.26/t/024-access/request_body.t
+@@ -170,26 +170,3 @@ Expect: 100-Continue
+ http finalize request: 500, "/echo_body?" a:1, c:2
+ http finalize request: 500, "/echo_body?" a:1, c:0
+ --- log_level: debug
+---- skip_eval: 4:$ENV{TEST_NGINX_USE_HTTP3}
+-
+-
+-
+-=== TEST 9: test HTTP2 reading request body was disabled
+---- config
+-    location /echo_body {
+-        lua_need_request_body on;
+-        access_by_lua_block {
+-            ngx.print(ngx.var.request_body or "nil")
+-        }
+-        content_by_lua 'ngx.exit(ngx.OK)';
+-    }
+---- http2
+---- request eval
+-"POST /echo_body
+-hello\x00\x01\x02
+-world\x03\x04\xff"
+---- more_headers
+-Content-Length:
+---- response_body eval
+-"nil"
+---- no_error_log
+diff --git a/bundle/ngx_lua-0.10.26/t/044-req-body.t b/bundle/ngx_lua-0.10.26/t/044-req-body.t
+index f4509e1..da3a28b 100644
+--- a/bundle/ngx_lua-0.10.26/t/044-req-body.t
++++ b/bundle/ngx_lua-0.10.26/t/044-req-body.t
+@@ -7,7 +7,7 @@ log_level('warn');
+ 
+ repeat_each(2);
+ 
+-plan tests => repeat_each() * (blocks() * 4 + 56);
++plan tests => repeat_each() * (blocks() * 4 + 58 );
+ 
+ #no_diff();
+ no_long_string();
+@@ -1774,23 +1774,3 @@ content length: 5
+ --- no_error_log
+ [error]
+ [alert]
+---- skip_eval: 4:$ENV{TEST_NGINX_USE_HTTP3}
+-
+-
+-
+-=== TEST 53: HTTP2 read buffered body was discarded
+---- config
+-    location = /test {
+-        content_by_lua_block {
+-            local err = pcall(ngx.req.read_body())
+-            ngx.say(err)
+-        }
+-    }
+---- http2
+---- request
+-POST /test
+-hello, world
+---- more_headers
+-Content-Length:
+---- error_code: 500
+---- error_log: http2 requests are not supported without content-length header

@@ -1,0 +1,10 @@
+{
+  "inputs": "<s>[INST] <<SYS>> You are a mathematician. <</SYS>> What is 1 + 2? [/INST] <s>[INST] Multiply that by 2 [/INST] <s>[INST] Why can't you divide by zero? [/INST]",
+  "parameters": {
+    "max_new_tokens": 512,
+    "temperature": 0.5,
+    "top_k": 40,
+    "top_p": 1,
+    "stream": false
+  }
+}

@@ -1,0 +1,3 @@
+message: "Bumped PCRE from the legacy libpcre 8.45 to libpcre2 10.43"
+type: dependency
+scope: Core

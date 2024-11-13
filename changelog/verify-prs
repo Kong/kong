@@ -1,0 +1,464 @@
+#!/usr/bin/env bash
+
+function warn () {
+    >&2 printf '%s\n' "$@"
+}
+
+function die () {
+    local st
+    st="$?"
+    case $2 in
+        (*[^0-9]*|'') : ;;
+        (*) st=$2 ;;
+    esac
+
+    if [[ -n "$1" ]] ; then warn "$1" ; fi
+
+    warn "WARNING: $0 is terminated" "output dir $out_dir removed"
+    rm -rf "$out_dir"
+
+    exit "$st"
+}
+
+function show_help () {
+    local prg
+    prg="${BASH_SOURCE[0]}"
+    cat <<-EOF
+Version: 0.1
+ Author: Zachary Hu (zhucac AT outlook.com)
+ Script: Compare between two revisions (e.g. tags and branches), and output
+         commits, PRs, PRs without changelog and CE PRs without CE2EE (experimental).
+
+         A PR should have an associated YML file under 'changelog/unreleased', otherwise
+         it is printed for verification.
+
+         Regarding CE2EE, if a CE PR has any cross-referenced EE PRs, it is regarded synced
+         to EE. If strict mode is enabled, associated EE PRs must contain keyword 'cherry'
+         in the title. If a CE PR is labelled with 'cherry-pick kong-ee', it is regarded synced
+         to EE. If a CE PR is not synced to EE, it is printed for verification.
+
+  Usage: ${prg} -h
+
+         -v, --verbose       Print debug info.
+
+         --strict-filter     When checking if a CE PR is synced to EE,
+                             more strict filters are applied.
+
+         --safe-mode         When checking if a CE PR is synced to EE,
+                             check one by one. This overrides '--bulk'.
+
+         --bulk N            Number of jobs ran concurrency. Default is '5'.
+                             Adjust this value to your CPU cores.
+
+         ${prg} --org-repo kong/kong --base-commit 3.4.2 --head-commit 3.4.3 [--strict-filter] [--bulk 5] [--safe-mode] [-v]
+
+         ORG_REPO=kong/kong BASE_COMMIT=3.4.2 HEAD_COMMIT=3.4.3 $prg
+EOF
+}
+
+function set_globals () {
+    ORG_REPO="${ORG_REPO:-kong/kong}"
+    BASE_COMMIT="${BASE_COMMIT:-3.4.2.0}"
+    HEAD_COMMIT="${HEAD_COMMIT:-3.4.2.1}"
+
+    verbose=0
+    STRICT_FILTER=0
+    SAFE_MODE=0
+
+    BULK=5
+    USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+
+    out_dir=$(mktemp -dt outputXXX)
+    commits_file="${out_dir}/commits.txt" ; touch "$commits_file"
+    prs_file="${out_dir}/prs.txt" ; touch "$prs_file"
+    prs_no_changelog_file="${out_dir}/prs_no_changelog.txt" ; touch "$prs_no_changelog_file"
+    prs_no_cherrypick_label_file="${out_dir}/prs_no_cherrypick_label.txt" ; touch "$prs_no_cherrypick_label_file"
+    prs_no_cross_reference_file="${out_dir}/prs_no_cross_reference.txt" ; touch "$prs_no_cross_reference_file"
+
+    num_of_commits=0
+
+    per_page=100
+    num_of_pages=1
+}
+
+function parse_args () {
+    while : ; do
+        case "$1" in
+            (-h|--help)
+                show_help
+                exit
+                ;;
+            (-v|--verbose)
+                set -x
+                verbose=$(( verbose + 1 ))
+                ;;
+            (--org-repo)
+                if [[ -n "$2" ]] ; then
+                    ORG_REPO="$2"
+                else
+                    die 'ERROR: "--org-repo" requires a non-empty option argument.' 2
+                fi
+                shift
+                ;;
+            (--org-repo=*)
+                ORG_REPO="${1#--org-repo=}"
+                if [[ -z "$ORG_REPO" ]] ; then
+                    die 'ERROR: "--org-repo=" requires a non-empty option argument followed immediately.' 2
+                fi
+                ;;
+            (--base-commit)
+                if [[ -n "$2" ]] ; then
+                    BASE_COMMIT="$2"
+                else
+                    die 'ERROR: "--base-commit" requires a non-empty option argument.' 2
+                fi
+                shift
+                ;;
+            (--base-commit=*)
+                BASE_COMMIT="${1#--base-commit=}"
+                if [[ -z "$BASE_COMMIT" ]] ; then
+                    die 'ERROR: "--base-commit=" requires a non-empty option argument followed immediately.' 2
+                fi
+                ;;
+            (--head-commit)
+                if [[ -n "$2" ]] ; then
+                    HEAD_COMMIT="$2"
+                else
+                    die 'ERROR: "--head-commit" requires a non-empty option argument.' 2
+                fi
+                shift
+                ;;
+            (--head-commit=*)
+                HEAD_COMMIT="${1#--base-commit=}"
+                if [[ -z "$HEAD_COMMIT" ]] ; then
+                    die 'ERROR: "--head-commit=" requires a non-empty option argument followed immediately.' 2
+                fi
+                ;;
+            (--bulk)
+                if [[ -n "$2" ]] ; then
+                    BULK="$2"
+                else
+                    die 'ERROR: "--bulk" requires a non-empty option argument.' 2
+                fi
+                shift
+                ;;
+            (--bulk=*)
+                BULK="${1#--bulk=}"
+                if [[ -z "$BULK" ]] ; then
+                    die 'ERROR: "--bulk=" requires a non-empty option argument followed immediately.' 2
+                fi
+                ;;
+            (--strict-filter)
+                STRICT_FILTER=1
+                ;;
+            (--safe-mode)
+                SAFE_MODE=1
+                ;;
+            (--)
+                shift
+                break
+                ;;
+            (-?*)
+                warn "WARNING: unknown option (ignored): $1"
+                ;;
+            (*)
+                break
+                ;;
+        esac
+
+        shift
+    done
+}
+
+function prepare_args () {
+    parse_args "$@"
+
+    if [[ -z "${ORG_REPO:+x}" ]] ; then
+        warn "WARNING: ORG_REPO must be provided"
+    fi
+    if [[ -z "${BASE_COMMIT:+x}" ]] ; then
+        warn "WARNING: BASE_COMMIT must be provided"
+    fi
+    if [[ -z "${HEAD_COMMIT:+x}" ]] ; then
+        warn "WARNING: HEAD_COMMIT must be provided"
+    fi
+    if [[ -z "${GITHUB_TOKEN:+x}" ]] ; then
+        warn "WARNING: GITHUB_TOKEN must be provided"
+    fi
+    if (( BULK >= 8 )) ; then
+        warn "WARNING: job concurrency $BULK is too high. May reach the rate limit of GitHub API."
+    fi
+    if (( SAFE_MODE )) ; then
+        warn "WARNING: safe mode enabled. Jobs takes longer time. Take a cup of coffee!"
+    fi
+
+    printf '%s\n' \
+           "Org Repo: ${ORG_REPO}" \
+           "Base Commit: ${BASE_COMMIT}" \
+           "Head Commit: ${HEAD_COMMIT}"
+}
+
+function get_num_pages_commits () {
+    local first_paged_response
+    first_paged_response=$( curl -i -sSL \
+                           -H "User-Agent: ${USER_AGENT}" \
+                           -H "Accept: application/vnd.github+json" \
+                           -H "X-GitHub-Api-Version: 2022-11-28" \
+                           -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                           "https://api.github.com/repos/${ORG_REPO}/compare/${BASE_COMMIT}...${HEAD_COMMIT}?page=1&per_page=${per_page}" )
+
+    local status_line
+    status_line=$( sed -n 1p <<< "$first_paged_response" )
+    if ! [[ "$status_line" =~ 200 ]] ; then
+        die 'ERROR: cannot request GitHub API. Please check arguments or try option "-v"' 2
+    fi
+
+    local link_header
+    link_header=$( awk '/^link:/ { print; exit }' <<< "$first_paged_response" )
+    IFS="," read -ra links <<< "$link_header"
+
+    local regex='[^_](page=([0-9]+)).*rel="last"'
+    for link in "${links[@]}" ; do
+        if [[ "$link" =~ $regex ]] ; then
+            num_of_pages="${BASH_REMATCH[2]}"
+            break
+        fi
+    done
+
+    num_of_commits=$( awk 'BEGIN { FS="[[:space:]]+|," } /total_commits/ { print $3; exit }' <<< "$first_paged_response" )
+    printf 'number of commits: %s\n' "$num_of_commits"
+
+}
+
+function get_commits_prs () {
+    get_num_pages_commits
+    printf 'number of pages: %s\n' "$num_of_pages"
+    printf 'commits per page: %s\n' "$per_page"
+
+    printf '%s\n' "" "PRs:"
+    for i in $( seq 1 "${num_of_pages}" ) ; do
+        mapfile -t < <( curl -sSL \
+                             -H "User-Agent: ${USER_AGENT}" \
+                             -H "Accept: application/vnd.github+json" \
+                             -H "X-GitHub-Api-Version: 2022-11-28" \
+                             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                             "https://api.github.com/repos/${ORG_REPO}/compare/${BASE_COMMIT}...${HEAD_COMMIT}?page=${i}&per_page=${per_page}" | \
+                            jq -r '.commits[].sha' )
+
+        local max_per_request=17
+        local BASE_Q="repo:${ORG_REPO}%20type:pr%20is:merged"
+        local full_q="$BASE_Q"
+        local count=0
+        for commit in "${MAPFILE[@]}" ; do
+            printf '%s\n' "${commit:0:9}" >> "$commits_file"
+
+            full_q="${full_q}%20${commit:0:9}"
+            count=$(( count+1 ))
+
+            if ! (( count % max_per_request )) || test "$count" -eq "$per_page" || test "$count" -eq "$num_of_commits" ; then
+                curl -sSL \
+                     -H "User-Agent: ${USER_AGENT}" \
+                     -H "Accept: application/vnd.github+json" \
+                     -H "X-GitHub-Api-Version: 2022-11-28" \
+                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                     "https://api.github.com/search/issues?q=$full_q" | jq -r '.items[].html_url' | tee -a "$prs_file"
+
+                full_q="$BASE_Q"
+            fi
+        done
+    done
+
+    sort -uo "$prs_file" "$prs_file"
+}
+
+function check_pr_changelog () {
+    if [[ -z "${1:+x}" ]] ; then return ; fi
+
+    local changelog_pattern="changelog/unreleased/kong*/*.yml"
+    local req_url="https://api.github.com/repos/${ORG_REPO}/pulls/PR_NUMBER/files"
+    local pr_number="${1##https*/}"
+    req_url="${req_url/PR_NUMBER/$pr_number}"
+    mapfile -t < <( curl -sSL \
+                         -H "User-Agent: ${USER_AGENT}" \
+                         -H "Accept: application/vnd.github+json" \
+                         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                         -H "X-GitHub-Api-Version: 2022-11-28" \
+                         "$req_url" | jq -r '.[].filename' )
+
+    local has_changelog=0
+    for f in "${MAPFILE[@]}" ; do
+        if [[ "$f" == ${changelog_pattern} ]] ; then has_changelog=1; break; fi
+    done
+    if ! (( has_changelog )) ; then echo "$1" | tee -a "$prs_no_changelog_file" ; fi
+}
+
+function check_changelog () {
+    echo -e "\nPRs without changelog:"
+    export ORG_REPO="$ORG_REPO" USER_AGENT="$USER_AGENT" prs_no_changelog_file="$prs_no_changelog_file"
+    export -f check_pr_changelog
+    if type parallel >/dev/null 2>&1 ; then
+        parallel -j "$BULK" check_pr_changelog <"$1"
+    else
+        warn "WARNING: GNU 'parallel' is not available, fallback to 'xargs'"
+        <"$1" xargs -P "$BULK" -n1 bash -c 'check_pr_changelog "$@"' _
+    fi
+    sort -uo "$prs_no_changelog_file" "$prs_no_changelog_file"
+}
+
+function check_cherrypick_label () {
+    if [[ -z "${1:+x}" ]] ; then return ; fi
+
+    local label_pattern="cherry-pick kong-ee"
+    local req_url="https://api.github.com/repos/${ORG_REPO}/issues/PR_NUMBER/labels"
+    local pr_number="${1##https://*/}"
+    req_url="${req_url/PR_NUMBER/$pr_number}"
+    mapfile -t < <( curl -sSL \
+                         -H "User-Agent: ${USER_AGENT}" \
+                         -H "Accept: application/vnd.github+json" \
+                         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                         -H "X-GitHub-Api-Version: 2022-11-28" \
+                         "$req_url" | jq -r '.[].name' )
+
+    local has_label=0
+    for l in "${MAPFILE[@]}" ; do
+        if [[ "$l" == ${label_pattern} ]] ; then has_label=1; break; fi
+    done
+    if ! (( has_label )) ; then echo "$1" | tee -a "$prs_no_cherrypick_label_file" ; fi
+}
+
+function check_cross_reference () {
+    if [[ -z "${1:+x}" ]] ; then return ; fi
+
+    local req_url="https://api.github.com/repos/${ORG_REPO}/issues/PR_NUMBER/timeline"
+    local pr_number="${1##https://*/}"
+    req_url="${req_url/PR_NUMBER/$pr_number}"
+
+    local first_paged_response
+    first_paged_response=$( curl -i -sSL \
+                                 -H "User-Agent: ${USER_AGENT}" \
+                                 -H "Accept: application/vnd.github+json" \
+                                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                 -H "X-GitHub-Api-Version: 2022-11-28" \
+                                 "${req_url}?page=1&per_page=${per_page}" )
+
+    local link_header
+    link_header=$( awk '/^link:/ { print; exit }' <<< "$first_paged_response" )
+    IFS="," read -ra links <<< "$link_header"
+
+    local count=1
+    local regex='[^_](page=([0-9]+)).*rel="last"'
+    for link in "${links[@]}" ; do
+        if [[ "$link" =~ $regex ]] ; then
+            count="${BASH_REMATCH[2]}"
+            break
+        fi
+    done
+
+    local jq_filter
+    if (( STRICT_FILTER )) ; then
+        jq_filter='.[].source.issue | select( (.pull_request != null) and
+                                              (.pull_request.html_url | ascii_downcase | contains("kong/kong-ee")) and
+                                              (.pull_request.merged_at != null) and
+                                              (.title | ascii_downcase | contains("cherry")) )
+                                    | [.pull_request.html_url, .title]
+                                    | @tsv'
+    else
+        jq_filter='.[].source.issue | select( (.pull_request != null) and
+                                              (.pull_request.html_url | ascii_downcase | contains("kong/kong-ee")) and
+                                              (.pull_request.merged_at != null) )
+                                    | [.pull_request.html_url, .title]
+                                    | @tsv'
+    fi
+
+    local has_ref=0
+    local json_response
+    for i in $( seq 1 "${count}" ) ; do
+        json_response=$( curl -sSL \
+                              -H "User-Agent: ${USER_AGENT}" \
+                              -H "Accept: application/vnd.github+json" \
+                              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                              -H "X-GitHub-Api-Version: 2022-11-28" \
+                              "${req_url}?page=${i}&per_page=${per_page}" )
+
+        if jq -er "$jq_filter" <<< "$json_response" >/dev/null
+        then
+            has_ref=1
+            break
+        fi
+    done
+
+    if ! (( has_ref )) ; then echo "$1" | tee -a "$prs_no_cross_reference_file" ; fi
+}
+
+function check_ce2ee () {
+    if [[ "$ORG_REPO" != "kong/kong" && "$ORG_REPO" != "Kong/kong" ]] ; then
+        warn "WARNING: only check CE2EE for CE repo. Skip $ORG_REPO"
+        return
+    fi
+
+    echo -e "\nPRs without 'cherry-pick kong-ee' label:"
+    export ORG_REPO="$ORG_REPO" USER_AGENT="$USER_AGENT" prs_no_cherrypick_label_file="$prs_no_cherrypick_label_file"
+    export -f check_cherrypick_label
+    if type parallel >/dev/null 2>&1 ; then
+        parallel -j "$BULK" check_cherrypick_label <"$1"
+    else
+        warn "WARNING: GNU 'parallel' is not available, fallback to 'xargs'"
+        <"$1" xargs -P "$BULK" -n1 bash -c 'check_cherrypick_label "$@"' _
+    fi
+    sort -uo "$prs_no_cherrypick_label_file" "$prs_no_cherrypick_label_file"
+
+    echo -e "\nPRs without cross-referenced EE PRs:"
+    if (( SAFE_MODE )) ; then
+        local in_fd
+        if [[ -f "$1" ]] ; then
+            : {in_fd}<"$1"
+        else
+            : {in_fd}<&0
+            warn "WARNING: $1 not a valid file. Read from stdin -"
+        fi
+
+        while read -r -u "$in_fd" ; do
+            check_cross_reference "$REPLY"
+        done
+
+        : ${in_fd}<&-
+    else
+        export ORG_REPO="$ORG_REPO" USER_AGENT="$USER_AGENT" STRICT_FILTER="$STRICT_FILTER" prs_no_cross_reference_file="$prs_no_cross_reference_file"
+        export -f check_cross_reference
+        if type parallel >/dev/null 2>&1 ; then
+            parallel -j "$BULK" check_cross_reference <"$1"
+        else
+            warn "WARNING: GNU 'parallel' is not available, fallback to 'xargs'"
+            <"$1" xargs -P "$BULK" -n1 bash -c 'check_cross_reference "$@"' _
+        fi
+    fi
+    sort -uo "$prs_no_cross_reference_file" "$prs_no_cross_reference_file"
+}
+
+function main () {
+    set -Eeo pipefail
+    trap die ERR SIGABRT SIGQUIT SIGHUP SIGINT
+
+    set_globals
+    prepare_args "$@"
+
+    printf '%s\n' "" "comparing between '${BASE_COMMIT}' and '${HEAD_COMMIT}'"
+
+    get_commits_prs
+
+    check_changelog "$prs_file"
+
+    check_ce2ee "$prs_file"
+
+    printf '%s\n' "" \
+           "Commits: $commits_file" \
+           "PRs: $prs_file" \
+           "PRs without changelog: $prs_no_changelog_file" \
+           "CE PRs without cherry-pick label: $prs_no_cherrypick_label_file" \
+           "CE PRs without referenced EE cherry-pick PRs: $prs_no_cross_reference_file" \
+           "" "Remeber to remove $out_dir"
+
+    trap '' EXIT
+}
+
+if (( "$#" )) ; then main "$@" ; else show_help ; fi

@@ -1,0 +1,41 @@
+From 6c00bd4765ec5f7bf090a2c6424d11845fc4ab72 Mon Sep 17 00:00:00 2001
+From: Liu Wei <375636559@qq.com>
+Date: Thu, 11 Apr 2024 20:54:19 +0800
+Subject: [PATCH] bugfix: the connection won't be closed normally when set
+ arg[1] = "" before arg[2] = true.
+
+---
+ src/ngx_http_lua_bodyfilterby.c | 18 ++++++++++++--
+ t/082-body-filter-2.t           | 44 +++++++++++++++++++++++++++++++++
+ 2 files changed, 60 insertions(+), 2 deletions(-)
+
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_bodyfilterby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_bodyfilterby.c
+index 78e3b5c2d6..c0484c8de0 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_bodyfilterby.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_bodyfilterby.c
+@@ -532,9 +532,23 @@ ngx_http_lua_body_filter_param_set(lua_State *L, ngx_http_request_t *r,
+         if (last) {
+             ctx->seen_last_in_filter = 1;
+ 
+-            /* the "in" chain cannot be NULL and we set the "last_buf" or
+-             * "last_in_chain" flag in the last buf of "in" */
++            /* the "in" chain cannot be NULL except that we set arg[1] = ""
++             * before arg[2] = true
++             */
++            if (in == NULL) {
++                in = ngx_http_lua_chain_get_free_buf(r->connection->log,
++                                                     r->pool,
++                                                     &ctx->free_bufs, 0);
++                if (in == NULL) {
++                    return luaL_error(L, "no memory");
++                }
++
++                in->buf->tag = (ngx_buf_tag_t) &ngx_http_lua_body_filter;
++                lmcf->body_filter_chain = in;
++            }
+ 
++            /* we set the "last_buf" or "last_in_chain" flag
++             * in the last buf of "in" */
+             for (cl = in; cl; cl = cl->next) {
+                 if (cl->next == NULL) {
+                     if (r == r->main) {

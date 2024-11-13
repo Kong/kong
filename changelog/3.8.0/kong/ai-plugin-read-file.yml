@@ -1,0 +1,3 @@
+message: "allow AI plugin to read request from buffered file" 
+type: feature
+scope: "Plugin"

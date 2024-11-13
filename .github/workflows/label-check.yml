@@ -1,0 +1,13 @@
+name: Pull Request Label Checker
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+jobs:
+  check-labels:
+    name: prevent merge labels
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: backport master label found
+      run: echo "Please do not backport into master, instead, create a PR targeting master and backport from it instead."; exit 1
+      if: ${{ contains(github.event.*.labels.*.name, 'backport master') }}

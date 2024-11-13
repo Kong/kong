@@ -1,0 +1,3 @@
+message: "**Rate-limiting-Plugin**: Fix a bug where the return values from `get_redis_connection()` are mistaken."
+scope: Plugin
+type: bugfix

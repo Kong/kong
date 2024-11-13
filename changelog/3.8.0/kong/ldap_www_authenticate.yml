@@ -1,0 +1,3 @@
+message: "**ldap-auth**: Add WWW-Authenticate headers to all 401 responses."
+type: bugfix
+scope: Plugin

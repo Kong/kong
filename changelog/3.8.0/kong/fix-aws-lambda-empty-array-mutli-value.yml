@@ -1,0 +1,3 @@
+message: "**AWS-Lambda**: Fixed an issue that the plugin does not work with multiValueHeaders defined in proxy integration and legacy empty_arrays_mode."
+type: bugfix
+scope: Plugin

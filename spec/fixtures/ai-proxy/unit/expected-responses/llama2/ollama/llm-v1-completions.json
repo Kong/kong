@@ -1,0 +1,15 @@
+{
+  "choices": [
+    {
+      "index": 0,
+      "text": "You cannot divide by zero because it is not a valid operation in mathematics."
+    }
+  ],
+  "object": "text_completion",
+  "model": "llama2",
+  "usage": {
+    "completion_tokens": 139,
+    "prompt_tokens": 130,
+    "total_tokens": 269
+  }
+}

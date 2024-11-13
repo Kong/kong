@@ -1,0 +1,20 @@
+{
+  "generation_id": "f8aabbeb-f745-4e9b-85b1-71a3269620d9",
+  "meta": {
+      "api_version": {
+          "version": "1"
+      },
+      "billed_units": {
+          "input_tokens": 81,
+          "output_tokens": 258
+      }
+  },
+  "response_id": "3ed9cd6c-afcc-4591-a4d3-5745ba88922e",
+  "text": "You cannot divide by zero because it is not a valid operation in mathematics.",
+  "token_count": {
+      "billed_tokens": 339,
+      "prompt_tokens": 102,
+      "response_tokens": 258,
+      "total_tokens": 360
+  }
+}

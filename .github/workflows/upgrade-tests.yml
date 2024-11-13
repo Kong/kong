@@ -1,0 +1,57 @@
+name: Upgrade Tests
+
+on:
+  pull_request:
+    paths:
+    - 'scripts/upgrade-tests/**'
+    - 'kong/db/migrations/**'
+    - 'spec/05-migration/**'
+    - 'kong/enterprise_edition/db/migrations/**'
+    - '.github/workflows/upgrade-tests.yml'
+    - 'kong/plugins/*/migrations/**'
+    - 'plugins-ee/**/migrations/**'
+  push:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    branches:
+    - master
+    - release/*
+    - test-please/*
+  workflow_dispatch:
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+env:
+  GH_TOKEN: ${{ github.token }}
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
+
+  upgrade-test:
+    name: Run migration tests
+    runs-on: ubuntu-22.04
+    needs: build
+
+    steps:
+      - name: Clone Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Lookup build cache
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}
+          key: ${{ needs.build.outputs.cache-key }}
+
+      - name: Run Upgrade Tests
+        run: |
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/kong-dev-venv.sh

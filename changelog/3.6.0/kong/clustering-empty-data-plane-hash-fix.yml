@@ -1,0 +1,3 @@
+message: Fix a bug causing data-plane status updates to fail when an empty PING frame is received from a data-plane
+type: bugfix
+scope: Clustering

@@ -1,0 +1,3 @@
+message: Add support for optional Wasm filter configuration schemas
+type: feature
+scope: Core

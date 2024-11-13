@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue in the internal caching logic where mutexes could get never unlocked.
+type: bugfix
+scope: Core

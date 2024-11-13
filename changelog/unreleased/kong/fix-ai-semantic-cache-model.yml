@@ -1,0 +1,4 @@
+message: "Fixed an bug that AI semantic cache can't use request provided models"
+type: bugfix
+scope: Plugin
+

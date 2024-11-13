@@ -1,0 +1,3 @@
+message: "**AWS-Lambda**: Fixed an issue where the latency attributed to AWS Lambda API requests was counted as part of the latency in Kong."
+type: bugfix
+scope: Plugin

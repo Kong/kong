@@ -1,0 +1,5 @@
+message: |
+  Kong AI Gateway (AI Proxy and associated plugin family) now supports 
+  all AWS Bedrock "Converse API" models.
+type: feature
+scope: Plugin

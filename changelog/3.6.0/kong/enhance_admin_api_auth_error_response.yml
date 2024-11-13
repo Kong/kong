@@ -1,0 +1,3 @@
+message: "Enhance error responses for authentication failures in the Admin API"
+type: bugfix
+scope: Plugin

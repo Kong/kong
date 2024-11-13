@@ -1,0 +1,52 @@
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
+index 2be233c..f364448 100644
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
+@@ -8,6 +8,9 @@
+ #include <ngx_config.h>
+ #include <ngx_core.h>
+ #include <ngx_http.h>
++#if (NGX_HTTP_LUA_KONG)
++#include <ngx_http_lua_kong_module.h>
++#endif
+ 
+ 
+ #if (NGX_HTTP_CACHE)
+@@ -1714,7 +1717,14 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
+         return;
+     }
+ 
++
++#if (NGX_HTTP_LUA_KONG)
++    if (u->conf->ssl_server_name
++        || ngx_http_lua_kong_get_upstream_ssl_verify(r, u->conf->ssl_verify))
++    {
++#else
+     if (u->conf->ssl_server_name || u->conf->ssl_verify) {
++#endif
+         if (ngx_http_upstream_ssl_name(r, u, c) != NGX_OK) {
+             ngx_http_upstream_finalize_request(r, u,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+@@ -1754,6 +1764,10 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
+         }
+     }
+ 
++#if (NGX_HTTP_LUA_KONG)
++    ngx_http_lua_kong_set_upstream_ssl(r, c);
++#endif
++
+     r->connection->log->action = "SSL handshaking to upstream";
+ 
+     rc = ngx_ssl_handshake(c);
+@@ -1803,7 +1817,11 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
+ 
+     if (c->ssl->handshaked) {
+ 
++#if (NGX_HTTP_LUA_KONG)
++        if (ngx_http_lua_kong_get_upstream_ssl_verify(r, u->conf->ssl_verify)) {
++#else
+         if (u->conf->ssl_verify) {
++#endif
+             rc = SSL_get_verify_result(c->ssl->connection);
+ 
+             if (rc != X509_V_OK) {

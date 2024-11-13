@@ -1,0 +1,6 @@
+exports_files(
+    [
+        "BUILD.openresty.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)

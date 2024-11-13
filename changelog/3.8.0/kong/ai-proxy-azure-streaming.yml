@@ -1,0 +1,5 @@
+message: |
+  **AI-proxy-plugin**: Fixed a bug where certain Azure models would return partial tokens/words 
+  when in response-streaming mode.
+scope: Plugin
+type: bugfix

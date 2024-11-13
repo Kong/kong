@@ -1,0 +1,46 @@
+.DS_Store
+.vagrant/
+.buildpath
+.project
+.idea
+.env
+.vscode
+.VSCodeCounter
+
+servroot*
+mockserver
+
+# kong
+nginx_tmp/
+kong*.yml
+
+# luacov
+luacov.*
+/doc
+
+# autodoc
+autodoc/output
+
+# ldoc
+spec/docs
+
+kong-build-tools
+bin/grpcurl
+
+*.so
+*.bak
+*.rock
+
+worktree/
+bin/bazel
+bin/h2client
+
+# wasm
+*.wasm
+spec/fixtures/proxy_wasm_filters/build
+spec/fixtures/proxy_wasm_filters/target
+
+# bazel
+bazel-*
+# remove it after migrating from WORKSPACE to Bzlmod
+MODULE.bazel.lock

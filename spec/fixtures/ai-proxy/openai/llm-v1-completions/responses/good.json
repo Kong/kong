@@ -1,0 +1,19 @@
+{
+  "choices": [
+      {
+          "finish_reason": "length",
+          "index": 0,
+          "logprobs": null,
+          "text": "\n\nI am a language model AI created by OpenAI. I can answer questions"
+      }
+  ],
+  "created": 1701967000,
+  "id": "cmpl-8TBeaJVQIhE9kHEJbk1RnKzgFxIqN",
+  "model": "gpt-3.5-turbo-instruct",
+  "object": "text_completion",
+  "usage": {
+      "completion_tokens": 16,
+      "prompt_tokens": 4,
+      "total_tokens": 20
+  }
+}

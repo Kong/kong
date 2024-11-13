@@ -1,0 +1,20 @@
+[
+  {
+    "data": "{\"body\":\"{\\\"p\\\":\\\"abcdefghijkl\\\",\\\"role\\\":\\\"assistant\\\"}\",\"headers\":{\":event-type\":\"messageStart\",\":content-type\":\"application\/json\",\":message-type\":\"event\"}}"
+  },
+  {
+    "data": "{\"body\":\"{\\\"contentBlockIndex\\\":0,\\\"delta\\\":{\\\"text\\\":\\\"Hello! Relativity is a set of physical theories that are collectively known as special relativity and general relativity, proposed by Albert Einstein. These theories revolutionized our understanding of space, time, and gravity, and have had far-reach\\\"},\\\"p\\\":\\\"abcd\\\"}\",\"headers\":{\":event-type\":\"contentBlockDelta\",\":content-type\":\"application\\/json\",\":message-type\":\"event\"}}"
+  },
+  {
+    "data": "{\"headers\":{\":event-type\":\"contentBlockDelta\",\":message-type\":\"event\",\":content-type\":\"application\\/json\"},\"body\":\"{\\\"contentBlockIndex\\\":0,\\\"delta\\\":{\\\"text\\\":\\\"ing implications in various scientific and technological fields. Special relativity applies to all physical phenomena in the absence of gravity, while general relativity explains the law of gravity and its effects on the nature of space, time, and matter.\\\"},\\\"p\\\":\\\"abcdefghijk\\\"}\"}"
+  },
+  {
+    "data": "{\"body\":\"{\\\"contentBlockIndex\\\":0,\\\"p\\\":\\\"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQR\\\"}\",\"headers\":{\":content-type\":\"application\\/json\",\":event-type\":\"contentBlockStop\",\":message-type\":\"event\"}}"
+  },
+  {
+    "data": "{\"body\":\"{\\\"p\\\":\\\"abcdefghijklm\\\",\\\"stopReason\\\":\\\"end_turn\\\"}\",\"headers\":{\":message-type\":\"event\",\":content-type\":\"application\\/json\",\":event-type\":\"messageStop\"}}"
+  },
+  {
+    "data": "{\"headers\":{\":message-type\":\"event\",\":content-type\":\"application\\/json\",\":event-type\":\"metadata\"},\"body\":\"{\\\"metrics\\\":{\\\"latencyMs\\\":2613},\\\"p\\\":\\\"abcdefghijklmnopqrstuvwxyzABCDEF\\\",\\\"usage\\\":{\\\"inputTokens\\\":9,\\\"outputTokens\\\":97,\\\"totalTokens\\\":106}}\"}"
+  }
+]

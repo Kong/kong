@@ -1,0 +1,26 @@
+local schema_def = require "kong.plugins.hmac-auth.schema"
+local v = require("spec.helpers").validate_plugin_config_schema
+
+describe("Plugin: hmac-auth (schema)", function()
+  it("accepts empty config", function()
+    local ok, err = v({}, schema_def)
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+  end)
+  it("accepts correct clock skew", function()
+    local ok, err = v({ clock_skew = 10 }, schema_def)
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+  end)
+  it("errors with negative clock skew", function()
+    local ok, err = v({ clock_skew = -10 }, schema_def)
+    assert.is_falsy(ok)
+    assert.equal("value must be greater than 0", err.config.clock_skew)
+  end)
+  it("errors with wrong algorithm", function()
+    local ok, err = v({ algorithms = { "sha1024" } }, schema_def)
+    assert.is_falsy(ok)
+    assert.equal("expected one of: hmac-sha1, hmac-sha256, hmac-sha384, hmac-sha512",
+                 err.config.algorithms[1])
+  end)
+end)

@@ -1,0 +1,5 @@
+message: >
+  Tracing Sampling Rate can now be set via the `config.sampling_rate` property
+  of the OpenTelemetry plugin instead of it just being a global setting for the gateway.
+type: feature
+scope: Plugin

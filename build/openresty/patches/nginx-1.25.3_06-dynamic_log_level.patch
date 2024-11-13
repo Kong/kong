@@ -1,0 +1,133 @@
+diff --git a/bundle/nginx-1.25.3/src/core/ngx_log.c b/bundle/nginx-1.25.3/src/core/ngx_log.c
+index eb7a989..0862d4d 100644
+--- a/bundle/nginx-1.25.3/src/core/ngx_log.c
++++ b/bundle/nginx-1.25.3/src/core/ngx_log.c
+@@ -171,8 +171,12 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+     debug_connection = (log->log_level & NGX_LOG_DEBUG_CONNECTION) != 0;
+
+     while (log) {
+-
++#if (NGX_HTTP_LUA_KONG)
++        if (ngx_http_lua_kong_get_dynamic_log_level(log->log_level) < level &&
++            !debug_connection) {
++#else
+         if (log->log_level < level && !debug_connection) {
++#endif
+             break;
+         }
+
+@@ -230,7 +234,11 @@ ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+ {
+     va_list  args;
+
++#if (NGX_HTTP_LUA_KONG)
++    if (ngx_http_lua_kong_get_dynamic_log_level(log->log_level) >= level) {
++#else
+     if (log->log_level >= level) {
++#endif
+         va_start(args, fmt);
+         ngx_log_error_core(level, log, err, fmt, args);
+         va_end(args);
+diff --git a/bundle/nginx-1.25.3/src/core/ngx_log.h b/bundle/nginx-1.25.3/src/core/ngx_log.h
+index da81cf0..8fd3348 100644
+--- a/bundle/nginx-1.25.3/src/core/ngx_log.h
++++ b/bundle/nginx-1.25.3/src/core/ngx_log.h
+@@ -72,6 +72,13 @@ struct ngx_log_s {
+     ngx_log_t           *next;
+ };
+
++#if (NGX_HTTP_LUA_KONG)
++ngx_uint_t
++ngx_http_lua_kong_get_dynamic_log_level(ngx_uint_t current_log_level);
++#else
++#define ngx_http_lua_kong_get_dynamic_log_level(expr) (expr)
++#endif
++
+
+ #ifndef NGX_MAX_ERROR_STR
+ #define NGX_MAX_ERROR_STR   4096
+@@ -85,13 +92,13 @@ struct ngx_log_s {
+ #define NGX_HAVE_VARIADIC_MACROS  1
+
+ #define ngx_log_error(level, log, ...)                                        \
+-    if ((log)->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) >= level) ngx_log_error_core(level, log, __VA_ARGS__)
+
+ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+     const char *fmt, ...);
+
+ #define ngx_log_debug(level, log, ...)                                        \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_error_core(NGX_LOG_DEBUG, log, __VA_ARGS__)
+
+ /*********************************/
+@@ -101,13 +108,13 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+ #define NGX_HAVE_VARIADIC_MACROS  1
+
+ #define ngx_log_error(level, log, args...)                                    \
+-    if ((log)->log_level >= level) ngx_log_error_core(level, log, args)
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) >= level) ngx_log_error_core(level, log, args)
+
+ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+     const char *fmt, ...);
+
+ #define ngx_log_debug(level, log, args...)                                    \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level) ngx_log_error_core(level, log, args)
+         ngx_log_error_core(NGX_LOG_DEBUG, log, args)
+
+ /*********************************/
+@@ -170,43 +177,43 @@ void ngx_cdecl ngx_log_debug_core(ngx_log_t *log, ngx_err_t err,
+ #else /* no variadic macros */
+
+ #define ngx_log_debug0(level, log, err, fmt)                                  \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt)
+
+ #define ngx_log_debug1(level, log, err, fmt, arg1)                            \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1)
+
+ #define ngx_log_debug2(level, log, err, fmt, arg1, arg2)                      \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1, arg2)
+
+ #define ngx_log_debug3(level, log, err, fmt, arg1, arg2, arg3)                \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3)
+
+ #define ngx_log_debug4(level, log, err, fmt, arg1, arg2, arg3, arg4)          \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4)
+
+ #define ngx_log_debug5(level, log, err, fmt, arg1, arg2, arg3, arg4, arg5)    \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4, arg5)
+
+ #define ngx_log_debug6(level, log, err, fmt,                                  \
+                        arg1, arg2, arg3, arg4, arg5, arg6)                    \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+
+ #define ngx_log_debug7(level, log, err, fmt,                                  \
+                        arg1, arg2, arg3, arg4, arg5, arg6, arg7)              \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt,                                     \
+                        arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+
+ #define ngx_log_debug8(level, log, err, fmt,                                  \
+                        arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)        \
+-    if ((log)->log_level & level)                                             \
++    if (ngx_http_lua_kong_get_dynamic_log_level((log)->log_level) & level)    \
+         ngx_log_debug_core(log, err, fmt,                                     \
+                        arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+

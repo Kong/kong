@@ -1,0 +1,53 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+selects.config_setting_group(
+    name = "disable-obsolete-api",
+    # looks like RHEL is aggressive on migrating to libxcrypt
+    # set this option if any distro is looking for "libcrypto.so.2"
+    # instead of "libcrypt.so.1" (i.e. "error while loading shared libraries: libcrypt.so.1")
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
+)
+
+configure_make(
+    name = "libxcrypt",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = select({
+        ":disable-obsolete-api": [
+            "--enable-obsolete-api=no",
+        ],
+        "//conditions:default": [],
+    }),
+    configure_xcompile = True,  # use automatic cross compile detection
+    lib_source = ":all_srcs",
+    # out_lib_dir = "lib",
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libcrypt.1.dylib",
+        ],
+        ":disable-obsolete-api": [
+            "libcrypt.so.2",
+        ],
+        "//conditions:default": [
+            "libcrypt.so.1",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+)

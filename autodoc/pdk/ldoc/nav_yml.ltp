@@ -1,0 +1,10 @@
+    - text: Plugin Development Kit
+      url: $(base_url)
+      items:
+# for _, mod in ipairs(modules) do
+#   if string.lower(mod.name) ~= "pdk" then
+
+      - text: $(mod.name)
+        url: $(base_url)/$(mod.name)
+#   end
+# end

@@ -1,0 +1,3 @@
+message: "**Rate Limiting**: fix an issuer where all counters are synced to the same DB at the same rate."
+type: bugfix
+scope: Plugin

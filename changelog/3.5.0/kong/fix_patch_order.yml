@@ -1,0 +1,3 @@
+message: fix the building failure when applying patches
+type: bugfix
+scope: Core

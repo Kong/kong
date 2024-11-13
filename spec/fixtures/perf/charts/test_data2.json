@@ -1,0 +1,60 @@
+{
+	"options": {
+		"suite_sequential": false
+	},
+	"data": [{
+		"rpss": [146063.92, 146845.9, 145638.07],
+		"rps": 146182.63,
+		"latencies_p90": [3.14, 3.27, 3.2],
+		"latencies_p99": [9, 9.18, 9.16],
+		"latency_max": 35.16,
+		"latency_avg": 1.1800240836152,
+		"suite": " #simple #no_plugins #single_route",
+		"version": "git:6098495"
+	}, {
+		"rpss": [144977.6, 143785.14, 145332.58],
+		"rps": 144698.44,
+		"latencies_p90": [3.12, 3.15, 3.28],
+		"latencies_p99": [9.01, 9.04, 9.57],
+		"latency_max": 42.51,
+		"latency_avg": 1.1900081272116,
+		"suite": " #simple #no_plugins #single_route",
+		"version": "git:master"
+	}, {
+		"rpss": [110197.34, 109968.96, 110591.39],
+		"rps": 110252.56333333,
+		"latencies_p90": [2.4, 2.28, 2.22],
+		"latencies_p99": [8.48, 8.14, 7.88],
+		"latency_max": 40.12,
+		"latency_avg": 1.2133197804852,
+		"suite": " #simple #key-auth 10 services each has 10 routes with key-auth, 100 consumers",
+		"version": "git:6098495"
+	}, {
+		"rpss": [109102.58, 109136.34, 108647.47],
+		"rps": 108962.13,
+		"latencies_p90": [2.48, 2.27, 2.14],
+		"latencies_p99": [7.87, 8.15, 7.91],
+		"latency_max": 35.43,
+		"latency_avg": 1.2066902201559,
+		"suite": " #simple #key-auth 10 services each has 10 routes with key-auth, 100 consumers",
+		"version": "git:master"
+	}, {
+		"rpss": [133682.24, 133910.3, 134863],
+		"rps": 134151.84666667,
+		"latencies_p90": [2.72, 2.78, 2.72],
+		"latencies_p99": [8.65, 8.87, 8.49],
+		"latency_max": 35.7,
+		"latency_avg": 1.1699763325704,
+		"suite": " #simple #no_plugins 10 services each has 10 routes",
+		"version": "git:6098495"
+	}, {
+		"rpss": [133410.76, 134137.81, 134780.55],
+		"rps": 134109.70666667,
+		"latencies_p90": [2.83, 2.73, 2.88],
+		"latencies_p99": [9.09, 8.87, 8.98],
+		"latency_max": 43.7,
+		"latency_avg": 1.1932978944078,
+		"suite": " #simple #no_plugins 10 services each has 10 routes",
+		"version": "git:master"
+	}]
+}

@@ -1,0 +1,3 @@
+message: Bumped the concurrency range of the lua-resty-timer-ng library from [32, 256] to [512, 2048].
+type: performance
+scope: Performance

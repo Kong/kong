@@ -1,0 +1,41 @@
+[
+  {
+    "name": "unit",
+    "exclude_tags": "flaky,ipv6",
+    "venv_script": "kong-dev-venv.sh",
+    "specs": ["spec/01-unit/"]
+  },
+  {
+    "name": "integration",
+    "exclude_tags": "flaky,ipv6,off",
+    "environment": {
+      "KONG_TEST_DATABASE": "postgres"
+    },
+    "venv_script": "kong-dev-venv.sh",
+    "specs": ["spec/02-integration/"]
+  },
+  {
+    "name": "dbless",
+    "exclude_tags": "flaky,ipv6,postgres,db",
+    "environment": {
+      "KONG_TEST_DATABASE": "off"
+    },
+    "venv_script": "kong-dev-venv.sh",
+    "specs": [
+      "spec/02-integration/02-cmd/",
+      "spec/02-integration/05-proxy/",
+      "spec/02-integration/04-admin_api/02-kong_routes_spec.lua",
+      "spec/02-integration/04-admin_api/15-off_spec.lua",
+      "spec/02-integration/08-status_api/01-core_routes_spec.lua",
+      "spec/02-integration/08-status_api/03-readiness_endpoint_spec.lua",
+      "spec/02-integration/11-dbless/",
+      "spec/02-integration/20-wasm/"
+    ]
+  },
+  {
+    "name": "plugins",
+    "exclude_tags": "flaky,ipv6",
+    "venv_script": "kong-dev-venv.sh",
+    "specs": ["spec/03-plugins/"]
+  }
+]

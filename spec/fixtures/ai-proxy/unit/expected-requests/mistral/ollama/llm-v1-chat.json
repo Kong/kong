@@ -1,0 +1,34 @@
+{
+  "model": "mistral-tiny",
+  "messages": [
+		{
+			"role": "system",
+			"content": "You are a mathematician."
+		},
+		{
+			"role": "user",
+			"content": "What is 1 + 2?"
+		},
+		{
+			"role": "assistant",
+			"content": "The sum of 1 + 2 is 3. If you have any more math questions or if there's anything else I can help you with, feel free to ask!"
+		},
+		{
+			"role": "user",
+			"content": "Multiply that by 2"
+		},
+		{
+			"role": "assistant",
+			"content": "Certainly! If you multiply 3 by 2, the result is 6. If you have any more questions or if there's anything else I can help you with, feel free to ask!"
+		},
+		{
+			"role": "user",
+			"content": "Why can't you divide by zero?"
+		}
+  ],
+  "stream": false,
+  "options": {
+    "num_predict": 512,
+    "temperature": 0.5
+  }
+}

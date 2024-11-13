@@ -1,0 +1,3 @@
+message: Moved internal Unix sockets to a subdirectory (`sockets`) of the Kong prefix.
+type: bugfix
+scope: Core

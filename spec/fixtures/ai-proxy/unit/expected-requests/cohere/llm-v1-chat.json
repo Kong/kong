@@ -1,0 +1,15 @@
+{
+  "chat_history": [
+    {"role": "USER", "message": "You are a mathematician."},
+    {"role": "USER", "message": "What is 1 + 2?"},
+    {"role": "CHATBOT", "message": "The sum of 1 + 2 is 3. If you have any more math questions or if there's anything else I can help you with, feel free to ask!"},
+    {"role": "USER", "message": "Multiply that by 2"},
+    {"role": "CHATBOT", "message": "Certainly! If you multiply 3 by 2, the result is 6. If you have any more questions or if there's anything else I can help you with, feel free to ask!"}
+  ],
+  "message": "Why can't you divide by zero?",
+  "model": "command",
+  "max_tokens": 512,
+  "temperature": 0.5,
+  "p": 1.0,
+  "stream": false
+}

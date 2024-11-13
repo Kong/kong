@@ -1,0 +1,3 @@
+message: Reverted the hard-coded limitation of the `ngx.read_body()` API in OpenResty upstreams' new versions when downstream connections are in HTTP/2 or HTTP/3 stream modes.
+type: bugfix
+scope: Core

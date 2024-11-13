@@ -1,0 +1,17 @@
+name: Changelog Validation
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+
+jobs:
+  validate-changelog:
+    name: Validate changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate changelogs
+        uses: Kong/gateway-changelog@main
+        with:
+          files: changelog/unreleased/*/*.yml

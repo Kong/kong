@@ -1,0 +1,190 @@
+- Path      : /etc/kong/kong.logrotate
+
+- Path      : /lib/systemd/system/kong.service
+
+- Path      : /usr/local/kong/gui
+  Type      : directory
+
+- Path      : /usr/local/kong/include/google
+  Type      : directory
+
+- Path      : /usr/local/kong/include/kong
+  Type      : directory
+
+- Path      : /usr/local/kong/lib/engines-3/afalg.so
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-3/capi.so
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-3/loader_attic.so
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-3/padlock.so
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/libada.so
+  Needed    :
+  - libstdc++.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+
+- Path      : /usr/local/kong/lib/libcrypto.so.3
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
+  Needed    :
+  - libc.so.6
+
+- Path      : /usr/local/kong/lib/libsnappy.so
+  Needed    :
+  - libstdc++.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+
+- Path      : /usr/local/kong/lib/libssl.so.3
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/ossl-modules/legacy.so
+  Needed    :
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lfs.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lpeg.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lsyslog.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lua_pack.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lxp.so
+  Needed    :
+  - libexpat.so.1
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/mime/core.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/pb.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/socket/core.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/socket/serial.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/socket/unix.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/ssl.so
+  Needed    :
+  - libssl.so.3
+  - libcrypto.so.3
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/yaml.so
+  Needed    :
+  - libyaml-0.so.2
+  - libc.so.6
+
+- Path      : /usr/local/openresty/lualib/cjson.so
+  Needed    :
+  - libc.so.6
+
+- Path      : /usr/local/openresty/lualib/librestysignal.so
+
+- Path      : /usr/local/openresty/lualib/rds/parser.so
+  Needed    :
+  - libc.so.6
+
+- Path      : /usr/local/openresty/lualib/redis/parser.so
+  Needed    :
+  - libc.so.6
+
+- Path      : /usr/local/openresty/nginx/modules/ngx_wasmx_module.so
+  Needed    :
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
+
+- Path      : /usr/local/openresty/nginx/sbin/nginx
+  Needed    :
+  - libcrypt.so.1
+  - libluajit-5.1.so.2
+  - libm.so.6
+  - libssl.so.3
+  - libcrypto.so.3
+  - libz.so.1
+  - libc.so.6
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
+  Modules   :
+  - lua-kong-nginx-module
+  - lua-kong-nginx-module/stream
+  - lua-resty-events
+  - lua-resty-lmdb
+  - ngx_brotli
+  - ngx_wasmx_module
+  OpenSSL   : OpenSSL 3.2.3 3 Sep 2024
+  DWARF     : True
+  DWARF - ngx_http_request_t related DWARF DIEs: True
+
+- Path      : /usr/local/openresty/site/lualib/libatc_router.so
+  Needed    :
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+
+- Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
+  Needed    :
+  - libstdc++.so.6
+  - libgcc_s.so.1
+  - libc.so.6

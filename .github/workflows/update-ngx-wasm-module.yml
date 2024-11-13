@@ -1,0 +1,136 @@
+name: Update ngx_wasm_module dependency
+
+on:
+  workflow_dispatch:
+  schedule:
+  # run weekly
+  - cron: '0 0 * * 0'
+
+jobs:
+  update:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      # required to create a branch and push commits
+      contents: write
+      # required to open a PR for updates
+      pull-requests: write
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v4
+      with:
+        ref: master
+
+    - name: Detect current version of NGX_WASM_MODULE in .requirements
+      id: check-kong
+      run: |
+        SHA=$(sed -nre 's/^NGX_WASM_MODULE=([^ ]+) .*/\1/p' < .requirements)
+        echo "sha=$SHA" | tee -a "$GITHUB_OUTPUT"
+
+    - name: Check Kong/ngx_wasm_module HEAD
+      id: check-repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        SHA=$(gh api repos/Kong/ngx_wasm_module/commits/main --jq '.sha')
+        echo "sha=$SHA" | tee -a "$GITHUB_OUTPUT"
+
+    - name: Update .requirements and create a pull request
+      if: steps.check-kong.outputs.sha != steps.check-repo.outputs.sha
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FROM: ${{ steps.check-kong.outputs.sha }}
+        TO: ${{ steps.check-repo.outputs.sha }}
+      run: |
+        set -x
+        gh auth status
+        gh auth setup-git
+
+        # masquerade as dependabot for the purposes of this commit/PR
+        git config --global user.email \
+          "49699333+dependabot[bot]@users.noreply.github.com"
+        git config --global user.name "dependabot[bot]"
+
+        readonly BRANCH=chore/deps-bump-ngx-wasm-module
+        if gh api repos/Kong/kong/branches/"$BRANCH"; then
+          echo "branch ($BRANCH) already exists, exiting"
+          exit  1
+        fi
+
+        EXISTING_PRS=$(
+          gh pr list \
+            --json id \
+            --head "$BRANCH" \
+          | jq '.[]'
+        )
+
+        if [[ -n ${EXISTING_PRS:-} ]]; then
+          echo "existing PR for $BRANCH already exists, exiting"
+          echo "$EXISTING_PRS"
+          exit 1
+        fi
+
+        git switch --create "$BRANCH"
+
+        sed -i \
+          -re "s/^NGX_WASM_MODULE=.*/NGX_WASM_MODULE=$TO/" \
+          .requirements
+
+        git add .requirements
+
+        # create or update changelog file
+        readonly CHANGELOG_FILE=changelog/unreleased/kong/bump-ngx-wasm-module.yml
+        {
+          printf 'message: "Bumped `ngx_wasm_module` to `%s`"\n' "$TO"
+          printf 'type: dependency\n'
+        } > "$CHANGELOG_FILE"
+
+        git add "$CHANGELOG_FILE"
+
+        gh api repos/Kong/ngx_wasm_module/compare/"$FROM...$TO" \
+          --jq '.commits | reverse | .[] | {
+              sha: .sha[0:7],
+              url: .html_url,
+              message: ( .commit.message | split("\n") | .[0] )
+          }' \
+          > commits.json
+
+        # craft commit message
+        readonly HEADER="chore(deps): bump ngx_wasm_module to $TO"
+        {
+          printf '%s\n\nChanges since %s:\n\n' \
+            "$HEADER" "$FROM"
+
+          jq -r '"* \(.sha) - \(.message)"' \
+            < commits.json
+        } > commit.txt
+
+        git commit --file commit.txt
+        git push origin HEAD
+
+        # craft PR body
+        {
+          printf '## Changelog `%s...%s`\n\n' \
+            "${FROM:0:7}" "${TO:0:7}"
+
+          printf '[Compare on GitHub](%s/compare/%s...%s)\n\n' \
+            "https://github.com/Kong/ngx_wasm_module" \
+            "$FROM" "$TO"
+
+          # turn the commits into links for the PR body
+          jq -r \
+            '"* [`\(.sha)`](\(.url)) - \(.message)"' \
+            < commits.json
+
+          printf '\n\n'
+          printf '**IMPORTANT: Remember to scan this commit log for updates '
+          printf 'to Wasmtime/V8/Wasmer and update `.requirements` manually '
+          printf 'as needed**\n'
+        } > body.md
+
+        gh pr create \
+          --base master \
+          --head "$BRANCH" \
+          --title "$HEADER" \
+          --body-file body.md

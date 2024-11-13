@@ -1,0 +1,4 @@
+message: >
+  "**AWS-Lambda**: Added support for a configurable STS endpoint with the new configuration field `aws_sts_endpoint_url`.
+type: feature
+scope: Plugin

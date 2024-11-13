@@ -1,0 +1,58 @@
+name: Add New Release to Pongo
+
+on:
+  push:
+    tags:
+    - '[1-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  set_vars:
+    name: Set Vars
+    runs-on: ubuntu-latest-kong
+    outputs:
+      code_base: ${{ steps.define_vars.outputs.CODE_BASE }}
+      tag_version: ${{ steps.define_vars.outputs.TAG_VERSION }}
+    steps:
+    - name: Define Vars
+      id: define_vars
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REPOSITORY,,}" = "kong/kong" ]] ; then
+          CODE_BASE=CE
+        elif [[ "${GITHUB_REPOSITORY,,}" = "kong/kong-ee" ]] ; then
+          CODE_BASE=EE
+        fi
+        echo "CODE_BASE=$CODE_BASE" >> "$GITHUB_OUTPUT"
+
+        if [[ "${{ github.event_name }}" == "push" ]] ; then
+          TAG_VERSION="${{ github.ref_name }}"
+        elif [[ "${{ github.event_name }}" == "release" ]] ; then
+          TAG_VERSION="${{ github.event.release.tag_name }}"
+        fi
+        echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+  add_release_to_pongo:
+    name: Add Release to Pongo
+    runs-on: ubuntu-latest-kong
+    needs:
+    - set_vars
+    env:
+      GITHUB_TOKEN: ${{ secrets.PAT }}
+    steps:
+    - name: Checkout Pongo
+      id: checkout_pongo
+      uses: actions/checkout@v4
+      with:
+        token: ${{ env.GITHUB_TOKEN }}
+        repository: kong/kong-pongo
+        ref: master
+    - name: Set git Env
+      id: set_git_env
+      shell: bash
+      run: |
+        git config --global user.email "ci-bot@konghq.com"
+        git config --global user.name "CI Bot"
+    - name: Create PR
+      id: create_pr
+      shell: bash
+      run: |
+        ./assets/add_version.sh "${{ needs.set_vars.outputs.code_base }}" "${{ needs.set_vars.outputs.tag_version }}"

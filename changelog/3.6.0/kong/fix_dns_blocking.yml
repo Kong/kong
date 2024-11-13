@@ -1,0 +1,3 @@
+message: Eliminate asynchronous timer in syncQuery() to prevent hang risk
+type: bugfix
+scope: Core

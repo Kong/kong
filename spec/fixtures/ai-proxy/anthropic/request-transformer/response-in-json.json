@@ -1,0 +1,18 @@
+{
+  "content": [
+    {
+      "text": "{\n    \"persons\": [\n      {\n        \"name\": \"Kong A\",\n        \"age\": 62\n      },\n      {\n        \"name\": \"Kong B\",\n        \"age\": 84\n      }\n    ]\n  }\n",
+      "type": "text"
+    }
+  ],
+  "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
+  "model": "claude-2.1",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 25
+  }
+}

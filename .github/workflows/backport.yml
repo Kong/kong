@@ -1,0 +1,42 @@
+name: Backport
+on:
+  pull_request_target:
+    types: [closed, labeled] # runs when the pull request is closed/merged or labeled (to trigger a backport in hindsight)
+permissions:
+  contents: write # so it can comment
+  pull-requests: write # so it can create pull requests
+  actions: write
+jobs:
+  backport:
+    name: Backport
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create backport pull requests
+        uses: korthout/backport-action@924c8170740fa1e3685f69014971f7f251633f53 # v2.4.1
+        id: backport
+        with:
+          github_token: ${{ secrets.PAT }}
+          pull_title: '[backport -> ${target_branch}] ${pull_title}'
+          merge_commits: 'skip'
+          copy_labels_pattern: ^(?!backport ).* # copies all labels except those starting with "backport "
+          label_pattern: ^backport (release\/[^ ]+)$ # filters for labels starting with "backport " and extracts the branch name
+          pull_description: |-
+            Automated backport to `${target_branch}`, triggered by a label in #${pull_number}.
+
+            ## Original description
+
+            ${pull_description}
+          copy_assignees: true
+          copy_milestone: true
+          copy_requested_reviewers: true
+          experimental: >
+            {
+              "detect_merge_method": true
+            }
+      - name: add label
+        if: steps.backport.outputs.was_successful == 'false'
+        uses: Kong/action-add-labels@81b0a07d6b2ec64d770be1ca94c31ec827418054
+        with:
+          labels: incomplete-backport

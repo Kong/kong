@@ -1,0 +1,3 @@
+message: Allow to inject Nginx directives into Kong's proxy location block
+type: feature
+scope: Configuration

@@ -1,0 +1,3 @@
+message: Updated the file permission of `kong.logrotate` to 644.
+type: bugfix
+scope: Core

@@ -1,0 +1,19 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "You cannot divide by zero because it is not a valid operation in mathematics.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "model": "llama2",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 139,
+    "prompt_tokens": 130,
+    "total_tokens": 269
+  }
+}

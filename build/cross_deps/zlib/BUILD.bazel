@@ -1,0 +1,16 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+exports_files(
+    [
+        "BUILD.zlib.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_test(
+    name = "build",
+    targets = [
+        "@cross_deps_zlib//:zlib",
+    ],
+    visibility = ["//:__pkg__"],
+)

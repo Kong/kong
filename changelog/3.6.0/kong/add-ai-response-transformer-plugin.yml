@@ -1,0 +1,3 @@
+message: Introduced the new **AI Response Transformer** plugin that enables passing mid-flight upstream responses to an LLM for transformation or sanitization.
+type: feature
+scope: Plugin

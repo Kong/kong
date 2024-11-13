@@ -1,0 +1,79 @@
+#!/usr/bin/env resty
+
+setmetatable(_G, nil)
+package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
+
+local kill = require "kong.cmd.utils.kill"
+local kong_default_conf = require "kong.templates.kong_defaults"
+local pl_app = require "pl.lapp"
+local pl_config = require "pl.config"
+local pl_path = require "pl.path"
+local pl_stringio = require "pl.stringio"
+
+local KONG_DEFAULT_PREFIX = "/usr/local/kong"
+
+
+local function get_kong_prefix()
+  local prefix = os.getenv("KONG_PREFIX")
+
+  if not prefix then
+    local s = pl_stringio.open(kong_default_conf)
+    local defaults = pl_config.read(s, {
+      smart = false,
+      list_delim = "_blank_" -- mandatory but we want to ignore it
+    })
+    s:close()
+    if defaults then
+      prefix = defaults.prefix
+    end
+
+  end
+
+  return prefix or KONG_DEFAULT_PREFIX
+end
+
+
+local function execute(args)
+  local prefix = args.prefix or get_kong_prefix(args)
+  assert(pl_path.exists(prefix), "no such prefix: " .. prefix)
+
+  local kong_env = pl_path.join(prefix, ".kong_env")
+  assert(pl_path.exists(kong_env), "Kong is not running at " .. prefix)
+
+  print("")
+  local pid_file = pl_path.join(prefix, "pids", "nginx.pid")
+  kill.is_running(pid_file)
+  assert(kill.is_running(pid_file), "Kong is not running at " .. prefix)
+  print("Kong is healthy at ", prefix)
+end
+
+
+local lapp = [[
+Usage: kong-health [OPTIONS]
+Check if the necessary services are running for this node.
+Options:
+ -p,--prefix      (optional string) prefix at which Kong should be running
+ --v              verbose
+ --vv             debug
+]]
+
+local function run(args)
+  args = pl_app(lapp)
+  xpcall(function() execute(args) end, function(err)
+    if not (args.v or args.vv) then
+      err = err:match "^.-:.-:.(.*)$"
+      io.stderr:write("Error: " .. err .. "\n")
+      io.stderr:write("\n  Run with --v (verbose) or --vv (debug) for more details\n")
+    else
+      local trace = debug.traceback(err, 2)
+      io.stderr:write("Error: \n")
+      io.stderr:write(trace .. "\n")
+    end
+    pl_app.quit(nil, true)
+  end)
+end
+
+
+run(arg)
+
+-- vim: set ft=lua ts=2 sw=2 sts=2 et :

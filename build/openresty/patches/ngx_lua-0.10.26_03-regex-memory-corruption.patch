@@ -1,0 +1,77 @@
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_regex.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_regex.c
+index 1b52fa2..646b483 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_regex.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_regex.c
+@@ -591,7 +591,11 @@ ngx_http_lua_ffi_compile_regex(const unsigned char *pat, size_t pat_len,
+         re_comp.captures = 0;
+ 
+     } else {
++#if (NGX_PCRE2)
++        ovecsize = (re_comp.captures + 1) * 2;
++#else
+         ovecsize = (re_comp.captures + 1) * 3;
++#endif
+     }
+ 
+     dd("allocating cap with size: %d", (int) ovecsize);
+@@ -684,21 +688,21 @@ ngx_http_lua_ffi_exec_regex(ngx_http_lua_regex_t *re, int flags,
+ {
+     int          rc, exec_opts = 0;
+     size_t      *ov;
+-    ngx_uint_t   ovecsize, n, i;
++    ngx_uint_t   ovecpair, n, i;
+     ngx_pool_t  *old_pool;
+ 
+     if (flags & NGX_LUA_RE_MODE_DFA) {
+-        ovecsize = 2;
++        ovecpair = 1;
+         re->ncaptures = 0;
+ 
+     } else {
+-        ovecsize = (re->ncaptures + 1) * 3;
++        ovecpair = re->ncaptures + 1;
+     }
+ 
+     old_pool = ngx_http_lua_pcre_malloc_init(NULL);
+ 
+     if (ngx_regex_match_data == NULL
+-        || ovecsize > ngx_regex_match_data_size)
++        || ovecpair > ngx_regex_match_data_size)
+     {
+         /*
+          * Allocate a match data if not yet allocated or smaller than
+@@ -709,8 +713,8 @@ ngx_http_lua_ffi_exec_regex(ngx_http_lua_regex_t *re, int flags,
+             pcre2_match_data_free(ngx_regex_match_data);
+         }
+ 
+-        ngx_regex_match_data_size = ovecsize;
+-        ngx_regex_match_data = pcre2_match_data_create(ovecsize / 3, NULL);
++        ngx_regex_match_data_size = ovecpair;
++        ngx_regex_match_data = pcre2_match_data_create(ovecpair, NULL);
+ 
+         if (ngx_regex_match_data == NULL) {
+             rc = PCRE2_ERROR_NOMEMORY;
+@@ -741,7 +745,7 @@ ngx_http_lua_ffi_exec_regex(ngx_http_lua_regex_t *re, int flags,
+ #if (NGX_DEBUG)
+         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                        "pcre2_match failed: flags 0x%05Xd, options 0x%08Xd, "
+-                       "rc %d, ovecsize %ui", flags, exec_opts, rc, ovecsize);
++                       "rc %d, ovecpair %ui", flags, exec_opts, rc, ovecpair);
+ #endif
+ 
+         goto failed;
+@@ -753,11 +757,11 @@ ngx_http_lua_ffi_exec_regex(ngx_http_lua_regex_t *re, int flags,
+ #if (NGX_DEBUG)
+     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                    "pcre2_match: flags 0x%05Xd, options 0x%08Xd, rc %d, "
+-                   "n %ui, ovecsize %ui", flags, exec_opts, rc, n, ovecsize);
++                   "n %ui, ovecpair %ui", flags, exec_opts, rc, n, ovecpair);
+ #endif
+ 
+-    if (!(flags & NGX_LUA_RE_MODE_DFA) && n > ovecsize / 3) {
+-        n = ovecsize / 3;
++    if (n > ovecpair) {
++        n = ovecpair;
+     }
+ 
+     for (i = 0; i < n; i++) {

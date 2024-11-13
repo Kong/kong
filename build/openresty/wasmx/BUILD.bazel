@@ -1,0 +1,60 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+
+config_setting(
+    name = "use_v8",
+    flag_values = {
+        "@kong//:wasmx": "true",
+        "@kong//:wasm_runtime": "v8",
+    },
+)
+
+config_setting(
+    name = "use_wasmer",
+    flag_values = {
+        "@kong//:wasmx": "true",
+        "@kong//:wasm_runtime": "wasmer",
+    },
+)
+
+config_setting(
+    name = "use_wasmtime",
+    flag_values = {
+        "@kong//:wasmx": "true",
+        "@kong//:wasm_runtime": "wasmtime",
+    },
+)
+
+# this works around an issue that occurs when installing/compiling the v8 wasm
+# runtime engine, specifically: cargo/bazel/rules_foreign_cc decide ARFLAGS
+# should be "rcsD cq ...", which is incorrect and results in ar thinking
+# "cq" is a positional filename parameter-- casuing the install of the wabt-sys
+# rust crate to fail when compiling wabt
+#
+# this works by impersonating ar, and only passing along 'rcsD' when it detects
+# 'rcsd cq' as the first 2 positional parameters passed to "ar"
+#
+# this workaround is specifically only enabeld when targetting the v8 wasm
+# runtime to minimize impact to the rest fo the build
+#
+# note that this dummy ar is technically in use for the entire openresty build,
+# since we build wasm as part of that
+write_file(
+    name = "wasmx_v8_ar",
+    out = "ar",
+    content = ["""#!/usr/bin/env bash
+
+if [[ "${1} ${2}" == 'rcsD cq' ]]; then
+
+    touch /tmp/log
+    echo "before: $@" >> /tmp/log
+
+    shift 2
+    extra='rcsD'
+
+    echo "after: $@" >> /tmp/log
+fi
+
+/usr/bin/ar ${extra:-} $@
+"""],
+    is_executable = True,
+)

@@ -1,0 +1,5 @@
+message: |
+  Remove nulls only if the schema has transformations definitions.
+  Improve performance as most schemas does not define transformations.
+type: bugfix
+scope: Core

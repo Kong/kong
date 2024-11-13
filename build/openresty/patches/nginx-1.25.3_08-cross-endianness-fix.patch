@@ -1,0 +1,79 @@
+# http://cgit.openembedded.org/meta-openembedded/tree/meta-webserver/recipes-httpd/nginx/files/0001-Allow-the-overriding-of-the-endianness-via-the-confi.patch
+From be9970aa16c5142ef814531d74a07990a8e9eb14 Mon Sep 17 00:00:00 2001
+From: Derek Straka <derek@asterius.io>
+Date: Fri, 1 Dec 2017 10:32:29 -0500
+Subject: [PATCH] Allow the overriding of the endianness via the configure flag
+ --with-endian
+
+The existing configure options contain the --with-endian; however, the command
+line flag does not actually function.  It does not set the endianness and it
+appears to do nothing.
+
+Upstream-Status: Pending
+
+Signed-off-by: Derek Straka <derek@asterius.io>
+
+diff --git a/auto/endianness b/auto/endianness
+index 1b552b6..be84487 100644
+--- a/bundle/nginx-1.25.3/endianness
++++ b/bundle/nginx-1.25.3/auto/endianness
+@@ -13,7 +13,13 @@ checking for system byte ordering
+ END
+ 
+ 
+-cat << END > $NGX_AUTOTEST.c
++if [ ".$NGX_WITH_ENDIAN" = ".little" ]; then
++    echo " little endian"
++    have=NGX_HAVE_LITTLE_ENDIAN . auto/have
++elif [ ".$NGX_WITH_ENDIAN" = ".big" ]; then
++    echo " big endian"
++else
++    cat << END > $NGX_AUTOTEST.c
+ 
+ int main(void) {
+     int i = 0x11223344;
+@@ -26,25 +32,26 @@ int main(void) {
+ 
+ END
+ 
+-ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
+-          -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
++    ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
++              -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+ 
+-eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
++    eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+ 
+-if [ -x $NGX_AUTOTEST ]; then
+-    if $NGX_AUTOTEST >/dev/null 2>&1; then
+-        echo " little endian"
+-        have=NGX_HAVE_LITTLE_ENDIAN . auto/have
+-    else
+-        echo " big endian"
+-    fi
++    if [ -x $NGX_AUTOTEST ]; then
++        if $NGX_AUTOTEST >/dev/null 2>&1; then
++            echo " little endian"
++            have=NGX_HAVE_LITTLE_ENDIAN . auto/have
++        else
++            echo " big endian"
++        fi
+ 
+-    rm -rf $NGX_AUTOTEST*
++        rm -rf $NGX_AUTOTEST*
+ 
+-else
+-    rm -rf $NGX_AUTOTEST*
++    else
++        rm -rf $NGX_AUTOTEST*
+ 
+-    echo
+-    echo "$0: error: cannot detect system byte ordering"
+-    exit 1
++        echo
++        echo "$0: error: cannot detect system byte ordering"
++        exit 1
++    fi
+ fi
+-- 
+2.7.4

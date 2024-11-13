@@ -1,0 +1,29 @@
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_log.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_log.c
+index 43ab820..d18fd05 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_log.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_log.c
+@@ -101,7 +101,11 @@ log_wrapper(ngx_log_t *log, const char *ident, ngx_uint_t level,
+     const char          *msg;
+     lua_Debug            ar;
+
++#if (NGX_HTTP_LUA_KONG)
++    if (level > ngx_http_lua_kong_get_dynamic_log_level(log->log_level)) {
++#else
+     if (level > log->log_level) {
++#endif
+         return 0;
+     }
+
+@@ -427,7 +431,12 @@ ngx_http_lua_ffi_errlog_get_sys_filter_level(ngx_http_request_t *r)
+         log = ngx_cycle->log;
+     }
+
++#if (NGX_HTTP_LUA_KONG)
++    log_level = ngx_http_lua_kong_get_dynamic_log_level(log->log_level);
++#else
+     log_level = log->log_level;
++#endif
++
+     if (log_level == NGX_LOG_DEBUG_ALL) {
+         log_level = NGX_LOG_DEBUG;
+     }

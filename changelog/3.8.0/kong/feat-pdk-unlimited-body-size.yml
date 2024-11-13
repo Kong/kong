@@ -1,0 +1,3 @@
+message: Added `0` to support unlimited body size. When parameter `max_allowed_file_size` is `0`, `get_raw_body` will return the entire body, but the size of this body will still be limited by Nginx's `client_max_body_size`.
+type: feature
+scope: PDK

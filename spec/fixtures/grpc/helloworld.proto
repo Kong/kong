@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package hello;
+
+service HelloService {
+  rpc SayHello(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      // https://github.com/googleapis/googleapis/blob/master/google/api/http.proto
+      // HTTP | gRPC
+      // -----|-----
+      // `GET /v1/messages/123456`  | `HelloRequest(greeting: "123456")`
+      get: "/v1/messages/{greeting}"
+      additional_bindings {
+        get: "/v1/messages/legacy/{greeting=**}"
+      }
+      post: "/v1/messages/"
+      body: "*"
+    }
+  };
+
+  // define a gRPC method that's not implemented in grpcbin
+  rpc UnknownMethod(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/v1/unknown/{greeting}"
+    }
+  };
+}
+
+message HelloRequest {
+  required string greeting = 1;
+}
+
+message HelloResponse {
+  required string reply = 1;
+}

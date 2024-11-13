@@ -1,0 +1,4 @@
+message: |
+  `net.src.*` and `net.dst.*` match fields are now accessible in HTTP routes defined using expressions.
+type: feature
+scope: Core

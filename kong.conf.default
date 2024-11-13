@@ -1,0 +1,2285 @@
+# -----------------------
+# Kong configuration file
+# -----------------------
+#
+# The commented-out settings shown in this file represent the default values.
+#
+# This file is read when `kong start` or `kong prepare` are used. Kong
+# generates the Nginx configuration with the settings specified in this file.
+#
+# All environment variables prefixed with `KONG_` and capitalized will override
+# the settings specified in this file.
+# Example:
+#   `log_level` setting -> `KONG_LOG_LEVEL` env variable
+#
+# Boolean values can be specified as `on`/`off` or `true`/`false`.
+# Lists must be specified as comma-separated strings.
+#
+# All comments in this file can be removed safely, including the
+# commented-out properties.
+# You can verify the integrity of your settings with `kong check <conf>`.
+
+#------------------------------------------------------------------------------
+# GENERAL
+#------------------------------------------------------------------------------
+
+#prefix = /usr/local/kong/       # Working directory. Equivalent to Nginx's
+                                 # prefix path, containing temporary files
+                                 # and logs.
+                                 # Each Kong process must have a separate
+                                 # working directory.
+
+#log_level = notice              # Log level of the Nginx server. Logs are
+                                 # found at `<prefix>/logs/error.log`.
+
+# See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+# of accepted values.
+
+#proxy_access_log = logs/access.log       # Path for proxy port request access
+                                          # logs. Set this value to `off` to
+                                          # disable logging proxy requests.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
+
+
+#proxy_error_log = logs/error.log         # Path for proxy port request error logs.
+                                          # The granularity of these logs is adjusted by the `log_level` property.
+
+#proxy_stream_access_log = logs/access.log basic # Path for TCP streams proxy port access logs.
+                                                 # Set to `off` to disable logging proxy requests.
+                                                 # If this value is a relative path, it will be placed under the `prefix` location.
+                                                 # `basic` is defined as `'$remote_addr [$time_local] '
+                                                 # '$protocol $status $bytes_sent $bytes_received '
+                                                 # '$session_time'`
+
+#proxy_stream_error_log = logs/error.log         # Path for tcp streams proxy port request error
+                                                 # logs. The granularity of these logs
+                                                 # is adjusted by the `log_level`
+                                                 # property.
+
+#admin_access_log = logs/admin_access.log # Path for Admin API request access logs.
+                                          # If hybrid mode is enabled and the current node is set
+                                          # to be the control plane, then the connection requests
+                                          # from data planes are also written to this file with
+                                          # server name "kong_cluster_listener".
+                                          #
+                                          # Set this value to `off` to disable logging Admin API requests.
+                                          # If this value is a relative path, it will be placed under the `prefix` location.
+
+
+#admin_error_log = logs/error.log         # Path for Admin API request error logs.
+                                          # The granularity of these logs is adjusted by the `log_level` property.
+
+#status_access_log = off                  # Path for Status API request access logs.
+                                          # The default value of `off` implies that logging for this API
+                                          # is disabled by default.
+                                          # If this value is a relative path, it will be placed under the `prefix` location.
+
+#status_error_log = logs/status_error.log # Path for Status API request error logs.
+                                          # The granularity of these logs is adjusted by the `log_level` property.
+
+#vaults = bundled                # Comma-separated list of vaults this node should load.
+                                 # By default, all the bundled vaults are enabled.
+                                 #
+                                 # The specified name(s) will be substituted as
+                                 # such in the Lua namespace:
+                                 # `kong.vaults.{name}.*`.
+
+#opentelemetry_tracing = off                # Deprecated: use `tracing_instrumentations` instead.
+
+#tracing_instrumentations = off             # Comma-separated list of tracing instrumentations this node should load.
+                                            # By default, no instrumentations are enabled.
+                                            #
+                                            # Valid values for this setting are:
+                                            #
+                                            # - `off`: do not enable instrumentations.
+                                            # - `request`: only enable request-level instrumentations.
+                                            # - `all`: enable all the following instrumentations.
+                                            # - `db_query`: trace database queries.
+                                            # - `dns_query`: trace DNS queries.
+                                            # - `router`: trace router execution, including router rebuilding.
+                                            # - `http_client`: trace OpenResty HTTP client requests.
+                                            # - `balancer`: trace balancer retries.
+                                            # - `plugin_rewrite`: trace plugin iterator execution with rewrite phase.
+                                            # - `plugin_access`: trace plugin iterator execution with access phase.
+                                            # - `plugin_header_filter`: trace plugin iterator execution with header_filter phase.
+                                            #
+                                            # **Note:** In the current implementation, tracing instrumentations are not enabled in stream mode.
+
+#opentelemetry_tracing_sampling_rate = 1.0  # Deprecated: use `tracing_sampling_rate` instead.
+#tracing_sampling_rate = 0.01               # Tracing instrumentation sampling rate.
+                                            # Tracer samples a fixed percentage of all spans
+                                            # following the sampling rate.
+                                            #
+                                            # Example: `0.25`, this accounts for 25% of all traces.
+
+
+#plugins = bundled               # Comma-separated list of plugins this node should load.
+                                 # By default, only plugins bundled in official distributions
+                                 # are loaded via the `bundled` keyword.
+                                 #
+                                 # Loading a plugin does not enable it by default, but only
+                                 # instructs Kong to load its source code and allows
+                                 # configuration via the various related Admin API endpoints.
+                                 #
+                                 # The specified name(s) will be substituted as such in the
+                                 # Lua namespace: `kong.plugins.{name}.*`.
+                                 #
+                                 # When the `off` keyword is specified as the only value,
+                                 # no plugins will be loaded.
+                                 #
+                                 # `bundled` and plugin names can be mixed together, as the
+                                 # following examples suggest:
+                                 #
+                                 # - `plugins = bundled,custom-auth,custom-log`
+                                 #   will include the bundled plugins plus two custom ones.
+                                 # - `plugins = custom-auth,custom-log` will
+                                 #   *only* include the `custom-auth` and `custom-log` plugins.
+                                 # - `plugins = off` will not include any plugins.
+                                 #
+                                 # **Note:** Kong will not start if some plugins were previously
+                                 # configured (i.e. have rows in the database) and are not
+                                 # specified in this list. Before disabling a plugin, ensure
+                                 # all instances of it are removed before restarting Kong.
+                                 #
+                                 # **Note:** Limiting the amount of available plugins can
+                                 # improve P99 latency when experiencing LRU churning in the
+                                 # database cache (i.e. when the configured `mem_cache_size`) is full.
+
+
+#dedicated_config_processing = on  # Enables or disables a special worker
+                                   # process for configuration processing. This process
+                                   # increases memory usage a little bit while
+                                   # allowing to reduce latencies by moving some
+                                   # background tasks, such as CP/DP connection
+                                   # handling, to an additional worker process specific
+                                   # to handling these background tasks.
+                                   # Currently this has effect only on data planes.
+
+#pluginserver_names =            # Comma-separated list of names for pluginserver
+                                 # processes. The actual names are used for
+                                 # log messages and to relate the actual settings.
+
+#pluginserver_XXX_socket = <prefix>/<XXX>.socket            # Path to the unix socket
+                                                            # used by the <XXX> pluginserver.
+#pluginserver_XXX_start_cmd = /usr/local/bin/<XXX>          # Full command (including
+                                                            # any needed arguments) to
+                                                            # start the <XXX> pluginserver
+#pluginserver_XXX_query_cmd = /usr/local/bin/query_<XXX>    # Full command to "query" the
+                                                            # <XXX> pluginserver.  Should
+                                                            # produce a JSON with the
+                                                            # dump info of all plugins it
+                                                            # manages
+
+#port_maps =                     # With this configuration parameter, you can
+                                 # let Kong Gateway know the port from
+                                 # which the packets are forwarded to it. This
+                                 # is fairly common when running Kong in a
+                                 # containerized or virtualized environment.
+                                 # For example, `port_maps=80:8000, 443:8443`
+                                 # instructs Kong that the port 80 is mapped
+                                 # to 8000 (and the port 443 to 8443), where
+                                 # 8000 and 8443 are the ports that Kong is
+                                 # listening to.
+                                 #
+                                 # This parameter helps Kong set a proper
+                                 # forwarded upstream HTTP request header or to
+                                 # get the proper forwarded port with the Kong PDK
+                                 # (in case other means determining it has
+                                 # failed). It changes routing by a destination
+                                 # port to route by a port from which packets
+                                 # are forwarded to Kong, and similarly it
+                                 # changes the default plugin log serializer to
+                                 # use the port according to this mapping
+                                 # instead of reporting the port Kong is
+                                 # listening to.
+
+#anonymous_reports = on          # Send anonymous usage data such as error
+                                 # stack traces to help improve Kong.
+
+
+#proxy_server =                  # Proxy server defined as an encoded URL. Kong will only
+                                 # use this option if a component is explicitly configured
+                                 # to use a proxy.
+
+
+#proxy_server_ssl_verify = off   # Toggles server certificate verification if
+                                 # `proxy_server` is in HTTPS.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
+
+#error_template_html =           # Path to the custom html error template to
+                                 # override the default html kong error
+                                 # template.
+                                 #
+                                 # The template may contain up to two `%s`
+                                 # placeholders. The first one will expand to
+                                 # the error message. The second one will
+                                 # expand to the request ID. Both placeholders
+                                 # are optional, but recommended.
+                                 # Adding more than two placeholders will
+                                 # result in a runtime error when trying to
+                                 # render the template:
+                                 # ```
+                                 # <html>
+                                 #   <body>
+                                 #     <h1>My custom error template</h1>
+                                 #     <p>error: %s</p>
+                                 #     <p>request_id: %s</p>
+                                 #   </body>
+                                 # </html>
+                                 # ```
+
+#error_template_json =           # Path to the custom json error template to
+                                 # override the default json kong error
+                                 # template.
+                                 #
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
+
+#error_template_xml =            # Path to the custom xml error template to
+                                 # override the default xml kong error template
+                                 #
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
+
+#error_template_plain =          # Path to the custom plain error template to
+                                 # override the default plain kong error
+                                 # template
+                                 #
+                                 # Similarly to `error_template_html`, the
+                                 # template may contain up to two `%s`
+                                 # placeholders for the error message and the
+                                 # request ID respectively.
+
+#------------------------------------------------------------------------------
+# HYBRID MODE
+#------------------------------------------------------------------------------
+
+#role = traditional              # Use this setting to enable hybrid mode,
+                                 # This allows running some Kong nodes in a
+                                 # control plane role with a database and
+                                 # have them deliver configuration updates
+                                 # to other nodes running to DB-less running in
+                                 # a data plane role.
+                                 #
+                                 # Valid values for this setting are:
+                                 #
+                                 # - `traditional`: do not use hybrid mode.
+                                 # - `control_plane`: this node runs in a
+                                 #   control plane role. It can use a database
+                                 #   and will deliver configuration updates
+                                 #   to data plane nodes.
+                                 # - `data_plane`: this is a data plane node.
+                                 #   It runs DB-less and receives configuration
+                                 #   updates from a control plane node.
+
+#cluster_mtls = shared           # Sets the verification method between nodes of the cluster.
+                                 #
+                                 # Valid values for this setting are:
+                                 #
+                                 # - `shared`: use a shared certificate/key pair specified with
+                                 #   the `cluster_cert` and `cluster_cert_key` settings.
+                                 #   Note that CP and DP nodes must present the same certificate
+                                 #   to establish mTLS connections.
+                                 # - `pki`: use `cluster_ca_cert`, `cluster_server_name`, and
+                                 #   `cluster_cert` for verification. These are different
+                                 #   certificates for each DP node, but issued by a cluster-wide
+                                 #   common CA certificate: `cluster_ca_cert`.
+                                 # - `pki_check_cn`: similar to `pki` but additionally checks
+                                 #   for the common name of the data plane certificate specified
+                                 #   in `cluster_allowed_common_names`.
+
+#cluster_cert =                  # Cluster certificate to use
+                                 # when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+                                 # Under `shared` mode, it must be the same
+                                 # for all nodes.  Under `pki` mode it
+                                 # should be a different certificate for each
+                                 # DP node.
+                                 #
+                                 # The certificate can be configured on this
+                                 # property with either of the following values:
+                                 # * absolute path to the certificate
+                                 # * certificate content
+                                 # * base64 encoded certificate content
+
+#cluster_cert_key =              # Cluster certificate key to
+                                 # use when establishing secure communication
+                                 # between control and data plane nodes.
+                                 # You can use the `kong hybrid` command to
+                                 # generate the certificate/key pair.
+                                 # Under `shared` mode, it must be the same
+                                 # for all nodes.  Under `pki` mode it
+                                 # should be a different certificate for each
+                                 # DP node.
+                                 #
+                                 # The certificate key can be configured on this
+                                 # property with either of the following values:
+                                 # - absolute path to the certificate key
+                                 # - certificate key content
+                                 # - base64 encoded certificate key content
+
+#cluster_ca_cert =               # The trusted CA certificate file in PEM format used for:
+                                 # - Control plane to verify data plane's certificate
+                                 # - Data plane to verify control plane's certificate
+                                 #
+                                 # Required on data plane if `cluster_mtls` is set to `pki`.
+                                 # If the control plane certificate is issued by a well-known CA,
+                                 # set `lua_ssl_trusted_certificate=system` on the data plane and leave this field empty.
+                                 #
+                                 # This field is ignored if `cluster_mtls` is set to `shared`.
+                                 #
+                                 # The certificate can be configured on this property with any of the following values:
+                                 # - absolute path to the certificate
+                                 # - certificate content
+                                 # - base64 encoded certificate content
+
+#------------------------------------------------------------------------------
+# HYBRID MODE DATA PLANE
+#------------------------------------------------------------------------------
+
+#cluster_server_name =           # The server name used in the SNI of the TLS
+                                 # connection from a DP node to a CP node.
+                                 # Must match the Common Name (CN) or Subject
+                                 # Alternative Name (SAN) found in the CP
+                                 # certificate.
+                                 # If `cluster_mtls` is set to
+                                 # `shared`, this setting is ignored and
+                                 # `kong_clustering` is used.
+
+#cluster_control_plane =         # To be used by data plane nodes only:
+                                 # address of the control plane node from which
+                                 # configuration updates will be fetched,
+                                 # in `host:port` format.
+
+#cluster_max_payload = 16777216
+                                 # This sets the maximum compressed payload size allowed
+                                 # to be sent across from CP to DP in Hybrid mode
+                                 # Default is 16MB - 16 * 1024 * 1024.
+
+#cluster_dp_labels =             # Comma-separated list of labels for the data plane.
+                                 # Labels are key-value pairs that provide additional
+                                 # context information for each DP.
+                                 # Each label must be configured as a string in the
+                                 # format `key:value`.
+                                 #
+                                 # Labels are only compatible with hybrid mode
+                                 # deployments with Kong Konnect (SaaS).
+                                 # This configuration doesn't work with
+                                 # self-hosted deployments.
+                                 #
+                                 # Keys and values follow the AIP standards:
+                                 # https://kong-aip.netlify.app/aip/129/
+                                 #
+                                 # Example:
+                                 # `deployment:mycloud,region:us-east-1`
+
+#------------------------------------------------------------------------------
+# HYBRID MODE CONTROL PLANE
+#------------------------------------------------------------------------------
+
+#cluster_listen = 0.0.0.0:8005
+                         # Comma-separated list of addresses and ports on
+                         # which the cluster control plane server should listen
+                         # for data plane connections.
+                         # The cluster communication port of the control plane
+                         # must be accessible by all the data planes
+                         # within the same cluster. This port is mTLS protected
+                         # to ensure end-to-end security and integrity.
+                         #
+                         # This setting has no effect if `role` is not set to
+                         # `control_plane`.
+                         #
+                         # Connections made to this endpoint are logged
+                         # to the same location as Admin API access logs.
+                         # See `admin_access_log` config description for more
+                         # information.
+
+#cluster_data_plane_purge_delay = 1209600
+                         # How many seconds must pass from the time a DP node
+                         # becomes offline to the time its entry gets removed
+                         # from the database, as returned by the
+                         # /clustering/data-planes Admin API endpoint.
+                         #
+                         # This is to prevent the cluster data plane table from
+                         # growing indefinitely. The default is set to
+                         # 14 days. That is, if the CP hasn't heard from a DP for
+                         # 14 days, its entry will be removed.
+
+#cluster_ocsp = off
+                         # Whether to check for revocation status of DP
+                         # certificates using OCSP (Online Certificate Status Protocol).
+                         # If enabled, the DP certificate should contain the
+                         # "Certificate Authority Information Access" extension
+                         # and the OCSP method with URI of which the OCSP responder
+                         # can be reached from CP.
+                         #
+                         # OCSP checks are only performed on CP nodes, it has no
+                         # effect on DP nodes.
+                         #
+                         # Valid values for this setting are:
+                         #
+                         # - `on`: OCSP revocation check is enabled and DP
+                         #   must pass the check in order to establish
+                         #   connection with CP.
+                         # - `off`: OCSP revocation check is disabled.
+                         # - `optional`: OCSP revocation check will be attempted,
+                         #   however, if the required extension is not
+                         #   found inside DP-provided certificate
+                         #   or communication with the OCSP responder
+                         #   failed, then DP is still allowed through.
+
+#cluster_use_proxy = off
+                         # Whether to turn on HTTP CONNECT proxy support for
+                         # hybrid mode connections. `proxy_server` will be used
+                         # for hybrid mode connections if this option is turned on.
+#------------------------------------------------------------------------------
+# NGINX
+#------------------------------------------------------------------------------
+
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
+                         # Comma-separated list of addresses and ports on
+                         # which the proxy server should listen for
+                         # HTTP/HTTPS traffic.
+                         # The proxy server is the public entry point of Kong,
+                         # which proxies traffic from your consumers to your
+                         # backend services. This value accepts IPv4, IPv6, and
+                         # hostnames.
+                         #
+                         # Some suffixes can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the `TCP_DEFER_ACCEPT` socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process,
+                         #   allowing the kernel to better distribute incoming
+                         #   connections between worker processes.
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small to prevent clients
+                         #   seeing "Connection refused" errors when connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** On Linux, this value is limited by the
+                         #   setting of the `net.core.somaxconn` kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect, it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` specifies whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections.
+                         # - `so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]`
+                         #   configures the `TCP keepalive` behavior for the listening
+                         #   socket. If this parameter is omitted, the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value `on`, the `SO_KEEPALIVE` option is turned
+                         #   on for the socket. If it is set to the value `off`, the
+                         #   `SO_KEEPALIVE` option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the `TCP_KEEPIDLE`,` TCP_KEEPINTVL`,
+                         #   and `TCP_KEEPCNT` socket options.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the HTTP/HTTPS proxy port for this node.
+                         # If `stream_listen` is also set to `off`, this enables
+                         # control plane mode for this node
+                         # (in which all traffic proxying capabilities are
+                         # disabled). This node can then be used only to
+                         # configure a cluster of Kong
+                         # nodes connected to the same datastore.
+                         #
+                         # Example:
+                         # `proxy_listen = 0.0.0.0:443 ssl, 0.0.0.0:444 http2 ssl`
+                         #
+                         # See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen
+                         # for a description of the accepted formats for this
+                         # and other `*_listen` values.
+                         #
+                         # See https://www.nginx.com/resources/admin-guide/proxy-protocol/
+                         # for more details about the `proxy_protocol`
+                         # parameter.
+                         #
+                         # Not all `*_listen` values accept all formats
+                         # specified in nginx's documentation.
+
+#stream_listen = off
+                         # Comma-separated list of addresses and ports on
+                         # which the stream mode should listen.
+                         #
+                         # This value accepts IPv4, IPv6, and hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process,
+                         #   allowing the kernel to better distribute incoming
+                         #   connections between worker processes.
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small to prevent clients
+                         #   seeing "Connection refused" errors when connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** On Linux, this value is limited by the
+                         #   setting of the `net.core.somaxconn` kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect, it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` specifies whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections.
+                         # - `so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]`
+                         #   configures the `TCP keepalive` behavior for the listening
+                         #   socket. If this parameter is omitted, the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value `on`, the `SO_KEEPALIVE` option is turned
+                         #   on for the socket. If it is set to the value `off`, the
+                         #   `SO_KEEPALIVE` option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the` TCP_KEEPIDLE`, `TCP_KEEPINTVL`,
+                         #   and `TCP_KEEPCNT` socket options.
+                         #
+                         # Examples:
+                         #
+                         # ```
+                         # stream_listen = 127.0.0.1:7000 reuseport backlog=16384
+                         # stream_listen = 0.0.0.0:989 reuseport backlog=65536, 0.0.0.0:20
+                         # stream_listen = [::1]:1234 backlog=16384
+                         # ```
+                         #
+                         # By default, this value is set to `off`, thus
+                         # disabling the stream proxy port for this node.
+
+# See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
+# for a description of the formats that Kong might accept in stream_listen.
+
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
+                         # Comma-separated list of addresses and ports on
+                         # which the Admin interface should listen.
+                         # The Admin interface is the API allowing you to
+                         # configure and manage Kong.
+                         # Access to this interface should be *restricted*
+                         # to Kong administrators *only*. This value accepts
+                         # IPv4, IPv6, and hostnames.
+                         #
+                         # It is highly recommended to avoid exposing the Admin API to public
+                         # interfaces, by using values such as `0.0.0.0:8001`
+                         #
+                         # See https://docs.konghq.com/gateway/latest/production/running-kong/secure-admin-api/
+                         # for more information about how to secure your Admin API.
+                         #
+                         # Some suffixes can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         # - `deferred` instructs to use a deferred accept on
+                         #   Linux (the `TCP_DEFER_ACCEPT` socket option).
+                         # - `bind` instructs to make a separate bind() call
+                         #   for a given address:port pair.
+                         # - `reuseport` instructs to create an individual
+                         #   listening socket for each worker process,
+                         #   allowing the Kernel to better distribute incoming
+                         #   connections between worker processes.
+                         # - `backlog=N` sets the maximum length for the queue
+                         #   of pending TCP connections. This number should
+                         #   not be too small to prevent clients
+                         #   seeing "Connection refused" errors when connecting to
+                         #   a busy Kong instance.
+                         #   **Note:** On Linux, this value is limited by the
+                         #   setting of the `net.core.somaxconn` kernel parameter.
+                         #   In order for the larger `backlog` set here to take
+                         #   effect, it is necessary to raise
+                         #   `net.core.somaxconn` at the same time to match or
+                         #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` specifies whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections.
+                         # - `so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]`
+                         #   configures the “TCP keepalive” behavior for the listening
+                         #   socket. If this parameter is omitted, the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value `on`, the `SO_KEEPALIVE` option is turned
+                         #   on for the socket. If it is set to the value `off`, the
+                         #   `SO_KEEPALIVE` option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the `TCP_KEEPIDLE`, `TCP_KEEPINTVL`,
+                         #   and `TCP_KEEPCNT` socket options.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the Admin interface for this node, enabling a
+                         # data plane mode (without configuration
+                         # capabilities) pulling its configuration changes
+                         # from the database.
+                         #
+                         # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
+
+#status_listen = 127.0.0.1:8007 reuseport backlog=16384
+                         # Comma-separated list of addresses and ports on
+                         # which the Status API should listen.
+                         # The Status API is a read-only endpoint
+                         # allowing monitoring tools to retrieve metrics,
+                         # healthiness, and other non-sensitive information
+                         # of the current Kong node.
+                         #
+                         # The following suffix can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's Status API server.
+                         # - `proxy_protocol` will enable usage of the PROXY protocol.
+                         #
+                         # This value can be set to `off`, disabling
+                         # the Status API for this node.
+                         #
+                         # Example: `status_listen = 0.0.0.0:8100 ssl http2`
+
+
+#nginx_user = kong kong          # Defines user and group credentials used by
+                                 # worker processes. If group is omitted, a
+                                 # group whose name equals that of user is
+                                 # used.
+                                 #
+                                 # Example: `nginx_user = nginx www`
+                                 #
+                                 # **Note**: If the `kong` user and the `kong`
+                                 # group are not available, the default user
+                                 # and group credentials will be
+                                 # `nobody nobody`.
+
+#nginx_worker_processes = auto   # Determines the number of worker processes
+                                 # spawned by Nginx.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_processes
+                                 # for detailed usage of the equivalent Nginx
+                                 # directive and a description of accepted
+                                 # values.
+
+#nginx_daemon = on               # Determines whether Nginx will run as a daemon
+                                 # or as a foreground process. Mainly useful
+                                 # for development or when running Kong inside
+                                 # a Docker environment.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
+
+#mem_cache_size = 128m           # Size of each of the two shared memory caches
+                                 # for traditional mode database entities
+                                 # and runtime data, `kong_core_cache` and
+                                 # `kong_cache`.
+                                 #
+                                 # The accepted units are `k` and `m`, with a minimum
+                                 # recommended value of a few MBs.
+                                 #
+                                 # **Note**: As this option controls the size of two
+                                 # different cache zones, the total memory Kong
+                                 # uses to cache entities might be double this value.
+                                 # The created zones are shared by all worker
+                                 # processes and do not become larger when more
+                                 # workers are used.
+
+#ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
+                                 # Accepted values are `modern`,
+                                 # `intermediate`, `old`, `fips` or `custom`.
+                                 # If you want to enable TLSv1.1, this value has to be `old`.
+                                 #
+                                 # See https://wiki.mozilla.org/Security/Server_Side_TLS
+                                 # for detailed descriptions of each cipher
+                                 # suite. `fips` cipher suites are as described in
+                                 # https://wiki.openssl.org/index.php/FIPS_mode_and_TLS.
+
+#ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
+                                 # served by Nginx. This list must conform to
+                                 # the pattern defined by `openssl ciphers`.
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+                                 # If you use DHE ciphers, you must also
+                                 # configure the `ssl_dhparam` parameter.
+
+#ssl_protocols = TLSv1.2 TLSv1.3
+                                 # Enables the specified protocols for
+                                 # client-side connections. The set of
+                                 # supported protocol versions also depends
+                                 # on the version of OpenSSL Kong was built
+                                 # with. This value is ignored if
+                                 # `ssl_cipher_suite` is not `custom`.
+                                 # If you want to enable TLSv1.1, you should
+                                 # set `ssl_cipher_suite` to `old`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+#ssl_prefer_server_ciphers = on  # Specifies that server ciphers should be
+                                 # preferred over client ciphers when using
+                                 # the SSLv3 and TLS protocols. This value is
+                                 # ignored if `ssl_cipher_suite` is not `custom`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
+
+#ssl_dhparam =                   # Defines DH parameters for DHE ciphers from the
+                                 # predefined groups: `ffdhe2048`, `ffdhe3072`,
+                                 # `ffdhe4096`, `ffdhe6144`, `ffdhe8192`,
+                                 # from the absolute path to a parameters file, or
+                                 # directly from the parameters content.
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is `modern` or `intermediate`. The reason is
+                                 # that `modern` has no ciphers that need this,
+                                 # and `intermediate` uses `ffdhe2048`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_dhparam
+
+#ssl_session_tickets = on        # Enables or disables session resumption through
+                                 # TLS session tickets. This has no impact when
+                                 # used with TLSv1.3.
+                                 #
+                                 # Kong enables this by default for performance
+                                 # reasons, but it has security implications:
+                                 # https://github.com/mozilla/server-side-tls/issues/135
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets
+
+#ssl_session_timeout = 1d        # Specifies a time during which a client may
+                                 # reuse the session parameters. See the rationale:
+                                 # https://github.com/mozilla/server-side-tls/issues/198
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
+#ssl_session_cache_size = 10m    # Sets the size of the caches that store session parameters.
+                                 #
+                                 # See https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_cache
+
+#ssl_cert =                      # Comma-separated list of certificates for `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificate is specified, it can be used to provide
+                                 # alternate types of certificates (for example, ECC certificates) that will be served
+                                 # to clients that support them. Note that to properly serve using ECC certificates,
+                                 # it is recommended to also set `ssl_cipher_suite` to
+                                 # `modern` or `intermediate`.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default certificates (RSA + ECC) the first time it starts up and use
+                                 # them for serving TLS requests.
+                                 #
+                                 # Certificates can be configured on this property with any of the following
+                                 # values:
+                                 # - absolute path to the certificate
+                                 # - certificate content
+                                 # - base64 encoded certificate content
+
+#ssl_cert_key =                  # Comma-separated list of keys for `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificate was specified for `ssl_cert`, then this
+                                 # option should contain the corresponding key for all certificates
+                                 # provided in the same order.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default private keys (RSA + ECC) the first time it starts up and use
+                                 # them for serving TLS requests.
+                                 #
+                                 # Keys can be configured on this property with any of the following
+                                 # values:
+                                 # - absolute path to the certificate key
+                                 # - certificate key content
+                                 # - base64 encoded certificate key content
+
+#client_ssl = off                # Determines if Nginx should attempt to send client-side
+                                 # TLS certificates and perform Mutual TLS Authentication
+                                 # with upstream service when proxying requests.
+
+#client_ssl_cert =               # If `client_ssl` is enabled, the client certificate
+                                 # for the `proxy_ssl_certificate` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
+                                 #
+                                 # The certificate can be configured on this property with any of the following
+                                 # values:
+                                 # - absolute path to the certificate
+                                 # - certificate content
+                                 # - base64 encoded certificate content
+
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the client TLS key
+                                 # for the `proxy_ssl_certificate_key` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
+                                 #
+                                 # The certificate key can be configured on this property with any of the following
+                                 # values:
+                                 # - absolute path to the certificate key
+                                 # - certificate key content
+                                 # - base64 encoded certificate key content
+
+#admin_ssl_cert =                # Comma-separated list of certificates for `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
+
+#admin_ssl_cert_key =            # Comma-separated list of keys for `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
+
+#status_ssl_cert =               # Comma-separated list of certificates for `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
+
+#status_ssl_cert_key =           # Comma-separated list of keys for `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
+
+#debug_ssl_cert =                # Comma-separated list of certificates for `debug_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
+
+#debug_ssl_cert_key =            # Comma-separated list of keys for `debug_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
+
+#headers = server_tokens, latency_tokens, X-Kong-Request-Id
+                                 # Comma-separated list of headers Kong should
+                                 # inject in client responses.
+                                 #
+                                 # Accepted values are:
+                                 # - `Server`: Injects `Server: kong/x.y.z`
+                                 #   on Kong-produced responses (e.g., Admin
+                                 #   API, rejected requests from auth plugin).
+                                 # - `Via`: Injects `Via: kong/x.y.z` for
+                                 #   successfully proxied requests.
+                                 # - `X-Kong-Proxy-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to process
+                                 #   a request and run all plugins before
+                                 #   proxying the request upstream.
+                                 # - `X-Kong-Response-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to produce
+                                 #   a response in case of, e.g., a plugin
+                                 #   short-circuiting the request, or in
+                                 #   case of an error.
+                                 # - `X-Kong-Upstream-Latency`: Time taken
+                                 #   (in milliseconds) by the upstream
+                                 #   service to send response headers.
+                                 # - `X-Kong-Admin-Latency`: Time taken
+                                 #   (in milliseconds) by Kong to process
+                                 #   an Admin API request.
+                                 # - `X-Kong-Upstream-Status`: The HTTP status
+                                 #   code returned by the upstream service.
+                                 #   This is particularly useful for clients to
+                                 #   distinguish upstream statuses if the
+                                 #   response is rewritten by a plugin.
+                                 # - `X-Kong-Request-Id`: Unique identifier of
+                                 #   the request.
+                                 # - `server_tokens`: Same as specifying both
+                                 #   `Server` and `Via`.
+                                 # - `latency_tokens`: Same as specifying
+                                 #   `X-Kong-Proxy-Latency`,
+                                 #   `X-Kong-Response-Latency`,
+                                 #   `X-Kong-Admin-Latency`, and
+                                 #   `X-Kong-Upstream-Latency`.
+                                 #
+                                 # In addition to these, this value can be set
+                                 # to `off`, which prevents Kong from injecting
+                                 # any of the above headers. Note that this
+                                 # does not prevent plugins from injecting
+                                 # headers of their own.
+                                 #
+                                 # Example: `headers = via, latency_tokens`
+
+
+#headers_upstream = X-Kong-Request-Id
+                                 # Comma-separated list of headers Kong should
+                                 # inject in requests to upstream.
+                                 #
+                                 # At this time, the only accepted value is:
+                                 # - `X-Kong-Request-Id`: Unique identifier of
+                                 #   the request.
+                                 #
+                                 # In addition, this value can be set
+                                 # to `off`, which prevents Kong from injecting
+                                 # the above header. Note that this
+                                 # does not prevent plugins from injecting
+                                 # headers of their own.
+
+#trusted_ips =                   # Defines trusted IP address blocks that are
+                                 # known to send correct `X-Forwarded-*`
+                                 # headers.
+                                 # Requests from trusted IPs make Kong forward
+                                 # their `X-Forwarded-*` headers upstream.
+                                 # Non-trusted requests make Kong insert its
+                                 # own `X-Forwarded-*` headers.
+                                 #
+                                 # This property also sets the
+                                 # `set_real_ip_from` directive(s) in the Nginx
+                                 # configuration. It accepts the same type of
+                                 # values (CIDR blocks) but as a
+                                 # comma-separated list.
+                                 #
+                                 # To trust *all* IPs, set this value to
+                                 # `0.0.0.0/0,::/0`.
+                                 #
+                                 # If the special value `unix:` is specified,
+                                 # all UNIX-domain sockets will be trusted.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
+                                 # for examples of accepted values.
+
+#real_ip_header = X-Real-IP      # Defines the request header field whose value
+                                 # will be used to replace the client address.
+                                 # This value sets the `ngx_http_realip_module`
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+                                 #
+                                 # If this value receives `proxy_protocol`:
+                                 #
+                                 # - at least one of the `proxy_listen` entries
+                                 #   must have the `proxy_protocol` flag
+                                 #   enabled.
+                                 # - the `proxy_protocol` parameter will be
+                                 #   appended to the `listen` directive of the
+                                 #   Nginx template.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+                                 # for a description of this directive.
+
+#real_ip_recursive = off         # This value sets the `ngx_http_realip_module`
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+                                 # for a description of this directive.
+
+#error_default_type = text/plain  # Default MIME type to use when the request
+                                  # `Accept` header is missing and Nginx
+                                  # is returning an error for the request.
+                                  # Accepted values are `text/plain`,
+                                  # `text/html`, `application/json`, and
+                                  # `application/xml`.
+
+#upstream_keepalive_pool_size = 512  # Sets the default size of the upstream
+                                     # keepalive connection pools.
+                                     # Upstream keepalive connection pools
+                                     # are segmented by the `dst ip/dst
+                                     # port/SNI` attributes of a connection.
+                                     # A value of `0` will disable upstream
+                                     # keepalive connections by default, forcing
+                                     # each upstream request to open a new
+                                     # connection.
+
+#upstream_keepalive_max_requests = 10000 # Sets the default maximum number of
+                                         # requests that can be proxied upstream
+                                         # through one keepalive connection.
+                                         # After the maximum number of requests
+                                         # is reached, the connection will be
+                                         # closed.
+                                         # A value of `0` will disable this
+                                         # behavior, and a keepalive connection
+                                         # can be used to proxy an indefinite
+                                         # number of requests.
+
+#upstream_keepalive_idle_timeout = 60   # Sets the default timeout (in seconds)
+                                        # for which an upstream keepalive
+                                        # connection should be kept open. When
+                                        # the timeout is reached while the
+                                        # connection has not been reused, it
+                                        # will be closed.
+                                        # A value of `0` will disable this
+                                        # behavior, and an idle keepalive
+                                        # connection may be kept open
+                                        # indefinitely.
+
+#allow_debug_header = off               # Enable the `Kong-Debug` header function.
+                                        # If it is `on`, Kong will add
+                                        # `Kong-Route-Id`, `Kong-Route-Name`, `Kong-Service-Id`,
+                                        # and `Kong-Service-Name` debug headers to the response when
+                                        # the client request header `Kong-Debug: 1` is present.
+
+#------------------------------------------------------------------------------
+# NGINX injected directives
+#------------------------------------------------------------------------------
+
+# Nginx directives can be dynamically injected in the runtime nginx.conf file
+# without requiring a custom Nginx configuration template.
+#
+# All configuration properties following the naming scheme
+# `nginx_<namespace>_<directive>` will result in `<directive>` being injected in
+# the Nginx configuration block corresponding to the property's `<namespace>`.
+# Example:
+#   `nginx_proxy_large_client_header_buffers = 8 24k`
+#
+#   Will inject the following directive in Kong's proxy `server {}` block:
+#
+#   `large_client_header_buffers 8 24k;`
+#
+# The following namespaces are supported:
+#
+# - `nginx_main_<directive>`: Injects `<directive>` in Kong's configuration
+#   `main` context.
+# - `nginx_events_<directive>`: Injects `<directive>` in Kong's `events {}`
+#   block.
+# - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
+# - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
+#   `server {}` block.
+# - `nginx_location_<directive>`: Injects `<directive>` in Kong's proxy `/`
+#   location block (nested under Kong's proxy `server {}` block).
+# - `nginx_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+#   `upstream {}` block.
+# - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
+#   `server {}` block.
+# - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
+#   `server {}` block (only effective if `status_listen` is enabled).
+# - `nginx_debug_<directive>`: Injects `<directive>` in Kong's Debug API
+#   `server{}` block (only effective if `debug_listen` or `debug_listen_local`
+#   is enabled).
+# - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
+#   `stream {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
+#   `server {}` block (only effective if `stream_listen` is enabled).
+# - `nginx_supstream_<directive>`: Injects `<directive>` in Kong's stream
+#   module `upstream {}` block.
+#
+# As with other configuration properties, Nginx directives can be injected via
+# environment variables when capitalized and prefixed with `KONG_`.
+# Example:
+#   `KONG_NGINX_HTTP_SSL_PROTOCOLS` -> `nginx_http_ssl_protocols`
+#
+#   Will inject the following directive in Kong's `http {}` block:
+#
+#   `ssl_protocols <value>;`
+#
+#   If different sets of protocols are desired between the proxy and Admin API
+#   server, you may specify `nginx_proxy_ssl_protocols` and/or
+#   `nginx_admin_ssl_protocols`, both of which take precedence over the
+#   `http {}` block.
+
+#nginx_main_worker_rlimit_nofile = auto
+                                 # Changes the limit on the maximum number of open files
+                                 # for worker processes.
+                                 #
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use,
+                                 # and the lower bound of 1024 as a good default.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_rlimit_nofile
+
+#nginx_events_worker_connections = auto
+                                 # Sets the maximum number of simultaneous
+                                 # connections that can be opened by a worker process.
+                                 #
+                                 # The special and default value of `auto` sets this
+                                 # value to `ulimit -n` with the upper bound limited to
+                                 # 16384 as a measure to protect against excess memory use,
+                                 # and the lower bound of 1024 as a good default.
+                                 #
+                                 # See http://nginx.org/en/docs/ngx_core_module.html#worker_connections
+
+#nginx_http_client_header_buffer_size = 1k  # Sets buffer size for reading the
+                                            # client request headers.
+                                            # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_header_buffer_size
+
+#nginx_http_large_client_header_buffers = 4 8k  # Sets the maximum number and
+                                                # size of buffers used for
+                                                # reading large client
+                                                # request headers.
+                                                # See http://nginx.org/en/docs/http/ngx_http_core_module.html#large_client_header_buffers
+
+#nginx_http_client_max_body_size = 0  # Defines the maximum request body size
+                                      # allowed by requests proxied by Kong,
+                                      # specified in the Content-Length request
+                                      # header. If a request exceeds this
+                                      # limit, Kong will respond with a 413
+                                      # (Request Entity Too Large). Setting
+                                      # this value to 0 disables checking the
+                                      # request body size.
+                                      # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
+
+#nginx_admin_client_max_body_size = 10m  # Defines the maximum request body size for
+                                         # Admin API.
+
+#nginx_http_charset = UTF-8  # Adds the specified charset to the “Content-Type”
+                             # response header field. If this charset is different
+                             # from the charset specified in the `source_charset`
+                             # directive, a conversion is performed.
+                             #
+                             # The parameter `off` cancels the addition of
+                             # charset to the “Content-Type” response header field.
+                             # See http://nginx.org/en/docs/http/ngx_http_charset_module.html#charset
+
+#nginx_http_client_body_buffer_size = 8k  # Defines the buffer size for reading
+                                          # the request body. If the client
+                                          # request body is larger than this
+                                          # value, the body will be buffered to
+                                          # disk. Note that when the body is
+                                          # buffered to disk, Kong plugins that
+                                          # access or manipulate the request
+                                          # body may not work, so it is
+                                          # advisable to set this value as high
+                                          # as possible (e.g., set it as high
+                                          # as `client_max_body_size` to force
+                                          # request bodies to be kept in
+                                          # memory). Do note that
+                                          # high-concurrency environments will
+                                          # require significant memory
+                                          # allocations to process many
+                                          # concurrent large request bodies.
+                                          # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+
+#nginx_admin_client_body_buffer_size = 10m  # Defines the buffer size for reading
+                                            # the request body on Admin API.
+
+#nginx_http_lua_regex_match_limit = 100000  # Global `MATCH_LIMIT` for PCRE
+                                            # regex matching. The default of `100000` should ensure
+                                            # at worst any regex Kong executes could finish within
+                                            # roughly 2 seconds.
+
+#nginx_http_lua_regex_cache_max_entries = 8192  # Specifies the maximum number of entries allowed
+                                                # in the worker process level PCRE JIT compiled regex cache.
+                                                # It is recommended to set it to at least (number of regex paths * 2)
+                                                # to avoid high CPU usages if you manually specified `router_flavor` to
+                                                # `traditional`. `expressions` and `traditional_compat` router do
+                                                # not make use of the PCRE library and their behavior
+                                                # is unaffected by this setting.
+
+#nginx_http_keepalive_requests = 10000 # Sets the maximum number of client requests that can be served through one
+                                       # keep-alive connection. After the maximum number of requests are made,
+                                       # the connection is closed.
+                                       # Closing connections periodically is necessary to free per-connection
+                                       # memory allocations. Therefore, using too high a maximum number of requests
+                                       # could result in excessive memory usage and is not recommended.
+                                       # See: https://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_requests
+
+
+#------------------------------------------------------------------------------
+# DATASTORE
+#------------------------------------------------------------------------------
+
+# Kong can run with a database to store coordinated data between Kong nodes in
+# a cluster, or without a database, where each node stores its information
+# independently in memory.
+#
+# When using a database, Kong will store data for all its entities (such as
+# routes, services, consumers, and plugins) in PostgreSQL,
+# and all Kong nodes belonging to the same cluster must connect to the same database.
+#
+# Kong supports PostgreSQL versions 9.5 and above.
+#
+# When not using a database, Kong is said to be in "DB-less mode": it will keep
+# its entities in memory, and each node needs to have this data entered via a
+# declarative configuration file, which can be specified through the
+# `declarative_config` property, or via the Admin API using the `/config`
+# endpoint.
+#
+# When using Postgres as the backend storage, you can optionally enable Kong
+# to serve read queries from a separate database instance.
+# When the number of proxies is large, this can greatly reduce the load
+# on the main Postgres instance and achieve better scalability. It may also
+# reduce the latency jitter if the Kong proxy node's latency to the main
+# Postgres instance is high.
+#
+# The read-only Postgres instance only serves read queries, and write
+# queries still go to the main connection. The read-only Postgres instance
+# can be eventually consistent while replicating changes from the main
+# instance.
+#
+# At least the `pg_ro_host` config is needed to enable this feature.
+# By default, all other database config for the read-only connection is
+# inherited from the corresponding main connection config described above but
+# may be optionally overwritten explicitly using the `pg_ro_*` config below.
+
+#database = postgres             # Determines the database (or no database) for
+                                 # this node
+                                 # Accepted values are `postgres` and `off`.
+
+#pg_host = 127.0.0.1             # Host of the Postgres server.
+#pg_port = 5432                  # Port of the Postgres server.
+#pg_timeout = 5000               # Defines the timeout (in ms), for connecting,
+                                 # reading and writing.
+
+#pg_user = kong                  # Postgres user.
+#pg_password =                   # Postgres user's password.
+#pg_database = kong              # The database name to connect to.
+
+#pg_schema =                     # The database schema to use. If unspecified,
+                                 # Kong will respect the `search_path` value of
+                                 # your PostgreSQL instance.
+
+#pg_ssl = off                    # Toggles client-server TLS connections
+                                 # between Kong and PostgreSQL.
+                                 # Because PostgreSQL uses the same port for TLS
+                                 # and non-TLS, this is only a hint. If the
+                                 # server does not support TLS, the established
+                                 # connection will be a plain one.
+
+#pg_ssl_verify = off             # Toggles server certificate verification if
+                                 # `pg_ssl` is enabled.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
+
+#pg_max_concurrent_queries = 0   # Sets the maximum number of concurrent queries
+                                 # that can be executing at any given time. This
+                                 # limit is enforced per worker process; the
+                                 # total number of concurrent queries for this
+                                 # node will be will be:
+                                 # `pg_max_concurrent_queries * nginx_worker_processes`.
+                                 #
+                                 # The default value of 0 removes this
+                                 # concurrency limitation.
+
+#pg_semaphore_timeout = 60000    # Defines the timeout (in ms) after which
+                                 # PostgreSQL query semaphore resource
+                                 # acquisition attempts will fail. Such
+                                 # failures will generally result in the
+                                 # associated proxy or Admin API request
+                                 # failing with an HTTP 500 status code.
+                                 # Detailed discussion of this behavior is
+                                 # available in the online documentation.
+
+#pg_keepalive_timeout =          # Specify the maximal idle timeout (in ms)
+                                 # for the postgres connections in the pool.
+                                 # If this value is set to 0 then the timeout interval
+                                 # is unlimited.
+                                 #
+                                 # If not specified this value will be same as
+                                 # `lua_socket_keepalive_timeout`
+
+#pg_pool_size =                  # Specifies the size limit (in terms of connection
+                                 # count) for the Postgres server.
+                                 # Note that this connection pool is intended
+                                 # per Nginx worker rather than per Kong instance.
+                                 #
+                                 # If not specified, the default value is the same as
+                                 # `lua_socket_pool_size`
+
+#pg_backlog =                    # If specified, this value will limit the total
+                                 # number of open connections to the Postgres
+                                 # server to `pg_pool_size`. If the connection
+                                 # pool is full, subsequent connect operations
+                                 # will be inserted in a queue with size equal
+                                 # to this option's value.
+                                 #
+                                 # If the number of queued connect operations
+                                 # reaches `pg_backlog`, exceeding connections will fail.
+                                 #
+                                 # If not specified, then number of open connections
+                                 # to the Postgres server is not limited.
+
+#pg_ro_host =                    # Same as `pg_host`, but for the
+                                 # read-only connection.
+                                 # **Note:** Refer to the documentation
+                                 # section above for detailed usage.
+
+#pg_ro_port = <pg_port>          # Same as `pg_port`, but for the
+                                 # read-only connection.
+
+#pg_ro_timeout = <pg_timeout>    # Same as `pg_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_user = <pg_user>          # Same as `pg_user`, but for the
+                                 # read-only connection.
+
+#pg_ro_password = <pg_password>  # Same as `pg_password`, but for the
+                                 # read-only connection.
+
+#pg_ro_database = <pg_database>  # Same as `pg_database`, but for the
+                                 # read-only connection.
+
+#pg_ro_schema = <pg_schema>      # Same as `pg_schema`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl = <pg_ssl>            # Same as `pg_ssl`, but for the
+                                 # read-only connection.
+
+#pg_ro_ssl_verify = <pg_ssl_verify>
+                                 # Same as `pg_ssl_verify`, but for the
+                                 # read-only connection.
+
+#pg_ro_max_concurrent_queries = <pg_max_concurrent_queries>
+                                 # Same as `pg_max_concurrent_queries`, but for
+                                 # the read-only connection.
+                                 # Note: read-only concurrency is not shared
+                                 # with the main (read-write) connection.
+
+#pg_ro_semaphore_timeout = <pg_semaphore_timeout>
+                                 # Same as `pg_semaphore_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_keepalive_timeout = <pg_keepalive_timeout>
+                                 # Same as `pg_keepalive_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_pool_size = <pg_pool_size>
+                                 # Same as `pg_pool_size`, but for the
+                                 # read-only connection.
+
+#pg_ro_backlog = <pg_backlog>
+                                 # Same as `pg_backlog`, but for the
+                                 # read-only connection.
+
+#declarative_config =           # The path to the declarative configuration
+                                # file which holds the specification of all
+                                # entities (routes, services, consumers, etc.)
+                                # to be used when the `database` is set to
+                                # `off`.
+                                #
+                                # Entities are stored in Kong's LMDB cache,
+                                # so you must ensure that enough headroom is
+                                # allocated to it via the `lmdb_map_size`
+                                # property.
+                                #
+                                # If the hybrid mode `role` is set to `data_plane`
+                                # and there's no configuration cache file,
+                                # this configuration is used before connecting
+                                # to the control plane node as a user-controlled
+                                # fallback.
+
+#declarative_config_string =    # The declarative configuration as a string
+
+#lmdb_environment_path = dbless.lmdb  # Directory where the LMDB database files used by
+                                      # DB-less and hybrid mode to store Kong
+                                      # configurations reside.
+                                      #
+                                      # This path is relative under the Kong `prefix`.
+
+#lmdb_map_size = 2048m                # Maximum size of the LMDB memory map, used to store the
+                                      # DB-less and hybrid mode configurations. Default is 2048m.
+                                      #
+                                      # This config defines the limit of LMDB file size; the
+                                      # actual file size growth will be on-demand and
+                                      # proportional to the actual config size.
+                                      #
+                                      # Note this value can be set very large, say a couple of GBs,
+                                      # to accommodate future database growth and
+                                      # Multi-Version Concurrency Control (MVCC) headroom needs.
+                                      # The file size of the LMDB database file should stabilize
+                                      # after a few config reloads/hybrid mode syncs, and the actual
+                                      # memory used by the LMDB database will be smaller than
+                                      # the file size due to dynamic swapping of database pages by
+                                      # the OS.
+
+#------------------------------------------------------------------------------
+# DATASTORE CACHE
+#------------------------------------------------------------------------------
+
+# In order to avoid unnecessary communication with the datastore, Kong caches
+# entities (such as APIs, consumers, credentials...) for a configurable period
+# of time. It also handles invalidations if such an entity is updated.
+#
+# This section allows for configuring the behavior of Kong regarding the
+# caching of such configuration entities.
+#db_update_frequency = 5         # Frequency (in seconds) at which to check for
+                                 # updated entities with the datastore.
+                                 #
+                                 # When a node creates, updates, or deletes an
+                                 # entity via the Admin API, other nodes need
+                                 # to wait for the next poll (configured by
+                                 # this value) to eventually purge the old
+                                 # cached entity and start using the new one.
+
+#db_update_propagation = 0       # Time (in seconds) taken for an entity in the
+                                 # datastore to be propagated to replica nodes
+                                 # of another datacenter.
+                                 #
+                                 # When set, this property will increase the
+                                 # time taken by Kong to propagate the change
+                                 # of an entity.
+                                 #
+                                 # Single-datacenter setups or PostgreSQL
+                                 # servers should suffer no such delays, and
+                                 # this value can be safely set to 0.
+                                 # Postgres setups with read replicas should
+                                 # set this value to the maximum expected replication
+                                 # lag between the writer and reader instances.
+
+#db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
+                                 # the datastore when cached by this node.
+                                 #
+                                 # Database misses (no entity) are also cached
+                                 # according to this setting if you do not
+                                 # configure `db_cache_neg_ttl`.
+                                 #
+                                 # If set to 0 (default), such cached entities
+                                 # or misses never expire.
+
+#db_cache_neg_ttl =              # Time-to-live (in seconds) of a datastore
+                                 # miss (no entity).
+                                 #
+                                 # If not specified (default), `db_cache_ttl`
+                                 # value will be used instead.
+                                 #
+                                 # If set to 0, misses will never expire.
+
+#db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
+                                 # from the datastore should be resurrected
+                                 # when they cannot be refreshed (e.g., the
+                                 # datastore is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # entities will be made.
+
+#db_cache_warmup_entities = services
+                                 # Entities to be pre-loaded from the datastore
+                                 # into the in-memory cache at Kong start-up.
+                                 # This speeds up the first access of endpoints
+                                 # that use the given entities.
+                                 #
+                                 # When the `services` entity is configured
+                                 # for warmup, the DNS entries for values in
+                                 # its `host` attribute are pre-resolved
+                                 # asynchronously as well.
+                                 #
+                                 # Cache size set in `mem_cache_size` should
+                                 # be set to a value large enough to hold all
+                                 # instances of the specified entities.
+                                 # If the size is insufficient, Kong will log
+                                 # a warning.
+
+#------------------------------------------------------------------------------
+# DNS RESOLVER
+#------------------------------------------------------------------------------
+
+# By default, the DNS resolver will use the standard configuration files
+# `/etc/hosts` and `/etc/resolv.conf`. The settings in the latter file will be
+# overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
+# they have been set.
+#
+# Kong will resolve hostnames as either `SRV` or `A` records (in that order, and
+# `CNAME` records will be dereferenced in the process).
+# In case a name is resolved as an `SRV` record, it will also override any given
+# port number with the `port` field contents received from the DNS server.
+#
+# The DNS options `SEARCH` and `NDOTS` (from the `/etc/resolv.conf` file) will
+# be used to expand short names to fully qualified ones. So it will first try
+# the entire `SEARCH` list for the `SRV` type, if that fails it will try the
+# `SEARCH` list for `A`, etc.
+#
+# For the duration of the `ttl`, the internal DNS resolver will load balance each
+# request it gets over the entries in the DNS record. For `SRV` records, the
+# `weight` fields will be honored, but it will only use the lowest `priority`
+# field entries in the record.
+
+#dns_resolver =                  # Comma-separated list of nameservers, each
+                                 # entry in `ip[:port]` format to be used by
+                                 # Kong. If not specified, the nameservers in
+                                 # the local `resolv.conf` file will be used.
+                                 # Port defaults to 53 if omitted. Accepts
+                                 # both IPv4 and IPv6 addresses.
+
+#dns_hostsfile = /etc/hosts      # The hosts file to use. This file is read
+                                 # once and its content is static in memory.
+                                 # To read the file again after modifying it,
+                                 # Kong must be reloaded.
+
+#dns_order = LAST,SRV,A,CNAME    # The order in which to resolve different
+                                 # record types. The `LAST` type means the
+                                 # type of the last successful lookup (for the
+                                 # specified name). The format is a (case
+                                 # insensitive) comma-separated list.
+
+#dns_valid_ttl =                 # By default, DNS records are cached using
+                                 # the TTL value of a response. If this
+                                 # property receives a value (in seconds), it
+                                 # will override the TTL for all records.
+
+#dns_stale_ttl = 3600            # Defines, in seconds, how long a record will
+                                 # remain in cache past its TTL. This value
+                                 # will be used while the new DNS record is
+                                 # fetched in the background.
+                                 # Stale data will be used from expiry of a
+                                 # record until either the refresh query
+                                 # completes, or the `dns_stale_ttl` number of
+                                 # seconds have passed.
+                                 # This configuration enables Kong to be more
+                                 # resilient during resolver downtime.
+
+#dns_cache_size = 10000          # Defines the maximum allowed number of
+                                 # DNS records stored in memory cache.
+                                 # Least recently used DNS records are discarded
+                                 # from cache if it is full. Both errors and
+                                 # data are cached; therefore, a single name query
+                                 # can easily take up 10-15 slots.
+
+#dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
+                                 # "(3) name error" responses.
+
+#dns_error_ttl = 1               # TTL in seconds for error responses.
+
+#dns_no_sync = off               # If enabled, then upon a cache-miss every
+                                 # request will trigger its own DNS query.
+                                 # When disabled, multiple requests for the
+                                 # same name/type will be synchronized to a
+                                 # single query.
+
+#------------------------------------------------------------------------------
+# New DNS RESOLVER
+#------------------------------------------------------------------------------
+
+# This DNS resolver introduces global caching for DNS records across workers,
+# significantly reducing the query load on DNS servers.
+#
+# It provides observable statistics, you can retrieve them through the Admin API
+# `/status/dns`.
+
+#new_dns_client = off            # Enable or disable the new DNS resolver
+
+#resolver_address = <name servers parsed from resolv.conf>
+                                 # Comma-separated list of nameservers, each
+                                 # entry in `ip[:port]` format to be used by
+                                 # Kong. If not specified, the nameservers in
+                                 # the local `resolv.conf` file will be used.
+                                 # Port defaults to 53 if omitted. Accepts
+                                 # both IPv4 and IPv6 addresses.
+                                 #
+                                 # Examples:
+                                 #
+                                 # ```
+                                 # resolver_address = 8.8.8.8
+                                 # resolver_address = 8.8.8.8, [::1]
+                                 # resolver_address = 8.8.8.8:53, [::1]:53
+                                 # ```
+
+#resolver_hosts_file = /etc/hosts
+                                 # The hosts file to use. This file is read
+                                 # once and its content is static in memory.
+                                 # To read the file again after modifying it,
+                                 # Kong must be reloaded.
+
+#resolver_family = A,SRV         # The supported query types.
+                                 #
+                                 # For a domain name, Kong will only query
+                                 # either IP addresses (A or AAAA) or SRV
+                                 # records, but not both.
+                                 #
+                                 # It will query SRV records only when the
+                                 # domain matches the
+                                 # "_<proto>._<service>.<name>" format, for
+                                 # example, "_ldap._tcp.example.com".
+                                 #
+                                 # For IP addresses (A or AAAA) resolution, it
+                                 # first attempts IPv4 (A) and then queries
+                                 # IPv6 (AAAA).
+
+#resolver_valid_ttl = <TTL from responses>
+                                 # By default, DNS records are cached using
+                                 # the TTL value of a response. This optional
+                                 # parameter (in seconds) allows overriding it.
+
+#resolver_error_ttl = 1          # TTL in seconds for error responses and empty
+                                 # responses.
+
+#resolver_stale_ttl = 3600       # Defines, in seconds, how long a record will
+                                 # remain in cache past its TTL. This value
+                                 # will be used while the new DNS record is
+                                 # fetched in the background.
+                                 #
+                                 # Stale data will be used from expiry of a
+                                 # record until either the refresh query
+                                 # completes, or the `resolver_stale_ttl` number
+                                 # of seconds have passed.
+                                 #
+                                 # This configuration enables Kong to be more
+                                 # resilient during the DNS server downtime.
+
+#resolver_lru_cache_size = 10000 # The DNS client uses a two-layer cache system:
+                                 # L1 - worker-level LRU Lua VM cache
+                                 # L2 - across-workers shared memory cache
+                                 #
+                                 # This value specifies the maximum allowed
+                                 # number of DNS responses stored in the L1 LRU
+                                 # lua VM cache.
+                                 #
+                                 # A single name query can easily take up 1~10
+                                 # slots, depending on attempted query types and
+                                 # extended domains from /etc/resolv.conf
+                                 # options `domain` or `search`.
+
+#resolver_mem_cache_size = 5m    # This value specifies the size of the L2
+                                 # shared memory cache for DNS responses,
+                                 # `kong_dns_cache`.
+                                 #
+                                 # Accepted units are `k` and `m`, with a
+                                 # minimum recommended value of a few MBs.
+                                 #
+                                 # 5MB shared memory size could store
+                                 # ~20000 DNS responeses with single A record or
+                                 # ~10000 DNS responeses with 2~3 A records.
+                                 #
+                                 # 10MB shared memory size could store
+                                 # ~40000 DNS responeses with single A record or
+                                 # ~20000 DNS responeses with 2~3 A records.
+
+
+#------------------------------------------------------------------------------
+# VAULTS
+#------------------------------------------------------------------------------
+
+# A secret is any sensitive piece of information required for API gateway
+# operations. Secrets may be part of the core Kong Gateway configuration,
+# used in plugins, or part of the configuration associated with APIs serviced
+# by the gateway.
+#
+# Some of the most common types of secrets used by Kong Gateway include:
+#
+# - Data store usernames and passwords, used with PostgreSQL and Redis
+# - Private X.509 certificates
+# - API keys
+#
+# Sensitive plugin configuration fields are generally used for authentication,
+# hashing, signing, or encryption. Kong Gateway lets you store certain values
+# in a vault. Here are the vault specific configuration options.
+
+#vault_env_prefix =              # Defines the environment variable vault's
+                                 # default prefix. For example if you have
+                                 # all your secrets stored in environment
+                                 # variables prefixed with `SECRETS_`, it
+                                 # can be configured here so that it isn't
+                                 # necessary to repeat them in Vault
+                                 # references.
+
+#------------------------------------------------------------------------------
+# TUNING & BEHAVIOR
+#------------------------------------------------------------------------------
+
+#worker_consistency = eventual
+                                 # Defines whether this node should rebuild its
+                                 # state synchronously or asynchronously (the
+                                 # balancers and the router are rebuilt on
+                                 # updates that affect them, e.g., updates to
+                                 # routes, services, or upstreams via the admin
+                                 # API or loading a declarative configuration
+                                 # file). (This option is deprecated and will be
+                                 # removed in future releases. The new default
+                                 # is `eventual`.)
+                                 #
+                                 # Accepted values are:
+                                 #
+                                 # - `strict`: the router will be rebuilt
+                                 #   synchronously, causing incoming requests to
+                                 #   be delayed until the rebuild is finished.
+                                 #   (This option is deprecated and will be removed
+                                 #    in future releases. The new default is `eventual`)
+                                 # - `eventual`: the router will be rebuilt
+                                 #   asynchronously via a recurring background
+                                 #   job running every second inside of each
+                                 #   worker.
+                                 #
+                                 # Note that `strict` ensures that all workers
+                                 # of a given node will always proxy requests
+                                 # with an identical router, but increased
+                                 # long-tail latency can be observed if
+                                 # frequent routes and services updates are
+                                 # expected.
+                                 # Using `eventual` will help prevent long-tail
+                                 # latency issues in such cases, but may
+                                 # cause workers to route requests differently
+                                 # for a short period of time after routes and
+                                 # services updates.
+
+#worker_state_update_frequency = 5
+                                 # Defines how often the worker state changes are
+                                 # checked with a background job. When a change
+                                 # is detected, a new router or balancer will be
+                                 # built, as needed. Raising this value will
+                                 # decrease the load on database servers and
+                                 # result in less jitter in proxy latency, but
+                                 # it might take more time to propagate changes
+                                 # to each individual worker.
+
+#router_flavor = traditional_compatible
+                                 # Selects the router implementation to use when
+                                 # performing request routing. Incremental router
+                                 # rebuild is available when the flavor is set
+                                 # to either `expressions` or
+                                 # `traditional_compatible`, which could
+                                 # significantly shorten rebuild time for a large
+                                 # number of routes.
+                                 #
+                                 # Accepted values are:
+                                 #
+                                 # - `traditional_compatible`: the DSL-based expression
+                                 #   router engine will be used under the hood. However,
+                                 #   the router config interface will be the same
+                                 #   as `traditional`, and expressions are
+                                 #   automatically generated at router build time.
+                                 #   The `expression` field on the `route` object
+                                 #   is not visible.
+                                 # - `expressions`: the DSL-based expression router engine
+                                 #   will be used under the hood. The traditional router
+                                 #   config interface is still visible, and you can also write
+                                 #   router Expressions manually and provide them in the
+                                 #   `expression` field on the `route` object.
+                                 # - `traditional`: the pre-3.0 router engine will be
+                                 #   used. The config interface will be the same as
+                                 #   pre-3.0 Kong, and the `expression` field on the
+                                 #   `route` object is not visible.
+                                 #
+                                 #   Deprecation warning: In Kong 3.0, `traditional`
+                                 #   mode should be avoided and only be used if
+                                 #   `traditional_compatible` does not work as expected.
+                                 #   This flavor of the router will be removed in the next
+                                 #   major release of Kong.
+
+#lua_max_req_headers = 100       # Maximum number of request headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request headers,
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # request headers.
+
+#lua_max_resp_headers = 100      # Maximum number of response headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong returns all the response headers,
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # response headers.
+
+#lua_max_uri_args = 100          # Maximum number of request URI arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request query
+                                 # arguments, and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many query arguments.
+
+#lua_max_post_args = 100         # Maximum number of request post arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request post
+                                 # arguments, and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many post arguments.
+
+#------------------------------------------------------------------------------
+# MISCELLANEOUS
+#------------------------------------------------------------------------------
+
+# Additional settings inherited from lua-nginx-module allowing for more
+# flexibility and advanced usage.
+#
+# See the lua-nginx-module documentation for more information:
+# https://github.com/openresty/lua-nginx-module
+
+
+#lua_ssl_trusted_certificate = system   # Comma-separated list of certificate authorities
+                                        # for Lua cosockets in PEM format.
+                                        #
+                                        # The special value `system` attempts to search for the
+                                        # "usual default" provided by each distro, according
+                                        # to an arbitrary heuristic. In the current implementation,
+                                        # the following pathnames will be tested in order,
+                                        # and the first one found will be used:
+                                        #
+                                        # - `/etc/ssl/certs/ca-certificates.crt` (Debian/Ubuntu/Gentoo)
+                                        # - `/etc/pki/tls/certs/ca-bundle.crt` (Fedora/RHEL 6)
+                                        # - `/etc/ssl/ca-bundle.pem` (OpenSUSE)
+                                        # - `/etc/pki/tls/cacert.pem` (OpenELEC)
+                                        # - `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` (CentOS/RHEL 7)
+                                        # - `/etc/ssl/cert.pem` (OpenBSD, Alpine)
+                                        #
+                                        # `system` can be used by itself or in conjunction with other
+                                        # CA file paths.
+                                        #
+                                        # When `pg_ssl_verify` is enabled, these
+                                        # certificate authority files will be
+                                        # used for verifying Kong's database connections.
+                                        #
+                                        # Certificates can be configured on this property
+                                        # with any of the following values:
+                                        # - `system`
+                                        # - absolute path to the certificate
+                                        # - certificate content
+                                        # - base64 encoded certificate content
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
+
+#lua_ssl_verify_depth = 1        # Sets the verification depth in the server
+                                 # certificates chain used by Lua cosockets,
+                                 # set by `lua_ssl_trusted_certificate`.
+                                 # This includes the certificates configured
+                                 # for Kong's database connections.
+                                 # If the maximum depth is reached before
+                                 # reaching the end of the chain, verification
+                                 # will fail. This helps mitigate certificate
+                                 # based DoS attacks.
+                                 #
+                                 # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
+
+#lua_ssl_protocols = TLSv1.2 TLSv1.3   # Defines the TLS versions supported
+                                               # when handshaking with OpenResty's
+                                               # TCP cosocket APIs.
+                                               #
+                                               # This affects connections made by Lua
+                                               # code, such as connections to the
+                                               # database Kong uses, or when sending logs
+                                               # using a logging plugin. It does *not*
+                                               # affect connections made to the upstream
+                                               # Service or from downstream clients.
+
+#lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
+                                           # (LUA_PATH). Useful when developing
+                                           # or using custom plugins not stored
+                                           # in the default search path.
+                                           #
+                                           # See https://github.com/openresty/lua-nginx-module#lua_package_path
+
+#lua_package_cpath =             # Sets the Lua C module search path
+                                 # (LUA_CPATH).
+                                 #
+                                 # See https://github.com/openresty/lua-nginx-module#lua_package_cpath
+
+#lua_socket_pool_size = 256      # Specifies the size limit for every cosocket
+                                 # connection pool associated with every remote
+                                 # server.
+                                 #
+                                 # See https://github.com/openresty/lua-nginx-module#lua_socket_pool_size
+#untrusted_lua = sandbox
+                                 # Controls loading of Lua functions from admin-supplied
+                                 # sources such as the Admin API. LuaJIT bytecode
+                                 # loading is always disabled.
+                                 #
+                                 # **Warning:** LuaJIT is not designed as a secure
+                                 # runtime for running malicious code, therefore
+                                 # you should properly protect your Admin API endpoint
+                                 # even with sandboxing enabled. The sandbox only
+                                 # provides protection against trivial attackers or
+                                 # unintentional modification of the Kong global
+                                 # environment.
+                                 #
+                                 # Accepted values are: `off`, `sandbox`, or
+                                 # `on`:
+                                 #
+                                 # * `off`: Disallow loading of any arbitrary
+                                 #          Lua functions. The `off` option
+                                 #          disables any functionality that runs
+                                 #          arbitrary Lua code, including the
+                                 #          Serverless Functions plugins and any
+                                 #          transformation plugin that allows
+                                 #          custom Lua functions.
+                                 #
+                                 # * `sandbox`: Allow loading of Lua functions,
+                                 #              but use a sandbox when executing
+                                 #              them. The sandboxed function has
+                                 #              restricted access to the global
+                                 #              environment and only has access
+                                 #              to standard Lua functions that
+                                 #              will generally not cause harm to
+                                 #              the Kong Gateway node.
+                                 #
+                                 # * `on`: Functions have unrestricted
+                                 #         access to the global environment and
+                                 #         can load any Lua modules. This is
+                                 #         similar to the behavior in
+                                 #         Kong Gateway prior to 2.3.0.
+                                 #
+                                 # The default `sandbox` environment does not
+                                 # allow importing other modules or libraries,
+                                 # or executing anything at the OS level (for
+                                 # example, file read/write). The global
+                                 # environment is also not accessible.
+                                 #
+                                 # Examples of `untrusted_lua = sandbox`
+                                 # behavior:
+                                 #
+                                 # * You can't access or change global values
+                                 # such as `kong.configuration.pg_password`
+                                 # * You can run harmless lua:
+                                 # `local foo = 1 + 1`. However, OS level
+                                 # functions are not allowed, like:
+                                 # `os.execute('rm -rf /*')`.
+                                 #
+                                 # For a full allowed/disallowed list, see:
+                                 # https://github.com/kikito/sandbox.lua/blob/master/sandbox.lua
+                                 #
+                                 # To customize the sandbox environment, use
+                                 # the `untrusted_lua_sandbox_requires` and
+                                 # `untrusted_lua_sandbox_environment`
+                                 # parameters below.
+
+#untrusted_lua_sandbox_requires = # Comma-separated list of modules allowed to
+                                  # be loaded with `require` inside the
+                                  # sandboxed environment. Ignored
+                                  # if `untrusted_lua` is not `sandbox`.
+                                  #
+                                  # For example, say you have configured the
+                                  # Serverless pre-function plugin and it
+                                  # contains the following `requires`:
+                                  #
+                                  # ```
+                                  # local template = require "resty.template"
+                                  # local split = require "kong.tools.string".split
+                                  # ```
+                                  #
+                                  # To run the plugin, add the modules to the
+                                  # allowed list:
+                                  # ```
+                                  # untrusted_lua_sandbox_requires = resty.template, kong.tools.utils
+                                  # ```
+                                  #
+                                  # **Warning:** Allowing certain modules may
+                                  # create opportunities to escape the
+                                  # sandbox. For example, allowing `os` or
+                                  # `luaposix` may be unsafe.
+
+#untrusted_lua_sandbox_environment = # Comma-separated list of global Lua
+                                     # variables that should be made available
+                                     # inside the sandboxed environment. Ignored
+                                     # if `untrusted_lua` is not `sandbox`.
+                                     #
+                                     # **Warning**: Certain variables, when made
+                                     # available, may create opportunities to
+                                     # escape the sandbox.
+
+#openresty_path =                 # Path to the OpenResty installation that Kong
+                                  # will use. When this is empty (the default),
+                                  # Kong determines the OpenResty installation
+                                  # by searching for a system-installed OpenResty
+                                  # and falling back to searching $PATH for the
+                                  # nginx binary.
+                                  #
+                                  # Setting this attribute disables the search
+                                  # behavior and explicitly instructs Kong which
+                                  # OpenResty installation to use.
+
+#node_id =                        # Node ID for the Kong node. Every Kong node
+                                  # in a Kong cluster must have a unique and
+                                  # valid UUID. When empty, node ID is
+                                  # automatically generated.
+
+#------------------------------------------------------------------------------
+# KONG MANAGER
+#------------------------------------------------------------------------------
+#
+# The Admin GUI for Kong Enterprise.
+#
+#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+                        # Kong Manager Listeners
+                        #
+                        # Comma-separated list of addresses and ports on which
+                        # Kong will expose Kong Manager. This web application
+                        # lets you configure and manage Kong, and therefore
+                        # should be kept secured.
+                        #
+                        # Suffixes can be specified for each pair, similarly to
+                        # the `admin_listen` directive.
+
+#admin_gui_url =        # Kong Manager URL
+                        #
+                        # Comma-separated list of addresses (the lookup or balancer) for Kong Manager.
+                        #
+                        # Accepted format (items in square brackets are optional):
+                        #
+                        #   `<scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>][, <scheme>://<IP / HOSTNAME>[:<PORT>][<PATH>]]`
+                        #
+                        # Examples:
+                        #
+                        # - `http://127.0.0.1:8003`
+                        # - `https://kong-admin.test`
+                        # - `http://dev-machine`
+                        # - `http://127.0.0.1:8003, https://exmple.com/manager`
+
+#admin_gui_path = /     # Kong Manager base path
+                        #
+                        # This configuration parameter allows the user to customize
+                        # the path prefix where Kong Manager is served. When updating
+                        # this parameter, it's recommended to update the path in `admin_gui_url`
+                        # as well.
+                        #
+                        # Accepted format:
+                        #
+                        # - Path must start with a `/`
+                        # - Path must not end with a `/` (except for the `/`)
+                        # - Path can only contain letters, digits, hyphens (`-`),
+                        # underscores (`_`), and slashes (`/`)
+                        # - Path must not contain continuous slashes (e.g., `//` and `///`)
+                        #
+                        # Examples:
+                        #
+                        # - `/`
+                        # - `/manager`
+                        # - `/kong-manager`
+                        # - `/kong/manager`
+
+#admin_gui_api_url =    # Hierarchical part of a URI which is composed
+                        # optionally of a host, port, and path at which the
+                        # Admin API accepts HTTP or HTTPS traffic. When
+                        # this config is disabled, Kong Manager will
+                        # use the window protocol + host and append the
+                        # resolved admin_listen HTTP/HTTPS port.
+
+#admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
+                        # with SSL enabled.
+                        #
+                        # values:
+                        # - absolute path to the certificate
+                        # - certificate content
+                        # - base64 encoded certificate content
+
+#admin_gui_ssl_cert_key = # The SSL key for `admin_gui_listen` values with SSL
+                          # enabled.
+                          #
+                          # values:
+                          # - absolute path to the certificate key
+                          # - certificate key content
+                          # - base64 encoded certificate key content
+
+#admin_gui_access_log = logs/admin_gui_access.log
+                        # Kong Manager Access Logs
+                        #
+                        # Here you can set an absolute or relative path for Kong
+                        # Manager access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables access logs
+                        # for Kong Manager.
+
+
+#admin_gui_error_log = logs/admin_gui_error.log
+                        # Kong Manager Error Logs
+                        #
+                        # Here you can set an absolute or relative path for Kong
+                        # Manager access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables error logs for
+                        # Kong Manager.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
+
+
+#------------------------------------------------------------------------------
+# WEBASSEMBLY (WASM)
+#------------------------------------------------------------------------------
+
+#wasm = off             # Enable/disable wasm support. This must be enabled in
+                        # order to use wasm filters and filter chains.
+
+#wasm_filters_path =    # Path to the directory containing wasm filter modules.
+                        #
+                        # At startup, Kong discovers available wasm filters by
+                        # scanning this directory for files with the `.wasm`
+                        # file extension.
+                        #
+                        # The name of a wasm filter module is derived from the
+                        # filename itself, with the .wasm extension removed. So,
+                        # given the following tree:
+                        #
+                        # ```
+                        # /path/to/wasm_filters
+                        # ├── my_module.wasm
+                        # ├── my_other_module.wasm
+                        # └── not_a_wasm_module.txt
+                        # ```
+                        #
+                        # The resulting filter modules available for use in Kong
+                        # will be:
+                        #
+                        # - `my_module`
+                        # - `my_other_module`
+                        #
+                        # Notes:
+                        #
+                        # - No recursion is performed. Only .wasm files at the
+                        #   top level are registered.
+                        # - This path _may_ be a symlink to a directory.
+
+#wasm_filters = bundled,user        # Comma-separated list of Wasm filters to be made
+                                    # available for use in filter chains.
+                                    #
+                                    # When the `off` keyword is specified as the
+                                    # only value, no filters will be available for use.
+                                    #
+                                    # When the `bundled` keyword is specified, all filters
+                                    # bundled with Kong will be available.
+                                    #
+                                    # When the `user` keyword is specified, all filters
+                                    # within the `wasm_filters_path` will be available.
+                                    #
+                                    # **Examples:**
+                                    #
+                                    # - `wasm_filters = bundled,user` enables _all_ bundled
+                                    #   and user-supplied filters
+                                    # - `wasm_filters = user` enables _only_ user-supplied
+                                    #   filters
+                                    # - `wasm_filters = filter-a,filter-b` enables _only_
+                                    #   filters named `filter-a` or `filter-b` (whether
+                                    #   bundled _or_ user-supplied)
+                                    #
+                                    # If a conflict occurs where a bundled filter and a
+                                    # user-supplied filter share the same name, a warning
+                                    # will be logged, and the user-supplied filter will
+                                    # be used instead.
+
+#------------------------------------------------------------------------------
+# WASM injected directives
+#------------------------------------------------------------------------------
+
+# The Nginx Wasm module (i.e., ngx_wasm_module) has its own settings, which can
+# be tuned via `wasm_*` directives in the Nginx configuration file. Kong
+# supports configuration of these directives via its Nginx directive injection
+# mechanism.
+#
+# The following namespaces are supported:
+#
+# - `nginx_wasm_<directive>`: Injects `<directive>` into the `wasm {}` block.
+# - `nginx_wasm_shm_kv`: Injects `shm_kv *` into the `wasm {}` block,
+#   allowing operators to define a general memory zone which is usable by
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   an in-memory key-value store of data shareable across filters.
+# - `nginx_wasm_shm_kv_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
+#   allowing operators to define custom shared memory zones which are usable by
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   separate namespaces in the `"<name>/<key>"` format.
+#   For using these functions with non-namespaced keys, the Nginx template needs
+#   a `shm_kv *` entry, which can be defined using `nginx_wasm_shm_kv`.
+# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
+#   block, allowing various Wasmtime-specific flags to be set.
+# - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the
+#   `http {}` or `server {}` blocks, as specified in the Nginx injected directives
+#   section.
+#
+# The documentation for all supported directives can be found in the Nginx Wasm
+# module repository:
+#
+# https://github.com/Kong/ngx_wasm_module/blob/main/docs/DIRECTIVES.md
+#
+# The Wasmtime flag documentation can be found here:
+#
+# https://docs.wasmtime.dev/c-api/config_8h.html
+#
+# There are several noteworthy ngx_wasm_module behaviors which can be tuned via
+# `http {}`/`server {}` level directive injection (identical behavior in either
+# level), for example:
+#
+# - `nginx_http_proxy_wasm_socket_<connect|read|send>_timeout`: sets connection/read/send
+#   timeouts for Wasm dispatches.
+# - `nginx_http_proxy_wasm_socket_buffer_size`: sets a buffer size for
+#   reading Wasm dispatch responses.
+#
+# The values for these settings are inherited from their `nginx_*_lua_*`
+# counterparts if they have not been explicitly set. For instance, if you set
+# `nginx_http_lua_socket_connect_timeout`, the value
+# of this setting will be propagated to `nginx_http_wasm_socket_connect_timeout`
+# unless you _also_ set `nginx_http_wasm_socket_connect_timeout`.
+#
+# Some TLS-related settings receive special treatment as well:
+#
+# - `lua_ssl_trusted_certificate`: when set, the value is propagated to the
+#   `nginx_wasm_tls_trusted_certificate` directive.
+# - `lua_ssl_verify_depth`: when set (to a value greater than zero), several
+#   TLS-related `nginx_wasm_*` settings are enabled:
+#   - `nginx_wasm_tls_verify_cert`
+#   - `nginx_wasm_tls_verify_host`
+#   - `nginx_wasm_tls_no_verify_warn`
+#
+# Like other `kong.conf` fields, all injected Nginx directives documented here
+# can be set via environment variable. For instance, setting:
+#
+#   `KONG_NGINX_WASM_TLS_VERIFY_CERT=<value>`
+#
+#   Will inject the following into the `wasm {}` block:
+#
+#   `tls_verify_cert <value>;`
+#
+# There are several Nginx directives supported by ngx_wasm_module which should
+# not be used because they are irrelevant to or unsupported by Kong, or they may
+# conflict with Kong's own management of Proxy-Wasm. Use of these directives may
+# result in unintentional breakage:
+#
+# - `wasm_call`
+# - `module`
+# - `proxy_wasm`
+# - `resolver_add`
+# - `proxy_wasm_request_headers_in_access`
+# - `shm_queue`
+
+#-------------------------------------------------------------------------------
+# REQUEST DEBUGGING
+#-------------------------------------------------------------------------------
+# Request debugging is a mechanism that allows admins to collect the timing of
+# proxy path requests in the response header (X-Kong-Request-Debug-Output)
+# and optionally, the error log.
+#
+# This feature provides insights into the time spent within various components of Kong,
+# such as plugins, DNS resolution, load balancing, and more. It also provides contextual
+# information such as domain names tried during these processes.
+#
+#request_debug = on              # When enabled, Kong will provide detailed timing information
+                                 # for its components to the client and the error log
+                                 # if the following headers are present in the proxy request:
+                                 # - `X-Kong-Request-Debug`:
+                                 #   If the value is set to `*`,
+                                 #   timing information will be collected and exported for the current request.
+                                 #   If this header is not present or contains an unknown value,
+                                 #   timing information will not be collected for the current request.
+                                 #   You can also specify a list of filters, separated by commas,
+                                 #   to filter the scope of the time information that is collected.
+                                 # The following filters are supported for `X-Kong-Request-Debug`:
+                                 # - `rewrite`: Collect timing information from the `rewrite` phase.
+                                 # - `access`: Collect timing information from the `access` phase.
+                                 # - `balancer`: Collect timing information from the `balancer` phase.
+                                 # - `response`: Collect timing information from the `response` phase.
+                                 # - `header_filter`: Collect timing information from the `header_filter` phase.
+                                 # - `body_filter`: Collect timing information from the `body_filter` phase.
+                                 # - `log`: Collect timing information from the `log` phase.
+                                 # - `upstream`: Collect timing information from the `upstream` phase.
+                                 #
+                                 # - `X-Kong-Request-Debug-Log`:
+                                 #   If set to `true`, timing information will also be logged
+                                 #   in the Kong error log with a log level of `notice`.
+                                 #   Defaults to `false`.
+                                 #
+                                 # - `X-Kong-Request-Debug-Token`:
+                                 #   Token for authenticating the client making the debug
+                                 #   request to prevent abuse.
+                                 #   ** Note: Debug requests originating from loopback
+                                 #   addresses do not require this header. Deploying Kong behind
+                                 #   other proxies may result in exposing the debug interface to
+                                 #   the public.**
+                                 #
+#request_debug_token = <random>  # The Request Debug Token is used in the
+                                 # `X-Kong-Request-Debug-Token` header to prevent abuse.
+                                 # If this value is not set (the default),
+                                 # a random token will be generated
+                                 # when Kong starts, restarts, or reloads. If a token is
+                                 # specified manually, then the provided token will be used.
+                                 #
+                                 # You can locate the generated debug token in two locations:
+                                 # - Kong error log:
+                                 #   Debug token will be logged in the error log (notice level)
+                                 #   when Kong starts, restarts, or reloads.
+                                 #   The log line will have the: `[request-debug]` prefix to aid searching.
+                                 # - Filesystem:
+                                 #   Debug token will also be stored in a file located at
+                                 #   `{prefix}/.request_debug_token` and updated
+                                 #   when Kong starts, restarts, or reloads.

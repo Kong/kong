@@ -1,0 +1,21 @@
+{
+    "metrics": {
+        "latencyMs": 14767
+    },
+    "output": {
+        "message": {
+            "content": [
+                {
+                    "text": "You cannot divide by zero because it is not a valid operation in mathematics."
+                }
+            ],
+            "role": "assistant"
+        }
+    },
+    "stopReason": "end_turn",
+    "usage": {
+        "completion_tokens": 119,
+        "prompt_tokens": 19,
+        "total_tokens": 138
+    }
+}

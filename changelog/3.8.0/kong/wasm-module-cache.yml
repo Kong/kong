@@ -1,0 +1,3 @@
+message: Configure Wasmtime module cache when Wasm is enabled
+type: feature
+scope: Configuration

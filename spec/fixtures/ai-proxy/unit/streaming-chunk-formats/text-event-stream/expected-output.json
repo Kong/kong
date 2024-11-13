@@ -1,0 +1,11 @@
+[
+  {
+    "data": "{    \"choices\": [        {            \"delta\": {                \"content\": \"\",                \"role\": \"assistant\"            },            \"finish_reason\": null,            \"index\": 0,            \"logprobs\": null        }    ],    \"created\": 1720136012,    \"id\": \"chatcmpl-9hQFArK1oMZcRwaIa86RGwrjVNmeY\",    \"model\": \"gpt-4-0613\",    \"object\": \"chat.completion.chunk\",    \"system_fingerprint\": null}"
+  },
+  {
+    "data": "{    \"choices\": [        {            \"delta\": {                \"content\": \"2\"            },            \"finish_reason\": null,            \"index\": 0,            \"logprobs\": null        }    ],    \"created\": 1720136012,    \"id\": \"chatcmpl-9hQFArK1oMZcRwaIa86RGwrjVNmeY\",    \"model\": \"gpt-4-0613\",    \"object\": \"chat.completion.chunk\",    \"system_fingerprint\": null}"
+  },
+  {
+    "data": "{    \"choices\": [        {            \"delta\": {},            \"finish_reason\": \"stop\",            \"index\": 0,            \"logprobs\": null        }    ],    \"created\": 1720136012,    \"id\": \"chatcmpl-9hQFArK1oMZcRwaIa86RGwrjVNmeY\",    \"model\": \"gpt-4-0613\",    \"object\": \"chat.completion.chunk\",    \"system_fingerprint\": null}"
+  }
+] 

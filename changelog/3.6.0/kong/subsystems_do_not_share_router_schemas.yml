@@ -1,0 +1,6 @@
+message: |
+  Expressions route in `http` and `stream` subsystem now have stricter validation.
+  Previously they share the same validation schema which means admin can configure expressions
+  route using fields like `http.path` even for stream routes. This is no longer allowed.
+type: bugfix
+scope: Core

@@ -1,0 +1,2 @@
+message: "Bumped ngx_wasm_module to latest rolling release version."
+type: dependency

@@ -1,0 +1,5 @@
+message: |
+    **Clustering**: Expose data plane certificate expiry date on the control plane API.
+type: feature
+scope: Clustering
+

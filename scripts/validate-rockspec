@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+shopt -s nullglob
+
+fail() {
+    echo "Failure: $@"
+    exit 1
+}
+
+lint() {
+    local spec=$1
+
+    echo "Linting (luarocks)..."
+
+    if ! luarocks lint "$spec"; then
+        fail "luarocks lint returned error"
+    fi
+
+    echo "Linting (luacheck)..."
+
+    # luacheck helps to point out some semantic issues (like duplicate
+    # table keys)
+    if ! luacheck \
+        --quiet \
+        --no-global \
+        -- - \
+        < "$spec";
+    then
+        fail "luacheck returned error"
+    fi
+}
+
+read_modules() {
+    local spec="$1"
+    resty -e '
+        local fn = loadstring(io.stdin:read("*a"))
+        local rock = {}
+        setfenv(fn, rock)
+        fn()
+
+        for mod, fname in pairs(rock.build.modules) do
+            print(fname .. "|" .. mod)
+        end
+    ' < "$spec"
+}
+
+check_modules() {
+    local spec=$1
+    local -A files=()
+
+    echo "Checking modules..."
+
+    local failed=0
+
+    for line in $(read_modules "$spec"); do
+        fname=${line%|*}
+        module=${line#*|}
+
+        files[$fname]="$module"
+
+        if [[ ! -f $fname ]]; then
+            : $(( failed++ ))
+            echo "Module ($module) file ($fname) is missing"
+        fi
+    done
+
+    for fname in $(git ls-files 'kong/*.lua'); do
+        if [[ -z ${files[$fname]:-} ]]; then
+            : $(( failed++ ))
+            echo "File ($fname) not found in rockspec ($spec)"
+        fi
+    done
+
+    if (( failed > 0 )); then
+        fail "rockspec build.modules is invalid"
+    fi
+}
+
+
+main() {
+    local files=(kong-*.rockspec)
+    local spec
+
+    if (( ${#files[@]} == 0 )); then
+        fail "no rockspec file found"
+
+    elif (( ${#files[@]} > 1 )); then
+        fail "multiple rockspec files found: ${files[*]}"
+
+    else
+        spec=${files[0]}
+    fi
+
+    echo "Found rockspec file to validate: $spec"
+
+    lint "$spec"
+
+    check_modules "$spec"
+
+    echo "OK!"
+}
+
+
+main "$@"

@@ -1,0 +1,102 @@
+#!/usr/bin/env resty
+
+setmetatable(_G, nil)
+
+local pl_path = require("pl.path")
+
+local pl_file = require("pl.file")
+
+local tools_system = require("kong.tools.system")
+
+local emmy_debugger = require("kong.tools.emmy_debugger")
+
+local cert_path do
+  local busted_cert_file = pl_path.tmpname()
+  local busted_cert_content = pl_file.read("spec/fixtures/kong_spec.crt")
+
+  local system_cert_path, err = tools_system.get_system_trusted_certs_filepath()
+  if system_cert_path then
+    busted_cert_content = busted_cert_content .. "\n" .. pl_file.read(system_cert_path)
+  end
+
+  pl_file.write(busted_cert_file, busted_cert_content)
+  cert_path = busted_cert_file
+end
+
+local DEFAULT_RESTY_FLAGS=string.format(" -c 4096 --http-conf 'lua_ssl_trusted_certificate %s;' ", cert_path)
+
+if not os.getenv("KONG_BUSTED_RESPAWNED") then
+  -- initial run, so go update the environment
+  local script = {}
+  for line in io.popen("set"):lines() do
+    local ktvar, val = line:match("^KONG_TEST_([^=]*)=(.*)")
+    if ktvar then
+      -- reinserted KONG_TEST_xxx as KONG_xxx; append
+      table.insert(script, "export KONG_" .. ktvar .. "=" ..val)
+    end
+
+    local var = line:match("^(KONG_[^=]*)")
+    local var_for_spec = line:match("^(KONG_SPEC_[^=]*)")
+    if var and not var_for_spec then
+      -- remove existing KONG_xxx and KONG_TEST_xxx variables; prepend
+      table.insert(script, 1, "unset " .. var)
+    end
+  end
+  -- add cli recursion detection
+  table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
+
+  -- rebuild the invoked commandline, while inserting extra resty-flags
+  local resty_flags = DEFAULT_RESTY_FLAGS
+  local cmd = { "exec", "/usr/bin/env", "resty" }
+  local cmd_prefix_count = #cmd
+  for i = 0, #arg do
+    if arg[i]:sub(1, 12) == "RESTY_FLAGS=" then
+      resty_flags = arg[i]:sub(13, -1)
+
+    else
+      table.insert(cmd, "'" .. arg[i] .. "'")
+    end
+  end
+
+  -- create shared dict
+  resty_flags = resty_flags .. require("spec.fixtures.shared_dict")
+
+  if resty_flags then
+    table.insert(cmd, cmd_prefix_count+1, resty_flags)
+  end
+
+  table.insert(script, table.concat(cmd, " "))
+
+  -- recurse cli command, with proper variables (un)set for clean testing
+  local _, _, rc = os.execute(table.concat(script, "; "))
+  os.exit(rc)
+end
+
+if os.getenv("BUSTED_EMMY_DEBUGGER") then
+  emmy_debugger.init({
+    debugger = os.getenv("BUSTED_EMMY_DEBUGGER"),
+    host = os.getenv("BUSTED_EMMY_DEBUGGER_HOST"),
+    port = os.getenv("BUSTED_EMMY_DEBUGGER_PORT"),
+    wait = true,
+    source_path = os.getenv("BUSTED_EMMY_DEBUGGER_SOURCE_PATH"),
+  })
+end
+
+require("kong.globalpatches")({
+  cli = true,
+  rbusted = true
+})
+
+-- some libraries used in test like spec/helpers
+-- calls cosocket in module level, and as LuaJIT's
+-- `require` is implemented in C, this throws
+-- "attempt to yield across C-call boundary" error
+-- the following pure-lua implementation is to bypass
+-- this limitation, without need to modify all tests
+_G.require = require "spec.require".require
+
+-- Busted command-line runner
+require 'busted.runner'({ standalone = false })
+
+
+-- vim: set ft=lua ts=2 sw=2 sts=2 et :

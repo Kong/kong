@@ -1,0 +1,54 @@
+From bea8a0c0de94cede71554f53818ac0267d675d63 Mon Sep 17 00:00:00 2001
+From: Konstantin Pavlov <pavlov.konstantin@gmail.com>
+Date: Fri, 22 Mar 2024 16:41:46 -0700
+Subject: [PATCH] bugfix: Check for SSL context instead of listen.
+
+This fixes FTBFS with nginx 1.25.5 after changes in
+https://hg.nginx.org/nginx/rev/e28b044908cb and
+https://hg.nginx.org/nginx/rev/fa75fccf7fa0
+---
+ src/ngx_stream_lua_module.c     | 8 ++++++++
+ src/ngx_stream_lua_ssl_certby.c | 4 ++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_module.c b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_module.c
+index f7dca968..5c9024e7 100644
+--- a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_module.c
++++ b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_module.c
+@@ -864,12 +864,20 @@ ngx_stream_lua_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+     ngx_stream_lua_srv_conf_t       *conf = child;
+ 
+ #if (NGX_STREAM_SSL)
++#if defined(nginx_version) && nginx_version >= 1025005
++    ngx_stream_ssl_srv_conf_t       *sscf;
++#else
+     ngx_stream_ssl_conf_t           *sscf;
++#endif
+ 
+     dd("merge srv conf");
+ 
+     sscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_ssl_module);
++#if defined(nginx_version) && nginx_version >= 1025005
++    if (sscf && sscf->ssl.ctx) {
++#else
+     if (sscf && sscf->listen) {
++#endif
+         if (conf->srv.ssl_client_hello_src.len == 0) {
+             conf->srv.ssl_client_hello_src = prev->srv.ssl_client_hello_src;
+             conf->srv.ssl_client_hello_src_key =
+diff --git a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_ssl_certby.c b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_ssl_certby.c
+index 7aae86a7..3ac8c7aa 100644
+--- a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_ssl_certby.c
++++ b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_ssl_certby.c
+@@ -1385,7 +1385,11 @@ ngx_stream_lua_ffi_ssl_verify_client(ngx_stream_lua_request_t *r,
+ 
+     ngx_stream_lua_ctx_t        *ctx;
+     ngx_ssl_conn_t              *ssl_conn;
++#if defined(nginx_version) && nginx_version >= 1025005
++    ngx_stream_ssl_srv_conf_t   *sscf;
++#else
+     ngx_stream_ssl_conf_t       *sscf;
++#endif
+     STACK_OF(X509)              *chain = ca_certs;
+     STACK_OF(X509_NAME)         *name_chain = NULL;
+     X509                        *x509 = NULL;
