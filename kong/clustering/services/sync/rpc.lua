@@ -95,7 +95,7 @@ function _M:init_cp(manager)
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = fmt("%032d", default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
-    }, { ttl = purge_delay })
+    }, { ttl = purge_delay, })
     if not ok then
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
     end
@@ -127,10 +127,7 @@ function _M:init_cp(manager)
     end
 
     if isempty(res) then
-      ngx_log(ngx_DEBUG,
-              "[kong.sync.v2] no delta for node_id: ", node_id,
-              ", current_version: ", default_namespace_version,
-              ", node is already up to date" )
+      -- node is already up to date
       return inc_sync_result(res)
     end
 
@@ -213,7 +210,7 @@ local function do_sync()
   local deltas = ns_delta.deltas
 
   if isempty(deltas) then
-    ngx_log(ngx_DEBUG, "no delta to sync")
+    -- no delta to sync
     return true
   end
 
@@ -287,8 +284,8 @@ local function do_sync()
       ev = { delta_type, crud_event_type, delta_entity, old_entity, }
 
     else
-      -- delete the entity
-      local old_entity, err = kong.db[delta_type]:select(delta.pk) -- composite key
+      -- delete the entity, opts for getting correct lmdb key
+      local old_entity, err = db[delta_type]:select(delta.pk, opts) -- composite key
       if err then
         return nil, err
       end

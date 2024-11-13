@@ -977,8 +977,9 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  if not conf.cluster_rpc then
-    log.warn("Cluster incremental sync has been forcibly disabled")
+  if conf.cluster_incremental_sync and not conf.cluster_rpc then
+    log.warn("Cluster incremental sync has been forcibly disabled, " ..
+             "please enable cluster RPC.")
     conf.cluster_incremental_sync = false
   end
 

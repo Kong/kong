@@ -73,7 +73,7 @@ local function workspace_id(schema, options)
   end
 
   -- options.workspace does not exist
-  if not options or not options.workspace then
+  if not options or not options.workspace or options.workspace == "" then
     return get_workspace_id()
   end
 
