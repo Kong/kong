@@ -87,7 +87,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
 
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
 
-      -- dp lua-resty-events works without privileged_agent
+      -- dp lua-resty-events work without privileged_agent
       assert.logfile("servroot2/logs/error.log").has.line(
         "lua-resty-events enable_privileged_agent is false", true)
     end)
