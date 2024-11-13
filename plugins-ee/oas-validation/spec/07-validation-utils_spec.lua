@@ -14,210 +14,231 @@ local utils = require "kong.plugins.oas-validation.utils"
 
 describe("validation utils spec", function ()
 
-  it("can fetch correct path & method spec", function ()
+  describe("check locating path & method spec", function()
     local spec_str = [[
-      openapi: 3.0.3
-      info:
-        title: Swagger Petstore - OpenAPI 3.0
-        description: |-
-          This is a sample Pet Store Server based on the OpenAPI 3.0 specification.  You can find out more about
-          Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we've switched to the design first approach!
-          You can now help us improve the API whether it's by making changes to the definition itself or to the code.
-          That way, with time, we can improve the API in general, and expose some of the new features in OAS3.
-
-          Some useful links:
-          - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
-          - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)
-
-        termsOfService: http://swagger.io/terms/
-        contact:
-          email: apiteam@swagger.io
-        license:
-          name: Apache 2.0
-          url: http://www.apache.org/licenses/LICENSE-2.0.html
-        version: 1.0.11
-      externalDocs:
-        description: Find out more about Swagger
-        url: http://swagger.io
-      servers:
-        - url: https://petstore3.swagger.io/api/v3
-      tags:
-        - name: pet
-          description: Everything about your Pets
-          externalDocs:
-            description: Find out more
-            url: http://swagger.io
-        - name: store
-          description: Access to Petstore orders
-          externalDocs:
-            description: Find out more about our store
-            url: http://swagger.io
-        - name: user
-          description: Operations about user
-      paths:
-        /pet/{petId}:
-          get:
-            tags:
-              - pet
-            summary: Find pet by ID
-            description: Returns a single pet
-            operationId: getPetById
-            parameters:
-              - name: petId
-                in: path
-                description: ID of pet to return
-                required: true
-                schema:
-                  type: integer
-                  format: int64
-            responses:
-              '200':
-                description: successful operation
-                content:
-                  application/json:
-                    schema:
-                      $ref: '#/components/schemas/Pet'
-                  application/xml:
-                    schema:
-                      $ref: '#/components/schemas/Pet'
-              '400':
-                description: Invalid ID supplied
-              '404':
-                description: Pet not found
-            security:
-              - api_key: []
-              - petstore_auth:
-                  - write:pets
-                  - read:pets
-          post:
-            tags:
-              - pet
-            summary: Updates a pet in the store with form data
-            description: ''
-            operationId: updatePetWithForm
-            parameters:
-              - name: petId
-                in: path
-                description: ID of pet that needs to be updated
-                required: true
-                schema:
-                  type: integer
-                  format: int64
-              - name: name
-                in: query
-                description: Name of pet that needs to be updated
-                schema:
-                  type: string
-              - name: status
-                in: query
-                description: Status of pet that needs to be updated
-                schema:
-                  type: string
-            responses:
-              '405':
-                description: Invalid input
-            security:
-              - petstore_auth:
-                  - write:pets
-                  - read:pets
-          delete:
-            tags:
-              - pet
-            summary: Deletes a pet
-            description: delete a pet
-            operationId: deletePet
-            parameters:
-              - name: api_key
-                in: header
-                description: ''
-                required: false
-                schema:
-                  type: string
-              - name: petId
-                in: path
-                description: Pet id to delete
-                required: true
-                schema:
-                  type: integer
-                  format: int64
-            responses:
-              '400':
-                description: Invalid pet value
-            security:
-              - petstore_auth:
-                  - write:pets
-                  - read:pets
-      components:
-        schemas:
-          Category:
-            type: object
-            properties:
-              id:
-                type: integer
-                format: int64
-                example: 1
-              name:
-                type: string
-                example: Dogs
-            xml:
-              name: category
-          Tag:
-            type: object
-            properties:
-              id:
-                type: integer
-                format: int64
-              name:
-                type: string
-            xml:
-              name: tag
-          Pet:
-            required:
-              - name
-              - photoUrls
-            type: object
-            properties:
-              id:
-                type: integer
-                format: int64
-                example: 10
-              name:
-                type: string
-                example: doggie
-              category:
-                $ref: '#/components/schemas/Category'
-              photoUrls:
-                type: array
-                xml:
-                  wrapped: true
-                items:
-                  type: string
-                  xml:
-                    name: photoUrl
+        openapi: 3.0.3
+        info:
+          title: Swagger Petstore - OpenAPI 3.0
+          description: |-
+            This is a sample Pet Store Server based on the OpenAPI 3.0 specification.  You can find out more about
+            Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we've switched to the design first approach!
+            You can now help us improve the API whether it's by making changes to the definition itself or to the code.
+            That way, with time, we can improve the API in general, and expose some of the new features in OAS3.
+  
+            Some useful links:
+            - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
+            - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)
+  
+          termsOfService: http://swagger.io/terms/
+          contact:
+            email: apiteam@swagger.io
+          license:
+            name: Apache 2.0
+            url: http://www.apache.org/licenses/LICENSE-2.0.html
+          version: 1.0.11
+        externalDocs:
+          description: Find out more about Swagger
+          url: http://swagger.io
+        servers:
+          - url: https://petstore3.swagger.io/api/v3
+          - url: https://petstore3.swagger.io/api/v4
+        tags:
+          - name: pet
+            description: Everything about your Pets
+            externalDocs:
+              description: Find out more
+              url: http://swagger.io
+          - name: store
+            description: Access to Petstore orders
+            externalDocs:
+              description: Find out more about our store
+              url: http://swagger.io
+          - name: user
+            description: Operations about user
+        paths:
+          /pet/{petId}:
+            get:
               tags:
-                type: array
-                xml:
-                  wrapped: true
-                items:
-                  $ref: '#/components/schemas/Tag'
-              status:
-                type: string
-                description: pet status in the store
-                enum:
-                  - available
-                  - pending
-                  - sold
-            xml:
-              name: pet
+                - pet
+              summary: Find pet by ID
+              description: Returns a single pet
+              operationId: getPetById
+              parameters:
+                - name: petId
+                  in: path
+                  description: ID of pet to return
+                  required: true
+                  schema:
+                    type: integer
+                    format: int64
+              responses:
+                '200':
+                  description: successful operation
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/Pet'
+                    application/xml:
+                      schema:
+                        $ref: '#/components/schemas/Pet'
+                '400':
+                  description: Invalid ID supplied
+                '404':
+                  description: Pet not found
+              security:
+                - api_key: []
+                - petstore_auth:
+                    - write:pets
+                    - read:pets
+            post:
+              tags:
+                - pet
+              summary: Updates a pet in the store with form data
+              description: ''
+              operationId: updatePetWithForm
+              parameters:
+                - name: petId
+                  in: path
+                  description: ID of pet that needs to be updated
+                  required: true
+                  schema:
+                    type: integer
+                    format: int64
+                - name: name
+                  in: query
+                  description: Name of pet that needs to be updated
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: Status of pet that needs to be updated
+                  schema:
+                    type: string
+              responses:
+                '405':
+                  description: Invalid input
+              security:
+                - petstore_auth:
+                    - write:pets
+                    - read:pets
+            delete:
+              tags:
+                - pet
+              summary: Deletes a pet
+              description: delete a pet
+              operationId: deletePet
+              parameters:
+                - name: api_key
+                  in: header
+                  description: ''
+                  required: false
+                  schema:
+                    type: string
+                - name: petId
+                  in: path
+                  description: Pet id to delete
+                  required: true
+                  schema:
+                    type: integer
+                    format: int64
+              responses:
+                '400':
+                  description: Invalid pet value
+              security:
+                - petstore_auth:
+                    - write:pets
+                    - read:pets
+        components:
+          schemas:
+            Category:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  format: int64
+                  example: 1
+                name:
+                  type: string
+                  example: Dogs
+              xml:
+                name: category
+            Tag:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+              xml:
+                name: tag
+            Pet:
+              required:
+                - name
+                - photoUrls
+              type: object
+              properties:
+                id:
+                  type: integer
+                  format: int64
+                  example: 10
+                name:
+                  type: string
+                  example: doggie
+                category:
+                  $ref: '#/components/schemas/Category'
+                photoUrls:
+                  type: array
+                  xml:
+                    wrapped: true
+                  items:
+                    type: string
+                    xml:
+                      name: photoUrl
+                tags:
+                  type: array
+                  xml:
+                    wrapped: true
+                  items:
+                    $ref: '#/components/schemas/Tag'
+                status:
+                  type: string
+                  description: pet status in the store
+                  enum:
+                    - available
+                    - pending
+                    - sold
+              xml:
+                name: pet
     ]]
-    local spec, err = swagger_parser.parse(spec_str)
-    assert.is_nil(err)
-    local path_spec = utils.retrieve_operation(spec.spec, "/pet/123", "GET")
-    local path_spec2 = utils.retrieve_operation(spec.spec, "/pet/538434e2-600d-11ed-841e-860b1c27d8fd", "GET")
-    local path_spec3 = utils.retrieve_operation(spec.spec, "/pet/woof.woof", "GET")
-    assert.not_nil(path_spec)
-    assert.same(path_spec, path_spec2)
-    assert.same(path_spec2, path_spec3)
+    it("when include_base_path == false", function ()
+      local spec, err = swagger_parser.parse(spec_str)
+      assert.is_nil(err)
+      local path_spec = utils.retrieve_operation(spec.spec, "/pet/123", "GET")
+      local path_spec2 = utils.retrieve_operation(spec.spec, "/pet/538434e2-600d-11ed-841e-860b1c27d8fd", "GET")
+      local path_spec3 = utils.retrieve_operation(spec.spec, "/pet/woof.woof", "GET")
+      assert.not_nil(path_spec)
+      assert.same(path_spec, path_spec2)
+      assert.same(path_spec2, path_spec3)
+    end)
+
+    it("when include_base_path == true", function ()
+      local spec, err = swagger_parser.parse(spec_str, {resolve_base_path = true})
+      assert.is_nil(err)
+      local path_spec = utils.retrieve_operation(spec.spec, "/api/v3/pet/123", "GET")
+      assert.not_nil(path_spec)
+      local path_spec = utils.retrieve_operation(spec.spec, "/api/v4/pet/123", "GET")
+      assert.not_nil(path_spec)
+    end)
+
+    it("custom_base_path should override base paths in the spec", function ()
+      local spec, err = swagger_parser.parse(spec_str, {resolve_base_path = true, custom_base_path = "/api/v2"})
+      assert.is_nil(err)
+      local path_spec = utils.retrieve_operation(spec.spec, "/api/v2/pet/123", "GET")
+      assert.not_nil(path_spec)
+      path_spec = utils.retrieve_operation(spec.spec, "/api/v3/pet/123", "GET")
+      assert.is_nil(path_spec)
+    end)
   end)
 
   it("can merge parameters correctly when only have path-level parameters", function ()

@@ -137,15 +137,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-          ["/v1/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert.same(spec.spec.base_paths[1], "/v1")
       end)
 
       it("swagger: omitted basePath", function()
@@ -178,15 +171,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/a"] = true,
-          ["/b"] = true,
-          ["/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/")
       end)
 
       it("openapi: sanity", function()
@@ -221,15 +207,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-          ["/v1/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
 
         local spec_str = [[
           openapi: 3.0.1
@@ -262,15 +241,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-          ["/v1/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
 
         -- trailing slash
         local spec_str = [[
@@ -298,14 +270,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
 
         -- trailing slashes
         local spec_str = [[
@@ -333,16 +299,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-        }, paths)
-
-
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
       end)
 
       it("openapi: should not resolve paths when spec has multiple servers", function()
@@ -378,15 +336,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/a"] = true,
-          ["/b"] = true,
-          ["/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
       end)
 
       it("openapi: should not resolve paths when servers[].url is fully-qualified URL but without containing path", function()
@@ -421,15 +372,7 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/a"] = true,
-          ["/b"] = true,
-          ["/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 0)
       end)
 
     end)
@@ -466,15 +409,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-          ["/v2/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert.same(spec.spec.base_paths[1], "/v2")
       end)
 
       it("swagger: omitted basePath", function()
@@ -507,15 +443,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-          ["/v2/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v2")
       end)
 
       it("openapi: sanity", function()
@@ -550,15 +479,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-          ["/v2/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v2")
 
         local spec_str = [[
           openapi: 3.0.1
@@ -591,15 +513,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-          ["/v2/c"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v2")
 
         -- empty custom base path
         local spec_str = [[
@@ -627,14 +542,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v1/a"] = true,
-          ["/v1/b"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v1")
 
         -- trailing slash
         local spec_str = [[
@@ -662,14 +571,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2/" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v2")
 
         -- trailing slashes
         local spec_str = [[
@@ -697,14 +600,8 @@ describe("swagger-parser", function()
         local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2//" })
         assert.truthy(spec)
         assert.is_nil(err)
-        local paths = {}
-        for path in pairs(spec.spec.paths) do
-          paths[path] = true
-        end
-        assert.same({
-          ["/v2/a"] = true,
-          ["/v2/b"] = true,
-        }, paths)
+        assert(#spec.spec.base_paths == 1)
+        assert(spec.spec.base_paths[1] == "/v2")
       end)
     end)
   end)

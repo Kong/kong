@@ -26,6 +26,7 @@ local type = type
 local tonumber = tonumber
 
 local EMPTY = {}
+local DEFAULT_BASE_PATHS = { '/' }
 
 local METHODS = {
   get = true,
@@ -46,19 +47,6 @@ MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other pl
 
 local conf_cache = setmetatable({}, {__mod = "k"})
 
-
-local function retrieve_operation(spec, path, method)
-  if spec.spec.paths then
-    for spec_path, path_value in pairs(spec.spec.paths) do
-      local formatted_path = gsub(spec_path, "[-.]", "%%%1")
-      formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[^/]+") .. "$"
-      if match(path, formatted_path) then
-        return path_value[string.lower(method)]
-      end
-    end
-  end
-end
-
 local function resolve_schema(schema)
   if type(schema.is_ref) == "function" and schema:is_ref() then
     local metatable = getmetatable(schema)
@@ -74,6 +62,19 @@ local function resolve_schema(schema)
     return decoded_schema
   end
   return schema
+end
+
+local function utils_retrieve_operation(spec, path, method)
+  for _, spec_path in pairs(spec.sorted_paths or EMPTY) do
+    for _, base_path in ipairs(spec.base_paths or DEFAULT_BASE_PATHS) do
+      local formatted_path = base_path == '/' and spec_path or (base_path .. spec_path)
+      formatted_path = gsub(formatted_path, "[-.+*|]", "%%%1")
+      formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[^/]+") .. "$"
+      if match(path, formatted_path) then
+        return spec.paths[spec_path], spec_path, spec.paths[spec_path][lower(method)]
+      end
+    end
+  end
 end
 
 
@@ -316,7 +317,7 @@ function MockingHandler:access(conf)
     conf_cache[conf] = spec
   end
 
-  local spec_operation = retrieve_operation(spec, path, method)
+  local _, _, spec_operation = utils_retrieve_operation(spec.spec, path, method)
   if spec_operation == nil then
     return kong.response.exit(404, { message = "Corresponding path and method spec does not exist in API Specification" })
   end

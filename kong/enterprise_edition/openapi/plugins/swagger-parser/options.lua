@@ -45,36 +45,6 @@ local function resolve_options(opts)
   return merge(default_options, opts or EMPTY_T)
 end
 
-
-local function get_base_path(spec)
-  local base_path = "/"
-  if spec.openapi then
-    -- openapi
-    if spec.servers and #spec.servers == 1 and spec.servers[1].url then
-      local url = spec.servers[1].url
-      if string_byte(url, 1) == SLASH_BYTE then
-        base_path = url
-      else
-        -- fully-qualified URL http://example.com/v1
-        local parsed_url = socket_url.parse(url)
-        if parsed_url and parsed_url.path and
-          string_byte(parsed_url.path, 1) == SLASH_BYTE then
-          base_path = parsed_url.path
-        end
-      end
-    end
-
-  else
-    -- swagger
-    if spec.basePath and
-      string_byte(spec.basePath, 1) == SLASH_BYTE then
-      base_path = spec.basePath
-    end
-  end
-
-  return base_path
-end
-
 local function remove_trailing_slashes(path)
   local idx
   for i = #path, 1, -1 do
@@ -86,38 +56,58 @@ local function remove_trailing_slashes(path)
   if idx then
     path = string_sub(path, 1, idx - 1)
   end
-  return path
+  return #path ~= 0 and path
 end
 
-local function resolve_paths(spec, custom_base_path)
-  local base_path
-  if custom_base_path and custom_base_path ~= "" then
-    base_path = custom_base_path
-  else
-    base_path = get_base_path(spec)
-  end
+local function get_base_path(spec)
+  if spec.openapi then
+    -- openapi
+    if spec.servers and #spec.servers > 0 then
+      local base_paths = {}
+      local i = 1
+      for _, server in pairs(spec.servers) do
+        local url, formatted_url = server.url
+        if string_byte(url, 1) == SLASH_BYTE then
+          formatted_url = remove_trailing_slashes(url)
+        else
+          -- fully-qualified URL http://example.com/v1
+          local parsed_url = socket_url.parse(url)
+          if parsed_url and parsed_url.path and
+            string_byte(parsed_url.path, 1) == SLASH_BYTE then
+              formatted_url = remove_trailing_slashes(parsed_url.path)
+          end
+        end
+        if formatted_url and not base_paths[formatted_url] then
+          base_paths[formatted_url] = true
+          base_paths[i] = formatted_url
+          i = i + 1
+        end
+      end
 
-  if base_path == "/" or not spec.paths then
-    -- do nothing
-    return
-  end
-
-  local paths = {}
-  base_path = remove_trailing_slashes(base_path)
-  for path, path_spec in pairs(spec.paths) do
-    if string_byte(path, 1) ~= SLASH_BYTE then
-      path = "/" .. path
+      return base_paths
     end
-    local resolved_path = base_path .. path
-    paths[resolved_path] = path_spec
+
+  else
+    -- swagger
+    if spec.basePath and
+      string_byte(spec.basePath, 1) == SLASH_BYTE then
+      return { spec.basePath }
+    end
   end
-  spec.paths = paths
+end
+
+local function resolve_path(spec, custom_base_path)
+  if custom_base_path and custom_base_path ~= "" then
+    spec.base_paths = { remove_trailing_slashes(custom_base_path) }
+  else
+    spec.base_paths = get_base_path(spec) or {'/'}
+  end
 end
 
 
 local function apply(spec, options)
   if options.resolve_base_path == true then
-    resolve_paths(spec, options.custom_base_path)
+    resolve_path(spec, options.custom_base_path)
   end
 
 end

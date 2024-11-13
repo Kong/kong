@@ -17,6 +17,7 @@ local re_match = ngx.re.match
 cjson.decode_array_with_array_mt(true)
 
 local EMPTY_T = {}
+local DEFAULT_BASE_PATHS = { '/' }
 
 local _M = {}
 
@@ -59,10 +60,13 @@ end
 
 function _M.retrieve_operation(spec, path, method)
   for _, spec_path in pairs(spec.sorted_paths or EMPTY_T) do
-    local formatted_path = gsub(spec_path, "[-.+*|]", "%%%1")
-    formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[^/]+") .. "$"
-    if match(path, formatted_path) then
-      return spec.paths[spec_path], spec_path, spec.paths[spec_path][lower(method)]
+    for _, base_path in ipairs(spec.base_paths or DEFAULT_BASE_PATHS) do
+      local formatted_path = base_path == '/' and spec_path or (base_path .. spec_path)
+      formatted_path = gsub(formatted_path, "[-.+*|]", "%%%1")
+      formatted_path = "^" .. gsub(formatted_path, "{(.-)}", "[^/]+") .. "$"
+      if match(path, formatted_path) then
+        return spec.paths[spec_path], spec_path, spec.paths[spec_path][lower(method)]
+      end
     end
   end
 end
