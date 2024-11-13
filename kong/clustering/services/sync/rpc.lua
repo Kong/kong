@@ -255,8 +255,6 @@ local function do_sync()
         return nil, err
       end
 
-      local crud_event_type = old_entity and "update" or "create"
-
       -- If we will wipe lmdb, we don't need to delete it from lmdb.
       if old_entity and not wipe then
         local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
@@ -275,7 +273,10 @@ local function do_sync()
               ", version: ", delta_version,
               ", type: ", delta_type)
 
-      ev = { delta_type, crud_event_type, delta_entity, old_entity, }
+      -- wipe the whole lmdb, should not have events
+      if not wipe then
+        ev = { delta_type, old_entity and "update" or "create", delta_entity, old_entity, }
+      end
 
     else
       -- delete the entity, opts for getting correct lmdb key
@@ -297,11 +298,17 @@ local function do_sync()
               ", version: ", delta_version,
               ", type: ", delta_type)
 
-      ev = { delta_type, "delete", old_entity, }
-    end
+      -- wipe the whole lmdb, should not have events
+      if not wipe then
+        ev = { delta_type, "delete", old_entity, }
+      end
+    end -- if delta_entity ~= nil and delta_entity ~= ngx_null
 
-    crud_events_n = crud_events_n + 1
-    crud_events[crud_events_n] = ev
+    -- wipe the whole lmdb, should not have events
+    if not wipe then
+      crud_events_n = crud_events_n + 1
+      crud_events[crud_events_n] = ev
+    end
 
     -- delta.version should not be nil or ngx.null
     assert(type(delta_version) == "number")
