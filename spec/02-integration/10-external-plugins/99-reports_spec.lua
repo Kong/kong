@@ -61,8 +61,8 @@ for _, strategy in helpers.each_strategy() do
         plugins = "bundled,reports-api,go-hello",
         pluginserver_names = "test",
         pluginserver_test_socket = kong_prefix .. "/go-hello.socket",
-        pluginserver_test_query_cmd = "./spec/fixtures/go/go-hello -dump -kong-prefix " .. kong_prefix,
-        pluginserver_test_start_cmd = "./spec/fixtures/go/go-hello -kong-prefix " .. kong_prefix,
+        pluginserver_test_query_cmd = helpers.external_plugins_path .. "/go/go-hello -dump -kong-prefix " .. kong_prefix,
+        pluginserver_test_start_cmd = helpers.external_plugins_path .. "/go/go-hello -kong-prefix " .. kong_prefix,
         anonymous_reports = true,
       }))
 

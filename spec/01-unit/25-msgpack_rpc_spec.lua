@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local mp_rpc = require "kong.runloop.plugin_servers.mp_rpc"
+local mp_rpc = require "kong.runloop.plugin_servers.rpc.mp_rpc".new()
 local msgpack = require "MessagePack"
 local cjson = require "cjson.safe"
 
