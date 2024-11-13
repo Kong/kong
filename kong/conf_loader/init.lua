@@ -631,7 +631,7 @@ local function load(path, custom_conf, opts)
 
     ---@type kong.configuration.wasm_filter[]
     local active_filters = {}
-    for name, filter in pairs(active_filters_by_name) do
+    for _, filter in pairs(active_filters_by_name) do
       insert(active_filters, filter)
     end
     sort(active_filters, function(lhs, rhs)
