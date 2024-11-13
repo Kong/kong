@@ -12,7 +12,7 @@ local conf_constants = require "kong.conf_loader.constants"
 local tools_system = require "kong.tools.system" -- for unit-testing
 local tools_ip = require "kong.tools.ip"
 local tools_string = require "kong.tools.string"
-
+local validators = require "kong.conf_loader.validators"
 
 local normalize_ip = tools_ip.normalize_ip
 local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
@@ -221,18 +221,18 @@ local function check_and_parse(conf, opts)
 
   for k, value in pairs(conf) do
     local v_schema = conf_constants.CONF_PARSERS[k] or {}
-
     value = parse_value(value, v_schema.typ)
 
-    local typ = v_schema.typ or "string"
-    if value and not conf_constants.TYP_CHECKS[typ](value) then
-      errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
-                                tostring(value))
+    if value then
+      local ok, err = validators:check({
+        schema = v_schema,
+        value = value,
+        name = k,
+      })
 
-    elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
-                                tostring(value), concat(v_schema.enum, ", "))
-
+      if not ok then
+        errors[#errors + 1] = err
+      end
     end
 
     conf[k] = value
