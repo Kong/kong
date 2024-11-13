@@ -1,0 +1,3 @@
+message: "Fixed a 500 error triggered by unhandled nil fields during schema validation."
+type: bugfix
+scope: Core
