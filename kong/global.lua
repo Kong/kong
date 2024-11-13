@@ -198,6 +198,11 @@ function _GLOBAL.init_worker_events(kong_config)
     enable_privileged_agent = true
   end
 
+  -- for debug and test
+  ngx.log(ngx.DEBUG,
+          "lua-resty-events enable_privileged_agent is ",
+          enable_privileged_agent)
+
   opts = {
     unique_timeout = 5,     -- life time of unique event data in lrucache
     broker_id = 0,          -- broker server runs in nginx worker #0
