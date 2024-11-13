@@ -86,6 +86,10 @@ describe("Incremental Sync RPC #" .. strategy, function()
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
 
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
+
+      -- dp lua-resty-events works without privileged_agent
+      assert.logfile("servroot2/logs/error.log").has.line(
+        "lua-resty-events enable_privileged_agent is false", true)
     end)
 
     it("update route on CP", function()
