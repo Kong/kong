@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
+local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
+for _, dedicated in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
 
 describe("Incremental Sync RPC #" .. strategy, function()
@@ -17,7 +19,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       database = strategy,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      cluster_incremental_sync = "on", -- incremental sync
+      cluster_incremental_sync = "on", -- enable incremental sync
     }))
 
     assert(helpers.start_kong({
@@ -30,7 +32,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       nginx_worker_processes = 4, -- multiple workers
-      cluster_incremental_sync = "off", -- NO incremental sync
+      cluster_incremental_sync = "off", -- DISABLE incremental sync
+      dedicated_config_processing = dedicated, -- privileged agent
     }))
   end)
 
@@ -66,3 +69,4 @@ describe("Incremental Sync RPC #" .. strategy, function()
 end)
 
 end -- for _, strategy
+end -- for _, dedicated
