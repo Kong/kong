@@ -1,4 +1,4 @@
-local mp_rpc = require "kong.runloop.plugin_servers.mp_rpc"
+local mp_rpc = require "kong.runloop.plugin_servers.rpc.mp_rpc".new()
 local msgpack = require "MessagePack"
 local cjson = require "cjson.safe"
 
