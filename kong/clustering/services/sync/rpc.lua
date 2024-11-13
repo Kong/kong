@@ -14,6 +14,7 @@ local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local concurrency = require("kong.concurrency")
 local isempty = require("table.isempty")
+local events = require("kong.runloop.events")
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
@@ -340,6 +341,16 @@ local function do_sync()
   if wipe then
     kong.core_cache:purge()
     kong.cache:purge()
+
+    -- Trigger other workers' callbacks like reconfigure_handler.
+    --
+    -- Full sync could rebuild route, plugins and balancer route, so their
+    -- hashes are nil.
+    local reconfigure_data = { kong.default_workspace, nil, nil, nil, }
+    local ok, err = events.declarative_reconfigure_notify(reconfigure_data)
+    if not ok then
+      return nil, err
+    end
 
   else
     for _, event in ipairs(crud_events) do
