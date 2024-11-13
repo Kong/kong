@@ -501,6 +501,10 @@ function _M.to_ollama(request_table, model)
   input.stream = request_table.stream or false -- for future capability
   input.model = model.name or request_table.name
 
+  -- handle function calling translation from Ollama format
+  input.tools = request_table.tools
+  input.tool_choice = request_table.tool_choice
+
   if model.options then
     input.options = {}
 
@@ -563,7 +567,7 @@ function _M.from_ollama(response_string, model_info, route_type)
       output.object = "chat.completion"
       output.choices = {
         {
-          finish_reason = stop_reason,
+          finish_reason = response_table.finish_reason or stop_reason,
           index = 0,
           message = response_table.message,
         }

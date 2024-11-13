@@ -51,24 +51,53 @@ local function kong_messages_to_claude_prompt(messages)
   return buf:get()
 end
 
+local inject_tool_calls = function(tool_calls)
+  local tools
+  for _, n in ipairs(tool_calls) do
+    tools = tools or {}
+    table.insert(tools, {
+      type = "tool_use",
+      id = n.id,
+      name = n["function"].name,
+      input = cjson.decode(n["function"].arguments)
+    })
+  end
+
+  return tools
+end
+
 -- reuse the messages structure of prompt
 -- extract messages and system from kong request
 local function kong_messages_to_claude_messages(messages)
   local msgs, system, n = {}, nil, 1
 
   for _, v in ipairs(messages) do
-    if v.role ~= "assistant" and v.role ~= "user" then
+    if v.role ~= "assistant" and v.role ~= "user" and v.role ~= "tool" then
       system = v.content
-
     else
-      msgs[n] = v
+      if v.role == "assistant" and v.tool_calls then
+        msgs[n] = {
+          role = v.role,
+          content = inject_tool_calls(v.tool_calls),
+        }
+      elseif v.role == "tool" then
+        msgs[n] = {
+          role = "user",
+          content = {{
+            type = "tool_result",
+            tool_use_id = v.tool_call_id,
+            content = v.content
+          }},
+        }
+      else
+        msgs[n] = v
+      end
       n = n + 1
     end
   end
 
   return msgs, system
 end
-
 
 local function to_claude_prompt(req)
   if req.prompt then
@@ -90,6 +119,21 @@ local function to_claude_messages(req)
   return nil, nil, "request is missing .messages command"
 end
 
+local function to_tools(in_tools)
+  local out_tools = {}
+
+  for i, v in ipairs(in_tools) do
+    if v['function'] then
+      v['function'].input_schema = v['function'].parameters
+      v['function'].parameters = nil
+
+      table.insert(out_tools, v['function'])
+    end
+  end
+
+  return out_tools
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     local messages = {}
@@ -104,6 +148,10 @@ local transformers_to = {
     messages.max_tokens = (model.options and model.options.max_tokens) or request_table.max_tokens
     messages.model = model.name or request_table.model
     messages.stream = request_table.stream or false  -- explicitly set this if nil
+
+    -- handle function calling translation from OpenAI format
+    messages.tools = request_table.tools and to_tools(request_table.tools)
+    messages.tool_choice = request_table.tool_choice
 
     return messages, "application/json", nil
   end,
@@ -250,14 +298,35 @@ local transformers_from = {
     local function extract_text_from_content(content)
       local buf = buffer.new()
       for i, v in ipairs(content) do
-        if i ~= 1 then
-          buf:put("\n")
+        if v.text then
+          if i ~= 1 then
+            buf:put("\n")
+          end
+          buf:put(v.text)
         end
-
-        buf:put(v.text)
       end
 
       return buf:tostring()
+    end
+
+    local function extract_tools_from_content(content)
+      local tools
+      for i, v in ipairs(content) do
+        if v.type == "tool_use" then
+          tools = tools or {}
+
+          table.insert(tools, {
+            id = v.id,
+            type = "function",
+            ['function'] = {
+              name = v.name,
+              arguments = cjson.encode(v.input),
+            }
+          })
+        end
+      end
+
+      return tools
     end
 
     if response_table.content then
@@ -282,13 +351,14 @@ local transformers_from = {
             message = {
               role = "assistant",
               content = extract_text_from_content(response_table.content),
+              tool_calls = extract_tools_from_content(response_table.content)
             },
             finish_reason = response_table.stop_reason,
           },
         },
         usage = usage,
         model = response_table.model,
-        object = "chat.content",
+        object = "chat.completion",
       }
 
       return cjson.encode(res)

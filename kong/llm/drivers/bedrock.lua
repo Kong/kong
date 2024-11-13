@@ -239,7 +239,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
       elseif v.role and v.role == "tool" then
         local tool_execution_content, err = cjson.decode(v.content)
         if err then
-          return nil, nil, "failed to decode function response arguments: " .. err
+          return nil, nil, "failed to decode function response arguments, not JSON format"
         end
 
         local content = {
@@ -268,20 +268,23 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
           content = v.content
         
         elseif v.tool_calls and (type(v.tool_calls) == "table") then
-          local inputs, err = cjson.decode(v.tool_calls[1]['function'].arguments)
-          if err then
-            return nil, nil, "failed to decode function response arguments from assistant: " .. err
-          end
-             
-          content = {
-            {
-              toolUse = {
-                toolUseId = v.tool_calls[1].id,
-                name = v.tool_calls[1]['function'].name,
-                input = inputs,
+          for k, tool in ipairs(v.tool_calls) do
+            local inputs, err = cjson.decode(tool['function'].arguments)
+            if err then
+              return nil, nil, "failed to decode function response arguments from assistant's message, not JSON format"
+            end
+              
+            content = {
+              {
+                toolUse = {
+                  toolUseId = tool.id,
+                  name = tool['function'].name,
+                  input = inputs,
+                },
               },
-            },
-          }
+            }
+
+          end
 
         else
           content = {
@@ -289,7 +292,6 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
               text = v.content or ""
             },
           }
-
         end
 
         -- for any other role, just construct the chat history as 'parts.text' type
