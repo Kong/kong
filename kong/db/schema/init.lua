@@ -1132,6 +1132,11 @@ local function resolve_field(self, k, field, subschema)
 end
 
 
+---@param field table
+---@param field_name string
+---@param input table
+---@return kong.db.schema.json.schema_doc? schema
+---@return string? error
 local function get_json_schema(field, field_name, input)
   local json_schema = field.json_schema
 
@@ -1151,22 +1156,32 @@ local function get_json_schema(field, field_name, input)
       return schema
 
     elseif not json_schema.optional then
-      return validation_errors.JSON_SCHEMA_NOT_FOUND:format(schema_name)
+      return nil, validation_errors.JSON_SCHEMA_NOT_FOUND:format(schema_name)
     end
 
   elseif not json_schema.optional then
-    return validation_errors.JSON_PARENT_KEY_MISSING:format(field_name, parent_key)
+    return nil, validation_errors.JSON_PARENT_KEY_MISSING:format(field_name, parent_key)
   end
+
+  -- no error: schema is optional
 end
 
 
+---@param  field table # Lua schema definition for this field
+---@param  field_name string
+---@param  input table # full input table that this field appears in
+---@return boolean? ok
+---@return string? error
 local function validate_json_field(field, field_name, input)
   local schema, err = get_json_schema(field, field_name, input)
   if schema then
-    local _
-    _, err = json_validate(input[field_name], schema)
+    return json_validate(input[field_name], schema)
+
+  elseif err then
+    return nil, err
   end
-  return err
+
+  return true
 end
 
 
@@ -1193,7 +1208,7 @@ validate_fields = function(self, input)
     if field and field.type == "json"
       or (subschema_field and subschema_field.type == "json")
     then
-      errors[k] = validate_json_field(subschema_field or field, k, input)
+      _, errors[k] = validate_json_field(subschema_field or field, k, input)
 
     elseif field and field.type == "self" then
       local pok

@@ -36,7 +36,7 @@ local DRAFT_4 = DRAFT_4_NO_FRAGMENT .. "#"
 _M.DRAFT_4 = DRAFT_4
 
 
----@type table<string, table>
+---@type table<string, kong.db.schema.json.schema_doc>
 local schemas = {}
 
 
@@ -165,7 +165,7 @@ end
 -- Retrieve a schema from local storage by name.
 --
 ---@param name string
----@return table|nil schema
+---@return kong.db.schema.json.schema_doc? schema
 function _M.get_schema(name)
   return schemas[name]
 end
@@ -175,7 +175,6 @@ end
 -- Remove a schema from local storage by name (if it exists).
 --
 ---@param name string
----@return table|nil schema
 function _M.remove_schema(name)
   schemas[name] = nil
 end
