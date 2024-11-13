@@ -81,6 +81,47 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
     end)
   end)
 
+  describe("sync works when dedicated_config_processing = " .. dedicated, function()
+    local route_id
+
+    it("proxy on DP follows CP config", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/mockbin-service/routes", {
+        body = { paths = { "/" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        res = proxy_client:send({
+          method  = "GET",
+          path    = "/",
+        })
+
+        local status = res and res.status
+        proxy_client:close()
+        if status == 200 then
+          return true
+        end
+      end, 10)
+    end)
+  end)
+
+
 end)
 
 end -- for _, strategy
