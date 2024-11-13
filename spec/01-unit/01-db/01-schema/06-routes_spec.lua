@@ -1820,3 +1820,34 @@ describe("routes schema (flavor = expressions)", function()
     end
   end)
 end)
+
+
+describe("routes schema (flavor = traditional_compatible)", function()
+  local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
+  local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
+
+  reload_flavor("traditional_compatible")
+  setup_global_env()
+
+  it("validates a route with only expression field", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      hosts           = { "example.com" },
+      expression     = [[(http.method == "GET")]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.same({
+      ["expression"] = 'unknown field',
+      ["priority"] = 'unknown field'
+    }, errs)
+  end)
+end)

@@ -1280,7 +1280,7 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
 
       -- Don't run if any of the values is a reference in a referenceable field
       local field = get_schema_field(self, fname)
-      if field.type == "string" and field.referenceable and is_reference(value) then
+      if field and field.type == "string" and field.referenceable and is_reference(value) then
         return
       end
     end
