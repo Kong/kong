@@ -98,8 +98,6 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
         body = { paths = { "/" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
-      local body = assert.res_status(201, res)
-      local json = cjson.decode(body)
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
