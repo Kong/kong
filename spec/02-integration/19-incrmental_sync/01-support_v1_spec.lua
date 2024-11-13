@@ -72,7 +72,10 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
         end
       end, 10)
 
-      -- lua-resty-events works well with privileged_agent
+      -- cp will not run rpc
+      assert.logfile().has.no.line("[rpc]", true)
+
+      -- dp lua-resty-events works well with privileged_agent
       assert.logfile("servroot2/logs/error.log").has.line(
         "lua-resty-events enable_privileged_agent is " .. tostring(dedicated == "on"), true)
     end)
