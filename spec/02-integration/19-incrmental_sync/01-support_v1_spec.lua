@@ -5,7 +5,7 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 for _, dedicated in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
 
-describe("Incremental Sync RPC #" .. strategy, function()
+describe("DP diabled Incremental Sync RPC #" .. strategy, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
@@ -19,7 +19,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       database = strategy,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      cluster_incremental_sync = "on", -- enable incremental sync
+
+      cluster_incremental_sync = "on", -- ENABLE incremental sync
     }))
 
     assert(helpers.start_kong({
@@ -31,8 +32,10 @@ describe("Incremental Sync RPC #" .. strategy, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      nginx_worker_processes = 4, -- multiple workers
+      nginx_worker_processes = 2, -- multiple workers
+
       cluster_incremental_sync = "off", -- DISABLE incremental sync
+
       dedicated_config_processing = dedicated, -- privileged agent
     }))
   end)
@@ -42,7 +45,12 @@ describe("Incremental Sync RPC #" .. strategy, function()
     helpers.stop_kong()
   end)
 
-  describe("status API", function()
+  after_each(function()
+    helpers.clean_logfile("servroot2/logs/error.log")
+    helpers.clean_logfile()
+  end)
+
+  describe("works when dedicated_config_processing = " .. dedicated, function()
     it("shows DP status", function()
       helpers.wait_until(function()
         local admin_client = helpers.admin_client()
@@ -63,6 +71,10 @@ describe("Incremental Sync RPC #" .. strategy, function()
           end
         end
       end, 10)
+
+      -- lua-resty-events works well with privileged_agent
+      assert.logfile("servroot2/logs/error.log").has.line(
+        "lua-resty-events enable_privileged_agent is " .. tostring(dedicated == "on"), true)
     end)
   end)
 
