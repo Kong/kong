@@ -135,7 +135,7 @@ for _, strategy in strategies() do
       lazy_setup(function()
         if policy == "redis" then
           redis_client = redis_helper.connect(REDIS_HOST, REDIS_PORT)
-          redis_client:flush_all()
+          redis_client:flushall()
           redis_helper.add_admin_user(redis_client, REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID)
         end
 
@@ -481,7 +481,7 @@ for _, strategy in strategies() do
         })
         plugin15 = assert(bp.plugins:insert(
           build_plugin_fn("redis")(
-            route15.id, 5, 1, 0.1, nil,
+            route15.id, 5, 1, 0.03, nil,
             nil, redis_configuration,
             { namespace = "2D8851DEAC3D4FC5889CF03A9836948F", }
           )
@@ -802,9 +802,16 @@ for _, strategy in strategies() do
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
         end)
 
-        -- traditional mode but use redis strategy
-        if policy ~= "redis" then
-          it("sync counters in all nodes after PATCH", function()
+        -- traditional mode and use redis strategy
+        if strategy ~= "off" then
+          it("sync counters in all nodes after PATCH [" .. redis_description .. "]", function()
+            local red = assert(redis_helper.connect(REDIS_HOST, REDIS_PORT))
+            if redis_description == "acl" then
+              assert(red:auth(REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID))
+            end
+            assert(red:select(REDIS_DATABASE))
+            assert(red:flushall())
+
             local window_size = plugin15.config.window_size[1]
             local limit = plugin15.config.limit[1]
 
@@ -848,6 +855,20 @@ for _, strategy in strategies() do
             assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
+            -- sync to Redis
+            assert
+            .with_timeout(2.5)
+            .with_max_tries(20)
+            .with_step(0.04)
+            .ignore_exceptions(true)
+            .eventually(function()
+              local keys = assert(red:scan(0))
+              local key = type(keys) == "table" and keys[2][1]
+              local counter = assert(red:hgetall(key))
+              assert.are_equal(2, tonumber(counter[2]))
+            end)
+            .has_no_error("failed to sync with Redis: " .. redis_description)
+
             --[= succeed locally but unstable on CI/CD
             -- Hit node2 so the sync timer starts
             proxy_client = helpers.proxy_client(nil, 9100)
@@ -858,30 +879,8 @@ for _, strategy in strategies() do
                 ["Host"] = "test15.test",
               }
             })
-            assert.res_status(200, res)
+            assert.res_status(429, res)
             proxy_client:close()
-
-            -- Wait for counters to sync node2: 0.1+0.1
-            ngx_sleep(plugin15.config.sync_rate + 0.1)
-
-            -- Hit node2, while limit is 1/window
-            proxy_client = helpers.proxy_client(nil, 9100)
-            local res = assert(proxy_client:send {
-              method = "GET",
-              path = "/get",
-              headers = {
-                ["Host"] = "test15.test",
-              }
-            })
-            local body = assert.res_status(429, res)
-            proxy_client:close()
-
-            local json = cjson.decode(body)
-            assert.same({ message = "API rate limit exceeded" }, json)
-            local retry_after = tonumber(res.headers["retry-after"])
-            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-            --]=]
 
             -- PATCH the plugin's window_size
             local res = assert(helpers.admin_client():send {
@@ -889,7 +888,7 @@ for _, strategy in strategies() do
               path = "/plugins/" .. plugin15.id,
               body = {
                 config = {
-                  window_size = { 4 },
+                  window_size = { window_size - 1 },
                 }
               },
               headers = {
@@ -897,13 +896,15 @@ for _, strategy in strategies() do
               }
             })
             local body = cjson.decode(assert.res_status(200, res))
-            assert.same(4, body.config.window_size[1])
+            assert.same(window_size - 1, body.config.window_size[1])
 
-            -- wait for the window: 4+1
-            ngx_sleep(plugin15.config.window_size[1] + 1)
-            window_size = 4
+            -- wait for the window 5*2 to let the counter cache valish
+            ngx_sleep(window_size * 2)
 
-            -- Hit node2
+            window_size = window_size - 1
+            wait_for_next_fixed_window(window_size)
+
+            -- Hit node2 from scratch
             for i = 1, limit do
               proxy_client = helpers.proxy_client(nil, 9100)
               local res = assert(proxy_client:send {
@@ -924,6 +925,7 @@ for _, strategy in strategies() do
               assert.is_nil(res.headers["retry-after"])
             end
 
+            -- [=[ this part is in not necessary; can be removed
             -- Additonal request on node2, while limit is 1/window
             proxy_client = helpers.proxy_client(nil, 9100)
             local res = assert(proxy_client:send {
@@ -942,8 +944,24 @@ for _, strategy in strategies() do
             assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-            --[= succeed locally but unsable on CI/CD
-            -- Hit node1 so the sync timer starts
+            -- sync to Redis
+            assert
+            .with_timeout(2.5)
+            .with_max_tries(20)
+            .with_step(0.04)
+            .ignore_exceptions(true)
+            .eventually(function()
+              local keys = assert(red:scan(0))
+              local key = type(keys) == "table" and keys[2][1]
+              local counter = assert(red:hgetall(key))
+              assert.are_equal(2, tonumber(counter[2]))
+            end)
+            .has_no_error("failed to sync with Redis: " .. redis_description)
+
+            -- wait for a while to sync from redis to node1
+            ngx_sleep(plugin15.config.sync_rate + 1)
+
+            -- Hit node1
             proxy_client = helpers.proxy_client()
             local res = assert(proxy_client:send {
               method = "GET",
@@ -952,30 +970,11 @@ for _, strategy in strategies() do
                 ["Host"] = "test15.test",
               }
             })
-            assert.res_status(200, res)
+            assert.res_status(429, res)
             proxy_client:close()
 
-            -- Wait for counters to sync on node1: 0.1+0.1
-            ngx_sleep(plugin15.config.sync_rate + 0.1)
-
-            -- Additional request on node1, while limit is 1/window
-            proxy_client = helpers.proxy_client()
-            local res = assert(proxy_client:send {
-              method = "GET",
-              path = "/get",
-              headers = {
-                ["Host"] = "test15.test",
-              }
-            })
-            local body = assert.res_status(429, res)
-            proxy_client:close()
-
-            local json = cjson.decode(body)
-            assert.same({ message = "API rate limit exceeded" }, json)
-            local retry_after = tonumber(res.headers["retry-after"])
-            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-            --]=]
+            red:close()
+          --]=]
           end)
 
           it("old namespace is cleared after namespace update", function()
@@ -2247,7 +2246,7 @@ for _, strategy in strategies() do
         lazy_setup(function()
           if policy == "redis" then
             redis_client = redis_helper.connect(REDIS_HOST, REDIS_PORT)
-            redis_client:flush_all()
+            redis_client:flushall()
             redis_helper.add_admin_user(redis_client, REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID)
           end
 
@@ -2529,7 +2528,13 @@ for _, strategy in strategies() do
         end)
 
         it("we are NOT leaking any timers after DELETE on hybrid mode", function()
+          -- have to sleep for a while to wait for sync between CP and DPs
+          helpers.wait_for_file_contents("dp1/logs/error.log")
+          helpers.pwait_until(function()
+            assert.logfile("dp1/logs/error.log").has.line("using shared dictionary 'kong_rate_limiting_counters'", true, 20)
+          end, 180)
           helpers.clean_logfile("dp1/logs/error.log")
+
           local res = assert(helpers.proxy_client(nil, PROXY_PORT):send {
             method = "GET",
             path = "/get",
