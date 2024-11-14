@@ -20,6 +20,7 @@ local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 
 local ipairs = ipairs
 local fmt = string.format
+local math_random = math.random
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -231,6 +232,7 @@ local function do_sync()
 
   local db = kong.db
 
+  local routes_changed
   local version = 0
   local opts = {}
   local crud_events = {}
@@ -318,6 +320,13 @@ local function do_sync()
     if delta_version ~= version then
       version = delta_version
     end
+
+    -- services or routes changed, need to rebuild router
+    if routes_changed == nil and
+      (delta_type == "services" or delta_type == "routes")
+    then
+      routes_changed = true
+    end
   end -- for _, delta
 
   -- store current sync version
@@ -333,27 +342,34 @@ local function do_sync()
     return nil, err
   end
 
-  -- incremental sync, trigger dao events
-  if not wipe then
+  if wipe then
+    -- full sync, purge cache then notify other workers
+    -- see load_into_cache_with_events_no_lock()
+    kong.core_cache:purge()
+    kong.cache:purge()
+
+    routes_changed = true
+  else
+
+    -- incremental sync, trigger dao events
     for _, event in ipairs(crud_events) do
       -- delta_type, crud_event_type, delta.entity, old_entity
       db[event[1]]:post_crud_event(event[2], event[3], event[4])
     end
+  end
 
+  if not routes_changed then
     return true
   end
 
-  -- full sync, purge cache then notify other workers
-  -- see load_into_cache_with_events_no_lock()
-
-  kong.core_cache:purge()
-  kong.cache:purge()
+  -- generate a pseudo hash for rebuild router
+  local router_hash = string.rep("0", 20) .. math_random(1e12)
 
   -- Trigger other workers' callbacks like reconfigure_handler.
   --
   -- Full sync could rebuild route, plugins and balancer route, so their
   -- hashes are nil.
-  local reconfigure_data = { kong.default_workspace, nil, nil, nil, }
+  local reconfigure_data = { kong.default_workspace, router_hash, nil, nil, }
   local ok, err = events.declarative_reconfigure_notify(reconfigure_data)
   if not ok then
     return nil, err
