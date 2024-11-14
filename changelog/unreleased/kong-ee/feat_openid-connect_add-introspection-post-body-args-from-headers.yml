@@ -1,0 +1,5 @@
+message: |
+  **openid-connect**: Added the `introspection_post_args_client_headers` config option, 
+  allowing you to pass client headers as introspection POST body arguments.
+type: feature
+scope: Plugin

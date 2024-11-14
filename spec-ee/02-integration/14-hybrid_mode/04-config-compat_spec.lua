@@ -1661,6 +1661,40 @@ describe("CP/DP config compat #" .. strategy, function()
       end)
     end)
   end)
+
+  describe("3.9.0.0", function()
+    describe("plugins: compat", function()
+      local CASES = {
+        {
+          plugin = "openid-connect",
+          label = "w/ unsupported fields",
+          pending = false,
+          config = {
+            issuer = "https://keycloak/realms/foo",
+            auth_methods = {
+              "authorization_code",
+            },
+            introspection_post_args_client_headers = {
+              [1] = "header-one",
+              [2] = "header-two",
+            },
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.introspection_post_args_client_headers == nil
+          end
+        },
+      }
+
+      for _, case in ipairs(CASES) do
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.8.9.9")
+        end)
+      end
+    end)
+  end)
 end)
 
 end -- each strategy

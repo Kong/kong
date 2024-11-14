@@ -64,12 +64,13 @@ describe(PLUGIN_NAME .. ": (introspect-token-helper)", function()
     assert.spy(CACHE.introspection.load).was.called(1)
 
     -- get_conf_arg
-    assert.spy(args.get_conf_arg).was.called(8)
+    assert.spy(args.get_conf_arg).was.called(9)
     assert.spy(args.get_conf_arg).was.called_with("introspection_endpoint")
     assert.spy(args.get_conf_arg).was.called_with("introspection_endpoint_auth_method")
     assert.spy(args.get_conf_arg).was.called_with("introspection_hint", "access_token")
     assert.spy(args.get_conf_arg).was.called_with("cache_introspection")
     assert.spy(args.get_conf_arg).was.called_with("introspection_post_args_client")
+    assert.spy(args.get_conf_arg).was.called_with("introspection_post_args_client_headers")
     assert.spy(args.get_conf_arg).was.called_with("introspection_accept", "application/json")
     assert.spy(args.get_conf_arg).was.called_with("introspection_token_param_name")
 
@@ -198,6 +199,64 @@ describe(PLUGIN_NAME .. ": (introspect-token-helper)", function()
     }
 
     local expected = {
+      headers = expected_headers,
+      introspection_endpoint = INTROSPECTION_ENDPOINT,
+      introspection_endpoint_auth_method = INTROSPECTION_ENDPOINT_AUTH_METHOD,
+      introspection_format = "string",
+    }
+
+    assert.spy(CACHE.introspection.load).was.called_with(
+      OIC,
+      ACCESS_TOKEN,
+      INTROSPECTION_HINT,
+      TTL,
+      false,
+      false,
+      expected
+    )
+
+    -- clear spies
+    CACHE.introspection.load:revert()
+    args.get_conf_arg:revert()
+    args.get_conf_args:revert()
+  end)
+
+  it("includes the request post args that are being passed from client headers to introspection function", function()
+    local conf = {
+      cache_introspection                = CACHE_INTROSPECTION,
+      introspection_endpoint             = INTROSPECTION_ENDPOINT,
+      introspection_endpoint_auth_method = INTROSPECTION_ENDPOINT_AUTH_METHOD,
+      introspection_hint                 = INTROSPECTION_HINT,
+      introspection_post_args_client_headers = { "x-real-ip", "x-forwarded-proto" },
+    }
+
+    local args = arguments(conf, {
+      ["x-real-ip"] = "192.168.1.200",
+      ["x-forwarded-proto"] = "https",
+      ["Authorization"] = "Bearer ABC",
+    })
+
+    -- initialize spies
+    spy.on(CACHE.introspection, "load")
+    spy.on(args, "get_conf_arg")
+    spy.on(args, "get_conf_args")
+
+    local introspect_token   = introspect.new(args, OIC, CACHE, false)
+    local introspect_results = introspect_token(ACCESS_TOKEN, TTL)
+
+    assert.same(INTROSPECTION_RESULTS, introspect_results, false)
+
+    local expected_args = {
+      ["x-real-ip"]         = "192.168.1.200",
+      ["x-forwarded-proto"] = "https",
+    }
+
+    local expected_headers = {
+      Accept = "application/json",
+    }
+
+    local expected = {
+      args = expected_args,
       headers = expected_headers,
       introspection_endpoint = INTROSPECTION_ENDPOINT,
       introspection_endpoint_auth_method = INTROSPECTION_ENDPOINT_AUTH_METHOD,

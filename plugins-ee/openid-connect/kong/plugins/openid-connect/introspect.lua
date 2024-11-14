@@ -18,16 +18,17 @@ local function new(args, oic, cache, ignore_signature)
   local use_cache
   return function(access_token, ttl)
     if not opts then
-      use_cache            = args.get_conf_arg("cache_introspection")
-      hint                 = args.get_conf_arg("introspection_hint", "access_token")
-      local accept         = args.get_conf_arg("introspection_accept", "application/json")
-      local endpoint       = args.get_conf_arg("introspection_endpoint")
-      local auth_method    = args.get_conf_arg("introspection_endpoint_auth_method")
-      local client_headers = args.get_conf_arg("introspection_headers_client")
-      local client_args    = args.get_conf_arg("introspection_post_args_client")
-      local headers        = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
-      local pargs          = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
-      local token_param_name = args.get_conf_arg("introspection_token_param_name")
+      use_cache                 = args.get_conf_arg("cache_introspection")
+      hint                      = args.get_conf_arg("introspection_hint", "access_token")
+      local accept              = args.get_conf_arg("introspection_accept", "application/json")
+      local endpoint            = args.get_conf_arg("introspection_endpoint")
+      local auth_method         = args.get_conf_arg("introspection_endpoint_auth_method")
+      local client_headers      = args.get_conf_arg("introspection_headers_client")
+      local client_args         = args.get_conf_arg("introspection_post_args_client")
+      local client_headers_args = args.get_conf_arg("introspection_post_args_client_headers")
+      local headers             = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
+      local pargs               = args.get_conf_args("introspection_post_args_names", "introspection_post_args_values")
+      local token_param_name    = args.get_conf_arg("introspection_token_param_name")
 
       if client_headers then
         log("parsing client headers for introspection request")
@@ -71,6 +72,20 @@ local function new(args, oic, cache, ignore_signature)
 
               pargs[client_arg_name] = extra_arg
             end
+          end
+        end
+      end
+
+      if client_headers_args then
+        log("parsing client headers for introspection request post-body args")
+        for _, header_name in ipairs(client_headers_args) do
+          local extra_arg = args.get_header(header_name)
+          if extra_arg then
+            if type(pargs) ~= "table" then
+              pargs = {}
+            end
+
+            pargs[header_name] = extra_arg
           end
         end
       end

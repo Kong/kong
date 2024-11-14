@@ -462,8 +462,13 @@ return {
 
   -- Any dataplane older than 3.9.0
   [3009000000] = {
+    -- Enterprise plugins
     rate_limiting_advanced = {
       "lock_dictionary_name"
     },
-  }
+
+    openid_connect = {
+      "introspection_post_args_client_headers",
+    },
+  },
 }

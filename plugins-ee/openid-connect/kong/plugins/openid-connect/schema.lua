@@ -972,6 +972,16 @@ local config = {
             },
           },
           {
+            introspection_post_args_client_headers = {
+              description = "Extra post arguments passed from the client headers to the introspection endpoint.",
+              required = false,
+              type = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
             introspect_jwt_tokens = {
               description = "Specifies whether to introspect the JWT access tokens (can be used to check for revocations).",
               required = false,
