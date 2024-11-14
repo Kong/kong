@@ -47,7 +47,7 @@ Validators.TYP_CHECKS = {
 }
 
 function Validators:check(config)
-  local validators = self.validation_order
+  local validators = self.validators_order
 
   local schema = config.schema
   local name = config.name
