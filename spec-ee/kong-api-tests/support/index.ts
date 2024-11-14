@@ -87,15 +87,20 @@ export { checkLogPropertyAndValue } from './utilities/file-log';
 export { getNegative, postNegative } from './utilities/negative-axios';
 export { execCustomCommand, checkForArm64 } from './utilities/prog';
 export { findRegex, randomString, wait } from './utilities/random';
+export { calculateWaitTimeForWindow, sendRequestInWindow, verifyRateLimitingEffect } from './utilities/rla';
 export {
   client,
   createRedisClient,
   getAllKeys,
   getDbSize,
+  checkRedisDBSize,
+  waitForRedisDBSize,
   getTargetKeyData,
   resetRedisDB,
   shutDownRedis,
-  expectRedisFieldsInPlugins
+  checkRedisEntries,
+  expectRedisFieldsInPlugins,
+  checkRedisConnectErrLog
 } from './utilities/redis';
 export { retryRequest } from './utilities/retry-axios';
 export { isValidDate, isValidUrl } from './utilities/validate';
