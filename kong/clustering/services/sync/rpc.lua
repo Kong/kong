@@ -333,25 +333,30 @@ local function do_sync()
     return nil, err
   end
 
-  if wipe then
-    kong.core_cache:purge()
-    kong.cache:purge()
-
-    -- Trigger other workers' callbacks like reconfigure_handler.
-    --
-    -- Full sync could rebuild route, plugins and balancer route, so their
-    -- hashes are nil.
-    local reconfigure_data = { kong.default_workspace, nil, nil, nil, }
-    local ok, err = events.declarative_reconfigure_notify(reconfigure_data)
-    if not ok then
-      return nil, err
-    end
-
-  else
+  -- incremental sync, trigger dao events
+  if not wipe then
     for _, event in ipairs(crud_events) do
       -- delta_type, crud_event_type, delta.entity, old_entity
       db[event[1]]:post_crud_event(event[2], event[3], event[4])
     end
+
+    return true
+  end
+
+  -- full sync, purge cache then notify other workers
+  -- see load_into_cache_with_events_no_lock()
+
+  kong.core_cache:purge()
+  kong.cache:purge()
+
+  -- Trigger other workers' callbacks like reconfigure_handler.
+  --
+  -- Full sync could rebuild route, plugins and balancer route, so their
+  -- hashes are nil.
+  local reconfigure_data = { kong.default_workspace, nil, nil, nil, }
+  local ok, err = events.declarative_reconfigure_notify(reconfigure_data)
+  if not ok then
+    return nil, err
   end
 
   return true
