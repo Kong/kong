@@ -111,6 +111,7 @@ build-openresty: check-bazel
 
 install-dev-rocks: build-venv
 	@. $(VENV) ;\
+	export PATH=$$PATH:$$HOME/.cargo/bin; \
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
@@ -203,6 +204,7 @@ remove:
 dependencies: install-rust-toolchain bin/grpcurl bin/h2client
 	$(warning 'dependencies' target is deprecated, this is now not needed when using `make dev`, but are kept for installation that are not built by Bazel)
 
+	export PATH=$$PATH:$$HOME/.cargo/bin; \
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
