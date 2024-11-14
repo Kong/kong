@@ -212,7 +212,9 @@ local function do_sync()
   -- and replace the old one with it
   local default_ws_changed
   for _, delta in ipairs(deltas) do
-    if delta.type == "workspaces" and delta.entity.name == "default" then
+    if delta.type == "workspaces" and delta.entity.name == "default" and
+      kong.default_workspace ~= delta.entity.id
+    then
       kong.default_workspace = delta.entity.id
       default_ws_changed = true
       break
