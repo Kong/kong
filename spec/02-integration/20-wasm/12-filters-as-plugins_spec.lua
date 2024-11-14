@@ -200,6 +200,51 @@ describe("#wasm filters as plugins (#" .. strategy .. ")", function()
         assert.same({ service = filter.service }, err.fields)
       end)
     end)
+
+    describe("GET", function()
+      it("returns both wasm filters and Lua plugins", function()
+        local route_filter = new_filter()
+        route_filter.route = { id = route.id }
+
+        local service_filter = new_filter()
+        service_filter.service = { id = service.id }
+
+        local route_plugin = new_plugin()
+        route_plugin.route = { id = route.id }
+
+        local service_plugin = new_plugin()
+        service_plugin.service = { id = service.id }
+
+        route_filter = create_plugin(route_filter)
+        service_filter = create_plugin(service_filter)
+
+        route_plugin = create_plugin(route_plugin)
+        service_plugin = create_plugin(service_plugin)
+
+        local res = admin:get("/plugins")
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_table(json)
+        assert.is_table(json.data)
+
+        local expected = 4
+        assert.equals(expected, #json.data)
+        helpers.intercept(json.data)
+        local found = 0
+
+        for _, plugin in ipairs(json.data) do
+          if   plugin.id == route_filter.id
+            or plugin.id == service_filter.id
+            or plugin.id == route_plugin.id
+            or plugin.id == service_plugin.id
+          then
+            found = found + 1
+          end
+        end
+
+        assert.equals(expected, found, "GET /plugins didn't return expected entities")
+      end)
+    end)
   end)
 
   describe("/plugins/:id", function()
