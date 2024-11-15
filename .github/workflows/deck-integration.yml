@@ -8,6 +8,7 @@ on:
     - 'kong/plugins/**/daos.lua'
     - 'kong/db/dao/*.lua'
     - 'kong/api/**/*.lua'
+    - '.github/workflows/deck-integration.yml'
 
 permissions:
   pull-requests: write
@@ -53,7 +54,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
       - name: Lookup build cache
         id: cache-deps
