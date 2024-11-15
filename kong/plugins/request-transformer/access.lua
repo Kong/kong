@@ -149,7 +149,7 @@ end
 
 local function rename(tbl, old_name, new_name)
   if old_name == new_name then
-    return
+    return false
   end
 
   local value = tbl[old_name]
@@ -161,7 +161,7 @@ local function rename(tbl, old_name, new_name)
 end
 
 local function transform_headers(conf, template_env)
-  local headers = get_headers()
+  local headers = get_headers(nil, true)
   local headers_to_remove = {}
 
   headers.host = nil
@@ -509,7 +509,7 @@ function _M.execute(conf)
     __index = function(self, key)
       local lazy_loaders = {
         headers = function(self)
-          return get_headers() or EMPTY
+          return get_headers(nil, true) or EMPTY
         end,
         query_params = function(self)
           return get_uri_args() or EMPTY
@@ -530,6 +530,7 @@ function _M.execute(conf)
       end
       -- set the result on the table to not load again
       local value = loader()
+      -- ngx.log(ngx.WARN,"rawset ", key, ": ", tostring(self) ,"\n")
       rawset(self, key, value)
       return value
     end,

@@ -1,20 +1,21 @@
 local str_replace_char = require("resty.core.utils").str_replace_char
 local CACHE_HEADERS = require("kong.constants").CACHE_HEADERS
 
-local function clear_headers_cache()
-  ngx.ctx[CACHE_HEADERS[1].KEY] = nil
-  ngx.ctx[CACHE_HEADERS[2].KEY] = nil
-  ngx.ctx[CACHE_HEADERS[1].FLAG] = nil
-  ngx.ctx[CACHE_HEADERS[2].FLAG] = nil
-end
-
-local function init_headers_cache(group)
-  ngx.ctx[CACHE_HEADERS[group].KEY] = {}
-  return true
-end
-
 local function normalize_header_name(header)
-    return str_replace_char(header:lower(), "-", "_")
+  return header:lower()
+  -- return str_replace_char(header:lower(), "-", "_")
+end
+
+local function Set (list)
+  local set = {}
+  for _, l in ipairs(list) do set[normalize_header_name(l)] = true end
+  return set
+end
+
+do
+  for k, v in pairs(CACHE_HEADERS) do
+    v.SINGLE_VALUES = Set(v.SINGLE_VALUES)
+  end
 end
 
 local function normalize_header_value(value)
@@ -35,6 +36,76 @@ local function normalize_header_value(value)
   return tostring(value)
 end
 
+local function get_recover_cache(proxy)
+  if (next(proxy.kmagic_inner) ~= nil) then
+    if (next(proxy.kmagic_dirty) ~= nil) then
+      for k, v in pairs(proxy.kmagic_dirty) do
+        proxy.kmagic_inner[k] = v
+      end
+      proxy.kmagic_dirty = {}
+    end
+    if (next(proxy.kmagic_added)) then
+      for k, _ in pairs(proxy.kmagic_added) do
+        proxy.kmagic_inner[k] = nil
+      end
+      proxy.kmagic_added = {}
+    end
+  elseif next(proxy.kmagic_added) then
+    -- original cache is empty, just need to clear added
+    proxy.kmagic_added = {}
+  end
+end
+
+
+local function get_headers_cache_proxy(group)
+  local cache_key = CACHE_HEADERS[group].KEY
+  if ngx.ctx[cache_key] then
+    return ngx.ctx[cache_key]
+  end
+  ngx.ctx[cache_key] = {
+    kmagic_dirty = {},
+    kmagic_inner = {},
+    kmagic_added = {},
+  }
+  local pxy = ngx.ctx[cache_key]
+  local mt2 = {
+    __index = function(_, k)
+      return pxy.kmagic_inner[normalize_header_name(k)]
+    end,
+    __newindex = function(_, k, v)
+      k = normalize_header_name(k)
+      local t = pxy.kmagic_inner
+      local dirty = pxy.kmagic_dirty
+      local added = pxy.kmagic_added
+      if dirty[k] == nil and t[k] then
+        dirty[k] = t[k]
+      end
+      if added[k] == nil and t[k] == nil and v ~= nil then
+        added[k]=true
+      end
+      t[k] = v
+    end,
+    __pairs = function()
+      return next, pxy.kmagic_inner, nil
+    end
+  }
+  setmetatable(pxy, mt2)
+  return pxy
+end
+
+local function clear_header_cache_proxy(group)
+  -- ngx.print("INIT\n")
+  local proxy = get_headers_cache_proxy(group)
+  proxy.kmagic_inner = {}
+  proxy.kmagic_dirty = {}
+  proxy.kmagic_added = {}
+end
+
+local function get_headers_cache(group)
+  local proxy = get_headers_cache_proxy(group)
+  get_recover_cache(proxy)
+  return ngx.ctx[CACHE_HEADERS[group].FLAG] and proxy
+end
 
 local function builtin_header_single_handler(cache, key, value)
   key = normalize_header_name(key)
@@ -68,8 +139,8 @@ local function multi_value_handler(cache, key, value, override)
     end
 
     -- field exists for adding, change single value to list
-    if type(ngx.ctx.cache_headers[key]) ~= "table" then
-        cache[key] = { cache[key] }
+    if type(cache[key]) ~= "table" then
+      cache[key] = { cache[key] }
     end
 
     -- values insert
@@ -84,8 +155,14 @@ local function multi_value_handler(cache, key, value, override)
 end
 
 local function set_header_cache(group, name, value, override)
-  local cache = ngx.ctx[CACHE_HEADERS[group].KEY] or init_headers_cache(group) and ngx.ctx[CACHE_HEADERS[group].KEY]
-
+  name = normalize_header_name(name)
+  local proxy = get_headers_cache_proxy(group)
+  local cache = proxy.kmagic_inner
+  if (proxy.kmagic_dirty[name]) then
+    proxy.kmagic_dirty[name] = nil
+  elseif (proxy.kmagic_added[name]) then
+    proxy.kmagic_added[name] = nil
+  end
   if CACHE_HEADERS[group].SINGLE_VALUES[name] then
     builtin_header_single_handler(cache, name, value)
   else
@@ -93,47 +170,42 @@ local function set_header_cache(group, name, value, override)
   end
 end
 
-local function add_header_cache(group, name, value)
-  local cache = ngx.ctx[CACHE_HEADERS[group].KEY] or init_headers_cache(group) and ngx.ctx[CACHE_HEADERS[group].KEY]
-
-  if CACHE_HEADERS[group].SINGLE_VALUES[name] then
-    builtin_header_single_handler(cache, name, value)
-  else
-    multi_value_handler(cache, name, value)
-  end
-end
-
 -- set cache headers by group[request/response]
 local function set_headers_cache(group, values)
   -- if no key specified, assign the whole cache group value
-  local cache_key = CACHE_HEADERS[group].KEY
+  -- local cache_key = CACHE_HEADERS[group].KEY
   local cache_flag = CACHE_HEADERS[group].FLAG
-  ngx.ctx[cache_key] = values
+  -- ngx.ctx[CACHE_HEADERS[group].key] = nil
+  clear_header_cache_proxy(group)
+  local proxy = get_headers_cache_proxy(group)
+  proxy.kmagic_inner = values
   if not ngx.ctx[cache_flag] then
       ngx.ctx[cache_flag] = true
   end
 end
 
--- get cache headers by group[request/response]
-local function get_headers_cache(group)
-  -- if headers has not been fully got before, return nil
-  return ngx.ctx[CACHE_HEADERS[group].FLAG] and ngx.ctx[CACHE_HEADERS[group].KEY]
-end
 
 -- get cache header
 local function get_header_cache(group, key)
-  local fields = ngx.ctx[group]
-  if fields then
-      return ngx.ctx[group][key]
-  end
-  return fields
+  local proxy = get_headers_cache_proxy(group)
+  get_recover_cache(proxy)
+  return proxy[key]
+end
+
+local function clear_headers_cache()
+  clear_header_cache_proxy(1)
+  clear_header_cache_proxy(2)
+  -- ngx.ctx[CACHE_HEADERS[1].KEY] = nil
+  -- ngx.ctx[CACHE_HEADERS[2].KEY] = nil
+  ngx.ctx[CACHE_HEADERS[1].FLAG] = nil
+  ngx.ctx[CACHE_HEADERS[2].FLAG] = nil
 end
 
 return {
   set_header_cache = set_header_cache,
-  add_header_cache = add_header_cache,
   set_headers_cache = set_headers_cache,
   get_headers_cache = get_headers_cache,
   get_header_cache = get_header_cache,
   clear_headers_cache = clear_headers_cache,
+  normalize_header_name = normalize_header_name,
 }

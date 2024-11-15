@@ -59,6 +59,7 @@ build = {
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.deprecation"] = "kong/deprecation.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
+    ["kong.header_cache_utils"] = "kong/header_cache_utils.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
     ["kong.hooks"] = "kong/hooks.lua",
 

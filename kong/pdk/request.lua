@@ -661,11 +661,29 @@ local function new(self)
   -- headers.x_custom_header -- "bla"
   -- headers.x_another[1]    -- "foo bar"
   -- headers["X-Another"][2] -- "baz"
-  function _REQUEST.get_headers(max_headers)
+  local header_cache = require("kong.header_cache_utils")
+
+  local get_headers_cache = function(max_req_headers)
+    local headers = {}
+    local cached_headers = header_cache.get_headers_cache(1)
+    if cached_headers then
+      return cached_headers
+    end
+    local headers = get_headers(max_req_headers)
+    header_cache.set_headers_cache(1, headers)
+    return header_cache.get_headers_cache(1);
+  end
+
+  function _REQUEST.get_headers(max_headers, no_cache)
+
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return get_headers()
+      if no_cache then
+        return get_headers()
+      else
+        return get_headers_cache()
+      end
     end
 
     if type(max_headers) ~= "number" then
@@ -676,7 +694,11 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return get_headers(max_headers)
+    if no_cache then
+      return get_headers(max_headers)
+    else
+      return get_headers_cache(max_headers)
+    end
   end
 
 

@@ -159,15 +159,9 @@ return function(options)
         if not get_request() then
           error("no request found")
         end
-        local cached_headers = header_cache.get_headers_cache(1)
-        if cached_headers then
-          return cached_headers
-        end
         MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
         _G.ngx.req.get_headers = get_req_headers_real
-        local headers = get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
-        header_cache.set_headers_cache(1, headers)
-        return headers;
+        return get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
       end
 
       _G.ngx.req.set_header = function(header_name, header_value)
@@ -207,7 +201,7 @@ return function(options)
         _G.ngx.resp.get_headers = get_resp_headers_real
         local headers = get_resp_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
         header_cache.set_headers_cache(2, headers)
-        return headers;
+        return header_cache.get_headers_cache(2);
       end
 
       _G.ngx.resp.add_header = function(header_name, header_value)
