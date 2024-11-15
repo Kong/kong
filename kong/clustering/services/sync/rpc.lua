@@ -232,7 +232,8 @@ local function do_sync()
 
   local db = kong.db
 
-  local routes_changed
+  local router_hash
+
   local version = 0
   local opts = {}
   local crud_events = {}
@@ -322,10 +323,11 @@ local function do_sync()
     end
 
     -- services or routes changed, need to rebuild router
-    if routes_changed == nil and
+    -- generate a pseudo hash to rebuild router
+    if router_hash == nil and
       (delta_type == "services" or delta_type == "routes")
     then
-      routes_changed = true
+      router_hash = math_random(1e10)
     end
   end -- for _, delta
 
@@ -348,7 +350,8 @@ local function do_sync()
     kong.core_cache:purge()
     kong.cache:purge()
 
-    routes_changed = true
+    -- ensure to rebuild router
+    router_hash = router_hash or math_random(1e10)
   else
 
     -- incremental sync, trigger dao events
@@ -358,12 +361,13 @@ local function do_sync()
     end
   end
 
-  if not routes_changed then
+  -- routes or services have no change
+  if not router_hash then
     return true
   end
 
-  -- generate a pseudo hash for rebuild router
-  local router_hash = string.rep("0", 20) .. math_random(1e12)
+  -- TODO: plugins and balancer hash?
+  router_hash = fmt("%032d", router_hash)
 
   -- Trigger other workers' callbacks like reconfigure_handler.
   --
