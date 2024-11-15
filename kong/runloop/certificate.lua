@@ -188,8 +188,10 @@ local function fetch_sni(sni, i)
 end
 
 
-local function fetch_certificate(pk, sni_name)
-  local certificate, err = kong.db.certificates:select(pk)
+local function fetch_certificate(pk, sni_name, ws_id)
+  local certificate, err = kong.db.certificates:select(pk, {
+    workspace = ws_id,
+  })
   if err then
     if sni_name then
       return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
@@ -251,12 +253,12 @@ local function init()
 end
 
 
-local function get_certificate(pk, sni_name)
+local function get_certificate(pk, sni_name, ws_id)
   local cache_key = kong.db.certificates:cache_key(pk)
   local certificate, err, hit_level = kong.core_cache:get(cache_key,
                                                           get_certificate_opts,
                                                           fetch_certificate,
-                                                          pk, sni_name)
+                                                          pk, sni_name, ws_id)
 
   if certificate and hit_level ~= 3 and certificate["$refs"] then
     certificate = parse_key_and_cert(kong.vault.update(certificate))
