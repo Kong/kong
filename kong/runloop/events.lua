@@ -312,15 +312,26 @@ local function crud_wasm_handler(data, schema_name)
     return
   end
 
-  -- cache is invalidated on service/route deletion to ensure we don't
-  -- have oprhaned filter chain data cached
-  local is_delete = data.operation == "delete"
-               and (schema_name == "services"
-                    or schema_name == "routes")
+  local invalidate = false
 
-  local updated = schema_name == "filter_chains" or is_delete
+  -- always invalidate for filter_chain entity changes
+  if schema_name == "filter_chains" then
+    invalidate = true
 
-  if updated then
+  -- invalidate on service/route deletion to ensure we don't have any orphaned
+  -- filter chain data cached
+  elseif schema_name == "services" or schema_name == "routes" then
+    invalidate = data.operation == "delete"
+
+  -- invalidate for changes to wasm filter plugin entities
+  elseif schema_name == "plugins" then
+    local new_name = data.entity.name
+    local old_name = data.old_entity and data.old_entity.name
+    invalidate = (new_name and wasm.filters_by_name[new_name]) or
+                 (old_name and wasm.filters_by_name[old_name])
+  end
+
+  if invalidate then
     log(DEBUG, "[events] wasm filter chains updated, invalidating cache")
     core_cache:invalidate("filter_chains:version")
   end
@@ -396,6 +407,7 @@ local LOCAL_HANDLERS = {
   { "crud"    , "filter_chains"  , crud_wasm_handler },
   { "crud"    , "services"       , crud_wasm_handler },
   { "crud"    , "routes"         , crud_wasm_handler },
+  { "crud"    , "plugins"        , crud_wasm_handler },
 
   -- ca certificate store caches invalidations
   { "crud"    , "ca_certificates" , crud_ca_certificates_handler },
