@@ -10,6 +10,7 @@ local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
 local tablepool = require "tablepool"
 local req_dyn_hook = require "kong.dynamic_hook"
+local wasm = require "kong.runloop.wasm"
 
 
 local isempty = require("table.isempty")
@@ -179,6 +180,10 @@ end
 
 
 local function should_process_plugin(plugin)
+  if wasm.filters_by_name[plugin.name] then
+    return false
+  end
+
   if plugin.enabled then
     local c = constants.PROTOCOLS_WITH_SUBSYSTEM
     for _, protocol in ipairs(plugin.protocols) do

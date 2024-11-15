@@ -413,6 +413,7 @@ build = {
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
     ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
     ["kong.runloop.wasm"] = "kong/runloop/wasm.lua",
+    ["kong.runloop.wasm.plugins"] = "kong/runloop/wasm/plugins.lua",
     ["kong.runloop.wasm.properties"] = "kong/runloop/wasm/properties.lua",
 
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
@@ -556,6 +557,7 @@ build = {
     ["kong.db.schema.json"] = "kong/db/schema/json.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
+    ["kong.db.schema.others.wasm_filter"] = "kong/db/schema/others/wasm_filter.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
     ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",

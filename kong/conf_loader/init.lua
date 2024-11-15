@@ -763,6 +763,14 @@ local function load(path, custom_conf, opts)
       end
     end
 
+    if conf.wasm_modules_parsed then
+      for _, filter in ipairs(conf.wasm_modules_parsed) do
+        assert(plugins[filter.name] == nil,
+               "duplicate plugin/wasm filter name: " .. filter.name)
+        plugins[filter.name] = true
+      end
+    end
+
     if not conf.portal_and_vitals_key and plugins["application-registration"] then
       plugins["application-registration"] = nil
     end
