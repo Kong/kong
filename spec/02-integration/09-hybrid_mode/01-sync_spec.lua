@@ -271,12 +271,7 @@ describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, functi
         path    = "/soon-to-be-disabled",
       }))
 
-      if inc_sync == "on" then
-        -- XXX incremental sync does not skip_disabled_services by default
-        assert.res_status(200, res)
-      else
-        assert.res_status(404, res)
-      end
+      assert.res_status(404, res)
 
       proxy_client:close()
     end)
