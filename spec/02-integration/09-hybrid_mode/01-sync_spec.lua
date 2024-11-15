@@ -45,6 +45,7 @@ describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, functi
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_incremental_sync = inc_sync,
+      worker_state_update_frequency = 1,
     }))
 
     for _, plugin in ipairs(helpers.get_plugins_list()) do
@@ -622,7 +623,7 @@ describe("CP/DP #version check #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP config sync #" .. strategy, function()
+describe("CP/DP config sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -645,6 +646,7 @@ describe("CP/DP config sync #" .. strategy, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       cluster_incremental_sync = inc_sync,
+      worker_state_update_frequency = 1,
     }))
   end)
 

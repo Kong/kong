@@ -324,11 +324,11 @@ local function do_sync()
 
     -- services or routes changed, need to rebuild router
     -- generate a pseudo hash to rebuild router
-    if router_hash == nil and
-      (delta_type == "services" or delta_type == "routes")
-    then
-      router_hash = math_random(1e10)
-    end
+    --if router_hash == nil and
+    --  (delta_type == "services" or delta_type == "routes")
+    --then
+    --  router_hash = math_random(1e10)
+    --end
   end -- for _, delta
 
   -- store current sync version
