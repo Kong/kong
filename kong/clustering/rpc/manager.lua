@@ -48,6 +48,7 @@ function _M.new(conf, node_id)
     -- clients[node_id]: { socket1 => true, socket2 => true, ... }
     clients = {},
     client_capabilities = {},
+    client_info = {},  -- store DP node's ip addr and version
     node_id = node_id,
     conf = conf,
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
@@ -93,6 +94,7 @@ function _M:_remove_socket(socket)
 
   if table_isempty(sockets) then
     self.clients[node_id] = nil
+    self.client_info[node_id] = nil
     self.client_capabilities[node_id] = nil
 
     if self.concentrator then
@@ -399,7 +401,7 @@ function _M:handle_websocket()
   self:_add_socket(s)
 
   -- store DP's ip addr
-  self.client_ips[node_id] = ngx_var.remote_addr
+  self.client_info[node_id] =  { ip = ngx_var.remote_addr, version = kong_version, }
 
   s:start()
   local res, err = s:join()
@@ -534,7 +536,7 @@ end
 
 
 function _M:get_peer_ip(node_id)
-  return self.client_ips[node_id]
+  return self.client_info[node_id].ip
 end
 
 
