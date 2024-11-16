@@ -20,7 +20,7 @@ if test -n "$_OLD_KONG_VENV_PATH"
     # restore old PATH first, if this script is called multiple times
     set -gx PATH $_OLD_KONG_VENV_PATH
 else
-    set _OLD_KONG_VENV_PATH $PATH
+    set -gx _OLD_KONG_VENV_PATH $PATH
 end
 
 function deactivate -d 'Exit Kong\'s venv and return to the normal environment.'
