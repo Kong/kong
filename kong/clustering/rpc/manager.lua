@@ -57,7 +57,7 @@ function _M.new(conf, node_id)
 
   if conf.role == "control_plane" then
     self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
-    self.client_info = {},  -- store DP node's ip addr and version
+    self.client_info = {}  -- store DP node's ip addr and version
   end
 
   return setmetatable(self, _MT)
