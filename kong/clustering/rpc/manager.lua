@@ -48,7 +48,6 @@ function _M.new(conf, node_id)
     -- clients[node_id]: { socket1 => true, socket2 => true, ... }
     clients = {},
     client_capabilities = {},
-    client_info = {},  -- store DP node's ip addr and version
     node_id = node_id,
     conf = conf,
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
@@ -58,7 +57,7 @@ function _M.new(conf, node_id)
 
   if conf.role == "control_plane" then
     self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
-    self.client_ips = {}  -- store DP node's ip addr
+    client_info = {},  -- store DP node's ip addr and version
   end
 
   return setmetatable(self, _MT)
@@ -94,11 +93,10 @@ function _M:_remove_socket(socket)
 
   if table_isempty(sockets) then
     self.clients[node_id] = nil
-    self.client_info[node_id] = nil
     self.client_capabilities[node_id] = nil
 
     if self.concentrator then
-      self.client_ips[node_id] = nil
+      self.client_info[node_id] = nil
       assert(self.concentrator:_enqueue_unsubscribe(node_id))
     end
   end
