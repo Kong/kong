@@ -27,6 +27,7 @@ local _OPENAI_STOP_REASON_MAPPING = {
   ["max_tokens"] = "length",
   ["end_turn"] = "stop",
   ["tool_use"] = "tool_calls",
+  ["guardrail_intervened"] = "guardrail_intervened",
 }
 
 _M.bedrock_unsupported_system_role_patterns = {
@@ -44,6 +45,10 @@ local function to_bedrock_generation_config(request_table)
     ["temperature"] = request_table.temperature,
     ["topP"] = request_table.top_p,
   }
+end
+
+local function to_bedrock_guardrail_config(guardrail_config)
+  return guardrail_config  -- may be nil; this is handled
 end
 
 -- this is a placeholder and is archaic now,
@@ -310,6 +315,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
   end
 
   new_r.inferenceConfig = to_bedrock_generation_config(request_table)
+  new_r.guardrailConfig = to_bedrock_guardrail_config(request_table.guardrailConfig)
 
   -- backwards compatibility
   new_r.toolConfig = request_table.bedrock
@@ -374,6 +380,8 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
       total_tokens = response.usage.totalTokens,
     }
   end
+
+  client_response.trace = response.trace  -- may be nil, **do not** map to cjson.null
 
   return cjson.encode(client_response)
 end
@@ -601,6 +609,7 @@ end
 if _G._TEST then
   -- export locals for testing
   _M._to_tools = to_tools
+  _M._to_bedrock_chat_openai = to_bedrock_chat_openai
   _M._from_tool_call_response = from_tool_call_response
 end
 

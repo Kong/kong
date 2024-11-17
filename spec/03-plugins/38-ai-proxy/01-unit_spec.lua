@@ -37,6 +37,24 @@ local SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS = {
   another_extra_param = 0.5,
 }
 
+local SAMPLE_LLM_V1_CHAT_WITH_GUARDRAILS = {
+  messages = {
+    [1] = {
+      role = "system",
+      content = "You are a mathematician."
+    },
+    [2] = {
+      role = "assistant",
+      content = "What is 1 + 1?"
+    },
+  },
+  guardrailConfig = {
+    guardrailIdentifier = "yu5xwvfp4sud",
+    guardrailVersion = "1",
+    trace = "enabled",
+  },
+}
+
 local SAMPLE_DOUBLE_FORMAT = {
   messages = {
     [1] = {
@@ -976,6 +994,22 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         arguments = "{\"areas\":[121,212,313]}"
       })
     end)
-  end)
 
+    it("transforms guardrails into bedrock generation config", function()
+      local model_info = {
+        route_type = "llm/v1/chat",
+        name = "some-model",
+        provider = "bedrock",
+      }
+      local bedrock_guardrails = bedrock_driver._to_bedrock_chat_openai(SAMPLE_LLM_V1_CHAT_WITH_GUARDRAILS, model_info, "llm/v1/chat")
+
+      assert.not_nil(bedrock_guardrails)
+
+      assert.same(bedrock_guardrails.guardrailConfig, {
+        ['guardrailIdentifier'] = 'yu5xwvfp4sud',
+        ['guardrailVersion'] = '1',
+        ['trace'] = 'enabled',
+      })
+    end)
+  end)
 end)
