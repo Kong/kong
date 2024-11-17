@@ -674,12 +674,12 @@ local function new(self)
     return header_cache.get_headers_cache(1);
   end
 
-  function _REQUEST.get_headers(max_headers, no_cache)
+  function _REQUEST.get_headers(max_headers, use_cache)
 
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      if no_cache then
+      if not use_cache then
         return get_headers()
       else
         return get_headers_cache()
@@ -694,7 +694,7 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    if no_cache then
+    if not use_cache then
       return get_headers(max_headers)
     else
       return get_headers_cache(max_headers)

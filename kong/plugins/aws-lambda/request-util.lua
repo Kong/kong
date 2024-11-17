@@ -285,6 +285,7 @@ local function build_request_payload(conf)
     end
 
     if conf.forward_request_headers then
+      -- upstream_body.request_headers = kong.request.get_headers(nil, true)
       upstream_body.request_headers = kong.request.get_headers()
     end
 

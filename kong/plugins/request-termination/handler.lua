@@ -24,6 +24,7 @@ function RequestTerminationHandler:access(conf)
   local req_headers, req_query
 
   if conf.trigger or conf.echo then
+    -- req_headers = kong.request.get_headers(nil, true)
     req_headers = kong.request.get_headers()
     req_query = kong.request.get_query()
 
