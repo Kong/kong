@@ -11,8 +11,8 @@ local callbacks = require("kong.clustering.rpc.callbacks")
 local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
-local pl_tablex = require("pl.tablex")
-local cjson = require("cjson.safe")
+--local pl_tablex = require("pl.tablex")
+--local cjson = require("cjson.safe")
 
 
 local ngx_var = ngx.var
@@ -22,11 +22,14 @@ local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
-local pl_tablex_makeset = pl_tablex.makeset
-local cjson_encode = cjson.encode
-local cjson_decode = cjson.decode
+--local pl_tablex_makeset = pl_tablex.makeset
+--local cjson_encode = cjson.encode
+--local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
+
+
+local RPC_MATA_V1 = "kong.meta.v1"
 
 
 local WS_OPTS = {
@@ -71,10 +74,12 @@ function _M:_add_socket(socket, capabilities_list)
     self.clients[node_id] = sockets
   end
 
+  --[[
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
+  --]]
 
   assert(not sockets[socket])
 
@@ -138,6 +143,23 @@ function _M:_find_node_and_check_capability(node_id, cap)
 
   return nil, "requested capability does not exist, capability: " ..
               cap .. ", node_id: " .. node_id
+end
+
+
+function _M:_meta_call(s, node_id, method, params)
+  local fut = future.new(node_id, s, method, params)
+  assert(fut:start())
+
+  local ok, err = fut:wait(5)
+  if err then
+    return nil, err
+  end
+
+  if ok then
+    return fut.result
+  end
+
+  return nil, fut.error.message
 end
 
 
@@ -236,7 +258,7 @@ function _M:handle_websocket()
   local node_id = ngx_var.http_x_kong_node_id
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
   local content_encoding = ngx_var.http_content_encoding
-  local rpc_capabilities = ngx_var.http_x_kong_rpc_capabilities
+  --local rpc_capabilities = ngx_var.http_x_kong_rpc_capabilities
 
   if not kong_version then
     ngx_log(ngx_ERR, "[rpc] client did not provide version number")
@@ -253,13 +275,14 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  if rpc_protocol ~= "kong.rpc.v1" then
+  if rpc_protocol ~= RPC_MATA_V1 then
     ngx_log(ngx_ERR, "[rpc] unknown RPC protocol: " ..
                      tostring(rpc_protocol) ..
                      ", doesn't know how to communicate with client")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
+  --[[
   if not rpc_capabilities then
     ngx_log(ngx_ERR, "[rpc] client did not provide capability list")
     return ngx_exit(ngx.HTTP_CLOSE)
@@ -270,6 +293,7 @@ function _M:handle_websocket()
     ngx_log(ngx_ERR, "[rpc] failed to decode client capability list")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
+  --]]
 
   local cert, err = validate_client_cert(self.conf, self.cluster_cert, ngx_var.ssl_client_raw_cert)
   if not cert then
@@ -277,7 +301,8 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  ngx.header["X-Kong-RPC-Capabilities"] = cjson_encode(self.callbacks:get_capabilities_list())
+  --ngx.header["X-Kong-RPC-Capabilities"] = cjson_encode(self.callbacks:get_capabilities_list())
+  ngx.header["Sec-WebSocket-Protocol"] = RPC_MATA_V1
 
   local wb, err = server:new(WS_OPTS)
   if not wb then
@@ -286,7 +311,8 @@ function _M:handle_websocket()
   end
 
   local s = socket.new(self, wb, node_id)
-  self:_add_socket(s, rpc_capabilities)
+  --self:_add_socket(s, rpc_capabilities)
+  self:_add_socket(s)
 
   -- store DP's ip addr
   self.client_ips[node_id] = ngx_var.remote_addr
@@ -339,13 +365,13 @@ function _M:connect(premature, node_id, host, path, cert, key)
     ssl_verify = true,
     client_cert = cert,
     client_priv_key = key,
-    protocols = "kong.rpc.v1",
+    protocols = RPC_MATA_V1,
     headers = {
       "X-Kong-Version: " .. KONG_VERSION,
       "X-Kong-Node-Id: " .. self.node_id,
       "X-Kong-Hostname: " .. kong.node.get_hostname(),
-      "X-Kong-RPC-Capabilities: " .. cjson_encode(self.callbacks:get_capabilities_list()),
-      "Content-Encoding: x-snappy-framed"
+      --"X-Kong-RPC-Capabilities: " .. cjson_encode(self.callbacks:get_capabilities_list()),
+      "Content-Encoding: x-snappy-framed",
     },
   }
 
@@ -372,6 +398,17 @@ function _M:connect(premature, node_id, host, path, cert, key)
   do
     local resp_headers = c:get_resp_headers()
     -- FIXME: resp_headers should not be case sensitive
+
+    if not resp_headers or not resp_headers["sec_websocket_protocol"] then
+      ngx_log(ngx_ERR, "[rpc] peer did not provide sec_websocket_protocol, node_id: ", node_id)
+      c:send_close() -- can't do much if this fails
+      goto err
+    end
+
+    -- should like "kong.meta.v1"
+    local meta_rpc_call = resp_headers["sec_websocket_protocol"]
+
+    --[[
     if not resp_headers or not resp_headers["x_kong_rpc_capabilities"] then
       ngx_log(ngx_ERR, "[rpc] peer did not provide capability list, node_id: ", node_id)
       c:send_close() -- can't do much if this fails
@@ -386,10 +423,19 @@ function _M:connect(premature, node_id, host, path, cert, key)
       c:send_close() -- can't do much if this fails
       goto err
     end
+    --]]
 
     local s = socket.new(self, c, node_id)
     s:start()
-    self:_add_socket(s, capabilities)
+    --self:_add_socket(s, capabilities)
+    self:_add_socket(s)
+
+    ngx.timer.at(0, function(premature)
+      local res, err = self:_meta_call(s, "control_plane", meta_rpc_call, {})
+      if not res then
+        return nil, err
+      end
+    end)
 
     ok, err = s:join() -- main event loop
 
