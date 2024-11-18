@@ -38,6 +38,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       nginx_worker_processes = 4, -- multiple workers
       cluster_incremental_sync = "on", -- incremental sync
+      worker_state_update_frequency = 1,
     }))
   end)
 
