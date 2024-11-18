@@ -146,6 +146,22 @@ function _M:_find_node_and_check_capability(node_id, cap)
 end
 
 
+-- CP => DP
+function _M:_register_meta_call()
+  self.callbacks:register("kong.meta.v1", function(node_id, info)
+    local capabilities_list  = info.capabilities
+
+    self.client_capabilities[node_id] = {
+      set = pl_tablex_makeset(capabilities_list),
+      list = capabilities_list,
+    }
+
+    return { capabilities = self.callbacks:get_capabilities_list() }
+  end)
+end
+
+
+-- DP => CP
 function _M:_meta_call(s, node_id, method, params)
   local fut = future.new(node_id, s, method, params)
   assert(fut:start())
@@ -155,11 +171,18 @@ function _M:_meta_call(s, node_id, method, params)
     return nil, err
   end
 
-  if ok then
-    return fut.result
+  if not ok then
+    return nil, fut.error.message
   end
 
-  return nil, fut.error.message
+  local capabilities_list = fut.result.capabilities
+
+  self.client_capabilities[node_id] = {
+    set = pl_tablex_makeset(capabilities_list),
+    list = capabilities_list,
+  }
+
+  return true
 end
 
 
