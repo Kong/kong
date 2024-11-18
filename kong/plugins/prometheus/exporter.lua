@@ -5,14 +5,16 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local balancer = require "kong.runloop.balancer"
+local yield = require("kong.tools.yield").yield
+local wasm = require "kong.plugins.prometheus.wasmx"
+
 local kong = kong
 local ngx = ngx
 local get_phase = ngx.get_phase
 local lower = string.lower
 local ngx_timer_pending_count = ngx.timer.pending_count
 local ngx_timer_running_count = ngx.timer.running_count
-local balancer = require("kong.runloop.balancer")
-local yield = require("kong.tools.yield").yield
 local get_all_upstreams = balancer.get_all_upstreams
 if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
   get_all_upstreams = require("kong.runloop.balancer.upstreams").get_all_upstreams
@@ -561,6 +563,7 @@ local function metric_data(write_fn)
   -- notify the function if prometheus plugin is enabled,
   -- so that it can avoid exporting unnecessary metrics if not
   prometheus:metric_data(write_fn, not IS_PROMETHEUS_ENABLED)
+  wasm.metrics_data()
 end
 
 local function collect()

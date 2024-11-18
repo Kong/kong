@@ -902,6 +902,7 @@ build = {
     ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
     ["kong.plugins.prometheus.serve"] = "kong/plugins/prometheus/serve.lua",
     ["kong.plugins.prometheus.schema"] = "kong/plugins/prometheus/schema.lua",
+    ["kong.plugins.prometheus.wasmx"] = "kong/plugins/prometheus/wasmx.lua",
     -- XXX EE
     ["kong.plugins.prometheus.enterprise.exporter"] = "kong/plugins/prometheus/enterprise/exporter.lua",
 

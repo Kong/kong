@@ -503,6 +503,21 @@ describe("filter metadata [#" .. strategy .. "] startup errors -", function()
       assert.matches(meta_path, err, nil, true)
       assert.matches("file contains invalid metadata", err, nil, true)
     end)
+
+    it("fails when metric label patterns in filter.meta.json are not semantically valid", function()
+      assert(file.write(meta_path, cjson.encode({
+        metrics = {
+          label_patterns = { "invalid", "invalid" }
+        },
+      })))
+      local ok, err = helpers.start_kong(conf)
+      assert.falsy(ok)
+
+      assert.matches("Failed to load metadata for one or more filters", err, nil, true)
+      assert.matches(filter_name, err, nil, true)
+      assert.matches(meta_path, err, nil, true)
+      assert.matches("file contains invalid metadata", err, nil, true)
+    end)
   end)
 end)
 
