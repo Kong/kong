@@ -55,6 +55,8 @@ function _M.new(conf, node_id)
   if conf.role == "control_plane" then
     self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
     self.client_ips = {}  -- store DP node's ip addr
+
+    self:_register_meta_call()
   end
 
   return setmetatable(self, _MT)
@@ -148,7 +150,7 @@ end
 
 -- CP => DP
 function _M:_register_meta_call()
-  self.callbacks:register("kong.meta.v1", function(node_id, info)
+  self.callbacks:register(RPC_MATA_V1, function(node_id, info)
     local capabilities_list = info.capabilities
 
     self.client_capabilities[node_id] = {
