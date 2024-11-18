@@ -1,3 +1,3 @@
-message: "**jwt**: make sure rsa_public_key will never get base64 decoded."
+message: "**jwt**: ensure `rsa_public_key` isn't base64-decoded."
 type: bugfix
 scope: Plugin
