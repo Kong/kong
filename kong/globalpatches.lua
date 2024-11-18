@@ -167,6 +167,7 @@ return function(options)
       _G.ngx.req.set_header = function(header_name, header_value)
         set_req_header(header_name, header_value)
         header_cache.set_header_cache(1, header_name, header_value, true)
+        ngx.ctx.test_patched = true -- tmp for test
       end
 
       _G.ngx.req.clear_header = function(header_name)
