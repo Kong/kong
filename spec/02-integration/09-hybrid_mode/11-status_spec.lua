@@ -43,11 +43,15 @@ for _, strategy in helpers.each_strategy() do
     describe("dp should returns 503 without cp", function()
 
       lazy_setup(function()
+        -- clean lmdb to ensure dp is empty when KONG_TEST_DONT_CLEAN=1
+        os.remove("./serve_dp/dbless.lmdb/data.mdb")
+        os.remove("./serve_dp/dbless.lmdb/lock.mdb")
+
         assert(start_kong_dp())
       end)
 
       lazy_teardown(function()
-          assert(helpers.stop_kong("serve_dp"))
+        assert(helpers.stop_kong("serve_dp"))
       end)
 
       -- now dp should be not ready

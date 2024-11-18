@@ -104,7 +104,6 @@ function _M:init_cp(manager)
       ip = kong.rpc:get_peer_ip(node_id),   -- try to get the correct ip
       version = "3.8.0.0",    -- XXX TODO: get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
-      --config_hash = fmt("%032d", default_namespace_version),
       config_hash = format_lmdb_version(default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
@@ -180,7 +179,6 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
-    --local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
     local lmdb_ver = get_lmdb_version()
     if lmdb_ver < version then
       return self:sync_once()
@@ -339,7 +337,6 @@ local function do_sync()
   end -- for _, delta
 
   -- store current sync version
-  --t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
   t:set(DECLARATIVE_HASH_KEY, format_lmdb_version(version))
 
   -- store the correct default workspace uuid
