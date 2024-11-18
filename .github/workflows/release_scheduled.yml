@@ -25,8 +25,6 @@ jobs:
             version: "3.7.x.x"
           - branch: next/3.6.x.x
             version: "3.6.x.x"
-          - branch: next/3.5.x.x
-            version: "3.5.x.x"
           - branch: next/3.4.x.x
             version: "3.4.x.x"
           - branch: next/2.8.x.x
