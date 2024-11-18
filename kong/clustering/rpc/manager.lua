@@ -150,7 +150,7 @@ end
 
 -- CP => DP
 function _M:_register_meta_call()
-  self.callbacks:register(RPC_MATA_V1 .. ".handshake", function(node_id, info)
+  self.callbacks:register(RPC_MATA_V1, function(node_id, info)
     local capabilities_list = info.capabilities
 
     self.client_capabilities[node_id] = {
@@ -164,9 +164,7 @@ end
 
 
 -- DP => CP
-function _M:_meta_call(node_id, s, meta)
-  local method = meta .. ".handshake"
-
+function _M:_meta_call(node_id, s, method)
   local info = {
     capabilities = self.callbacks:get_capabilities_list(),
     -- conf and others
