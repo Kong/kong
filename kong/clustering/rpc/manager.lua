@@ -347,6 +347,13 @@ function _M:handle_websocket()
   -- store DP's ip addr
   self.client_ips[node_id] = ngx_var.remote_addr
 
+  -- check if client handshake success
+  ngx.timer.at(2, function(premature)
+    if not self.client_capabilities[node_id] then
+      s:stop()
+    end
+  end)
+
   s:start()
   local res, err = s:join()
   self:_remove_socket(s)
@@ -472,8 +479,10 @@ function _M:connect(premature, node_id, host, path, cert, key)
                          " err: ", err)
 
         ngx.sleep(0.2)
-        -- log error
       end
+
+      -- retry failed
+      s:stop()
     end)
 
     ok, err = s:join() -- main event loop
