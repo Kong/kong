@@ -36,25 +36,25 @@ local function normalize_header_value(value)
   return tostring(value)
 end
 
-local function get_recover_cache(proxy)
-  if (next(proxy.kmagic_inner) ~= nil) then
-    if (next(proxy.kmagic_dirty) ~= nil) then
-      for k, v in pairs(proxy.kmagic_dirty) do
-        proxy.kmagic_inner[k] = v
-      end
-      proxy.kmagic_dirty = {}
-    end
-    if (next(proxy.kmagic_added)) then
-      for k, _ in pairs(proxy.kmagic_added) do
-        proxy.kmagic_inner[k] = nil
-      end
-      proxy.kmagic_added = {}
-    end
-  elseif next(proxy.kmagic_added) then
-    -- original cache is empty, just need to clear added
-    proxy.kmagic_added = {}
-  end
-end
+-- local function get_recover_cache(proxy)
+--   if (next(proxy.kmagic_inner) ~= nil) then
+--     if (next(proxy.kmagic_dirty) ~= nil) then
+--       for k, v in pairs(proxy.kmagic_dirty) do
+--         proxy.kmagic_inner[k] = v
+--       end
+--       proxy.kmagic_dirty = {}
+--     end
+--     if (next(proxy.kmagic_added)) then
+--       for k, _ in pairs(proxy.kmagic_added) do
+--         proxy.kmagic_inner[k] = nil
+--       end
+--       proxy.kmagic_added = {}
+--     end
+--   elseif next(proxy.kmagic_added) then
+--     -- original cache is empty, just need to clear added
+--     proxy.kmagic_added = {}
+--   end
+-- end
 
 
 local function get_headers_cache_proxy(group)
@@ -62,48 +62,51 @@ local function get_headers_cache_proxy(group)
   if ngx.ctx[cache_key] then
     return ngx.ctx[cache_key]
   end
-  ngx.ctx[cache_key] = {
-    kmagic_dirty = {},
-    kmagic_inner = {},
-    kmagic_added = {},
-  }
-  local pxy = ngx.ctx[cache_key]
-  local mt2 = {
-    __index = function(_, k)
-      return pxy.kmagic_inner[normalize_header_name(k)]
-    end,
-    __newindex = function(_, k, v)
-      k = normalize_header_name(k)
-      local t = pxy.kmagic_inner
-      local dirty = pxy.kmagic_dirty
-      local added = pxy.kmagic_added
-      if dirty[k] == nil and t[k] then
-        dirty[k] = t[k]
-      end
-      if added[k] == nil and t[k] == nil and v ~= nil then
-        added[k]=true
-      end
-      t[k] = v
-    end,
-    __pairs = function()
-      return next, pxy.kmagic_inner, nil
-    end
-  }
-  setmetatable(pxy, mt2)
-  return pxy
+  ngx.ctx[cache_key] = {}
+  return ngx.ctx[cache_key]
+  -- ngx.ctx[cache_key] = {
+  --   kmagic_dirty = {},
+  --   kmagic_inner = {},
+  --   kmagic_added = {},
+  -- }
+  -- local pxy = ngx.ctx[cache_key]
+  -- local mt2 = {
+  --   __index = function(_, k)
+  --     return pxy.kmagic_inner[normalize_header_name(k)]
+  --   end,
+  --   __newindex = function(_, k, v)
+  --     k = normalize_header_name(k)
+  --     local t = pxy.kmagic_inner
+  --     local dirty = pxy.kmagic_dirty
+  --     local added = pxy.kmagic_added
+  --     if dirty[k] == nil and t[k] then
+  --       dirty[k] = t[k]
+  --     end
+  --     if added[k] == nil and t[k] == nil and v ~= nil then
+  --       added[k]=true
+  --     end
+  --     t[k] = v
+  --   end,
+  --   __pairs = function()
+  --     return next, pxy.kmagic_inner, nil
+  --   end
+  -- }
+  -- setmetatable(pxy, mt2)
+  -- return pxy
 end
 
 local function clear_header_cache_proxy(group)
   -- ngx.print("INIT\n")
-  local proxy = get_headers_cache_proxy(group)
-  proxy.kmagic_inner = {}
-  proxy.kmagic_dirty = {}
-  proxy.kmagic_added = {}
+  -- local proxy = get_headers_cache_proxy(group)
+  ngx.ctx[CACHE_HEADERS[group].KEY] = {}
+  -- proxy.kmagic_inner = {}
+  -- proxy.kmagic_dirty = {}
+  -- proxy.kmagic_added = {}
 end
 
 local function get_headers_cache(group)
   local proxy = get_headers_cache_proxy(group)
-  get_recover_cache(proxy)
+  -- get_recover_cache(proxy)
   return ngx.ctx[CACHE_HEADERS[group].FLAG] and proxy
 end
 
@@ -156,13 +159,14 @@ end
 
 local function set_header_cache(group, name, value, override)
   name = normalize_header_name(name)
-  local proxy = get_headers_cache_proxy(group)
-  local cache = proxy.kmagic_inner
-  if (proxy.kmagic_dirty[name]) then
-    proxy.kmagic_dirty[name] = nil
-  elseif (proxy.kmagic_added[name]) then
-    proxy.kmagic_added[name] = nil
-  end
+  local cache = get_headers_cache_proxy(group)
+  -- local proxy = get_headers_cache_proxy(group)
+  -- local cache = proxy.kmagic_inner
+  -- if (proxy.kmagic_dirty[name]) then
+  --   proxy.kmagic_dirty[name] = nil
+  -- elseif (proxy.kmagic_added[name]) then
+  --   proxy.kmagic_added[name] = nil
+  -- end
   if CACHE_HEADERS[group].SINGLE_VALUES[name] then
     builtin_header_single_handler(cache, name, value)
   else
@@ -178,7 +182,8 @@ local function set_headers_cache(group, values)
   -- ngx.ctx[CACHE_HEADERS[group].key] = nil
   clear_header_cache_proxy(group)
   local proxy = get_headers_cache_proxy(group)
-  proxy.kmagic_inner = values
+  proxy = values
+  -- proxy.kmagic_inner = values
   if not ngx.ctx[cache_flag] then
       ngx.ctx[cache_flag] = true
   end
@@ -188,7 +193,7 @@ end
 -- get cache header
 local function get_header_cache(group, key)
   local proxy = get_headers_cache_proxy(group)
-  get_recover_cache(proxy)
+  -- get_recover_cache(proxy)
   return proxy[key]
 end
 
