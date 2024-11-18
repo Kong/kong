@@ -469,6 +469,10 @@ function _M:connect(premature, node_id, host, path, cert, key)
         if ok then
           return
         end
+
+        ngx_log(ngx_ERR, "[rpc] unable to get peer capability list, node_id: ", node_id,
+                         " err: ", err)
+
         ngx.sleep(0.2)
         -- log error
       end
