@@ -164,7 +164,7 @@ function _M:communicate(premature)
 
   local c, uri, err = clustering_utils.connect_cp(self, "/v1/outlet")
   if not c then
-    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
+    ngx_log(ngx_WARN, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
     -- load config from backup storage (DP-Resilience)
