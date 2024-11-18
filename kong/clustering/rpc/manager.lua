@@ -459,9 +459,14 @@ function _M:connect(premature, node_id, host, path, cert, key)
     self:_add_socket(s)
 
     ngx.timer.at(0, function(premature)
-      local res, err = self:_meta_call("control_plane", s, meta_rpc_call)
-      if not res then
-        return nil, err
+      -- retry
+      for i = 1, 5 do
+        local ok, err = self:_meta_call("control_plane", s, meta_rpc_call)
+        if ok then
+          return
+        end
+        ngx.sleep(0.2)
+        -- log error
       end
     end)
 
