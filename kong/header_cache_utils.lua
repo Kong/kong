@@ -185,7 +185,7 @@ local function set_headers_cache(group, values)
   proxy = values
   -- proxy.kmagic_inner = values
   if not ngx.ctx[cache_flag] then
-      ngx.ctx[cache_flag] = true
+    ngx.ctx[cache_flag] = true
   end
 end
 

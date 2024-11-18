@@ -548,11 +548,11 @@ do
     local cache_flag = CACHE_HEADERS[1].FLAG
     local cache_key = CACHE_HEADERS[1].KEY
     if ctx then
-      if not ctx[cache_flag] or not ctx[cache_key] or not next(ctx[cache_key]) then
+      if not ctx[cache_flag] then
         ctx[cache_flag] = true
         ctx[cache_key] = ngx.req.get_headers()
       end
-
+      
       headers = ctx[cache_key]
     else
       local value = ngx.var["http_" .. replace_dashes(name)]

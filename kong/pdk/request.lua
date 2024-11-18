@@ -621,14 +621,18 @@ local function new(self)
   -- kong.request.get_header("Host")            -- "foo.com"
   -- kong.request.get_header("x-custom-header") -- "bla"
   -- kong.request.get_header("X-Another")       -- "foo bar"
-  function _REQUEST.get_header(name)
+  function _REQUEST.get_header(name, no_cache)
     check_phase(PHASES.request)
 
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
 
-    return http_get_header(name, ngx.ctx)
+    if no_cache then
+      return http_get_header(name)
+    else
+      return http_get_header(name, ngx.ctx)
+    end
   end
 
 
