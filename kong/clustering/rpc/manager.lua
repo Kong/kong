@@ -11,7 +11,7 @@ local callbacks = require("kong.clustering.rpc.callbacks")
 local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
---local pl_tablex = require("pl.tablex")
+local pl_tablex = require("pl.tablex")
 --local cjson = require("cjson.safe")
 
 
@@ -22,7 +22,7 @@ local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
---local pl_tablex_makeset = pl_tablex.makeset
+local pl_tablex_makeset = pl_tablex.makeset
 --local cjson_encode = cjson.encode
 --local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
@@ -149,7 +149,7 @@ end
 -- CP => DP
 function _M:_register_meta_call()
   self.callbacks:register("kong.meta.v1", function(node_id, info)
-    local capabilities_list  = info.capabilities
+    local capabilities_list = info.capabilities
 
     self.client_capabilities[node_id] = {
       set = pl_tablex_makeset(capabilities_list),
@@ -162,8 +162,13 @@ end
 
 
 -- DP => CP
-function _M:_meta_call(s, node_id, method, params)
-  local fut = future.new(node_id, s, method, params)
+function _M:_meta_call(node_id, s, method)
+  local info = {
+    capabilities = self.callbacks:get_capabilities_list(),
+    -- conf and others
+  }
+
+  local fut = future.new(node_id, s, method, info)
   assert(fut:start())
 
   local ok, err = fut:wait(5)
@@ -454,7 +459,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     self:_add_socket(s)
 
     ngx.timer.at(0, function(premature)
-      local res, err = self:_meta_call(s, "control_plane", meta_rpc_call, {})
+      local res, err = self:_meta_call("control_plane", s, meta_rpc_call)
       if not res then
         return nil, err
       end
