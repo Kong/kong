@@ -319,7 +319,7 @@ SOFTWARE.
 
 LPeg
 
-http://www.inf.puc-rio.br/~roberto/lpeg.html
+https://www.inf.puc-rio.br/~roberto/lpeg.html
 http://www.inf.puc-rio.br/~roberto/lpeg/lpeg.html#license
 
 Copyright © 2007-2019 Lua.org, PUC-Rio.
@@ -1586,7 +1586,7 @@ https://github.com/Tieske/lua-resty-ljsonschema/blob/master/LICENSE.md
 
 # MIT License
 
-### Copyright (c) 2017 Julien Desgats, 2019-2023 Thijs Schreijer
+### Copyright (c) 2017 Julien Desgats, 2019-2024 Thijs Schreijer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
