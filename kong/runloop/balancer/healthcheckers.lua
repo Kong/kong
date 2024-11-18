@@ -263,7 +263,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
 
   local ssl_cert, ssl_key
   if upstream.client_certificate then
-    local cert, err = get_certificate(upstream.client_certificate)
+    local cert, err = get_certificate(upstream.client_certificate, nil, upstream.ws_id)
     if not cert then
       log(ERR, "unable to fetch upstream client TLS certificate ",
         upstream.client_certificate.id, ": ", err)

@@ -10,7 +10,6 @@ local pl_utils = require "pl.utils"
 local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
@@ -221,8 +220,10 @@ local function fetch_sni(sni, i)
 end
 
 
-local function fetch_certificate(pk, sni_name)
-  local certificate, err = kong.db.certificates:select(pk)
+local function fetch_certificate(pk, sni_name, ws_id)
+  local certificate, err = kong.db.certificates:select(pk, {
+    workspace = ws_id,
+  })
   if err then
     if sni_name then
       return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
@@ -284,12 +285,12 @@ local function init()
 end
 
 
-local function get_certificate(pk, sni_name)
+local function get_certificate(pk, sni_name, ws_id)
   local cache_key = kong.db.certificates:cache_key(pk)
   local certificate, err, hit_level = kong.core_cache:get(cache_key,
                                                           get_certificate_opts,
                                                           fetch_certificate,
-                                                          pk, sni_name)
+                                                          pk, sni_name, ws_id)
 
   if certificate and hit_level ~= 3 and certificate["$refs"] then
     certificate = parse_key_and_cert(kong.vault.update(certificate))
