@@ -34,6 +34,7 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local prev_hash
 
 local endswith = require("pl.stringx").endswith
 
@@ -101,7 +102,10 @@ local function send_ping(c, log_suffix)
             "unable to send ping frame to control plane: ", err, log_suffix)
 
   else
-    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
+    if hash ~= prev_hash then
+      prev_hash = hash
+      ngx_log(ngx_INFO, _log_prefix, "sent ping frame to control plane with hash: ", hash, log_suffix)
+    end
   end
 end
 
@@ -217,6 +221,7 @@ function _M:communicate(premature)
   local config_exit
   local next_data
   local config_err_t
+  prev_hash = declarative.get_current_hash()
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
@@ -248,6 +253,7 @@ function _M:communicate(premature)
                          msg.timestamp and " with timestamp: " .. msg.timestamp or "",
                          log_suffix)
 
+      prev_hash = declarative.get_current_hash()
       local err_t
       ok, err, err_t = config_helper.update(self.declarative_config, msg)
 
