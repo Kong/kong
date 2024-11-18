@@ -63,6 +63,11 @@ for _, strategy in helpers.each_strategy() do
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
 
+              local reg = [[^(\d+)\.(\d+)]]
+              local m = assert(ngx.re.match(v.version, reg))
+              assert(tonumber(m[1]) >= 3)
+              assert(tonumber(m[2]) >= 9)
+
               -- check the available rpc service
               table.sort(v.rpc_capabilities)
               assert.same("kong.sync.v2", v.rpc_capabilities[1])
