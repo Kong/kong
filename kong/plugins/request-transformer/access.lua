@@ -161,7 +161,8 @@ local function rename(tbl, old_name, new_name)
 end
 
 local function transform_headers(conf, template_env)
-  local headers = get_headers(nil, true)
+  -- local headers = get_headers(nil, true)
+  local headers = get_headers()
   local headers_to_remove = {}
 
   headers.host = nil
@@ -509,7 +510,8 @@ function _M.execute(conf)
     __index = function(self, key)
       local lazy_loaders = {
         headers = function(self)
-          return get_headers(nil, true) or EMPTY
+          -- return get_headers(nil, true) or EMPTY
+          return get_headers() or EMPTY
         end,
         query_params = function(self)
           return get_uri_args() or EMPTY
