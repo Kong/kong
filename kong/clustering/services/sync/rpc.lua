@@ -56,7 +56,7 @@ local function full_sync_result()
 end
 
 
--- version has a perfix "XX", like "XX000001"
+-- version has a prefix "XX", like "XX000001"
 local function format_lmdb_version(ver)
   return fmt("XX%030d", ver)
 end
