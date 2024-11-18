@@ -69,7 +69,7 @@ local function get_lmdb_version()
   end
 
   -- remove prefix "XX"
-  return tonumber(str:sub(3))
+  return tonumber(str:sub(3)) or 0
 end
 
 
