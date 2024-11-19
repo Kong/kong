@@ -12,7 +12,7 @@ local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_STACK_PORT") or 6379
 local MOCK_PORT = helpers.get_available_port()
 
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
 
@@ -673,5 +673,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     end)
 
   end)
-end
 end
