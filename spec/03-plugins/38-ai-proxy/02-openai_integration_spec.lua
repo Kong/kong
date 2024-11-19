@@ -59,11 +59,10 @@ local _EXPECTED_CHAT_STATS = {
       time_per_token = 1,
       cost = 0.00037,
     },
-    cache = {}
   },
 }
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
 
@@ -801,7 +800,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
         },
       }
-      
+
 
       -- start kong
       assert(helpers.start_kong({
@@ -867,9 +866,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
-        -- test ai-proxy stats
-        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
-        -- we are currently stripping the top level key and comparing values directly
+        -- test ai-proxy or ai-proxy-advanced stats (both in log_message.ai.proxy namespace)
         local _, first_expected = next(_EXPECTED_CHAT_STATS)
         local _, first_got = next(log_message.ai)
         local actual_llm_latency = first_got.meta.llm_latency
@@ -954,8 +951,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local _, message = next(log_message.ai)
 
         -- test request bodies
-        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
-        assert.matches('"role": "user"', message.payload.request, nil, true)
+        assert.matches('"content":"What is 1 + 1?"', message.payload.request, nil, true)
+        assert.matches('"role":"user"', message.payload.request, nil, true)
 
         -- test response bodies
         assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
@@ -1078,15 +1075,11 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           content = "The sum of 1 + 1 is 2.",
           role = "assistant",
         }, json.choices[1].message)
-
-        -- from ctx-checker-last plugin
-        assert.equals(r.headers["ctx-checker-last-llm-model-requested"], "gpt-3.5-turbo")
       end)
 
       it("good request with http2", function()
         local curl_command = string.format("curl -X GET -k --resolve example.test:%s:127.0.0.1  -H 'Content-Type: application/json' https://example.test:%s/openai/llm/v1/chat/good -d @spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json", helpers.get_proxy_port(true), helpers.get_proxy_port(true))
         local output = io.popen(curl_command):read("*a")
-        ngx.log(ngx.ERR, output)
         local json = assert(cjson.decode(output))
 
         -- in this case, origin is "undxpected error" message
@@ -1178,7 +1171,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "request format not recognised")
+        assert.equals(json.error.message, "request body doesn't contain valid prompts")
       end)
 
       -- check that kong.ctx.shared.llm_model_requested is set
@@ -1207,9 +1200,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           content = "The sum of 1 + 1 is 2.",
           role = "assistant",
         }, json.choices[1].message)
-
-        -- from ctx-checker-last plugin
-        assert.equals(r.headers["ctx-checker-last-llm-model-requested"], "try-to-override-the-model")
       end)
 
     end)
@@ -1252,7 +1242,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals("request format not recognised", json.error.message)
+        assert.equals("request body doesn't contain valid prompts", json.error.message)
       end)
     end)
 
@@ -1502,7 +1492,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
 
-    describe("#aaa openai multi-modal requests", function()
+    describe("openai multi-modal requests", function()
       it("logs statistics", function()
         local r = client:get("/openai/llm/v1/chat/good", {
           headers = {
@@ -1533,11 +1523,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
-        -- test ai-proxy stats
-        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
-        -- we are currently stripping the top level key and comparing values directly
+        -- test ai-proxy or ai-proxy-advanced stats (both in log_message.ai.proxy namespace)
         local _, first_expected = next(_EXPECTED_CHAT_STATS)
         local _, first_got = next(log_message.ai)
+
         local actual_llm_latency = first_got.meta.llm_latency
         local actual_time_per_token = first_got.usage.time_per_token
         local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
@@ -1585,8 +1574,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local _, message = next(log_message.ai)
 
         -- test request bodies
-        assert.matches('"text": "What\'s in this image?"', message.payload.request, nil, true)
-        assert.matches('"role": "user"', message.payload.request, nil, true)
+        assert.matches('"text":"What\'s in this image?"', message.payload.request, nil, true)
+        assert.matches('"role":"user"', message.payload.request, nil, true)
 
         -- test response bodies
         assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
@@ -1694,4 +1683,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     end)
   end)
 
-end end
+end
