@@ -907,7 +907,7 @@ jobs:
         push: false
         tags: "kong-local/kong-ee:${{ matrix.label }}-base"
         build-args: |
-          KONG_BASE_IMAGE=ubuntu:22.04
+          KONG_BASE_IMAGE=ubuntu:latest
           KONG_ARTIFACT_PATH=artifacts/
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
