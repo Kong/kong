@@ -77,7 +77,7 @@ local function check_phase(accepted_phases)
       current_phase = PHASES.admin_api
     else
       error(fmt("no phase in ngx.ctx.KONG_PHASE, (need one of %s)",
-                table.concat(get_phases_names(accepted_phases), ", ")))
+                table.concat(get_phases_names(accepted_phases), ", ")), 3)
     end
   end
 
@@ -90,7 +90,7 @@ local function check_phase(accepted_phases)
 
   error(fmt("function cannot be called in %s phase (only in: %s)",
             current_phase_name,
-            table.concat(accepted_phases_names, ", ")))
+            table.concat(accepted_phases_names, ", ")), 3)
 end
 
 
