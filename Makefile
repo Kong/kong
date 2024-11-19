@@ -71,6 +71,17 @@ bin/h2client:
 		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
 	@$(RM) bin/README.md
 
+install-rust-toolchain:
+	@if command -v cargo; then \
+		echo "Rust is already installed in the local directory, skipping"; \
+	else \
+		echo "Installing Rust..."; \
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path; \
+		. $$HOME/.cargo/env; \
+		rustup toolchain install stable; \
+		rustup default stable; \
+	fi
+
 
 check-bazel: bin/bazel
 ifndef BAZEL
@@ -100,6 +111,7 @@ build-openresty: check-bazel
 
 install-dev-rocks: build-venv
 	@. $(VENV) ;\
+	export PATH=$$PATH:$$HOME/.cargo/bin; \
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
@@ -110,7 +122,7 @@ install-dev-rocks: build-venv
 	  fi \
 	done;
 
-dev: build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
+dev: install-rust-toolchain build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge
@@ -189,9 +201,10 @@ remove:
 	$(warning 'remove' target is deprecated, please use `make dev` instead)
 	-@luarocks remove kong
 
-dependencies: bin/grpcurl bin/h2client
+dependencies: install-rust-toolchain bin/grpcurl bin/h2client
 	$(warning 'dependencies' target is deprecated, this is now not needed when using `make dev`, but are kept for installation that are not built by Bazel)
 
+	export PATH=$$PATH:$$HOME/.cargo/bin; \
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
