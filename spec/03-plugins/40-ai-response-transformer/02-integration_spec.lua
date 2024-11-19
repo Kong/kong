@@ -202,7 +202,7 @@ local _EXPECTED_CHAT_STATS = {
     meta = {
       plugin_id = 'da587462-a802-4c22-931a-e6a92c5866d1',
       provider_name = 'openai',
-      request_model = 'gpt-4',
+      request_model = 'UNSPECIFIED',
       response_model = 'gpt-3.5-turbo-0613',
       llm_latency = 1
     },
@@ -225,7 +225,7 @@ local SYSTEM_PROMPT = "You are a mathematician. "
 
 local client
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
 
     lazy_setup(function()
@@ -563,5 +563,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
   end)
-end
 end
