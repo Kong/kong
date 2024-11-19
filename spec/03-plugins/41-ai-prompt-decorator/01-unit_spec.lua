@@ -120,8 +120,8 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   setup(function()
     _G._TEST = true
-    package.loaded["kong.plugins.ai-prompt-decorator.handler"] = nil
-    access_handler = require("kong.plugins.ai-prompt-decorator.handler")
+    package.loaded["kong.plugins.ai-prompt-decorator.filters.decorate-prompt"] = nil
+    access_handler = require("kong.plugins.ai-prompt-decorator.filters.decorate-prompt")
   end)
 
   teardown(function()

@@ -10,7 +10,7 @@ local helpers = require "spec.helpers"
 local PLUGIN_NAME = "ai-prompt-decorator"
 
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
 
@@ -95,7 +95,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       assert.response(r).has.status(400)
       local json = assert.response(r).has.jsonbody()
-      assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
+      assert.same({ error = { message = "this LLM route only supports llm/chat type requests" }}, json)
     end)
 
 
@@ -114,9 +114,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       assert.response(r).has.status(400)
       local json = assert.response(r).has.jsonbody()
-      assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
+      assert.same({ error = { message = "this LLM route only supports llm/chat type requests" }}, json)
     end)
 
   end)
 
-end end
+end

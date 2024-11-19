@@ -1030,6 +1030,7 @@ build = {
     ["kong.plugins.ai-prompt-template.templater"]  = "kong/plugins/ai-prompt-template/templater.lua",
 
     ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
+    ["kong.plugins.ai-prompt-decorator.filters.decorate-prompt"] = "kong/plugins/ai-prompt-decorator/filters/decorate-prompt.lua",
     ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",
 
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
