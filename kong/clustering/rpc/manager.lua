@@ -359,6 +359,7 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
+  -- if timeout (default is 5s) we will close the connection
   local ok, err = self:_handle_meta_call(wb, node_id)
   if not ok then
     ngx_log(ngx_ERR, "[rpc] unable to handshake with client: ", err)
@@ -465,6 +466,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
+    -- if timeout (default is 5s) we will close the connection
     local ok, err = self:_meta_call(c, meta_rpc_call, node_id)
     if not ok then
       ngx_log(ngx_ERR, "[rpc] unable to handshake with server, node_id: ", node_id,
