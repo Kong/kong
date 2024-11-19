@@ -67,8 +67,8 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   setup(function()
     _G._TEST = true
-    package.loaded["kong.plugins.ai-prompt-guard.handler"] = nil
-    access_handler = require("kong.plugins.ai-prompt-guard.handler")
+    package.loaded["kong.plugins.ai-prompt-guard.filters.guard-prompt"] = nil
+    access_handler = require("kong.plugins.ai-prompt-guard.filters.guard-prompt")
   end)
 
   teardown(function()
