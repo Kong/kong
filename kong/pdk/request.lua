@@ -621,18 +621,14 @@ local function new(self)
   -- kong.request.get_header("Host")            -- "foo.com"
   -- kong.request.get_header("x-custom-header") -- "bla"
   -- kong.request.get_header("X-Another")       -- "foo bar"
-  function _REQUEST.get_header(name, no_cache)
+  function _REQUEST.get_header(name)
     check_phase(PHASES.request)
 
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
 
-    if no_cache then
-      return http_get_header(name)
-    else
-      return http_get_header(name, ngx.ctx)
-    end
+    return http_get_header(name)
   end
 
 
@@ -680,16 +676,17 @@ local function new(self)
     return header_cache.get_headers_cache(1);
   end
 
-  function _REQUEST.get_headers(max_headers, use_cache)
+  function _REQUEST.get_headers(max_headers)
 
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      if not use_cache then
-        return get_headers()
-      else
-        return get_headers_cache()
-      end
+      return get_headers()
+      -- if not use_cache then
+      --   return get_headers()
+      -- else
+      --   return get_headers_cache()
+      -- end
     end
 
     if type(max_headers) ~= "number" then
@@ -700,11 +697,12 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    if not use_cache then
-      return get_headers(max_headers)
-    else
-      return get_headers_cache(max_headers)
-    end
+    -- if not use_cache then
+    --   return get_headers(max_headers)
+    -- else
+    --   return get_headers_cache(max_headers)
+    -- end
+    return get_headers(max_headers)
   end
 
 

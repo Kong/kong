@@ -1,5 +1,6 @@
 local str_replace_char = require("resty.core.utils").str_replace_char
 local CACHE_HEADERS = require("kong.constants").CACHE_HEADERS
+local clone = require "table.clone"
 
 local function normalize_header_name(header)
   return header:lower()
@@ -96,7 +97,6 @@ local function get_headers_cache_proxy(group)
 end
 
 local function clear_header_cache_proxy(group)
-  -- ngx.print("INIT\n")
   -- local proxy = get_headers_cache_proxy(group)
   ngx.ctx[CACHE_HEADERS[group].KEY] = {}
   -- proxy.kmagic_inner = {}
@@ -104,10 +104,28 @@ local function clear_header_cache_proxy(group)
   -- proxy.kmagic_added = {}
 end
 
+local lower_fetch = function(tbl, key)
+  local new_key = string.gsub(string.lower(key), '_', '-')
+  if new_key ~= key then 
+    return tbl[new_key] 
+  else 
+    return nil
+  end
+end
+
+local mt = {
+  __index = lower_fetch
+}
+
 local function get_headers_cache(group)
   local proxy = get_headers_cache_proxy(group)
   -- get_recover_cache(proxy)
-  return ngx.ctx[CACHE_HEADERS[group].FLAG] and proxy
+  if not ngx.ctx[CACHE_HEADERS[group].FLAG] then
+    return nil
+  end
+  local new_table = clone(proxy)
+  setmetatable(new_table, mt)
+  return new_table
 end
 
 local function builtin_header_single_handler(cache, key, value)
@@ -159,6 +177,7 @@ end
 
 local function set_header_cache(group, name, value, override)
   name = normalize_header_name(name)
+  -- local cache = ngx.ctx[CACHE_HEADERS[group].KEY]
   local cache = get_headers_cache_proxy(group)
   -- local proxy = get_headers_cache_proxy(group)
   -- local cache = proxy.kmagic_inner
@@ -177,12 +196,9 @@ end
 -- set cache headers by group[request/response]
 local function set_headers_cache(group, values)
   -- if no key specified, assign the whole cache group value
-  -- local cache_key = CACHE_HEADERS[group].KEY
   local cache_flag = CACHE_HEADERS[group].FLAG
-  -- ngx.ctx[CACHE_HEADERS[group].key] = nil
   clear_header_cache_proxy(group)
-  local proxy = get_headers_cache_proxy(group)
-  proxy = values
+  ngx.ctx[CACHE_HEADERS[group].KEY] = values
   -- proxy.kmagic_inner = values
   if not ngx.ctx[cache_flag] then
     ngx.ctx[cache_flag] = true
@@ -191,10 +207,10 @@ end
 
 
 -- get cache header
-local function get_header_cache(group, key)
+local function get_header_cache(group, name)
   local proxy = get_headers_cache_proxy(group)
   -- get_recover_cache(proxy)
-  return proxy[key]
+  return proxy[name]
 end
 
 local function clear_headers_cache()

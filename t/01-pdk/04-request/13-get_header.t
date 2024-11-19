@@ -127,7 +127,7 @@ X-Foo-Header: ''
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.say("accept header value: ", pdk.request.get_header("Accept", true))
+            ngx.say("accept header value: ", pdk.request.get_header("Accept"))
         }
     }
 --- request
