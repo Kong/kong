@@ -297,19 +297,19 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  local rpc_found
+  local meta_v1_supported
   local protocols = string_tools.split(rpc_protocol, ",")
 
   -- choice a proper protocol
   for _, v in ipairs(protocols) do
     -- now we only support kong.meta.v1
     if RPC_MATA_V1 == string_tools.strip(v) then
-      rpc_found = true
+      meta_v1_supported = true
       break
     end
   end
 
-  if not rpc_found then
+  if not meta_v1_supported then
     ngx_log(ngx_ERR, "[rpc] unknown RPC protocol: " ..
                      tostring(rpc_protocol) ..
                      ", doesn't know how to communicate with client")
