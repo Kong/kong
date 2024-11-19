@@ -652,6 +652,7 @@ build = {
     ["kong.plugins.ai-prompt-template.schema"]  = "kong/plugins/ai-prompt-template/schema.lua",
     ["kong.plugins.ai-prompt-template.templater"]  = "kong/plugins/ai-prompt-template/templater.lua",
 
+    ["kong.plugins.ai-prompt-guard.filters.guard-prompt"] = "kong/plugins/ai-prompt-guard/filters/guard-prompt.lua",
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
