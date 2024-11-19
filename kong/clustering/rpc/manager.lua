@@ -160,6 +160,8 @@ function _M:_meta_call(node_id, s, method)
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
+      version = KONG_VERSION,
+      hostname = kong.node.get_hostname(),
       -- conf and others
     },
   }
@@ -278,15 +280,9 @@ end
 
 -- handle incoming client connections
 function _M:handle_websocket()
-  local kong_version = ngx_var.http_x_kong_version
   local node_id = ngx_var.http_x_kong_node_id
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
   local content_encoding = ngx_var.http_content_encoding
-
-  if not kong_version then
-    ngx_log(ngx_ERR, "[rpc] client did not provide version number")
-    return ngx_exit(ngx.HTTP_CLOSE)
-  end
 
   if not node_id then
     ngx_log(ngx_ERR, "[rpc] client did not provide node ID")
@@ -388,9 +384,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     client_priv_key = key,
     protocols = RPC_MATA_V1,
     headers = {
-      "X-Kong-Version: " .. KONG_VERSION,
       "X-Kong-Node-Id: " .. self.node_id,
-      "X-Kong-Hostname: " .. kong.node.get_hostname(),
       "Content-Encoding: x-snappy-framed",
     },
   }
