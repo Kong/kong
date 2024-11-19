@@ -13,7 +13,7 @@ local counter = require "resty.counter"
 local knode = (kong and kong.node) and kong.node or
               require "kong.pdk.node".new()
 
-local llm_state = require "kong.llm.state"
+local ai_plugin_o11y = require "kong.llm.plugin.observability"
 
 
 local kong_dict = ngx.shared.kong
@@ -639,13 +639,13 @@ return {
       incr_counter(WASM_REQUEST_COUNT_KEY)
     end
 
-    local llm_prompt_tokens_count = llm_state.get_prompt_tokens_count()
+    local llm_prompt_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_tokens_count")
     if llm_prompt_tokens_count then
       incr_counter(AI_REQUEST_COUNT_KEY)
       incr_counter(AI_PROMPT_TOKENS_COUNT_KEY, llm_prompt_tokens_count)
     end
 
-    local llm_response_tokens_count = llm_state.get_response_tokens_count()
+    local llm_response_tokens_count = ai_plugin_o11y.metrics_get("llm_completion_tokens_count")
     if llm_response_tokens_count then
       incr_counter(AI_RESPONSE_TOKENS_COUNT_KEY, llm_response_tokens_count)
     end

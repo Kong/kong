@@ -14,7 +14,8 @@ local fmt        = string.format
 local os         = os
 local parse_url  = require("socket.url").parse
 local aws_stream = require("kong.tools.aws_stream")
-local llm_state = require("kong.llm.state")
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local ai_plugin_o11y = require("kong.llm.plugin.observability")
 --
 
 -- static
@@ -88,6 +89,7 @@ local AZURE_TOKEN_VERSION = "v2.0"
 
 _M._CONST = {
   ["SSE_TERMINATOR"] = "[DONE]",
+  ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
 }
 
 _M.streaming_has_token_counts = {
@@ -364,9 +366,9 @@ end
 -- as if it were an SSE message.
 --
 -- @param {string} frame input string to format into SSE events
--- @param {boolean} raw_json sets application/json byte-parser mode
+-- @param {string} content_type sets parser
 -- @return {table} n number of split SSE messages, or empty table
-function _M.frame_to_events(frame, provider)
+function _M.frame_to_events(frame, content_type)
   local events = {}
 
   if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
@@ -375,7 +377,8 @@ function _M.frame_to_events(frame, provider)
 
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
-  if provider == "gemini" then
+  local frame_start = frame and frame:sub(1, 1)
+  if frame_start == "," or frame_start == "[" then
     local done = false
 
     -- if this is the first frame, it will begin with array opener '['
@@ -401,7 +404,7 @@ function _M.frame_to_events(frame, provider)
       events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
     end
 
-  elseif provider == "bedrock" then
+  elseif content_type == _M._CONST.AWS_STREAM_CONTENT_TYPE then
     local parser = aws_stream:new(frame)
     while true do
       local msg = parser:next_message()
@@ -592,9 +595,14 @@ function _M.conf_from_request(kong_request, source, key)
 end
 
 
-function _M.resolve_plugin_conf(kong_request, conf)
+function _M.merge_model_options(kong_request, conf_m)
+  if not conf_m then
+    return
+  end
+
   local err
-  local conf_m = cycle_aware_deep_copy(conf)
+  conf_m = cycle_aware_deep_copy(conf_m)
+  conf_m.model = conf_m.model or {}
 
   -- handle model name
   local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
@@ -618,7 +626,7 @@ function _M.resolve_plugin_conf(kong_request, conf)
   end
 
   -- handle all other options
-  for k, v in pairs(conf.model.options or {}) do
+  for k, v in pairs(conf_m.model.options or {}) do
     if type(v) == "string" then
       local prop_m = string_match(v or "", '%$%((.-)%)')
       if prop_m then
@@ -646,6 +654,7 @@ function _M.resolve_plugin_conf(kong_request, conf)
 end
 
 
+-- used by llm/init.lua:ai_introspect_body only (transformer plugins)
 function _M.pre_request(conf, request_table)
   assert(conf.__key__, "missing plugin conf key")
 
@@ -671,16 +680,6 @@ function _M.pre_request(conf, request_table)
     kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
   end
 
-  -- log tokens prompt for reports and billing
-  if conf.route_type ~= "preserve" then
-    local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
-    if err then
-      kong.log.warn("failed calculating cost for prompt tokens: ", err)
-      prompt_tokens = 0
-    end
-    llm_state.increase_prompt_tokens_count(prompt_tokens)
-  end
-
   local start_time_key = "ai_request_start_time_" .. plugin_name
   kong.ctx.plugin[start_time_key] = ngx.now()
 
@@ -689,10 +688,10 @@ end
 
 local function get_plugin_analytics_container(plugin_name)
   -- check if we already have analytics in this context
-  local request_analytics = llm_state.get_request_analytics()
+  local request_analytics = kong.ctx.shared.llm_request_analytics
   if not request_analytics then
     request_analytics = {}
-    llm_state.set_request_analytics(request_analytics)
+    kong.ctx.shared.llm_request_analytics = request_analytics
   end
 
   request_analytics[plugin_name] = request_analytics[plugin_name] or {
@@ -704,6 +703,7 @@ local function get_plugin_analytics_container(plugin_name)
   return request_analytics[plugin_name]
 end
 
+-- used by llm/init.lua:ai_introspect_body only (transformer plugins)
 function _M.post_request(conf, response_object)
   local body_string, err
 
@@ -736,8 +736,8 @@ function _M.post_request(conf, response_object)
   local meta_container = request_analytics_plugin[log_entry_keys.META_CONTAINER]
   meta_container[log_entry_keys.PLUGIN_ID] = conf.__plugin_id
   meta_container[log_entry_keys.PROVIDER_NAME] = conf.model.provider
-  -- kong.ctx.plugin.llm_model_requested is only possibly set by ai-proxy{,-advanced} plugins
-  meta_container[log_entry_keys.REQUEST_MODEL] = llm_state.get_request_model()
+  local model_t = ai_plugin_ctx.get_request_model_table_inuse()
+  meta_container[log_entry_keys.REQUEST_MODEL] = model_t and model_t.name or "UNSPECIFIED"
   meta_container[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
   -- Set the llm latency meta, and time per token usage
@@ -745,12 +745,10 @@ function _M.post_request(conf, response_object)
   if kong.ctx.plugin[start_time_key] then
     local llm_latency = math.floor((ngx.now() - kong.ctx.plugin[start_time_key]) * 1000)
     meta_container[log_entry_keys.LLM_LATENCY] = llm_latency
-    llm_state.set_metrics("e2e_latency", llm_latency)
 
     if response_object.usage and response_object.usage.completion_tokens then
       local time_per_token = math.floor(llm_latency / response_object.usage.completion_tokens)
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = time_per_token
-      llm_state.set_metrics("tpot_latency", time_per_token)
     end
   end
 
@@ -770,12 +768,26 @@ function _M.post_request(conf, response_object)
       end
     end
 
+    ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", response_object.usage.prompt_tokens)
+    ai_plugin_o11y.metrics_set("llm_completion_tokens_count", response_object.usage.completion_tokens)
+
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens and
        conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then
         local cost = (response_object.usage.prompt_tokens * conf.model.options.input_cost +
                       response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = cost
+        ai_plugin_o11y.metrics_set("llm_usage_cost", cost)
     end
+
+  else
+    -- log tokens response for reports and billing
+    local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0)
+    if err then
+      kong.log.warn("failed calculating cost for response tokens: ", err)
+      response_tokens = 0
+    end
+
+    ai_plugin_o11y.metrics_set("llm_completion_tokens_count", response_tokens)
   end
 
   -- Log response body if logging payloads is enabled
@@ -798,50 +810,9 @@ function _M.post_request(conf, response_object)
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER])
   end
 
-  -- log tokens response for reports and billing
-  local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0)
-  if err then
-    kong.log.warn("failed calculating cost for response tokens: ", err)
-    response_tokens = 0
-  end
-  llm_state.increase_response_tokens_count(response_tokens)
-
   return true
 end
 
-function _M.stash_cache_stats(conf, cache_metrics)
-  if not cache_metrics then
-    return false, "no cache_metrics"
-  end
-
-  -- Extract and validate plugin name
-  local plugin_name = conf.__key__:match('plugins:(.-):')
-  if not plugin_name or plugin_name == "" then
-    return false, "no plugin name is being passed by the plugin"
-  end
-
-  -- create or load exsiting a analytics structure for this plugin
-  local request_analytics_plugin = get_plugin_analytics_container(plugin_name)
-  local cache_container = request_analytics_plugin[log_entry_keys.CACHE_CONTAINER]
-
-  for k, v in pairs(cache_metrics) do
-    local key = log_entry_keys[string.upper(k)]
-    if key then
-      if type(v) == "string" then
-        cache_container[key] = string.lower(v)
-      else
-        cache_container[key] = v
-      end
-    end
-  end
-
-  if conf.logging and conf.logging.log_statistics then
-    -- Log cache data
-    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.CACHE_CONTAINER), cache_container)
-  end
-
-  return true
-end
 
 function _M.http_request(url, body, method, headers, http_opts, buffered)
   local httpc = http.new()

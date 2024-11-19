@@ -16,11 +16,12 @@ local string_gsub = string.gsub
 local buffer = require("string.buffer")
 local table_insert = table.insert
 local string_lower = string.lower
-local llm_state = require("kong.llm.state")
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 --
 
 -- globals
 local DRIVER_NAME = "gemini"
+local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local _OPENAI_ROLE_MAPPING = {
@@ -293,7 +294,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     return nil, nil, "body must be table or string"
   end
 
-  local operation = llm_state.is_streaming_mode() and "streamGenerateContent"
+  local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
                                                              or "generateContent"
   local f_url = conf.model.options and conf.model.options.upstream_url
 
@@ -392,7 +393,7 @@ end
 -- returns err or nil
 function _M.configure_request(conf, identity_interface)
   local parsed_url
-  local operation = llm_state.is_streaming_mode() and "streamGenerateContent"
+  local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
                                                              or "generateContent"
   local f_url = conf.model.options and conf.model.options.upstream_url
 
