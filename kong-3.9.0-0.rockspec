@@ -613,9 +613,11 @@ build = {
     ["kong.plugins.ai-proxy.migrations.001_360_to_370"] = "kong/plugins/ai-proxy/migrations/001_360_to_370.lua",
 
     ["kong.plugins.ai-request-transformer.handler"] = "kong/plugins/ai-request-transformer/handler.lua",
+    ["kong.plugins.ai-request-transformer.filters.transform-request"] = "kong/plugins/ai-request-transformer/filters/transform-request.lua",
     ["kong.plugins.ai-request-transformer.schema"] = "kong/plugins/ai-request-transformer/schema.lua",
 
     ["kong.plugins.ai-response-transformer.handler"] = "kong/plugins/ai-response-transformer/handler.lua",
+    ["kong.plugins.ai-response-transformer.filters.transform-response"] = "kong/plugins/ai-response-transformer/filters/transform-response.lua",
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
     ["kong.llm"] = "kong/llm/init.lua",
