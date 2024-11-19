@@ -207,7 +207,7 @@ _M.emit = function(source, event, data, local_only)
   end
 
   local digest = field_digest(source, event, data)
-  local unique = source .. ":" .. event .. ":" .. digest
+  local unique = (source ~= 'crud' and source ~= 'dao:crud') and source .. ":" .. event .. ":" .. digest
 
   return kong.worker_events.post(prefix(source), event, data, unique)
 end
@@ -357,81 +357,79 @@ local function sign_body(secret)
 end
 
 _M.register_events = function(events_handler)
-  if not _M.enabled() then
+  if not _M.enabled() or initialized then
     return
   end
 
-  if not initialized then
-    local dao_adapter = function(data)
-      return {
-        entity = data.entity,
-        old_entity = data.old_entity,
-        schema = data.schema and data.schema.name,
-        operation = data.operation,
-      }
-    end
-
-    -- publish all kong events
-    local operations = { "create", "update", "delete" }
-    for _, op in ipairs(operations) do
-      _M.publish("dao:crud", op, {
-        fields = { "operation", "entity", "old_entity", "schema" },
-        adapter = dao_adapter,
-      })
-    end
-
-    for name, _ in pairs(kong.db.daos) do
-      _M.publish("crud", name, {
-        fields = { "operation", "entity", "old_entity", "schema" },
-        adapter = dao_adapter,
-      })
-
-      for _, op in ipairs(operations) do
-        _M.publish("crud", name .. ":" .. op, {
-          fields = { "operation", "entity", "old_entity", "schema" },
-          adapter = dao_adapter,
-        })
-      end
-    end
-
-    events_handler.register(function(data, event, source, pid)
-      local ok, err = _M.emit(source, event, dao_adapter(data))
-      if not ok then
-        kong.log.warn("failed to emit event: ", err)
-      end
-    end, "crud")
-
-    events_handler.register(function(data, event, source, pid)
-      local ok, err = _M.emit(source, event, dao_adapter(data))
-      if not ok then
-        kong.log.warn("failed to emit event: ", err)
-      end
-    end, "dao:crud")
-
-    events_handler.register(_M.crud, "crud", "event_hooks")
-
-    events_handler.register(_M.reconfigure, "declarative", "reconfigure")
-
-    -- register a callback to trigger an event_hook balanacer health
-    -- event
-    balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
-      local ok, err = _M.emit("balancer", "health", {
-        upstream_id = upstream_id,
-        ip = ip,
-        port = port,
-        hostname = hostname,
-        health = health,
-      })
-      if not ok then
-        kong.log.warn("failed to emit event: ", err)
-      end
-    end)
-
-    _M.publish("balancer", "health", {
-      fields = { "upstream_id", "ip", "port", "hostname", "health" },
-    })
-    initialized = true
+  local dao_adapter = function(data)
+    return {
+      entity = data.entity,
+      old_entity = data.old_entity,
+      schema = data.schema and data.schema.name,
+      operation = data.operation,
+    }
   end
+
+  -- publish all kong events
+  local operations = { "create", "update", "delete" }
+  for _, op in ipairs(operations) do
+    _M.publish("dao:crud", op, {
+      fields = { "operation", "entity", "old_entity", "schema" },
+      adapter = dao_adapter,
+    })
+  end
+
+  for name, _ in pairs(kong.db.daos) do
+    _M.publish("crud", name, {
+      fields = { "operation", "entity", "old_entity", "schema" },
+      adapter = dao_adapter,
+    })
+
+    for _, op in ipairs(operations) do
+      _M.publish("crud", name .. ":" .. op, {
+        fields = { "operation", "entity", "old_entity", "schema" },
+        adapter = dao_adapter,
+      })
+    end
+  end
+
+  events_handler.register(function(data, event, source, pid)
+    local ok, err = _M.emit(source, event, dao_adapter(data))
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
+  end, "crud")
+
+  events_handler.register(function(data, event, source, pid)
+    local ok, err = _M.emit(source, event, dao_adapter(data))
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
+  end, "dao:crud")
+
+  events_handler.register(_M.crud, prefix("crud"), "event_hooks")
+
+  events_handler.register(_M.reconfigure, "declarative", "reconfigure")
+
+  -- register a callback to trigger an event_hook balanacer health
+  -- event
+  balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
+    local ok, err = _M.emit("balancer", "health", {
+      upstream_id = upstream_id,
+      ip = ip,
+      port = port,
+      hostname = hostname,
+      health = health,
+    })
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
+  end)
+
+  _M.publish("balancer", "health", {
+    fields = { "upstream_id", "ip", "port", "hostname", "health" },
+  })
+  initialized = true
 
   -- XXX not so sure this timer is good? the idea is to not hog kong
   -- on startup for this secondary feature

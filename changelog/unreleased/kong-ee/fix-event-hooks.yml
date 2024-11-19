@@ -1,0 +1,3 @@
+message: Fixed an issue where event_hooks added during runtime didn't function until restart.
+type: bugfix
+scope: Core

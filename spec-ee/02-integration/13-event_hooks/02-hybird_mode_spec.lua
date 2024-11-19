@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local pl_file = require("pl.file")
 local clear_license_env = require("spec-ee.helpers").clear_license_env
 
 local function client_send(req)
@@ -29,6 +30,12 @@ local function setup_distribution()
       assert(helpers.file.delete(tmp_filename))
     end
   end
+end
+
+local function count_log_lines(log_file_path, pattern)
+  local logs = pl_file.read(log_file_path)
+  local _, count = logs:gsub(pattern, "")
+  return count
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -336,6 +343,137 @@ for _, strategy in helpers.each_strategy() do
 
       assert.logfile("servroot-dp/logs/error.log").has.line("log callback")
       assert.logfile("servroot-dp/logs/error.log").has.line("Trigger an event in access phase")
+    end)
+  end)
+
+  describe("event_hooks #" .. strategy, function()
+    local admin_client, proxy_client, res
+    local log_file_path = "servroot-dp/logs/error.log"
+    local error_msg = "event_hooks was called %s times rather than the expected %s times"
+    local times = 10
+    local count
+
+    local dataplane_env = {
+      role = "data_plane",
+      database = "off",
+      prefix = "servroot-dp",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled," .. "event-hooks-tester",
+      nginx_main_worker_processes = 3,
+    }
+
+    lazy_setup(function()
+
+      helpers.test_conf.lua_package_path = helpers.test_conf.lua_package_path .. ";./spec-ee/fixtures/custom_plugins/?.lua"
+
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "clustering_data_planes",
+        "event_hooks"
+      }, {"event-hooks-tester"})
+
+      local service = assert(bp.services:insert())
+
+      local route = assert(bp.routes:insert({
+        hosts = { "test" },
+        service = service,
+      }))
+
+      assert(bp.plugins:insert {
+        name = "event-hooks-tester",
+        route = { id = route.id },
+        config = {},
+      })
+
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        database = strategy,
+        db_update_frequency = 0.1,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled," .. "event-hooks-tester",
+      }))
+
+      assert(helpers.start_kong(dataplane_env))
+    end)
+
+    lazy_teardown(function()
+      assert(helpers.stop_kong("servroot-dp"))
+      assert(helpers.stop_kong("servroot"))
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client(nil, 9002)
+    end)
+
+    after_each(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("should work after creating a event_hooks entity during runtime", function()
+      res = admin_client:post("/event-hooks", {
+        body = {
+          source = "foo",
+          event = "bar",
+          handler = "log",
+        },
+        headers = { ["Content-Type"] = "application/json" },
+      })
+      assert.res_status(201, res)
+
+      helpers.wait_for_all_config_update({
+        forced_proxy_port = 9002,
+      })
+
+      for _ = 1, times do -- 10 times to make sure the events are triggered across workers
+        res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = { host = "test"}
+        })
+        assert.res_status(200, res)
+      end
+      ngx.sleep(3)
+      count = count_log_lines(log_file_path, "log callback")
+      assert(count == times, string.format(error_msg, count, times))
+      count = count_log_lines(log_file_path, "Trigger an event in access phase")
+      assert( count == times, string.format(error_msg, count, times))
+      helpers.clean_logfile(log_file_path)
+    end)
+
+    it("should be called only once for each event after restart", function()
+      assert(helpers.restart_kong(dataplane_env))
+      proxy_client = helpers.proxy_client(nil, 9002)
+      for _ = 1, times do -- 10 times to make sure the events are triggered across workers
+        res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {host = "test"}
+        })
+        assert.res_status(200, res)
+      end
+      ngx.sleep(3)
+      count = count_log_lines(log_file_path, "log callback")
+      assert(count == times, string.format(error_msg, count, times))
+      count = count_log_lines(log_file_path, "Trigger an event in access phase")
+      assert(count == times, string.format(error_msg, count, times))
+      helpers.clean_logfile(log_file_path)
     end)
   end)
 
