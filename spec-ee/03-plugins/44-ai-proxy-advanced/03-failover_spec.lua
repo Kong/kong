@@ -640,7 +640,7 @@ for _, strategy in helpers.all_strategies() do
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "request format not recognised")
+        assert.equals(json.error.message, "request body doesn't contain valid prompts")
       end)
     end)
 
@@ -682,7 +682,7 @@ for _, strategy in helpers.all_strategies() do
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals("request format not recognised", json.error.message)
+        assert.equals("request body doesn't contain valid prompts", json.error.message)
       end)
     end)
 

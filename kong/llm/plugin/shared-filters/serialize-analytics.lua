@@ -20,6 +20,10 @@ local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(_M.NAME)
 
 
 function _M:run(conf)
+  if ai_plugin_ctx.has_namespace("ai-proxy-advanced-balance") then
+    conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
+  end
+
   if not conf.logging or not conf.logging.log_statistics then
     return true
   end

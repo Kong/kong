@@ -16,7 +16,7 @@ _G.after_each = after_each
 _G.describe = describe
 _G.it = it
 _G.assert = assert
- 
+
 local PLUGIN_NAME = "ai-proxy-advanced"
 
 

@@ -7,8 +7,9 @@
 
 local balancers = require "kong.runloop.balancer.balancers"
 local get_tried_targets = require "kong.plugins.ai-proxy-advanced.balancer.state".get_tried_targets
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local vectordb = require("kong.llm.vectordb")
-local embeddings     = require("kong.ai.embeddings")
+local embeddings     = require("kong.llm.embeddings")
 local sha256_hex     = require("kong.tools.sha256").sha256_hex
 
 local algorithm = {}
@@ -50,34 +51,25 @@ function algorithm:afterHostUpdate()
   return true
 end
 
-local function get_request_body(self)
-  local request = kong.ctx.plugin.request_body
-  if request then
-    return request
+local function get_request_body(_)
+  -- if plugin ordering was altered, receive the "decorated" request
+  local request_body_table = ai_plugin_ctx.get_request_body_table_inuse()
+  if not request_body_table then
+    return nil, "this LLM route only supports application/json requests"
   end
 
-  if ngx.get_phase() == "access" then
-    kong.service.request.enable_buffering()
+  if not (type(request_body_table) == "table"
+    and type(request_body_table.messages) == "table"
+    and #request_body_table.messages > 0) then
 
-    -- if plugin ordering was altered, receive the "decorated" request
-    request = kong.request.get_body("application/json", nil, self.max_request_body_size)
-    if type(request) ~= "table" then
-      return nil, "this LLM route only supports application/json requests"
-    end
+    return nil, "this LLM route only supports chat requests"
+  end
 
-    if not (type(request) == "table"
-      and type(request.messages) == "table"
-      and #request.messages > 0) then
-
-      return nil, "this LLM route only supports chat requests"
-    end
-
-    kong.ctx.plugin.request_body = request
-  else
+  if not request_body_table and ngx.get_phase() ~= "access" then
     return nil, "too late to read body"
   end
 
-  return request
+  return request_body_table
 end
 
 local function serialize_body(self)
@@ -101,7 +93,7 @@ local metadata_t = {}
 function algorithm:getPeer(_)
   if #get_tried_targets() > 0 then
     kong.log.warn("semantic routing doesn't currently support fail-over")
-    return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
+    return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE .. ": semantic routing doesn't currently support fail-over"
   end
 
   local message, err = serialize_body(self)
@@ -151,7 +143,7 @@ function algorithm:getPeer(_)
   kong.log.warn("no target can be found under threshold ", vectordb_conf.threshold,
                   ", consider increase threshold or reword the description of targets" )
 
-  return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
+  return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE .. ": consider increase threshold or reword the description of targets"
 end
 
 

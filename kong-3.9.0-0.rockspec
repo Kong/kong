@@ -964,6 +964,7 @@ build = {
 
     ["kong.plugins.ai-proxy-advanced.handler"] = "kong/plugins/ai-proxy-advanced/handler.lua",
     ["kong.plugins.ai-proxy-advanced.schema"] = "kong/plugins/ai-proxy-advanced/schema.lua",
+    ["kong.plugins.ai-proxy-advanced.balancer"] = "kong/plugins/ai-proxy-advanced/balancer/init.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.ewma"] = "kong/plugins/ai-proxy-advanced/balancer/ewma.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.consistent-hashing"] = "kong/plugins/ai-proxy-advanced/balancer/consistent-hashing.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.least-connections"] = "kong/plugins/ai-proxy-advanced/balancer/least-connections.lua",
@@ -972,6 +973,9 @@ build = {
     ["kong.plugins.ai-proxy-advanced.balancer.round-robin"] = "kong/plugins/ai-proxy-advanced/balancer/round-robin.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.semantic"] = "kong/plugins/ai-proxy-advanced/balancer/semantic.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.state"] = "kong/plugins/ai-proxy-advanced/balancer/state.lua",
+    ["kong.plugins.ai-proxy-advanced.filters.balance"] = "kong/plugins/ai-proxy-advanced/filters/balance.lua",
+    ["kong.plugins.ai-proxy-advanced.filters.log"] = "kong/plugins/ai-proxy-advanced/filters/log.lua",
+    ["kong.plugins.ai-proxy-advanced.filters.setup"] = "kong/plugins/ai-proxy-advanced/filters/setup.lua",
 
     ["kong.plugins.ai-request-transformer.handler"] = "kong/plugins/ai-request-transformer/handler.lua",
     ["kong.plugins.ai-request-transformer.filters.transform-request"] = "kong/plugins/ai-request-transformer/filters/transform-request.lua",

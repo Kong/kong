@@ -6,7 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local state = require "kong.plugins.ai-proxy-advanced.balancer.state"
-local llm_state = require "kong.llm.state"
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local ai_plugin_o11y = require("kong.llm.plugin.observability")
+
 
 describe("[round robin balancer]", function()
   local function new_balancer(targets)
@@ -237,20 +239,17 @@ describe("[ewma based balancer]", function()
       }
       -- put some datapoints
       for _=1, 3 do
-        llm_state.increase_prompt_tokens_count(10)
-        llm_state.increase_response_tokens_count(10)
+        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", 10)
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", 10)
         b:afterBalance(conf, { id = "1" })
-        kong.ctx.shared = {}
 
-        llm_state.increase_prompt_tokens_count(1)
-        llm_state.increase_response_tokens_count(1)
+        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", 1)
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", 1)
         b:afterBalance(conf, { id = "2" })
-        kong.ctx.shared = {}
 
-        llm_state.increase_prompt_tokens_count(2)
-        llm_state.increase_response_tokens_count(2)
+        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", 2)
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", 2)
         b:afterBalance(conf, { id = "3" })
-        kong.ctx.shared = {}
 
         ngx.sleep(0.001)
         ngx.update_time()
@@ -281,22 +280,26 @@ describe("[ewma based balancer]", function()
       }
       -- put some datapoints
       for _=1, 3 do
-        llm_state.set_metrics("tpot_latency", 10)
-        llm_state.set_metrics("e2e_latency", 10)
+        ai_plugin_o11y.metrics_set("llm_tpot_latency", 10)
+        ai_plugin_o11y.metrics_set("llm_e2e_latency", 10)
         b:afterBalance(conf, { id = "1" })
-        llm_state.set_metrics("tpot_latency", 1)
-        llm_state.set_metrics("e2e_latency", 1)
+
+        ai_plugin_o11y.metrics_set("llm_tpot_latency", 1)
+        ai_plugin_o11y.metrics_set("llm_e2e_latency", 1)
         b:afterBalance(conf, { id = "2" })
-        llm_state.set_metrics("tpot_latency", 2)
-        llm_state.set_metrics("e2e_latency", 2)
+
+        ai_plugin_o11y.metrics_set("llm_tpot_latency", 2)
+        ai_plugin_o11y.metrics_set("llm_e2e_latency", 2)
         b:afterBalance(conf, { id = "3" })
+
         ngx.sleep(0.001)
         ngx.update_time()
       end
 
       local res = {}
       for _ = 1, 10 do
-        local target = b:getPeer()
+        local target, err = b:getPeer()
+        assert.is_falsy(err)
         res[target.name] = (res[target.name] or 0) + 1
       end
       assert.equal(nil, res["mashape.test"])
@@ -610,6 +613,8 @@ describe("[least connection balancer]", function()
           }
         }
       }
+      local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors("parse-request", { request_body_table = "table" })
+      set_ctx("request_body_table", { messages = { { role = "user", content = "dog" }}})
     end)
 
     teardown(function()
