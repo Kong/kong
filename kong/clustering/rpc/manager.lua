@@ -167,12 +167,14 @@ end
 
 -- DP => CP
 function _M:_meta_call(node_id, s, method)
-  local info = {
-    capabilities = self.callbacks:get_capabilities_list(),
-    -- conf and others
+  local params = {
+    { -- info
+      capabilities = self.callbacks:get_capabilities_list(),
+      -- conf and others
+    },
   }
 
-  local fut = future.new(node_id, s, method, info)
+  local fut = future.new(node_id, s, method, params)
   assert(fut:start())
 
   local ok, err = fut:wait(5)
