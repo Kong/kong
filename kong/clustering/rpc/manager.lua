@@ -150,7 +150,7 @@ function _M:_handle_meta_call(c, node_id)
   assert(payload.jsonrpc == "2.0")
 
   if payload.method ~= RPC_MATA_V1 then
-    return nil, "wrong RPC meta call: " .. payload.method
+    return nil, "wrong RPC meta call: " .. tostring(payload.method)
   end
 
   local capabilities_list = payload.params[1].capabilities
