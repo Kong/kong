@@ -627,12 +627,22 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
-    ["kong.llm.state"] = "kong/llm/state.lua",
-
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
     ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
 
-    ["kong.llm.proxy.handler"] = "kong/llm/proxy/handler.lua",
+
+    ["kong.llm.plugin.base"] = "kong/llm/plugin/base.lua",
+    ["kong.llm.plugin.ctx"] = "kong/llm/plugin/ctx.lua",
+    ["kong.llm.plugin.crud_handler"] = "kong/llm/plugin/crud_handler.lua",
+    ["kong.llm.plugin.observability"] = "kong/llm/plugin/observability.lua",
+    ["kong.llm.plugin.shared-filters.enable-buffering"] = "kong/llm/plugin/shared-filters/enable-buffering.lua",
+    ["kong.llm.plugin.shared-filters.normalize-json-response"] = "kong/llm/plugin/shared-filters/normalize-json-response.lua",
+    ["kong.llm.plugin.shared-filters.normalize-request"] = "kong/llm/plugin/shared-filters/normalize-request.lua",
+    ["kong.llm.plugin.shared-filters.normalize-sse-chunk"] = "kong/llm/plugin/shared-filters/normalize-sse-chunk.lua",
+    ["kong.llm.plugin.shared-filters.parse-json-response"] = "kong/llm/plugin/shared-filters/parse-json-response.lua",
+    ["kong.llm.plugin.shared-filters.parse-request"] = "kong/llm/plugin/shared-filters/parse-request.lua",
+    ["kong.llm.plugin.shared-filters.parse-sse-chunk"] = "kong/llm/plugin/shared-filters/parse-sse-chunk.lua",
+    ["kong.llm.plugin.shared-filters.serialize-analytics"] = "kong/llm/plugin/shared-filters/serialize-analytics.lua",
 
     ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
     ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",
