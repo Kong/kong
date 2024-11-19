@@ -12,6 +12,7 @@ local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
 local pl_tablex = require("pl.tablex")
+local string_tools = require("kong.tools.string")
 
 
 local ngx_var = ngx.var
@@ -294,8 +295,19 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  -- TODO: choice a proper protocol
-  if not rpc_protocol:find(RPC_MATA_V1, 1, true) then
+  local rpc_found
+  local protocols = string_tools.split(rpc_protocol, ",")
+
+  -- choice a proper protocol
+  for _, v in ipairs(protocols) do
+    -- now we only support kong.meta.v1
+    if RPC_MATA_V1 == string_tools.strip(v) then
+      rpc_found = true
+      break
+    end
+  end
+
+  if not rpc_found then
     ngx_log(ngx_ERR, "[rpc] unknown RPC protocol: " ..
                      tostring(rpc_protocol) ..
                      ", doesn't know how to communicate with client")
