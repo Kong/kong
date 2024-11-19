@@ -101,7 +101,7 @@ function _M:exit(status, body, headers)
   end
 
   -- Do not transform admin requests
-  if not ctx.is_proxy_request then
+  if ctx.admin_api_request then
     return status, body, headers
   end
 

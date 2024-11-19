@@ -195,6 +195,25 @@ for _, strategy in strategies() do
         end ]] } },
       }
 
+      local function_str_494 = [[
+        return function(status, body, headers)
+          kong.log.notice("??? body: ", body)
+          if body and string.find(body, "Request header or cookie too large", nil, true) > 0 then
+            return 200, "foo", headers
+          end
+          return status, body, headers
+        end
+      ]]
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        config = {
+          handle_unexpected = true,
+          handle_unknown = true,
+          functions = { function_str_494 },
+        },
+      }
+
       -- start kong
       assert(helpers.start_kong(conf))
     end)
@@ -360,5 +379,18 @@ for _, strategy in strategies() do
         end)
       end)
     end) end end)
+
+    it("take effect on invalid requests", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",  -- makes mockbin return the entire request
+        headers = {
+          host = "test1.test",
+          ['x-large-header'] = string.rep("a", 1024 * 1024),
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.equal("foo", body)
+    end)
   end)
 end
