@@ -299,7 +299,7 @@ function _M:handle_websocket()
   end
 
   -- TODO: choice a proper protocol
-  if rpc_protocol ~= RPC_MATA_V1 then
+  if not rpc_protocol:find(RPC_MATA_V1, 1, true) then
     ngx_log(ngx_ERR, "[rpc] unknown RPC protocol: " ..
                      tostring(rpc_protocol) ..
                      ", doesn't know how to communicate with client")
