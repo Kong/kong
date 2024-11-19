@@ -329,6 +329,10 @@ function _M:handle_websocket()
 
   -- check if client handshake success in 2 seconds
   ngx.timer.at(2, function(premature)
+    if premature then
+      return
+    end
+
     if not self.client_capabilities[node_id] then
       s:stop()
     end
@@ -429,8 +433,14 @@ function _M:connect(premature, node_id, host, path, cert, key)
     self:_add_socket(s)
 
     ngx.timer.at(0, function(premature)
+      if premature then
+        return
+      end
+
+      local retry_count = 5
+
       -- retry
-      for i = 1, 5 do
+      for i = 1, retry_count do
         local ok, err = self:_meta_call("control_plane", s, meta_rpc_call)
         if ok then
           return
