@@ -157,7 +157,9 @@ end
 
 
 -- DP => CP
-function _M:_meta_call(node_id, s, method)
+function _M:_meta_call(s, method)
+  local node_id = "control_plane"
+
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
@@ -453,7 +455,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
 
       -- retry
       for i = 1, retry_count do
-        local ok, err = self:_meta_call("control_plane", s, meta_rpc_call)
+        local ok, err = self:_meta_call(s, meta_rpc_call)
         if ok then
           return
         end
