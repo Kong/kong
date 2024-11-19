@@ -998,23 +998,20 @@ function Kong.init_worker()
   -- ]]
 
   if kong.clustering then
-    if is_control_plane(kong.configuration) then-- CP needs to support both full and incremental sync
-      kong.clustering:init_worker()
-    
+    local is_cp = is_control_plane(kong.configuration)
+    local is_dp_sync_v1 = is_data_plane(kong.configuration) and not kong.sync
+    local using_dedicated = kong.configuration.dedicated_config_processing
+
+    -- CP needs to support both full and incremental sync
     -- full sync is only enabled for DP if incremental sync is disabled
-    elseif is_data_plane(kong.configuration) and not kong.sync then
-      local using_dedicated = kong.configuration.dedicated_config_processing
-      if using_dedicated and process.type() == "privileged agent" then
-        -- full sync dp agent
-        kong.clustering:init_worker()
-        return
+    if is_cp or is_dp_sync_v1 then
+      kong.clustering:init_worker()
+    end
 
-      end
-
-      if not using_dedicated then
-        -- full sync dp
-        kong.clustering:init_worker()
-      end
+    -- see is_dp_worker_process() in clustering/utils.lua
+    if using_dedicated and process.type() == "privileged agent" then
+      assert(not is_cp)
+      return
     end
   end
 
