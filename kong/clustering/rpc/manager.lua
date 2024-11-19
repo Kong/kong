@@ -176,8 +176,9 @@ function _M:_meta_call(c, method, node_id)
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
-      version = KONG_VERSION,
-      hostname = kong.node.get_hostname(),
+      kong_version = KONG_VERSION,
+      kong_hostname = kong.node.get_hostname(),
+      kong_node_id = self.node_id
       -- conf and others
     },
   }
