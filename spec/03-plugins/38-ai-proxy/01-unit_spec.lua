@@ -352,7 +352,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       },
     }
 
-    local result, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    local result, err = ai_shared.merge_model_options(fake_request, fake_config)
     assert.is_falsy(err)
     assert.same(result.model.options, {
       ['azure_api_version'] = 'arg_value_here_1',
@@ -410,7 +410,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       },
     }
 
-    local result, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    local result, err = ai_shared.merge_model_options(fake_request, fake_config)
     assert.is_falsy(err)
     assert.same("cap_value_here_2", result.model.name)
   end)
@@ -462,7 +462,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       },
     }
 
-    local _, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    local _, err = ai_shared.merge_model_options(fake_request, fake_config)
     assert.same("uri_captures key uri_cap_3 was not provided", err)
   end)
 
@@ -705,7 +705,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms complete-json type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
-      local events = ai_shared.frame_to_events(input, "cohere")  -- not "truncated json mode" like Gemini
+      local events = ai_shared.frame_to_events(input, "text/event-stream")  -- not "truncated json mode" like Gemini
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -715,7 +715,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms text/event-stream type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/input.bin"))
-      local events = ai_shared.frame_to_events(input, "openai")  -- not "truncated json mode" like Gemini
+      local events = ai_shared.frame_to_events(input, "text/event-stream")  -- not "truncated json mode" like Gemini
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -725,7 +725,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms application/vnd.amazon.eventstream (AWS) type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/input.bin"))
-      local events = ai_shared.frame_to_events(input, "bedrock")
+      local events = ai_shared.frame_to_events(input, "application/vnd.amazon.eventstream")
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/expected-output.json"))
       local expected_events = cjson.decode(expected)

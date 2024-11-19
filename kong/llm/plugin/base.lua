@@ -235,6 +235,10 @@ function _M:as_kong_plugin()
     Plugin.init_worker = function(_)
       return MetaPlugin:init_worker(self)
     end
+
+    Plugin.configure = function(_, configs)
+      return MetaPlugin:configure(self, configs)
+    end
   end
 
   if self.filters[STAGES.REQ_INTROSPECTION] or self.filters[STAGES.REQ_TRANSFORMATION] then

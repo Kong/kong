@@ -13,7 +13,7 @@ local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
 
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy  .. "]", function()
     local client
 
@@ -450,4 +450,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     end)
   end)
 
-end end
+end

@@ -5,18 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local ai_plugin_base = require("kong.llm.plugin.base")
 
-local kong_meta = require("kong.meta")
-local deep_copy = require "kong.tools.table".deep_copy
+local NAME = "ai-proxy"
+local PRIORITY = 770
 
+local AIPlugin = ai_plugin_base.define(NAME, PRIORITY)
 
-local _M = deep_copy(require("kong.llm.proxy.handler"))
-_M.init_worker = function()
-    _M:build_http2_alpn_filter("ai-proxy")
+local SHARED_FILTERS = {
+  "parse-request", "normalize-request", "enable-buffering",
+  "parse-sse-chunk", "normalize-sse-chunk",
+  "parse-json-response", "normalize-json-response",
+  "serialize-analytics",
+}
+
+for _, filter in ipairs(SHARED_FILTERS) do
+  AIPlugin:enable(AIPlugin.register_filter(require("kong.llm.plugin.shared-filters." .. filter)))
 end
 
-_M.PRIORITY = 770
-_M.VERSION = kong_meta.core_version
-
-
-return _M
+return AIPlugin:as_kong_plugin()

@@ -57,6 +57,16 @@ local function copy_request_table(request_table)
   return new_t
 end
 
+-- Validates incoming request format
+local function validate_incoming(request)
+  return request
+    and type(request) == "table"
+    and
+    (request.messages and type(request.messages) == "table" and #request.messages > 0)
+    or
+    (request.prompt and type(request.prompt) == "string")
+end
+
 -- TODO: split validate and transform
 local function validate_and_transform(conf)
   if not conf.model then
@@ -75,7 +85,11 @@ local function validate_and_transform(conf)
 
   local request_table = ai_plugin_ctx.get_namespaced_ctx("parse-request", "request_body_table")
   if not request_table then
-    return bail(400, "no request body found when transforming request")
+    return bail(400, "content-type header does not match request body, or bad JSON formatting")
+  end
+
+  if not validate_incoming(request_table) then
+    return bail(400, "request body doesn't contain valid prompts")
   end
 
   -- duplicate it, to avoid our mutation of the table poplute the original parsed request

@@ -24,16 +24,6 @@ local FILTER_OUTPUT_SCHEMA = {
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
 local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAME)
 
--- Validates incoming request format
-local function validate_incoming(request)
-  return request
-    and type(request) == "table"
-    and
-    (request.messages and type(request.messages) == "table" and #request.messages > 0)
-    or
-    (request.prompt and type(request.prompt) == "string")
-end
-
 function _M:run(conf)
   -- Thie might be called again in retry, simply skip it as we already parsed the request
   if ngx.get_phase() == "balancer" then
@@ -59,15 +49,12 @@ function _M:run(conf)
   if not request_table then
     multipart = string.find(content_type, "multipart/form-data", nil, true)
     if not multipart then
-      return kong.response.exit(400, { error = { message = "content-type header does not match request body, or bad JSON formatting" } })
+      -- not a valid llm request, fall through
+      return true
     end
 
+    -- this may be a large file upload, so we have to proxy it directly
     set_ctx("multipart_request", true)
-  end
-
-  if not validate_incoming(request_table) then
-    kong.response.exit(400, { error = { message = "request body doesn't contain valid prompts" } })
-    return true
   end
 
   request_table = ai_plugin_ctx.immutable_table(request_table)

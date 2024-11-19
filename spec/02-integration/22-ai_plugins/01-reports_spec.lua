@@ -201,8 +201,8 @@ for _, strategy in helpers.each_strategy() do
         local _, reports_data = assert(reports_server:join())
         reports_data = cjson.encode(reports_data)
 
-        assert.match("ai_response_tokens=8", reports_data)
-        assert.match("ai_prompt_tokens=10", reports_data)
+        assert.match("ai_response_tokens=12", reports_data)
+        assert.match("ai_prompt_tokens=25", reports_data)
         assert.match("ai_reqs=1", reports_data)
       end)
 
@@ -237,8 +237,8 @@ for _, strategy in helpers.each_strategy() do
         local _, reports_data = assert(reports_server:join())
         reports_data = cjson.encode(reports_data)
 
-        assert.match("ai_response_tokens=16", reports_data)
-        assert.match("ai_prompt_tokens=20", reports_data)
+        assert.match("ai_response_tokens=24", reports_data)
+        assert.match("ai_prompt_tokens=50", reports_data)
         assert.match("ai_reqs=2", reports_data)
       end)
     end)

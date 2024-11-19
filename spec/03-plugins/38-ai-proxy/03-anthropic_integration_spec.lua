@@ -13,7 +13,7 @@ local deepcompare  = require("pl.tablex").deepcompare
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
 
@@ -715,7 +715,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.error.message, "request format not recognised")
+        assert.equals(json.error.message, "request body doesn't contain valid prompts")
       end)
 
       it("no usage response", function()
@@ -782,9 +782,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.error.message, "request format not recognised")
+        assert.equals(json.error.message, "request body doesn't contain valid prompts")
       end)
     end)
   end)
 
-end end
+end
