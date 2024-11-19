@@ -13,17 +13,25 @@ local cjson = require("cjson.safe")
 local http = require("resty.http")
 
 local gzip = require("kong.tools.gzip")
-local build_request = require("kong.ai.embeddings.utils").build_request
+local build_request = require("kong.llm.embeddings.utils").build_request
 
-local MISTRALAI_EMBEDDINGS_URL = "https://api.mistral.ai/v1/embeddings"
+local OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings"
 
 --
 -- driver object
 --
 
--- Driver is an interface for a mistralai embeddings driver.
+-- Driver is an interface for a openai embeddings driver.
 local Driver = {}
 Driver.__index = Driver
+
+local function good_embeddings(r)
+  return r
+     and r.data
+     and type(r.data) == "table"
+     and #r.data > 0
+     and r.data[1].embedding
+end
 
 -- Constructs a new Driver
 --
@@ -38,7 +46,7 @@ function Driver:new(c, dimensions)
       model = c.model or {},
       auth = c.auth or {}
     },
-    dimensions = dimensions, -- not used by mistralai
+    dimensions = dimensions,
   }, Driver)
 end
 
@@ -50,15 +58,16 @@ end
 function Driver:generate(prompt)
   local embeddings_url = self.config.model.options and
                         self.config.model.options.upstream_url or
-                        MISTRALAI_EMBEDDINGS_URL
+                        OPENAI_EMBEDDINGS_URL
 
+  -- prepare prompt for embedding generation
   local body = {
-    input           = prompt,
-    model           = self.config.model.name,
-    encoding_format = "float",
+    input      = prompt,
+    dimensions = self.dimensions,
+    model      = self.config.model.name,
   }
 
-  kong.log.debug("[mistral] generating embeddings for prompt")
+  kong.log.debug("[openai] generating embeddings for prompt")
   local httpc, err = http.new({
     ssl_verify = true,
     ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
@@ -67,9 +76,10 @@ function Driver:generate(prompt)
     return nil, nil, err
   end
 
+
   local headers = {
     ["Content-Type"]    = "application/json",
-    ["Accept-Encoding"] = "gzip",
+    ["Accept-Encoding"] = "gzip",  -- explicitly set because OpenAI likes to change this
   }
 
   embeddings_url, headers, body = build_request(self.config.auth, embeddings_url, headers, body)
@@ -101,8 +111,13 @@ function Driver:generate(prompt)
     return nil, nil, err
   end
 
-  if not embeddings_response.data or #embeddings_response.data == 0 then
+  -- validate if there are embeddings in the response
+  if #embeddings_response.data == 0 then
     return nil, nil, "no embeddings found in response"
+  end
+
+  if not good_embeddings(embeddings_response) then
+    return nil, nil, "embeddings response does not contain any vectors"
   end
 
   local embeddings_tokens = embeddings_response.usage and embeddings_response.usage.total_tokens or 0

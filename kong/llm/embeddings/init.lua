@@ -10,8 +10,8 @@
 --
 
 local supported_embeddings = {
-  openai = "kong.ai.embeddings.drivers.openai",
-  mistral = "kong.ai.embeddings.drivers.mistral",
+  openai = "kong.llm.embeddings.drivers.openai",
+  mistral = "kong.llm.embeddings.drivers.mistral",
 }
 
 --

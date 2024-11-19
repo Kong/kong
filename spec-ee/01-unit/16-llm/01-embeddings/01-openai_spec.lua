@@ -30,7 +30,7 @@ describe("[openai]", function()
   describe("embeddings:", function()
     it("can generate embeddings", function()
       openai_mock.setup(finally)
-      local embeddings, err = require("kong.ai.embeddings").new({
+      local embeddings, err = require("kong.llm.embeddings").new({
         model = {
           provider = "openai",
           name = "text-embedding-3-small",

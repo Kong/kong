@@ -30,7 +30,7 @@ describe("[mistralai]", function()
   describe("embeddings:", function()
     it("can generate embeddings", function()
       mistralai_mock.setup(finally)
-      local embeddings, err = require("kong.ai.embeddings").new({
+      local embeddings, err = require("kong.llm.embeddings").new({
         model = {
           provider = "mistral",
           name = "mistral-embed",
