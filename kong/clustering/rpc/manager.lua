@@ -137,25 +137,6 @@ function _M:_find_node_and_check_capability(node_id, cap)
 end
 
 
-function _M:init()
-  if self.conf.role ~= "control_plane" then
-    return
-  end
-
-  -- CP => DP
-  self.callbacks:register(RPC_MATA_V1, function(node_id, info)
-    local capabilities_list = info.capabilities
-
-    self.client_capabilities[node_id] = {
-      set = pl_tablex_makeset(capabilities_list),
-      list = capabilities_list,
-    }
-
-    return { capabilities = self.callbacks:get_capabilities_list() }
-  end)
-end
-
-
 -- CP => DP
 function _M:_handle_meta_call(c, node_id)
   local data, typ, err = c:recv_frame()

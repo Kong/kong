@@ -694,7 +694,6 @@ function Kong.init()
 
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
-      kong.rpc:init()
 
       if config.cluster_incremental_sync then
         kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
