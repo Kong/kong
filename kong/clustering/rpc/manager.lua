@@ -156,10 +156,42 @@ function _M:init()
 end
 
 
--- DP => CP
-function _M:_meta_call(s, method)
-  local node_id = "control_plane"
+-- CP => DP
+function _M:_handle_meta_call(c, node_id)
+  local data, typ, err = c:recv_frame()
+  if err then
+    return nil, err
+  end
 
+  assert(typ == "binary")
+
+  local payload = utils.decompress_payload(data)
+  assert(payload.jsonrpc == "2.0")
+
+  local capabilities_list = payload.params[1].capabilities
+
+  self.client_capabilities[node_id] = {
+    set = pl_tablex_makeset(capabilities_list),
+    list = capabilities_list,
+  }
+
+  local payload = {
+    jsonrpc = "2.0",
+    result = { capabilities = self.callbacks:get_capabilities_list() },
+    id = 1,
+  }
+
+  local bytes, err = c:send_binary(utils.compress_payload(payload))
+  if not bytes then
+    return nil, err
+  end
+
+  return true
+end
+
+
+-- DP => CP
+function _M:_meta_call(c, method, node_id)
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
@@ -169,19 +201,29 @@ function _M:_meta_call(s, method)
     },
   }
 
-  local fut = future.new(node_id, s, method, params)
-  assert(fut:start())
+  local payload = {
+    jsonrpc = "2.0",
+    method = method,
+    params = params,
+    id = 1,
+  }
 
-  local ok, err = fut:wait(5)
+  local bytes, err = c:send_binary(utils.compress_payload(payload))
+  if not bytes then
+    return nil, err
+  end
+
+  local data, typ, err = c:recv_frame()
   if err then
     return nil, err
   end
 
-  if not ok then
-    return nil, fut.error.message
-  end
+  assert(typ == "binary")
 
-  local capabilities_list = fut.result.capabilities
+  local payload = utils.decompress_payload(data)
+  assert(payload.jsonrpc == "2.0")
+
+  local capabilities_list = payload.result.capabilities
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
@@ -331,22 +373,17 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
+  local ok, err = self:_handle_meta_call(wb, node_id)
+  if not ok then
+    ngx_log(ngx_ERR, "[rpc] unable to handshake with client: ", err)
+    return ngx_exit(ngx.HTTP_CLOSE)
+  end
+
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s)
 
   -- store DP's ip addr
   self.client_ips[node_id] = ngx_var.remote_addr
-
-  -- check if client handshake success in 2 seconds
-  ngx.timer.at(2, function(premature)
-    if premature then
-      return
-    end
-
-    if not self.client_capabilities[node_id] then
-      s:stop()
-    end
-  end)
 
   s:start()
   local res, err = s:join()
@@ -442,22 +479,17 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
+    local ok, err = self:_meta_call(c, meta_rpc_call, node_id)
+    if not ok then
+      ngx_log(ngx_ERR, "[rpc] unable to handshake with server, node_id: ", node_id,
+                       " err: ", err)
+      c:send_close() -- can't do much if this fails
+      goto err
+    end
+
     local s = socket.new(self, c, node_id)
     s:start()
     self:_add_socket(s)
-
-    ngx.timer.at(0, function(premature)
-      if premature then
-        return
-      end
-
-      local ok, err = self:_meta_call(s, meta_rpc_call)
-      if not ok then
-        ngx_log(ngx_ERR, "[rpc] unable to get peer capability list, node_id: ", node_id,
-                         " err: ", err)
-        s:stop()
-      end
-    end)
 
     ok, err = s:join() -- main event loop
 
