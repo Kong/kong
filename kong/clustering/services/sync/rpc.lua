@@ -15,6 +15,10 @@ local constants = require("kong.constants")
 local concurrency = require("kong.concurrency")
 local isempty = require("table.isempty")
 local events = require("kong.runloop.events")
+-- XXX EE [[
+local licensing = require("kong.enterprise_edition.licensing")
+local json = require("cjson.safe")
+-- XXX EE ]]
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
@@ -287,6 +291,20 @@ local function do_sync()
         ev = { delta_type, old_entity and "update" or "create", delta_entity, old_entity, }
       end
 
+      -- XXX EE [[
+      -- for inc delta license change, an update event will be generated
+      -- thus we need only to deal with wipe case
+      if delta_type == "licenses" and wipe then
+        local lic = json.decode(delta_entity.payload)
+        if not lic then
+          ngx_log(ngx_ERR, "[kong.sync.v2] failed to decode license payload")
+
+        else
+          ngx_log(ngx_INFO, "[kong.sync.v2] updating license")
+          licensing:update_license(lic)
+        end
+      end
+      -- XXX EE ]]
     else
       -- delete the entity, opts for getting correct lmdb key
       local old_entity, err = db[delta_type]:select(delta.pk, opts) -- composite key
