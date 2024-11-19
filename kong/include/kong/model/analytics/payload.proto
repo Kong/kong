@@ -30,6 +30,7 @@ message RequestMetadata {
   bool sse = 19;
   repeated AiInfo ai = 20;
   Threats threats = 21;
+  bytes active_tracing_trace_id = 22;
 }
 
 message RequestInfo {

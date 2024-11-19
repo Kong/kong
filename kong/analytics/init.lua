@@ -12,6 +12,7 @@ local telemetry_dispatcher = require ("kong.clustering.telemetry_dispatcher")
 local Queue              = require("kong.tools.queue")
 local pb                 = require("pb")
 local protoc             = require("protoc")
+local at_instrumentation = require("kong.enterprise_edition.debug_session.instrumentation")
 
 local is_http_module    = ngx.config.subsystem == "http"
 local log               = ngx.log
@@ -229,6 +230,7 @@ function _M:create_payload(message)
     client_ip = "",
     started_at = 0,
     trace_id = "",
+    active_tracing_trace_id = "",
     request_id = "",
     upstream = {
       upstream_uri = ""
@@ -321,6 +323,14 @@ function _M:create_payload(message)
   if trace_id and root_span.should_sample then
     log(DEBUG, _log_prefix, "Attaching raw trace_id of to_hex(trace_id): ", to_hex(trace_id))
     payload.trace_id = trace_id
+  end
+
+  -- active tracing
+  local at_root_span = at_instrumentation.get_root_span()
+  local at_trace_id = at_root_span and at_root_span.trace_id
+  if at_trace_id then
+    log(DEBUG, _log_prefix, "Attaching raw active tracing trace_id of to_hex(trace_id): ", to_hex(at_trace_id))
+    payload.active_tracing_trace_id = at_trace_id
   end
 
   local request_id_value, err = request_id.get()

@@ -17,6 +17,7 @@ local protoc = require "protoc"
 local pb = require "pb"
 local analytics = require "kong.analytics"
 local to_hex = require "resty.string".to_hex
+local at_instrum = require "kong.enterprise_edition.debug_session.instrumentation"
 
 local orig_ngx_var_mt = getmetatable(ngx.var)
 local orig_ngx_header = ngx.header
@@ -232,6 +233,11 @@ local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
       trace_id = trace_bytes,
       should_sample = true
     }}
+    stub(at_instrum, "get_root_span").returns({
+      trace_id = trace_bytes,
+    })
+  else
+    stub(at_instrum, "get_root_span").returns(nil)
   end
 
   setmetatable(_G.ngx.var, nil)
@@ -286,6 +292,7 @@ local function reset_context()
   setmetatable(_G.ngx.var, orig_ngx_var_mt)
   _G.ngx.header = orig_ngx_header
   _G.ngx.get_phase = orig_ngx_get_phase
+  at_instrum.get_root_span:revert()
 end
 
 
@@ -360,6 +367,7 @@ describe("extract request log properly", function()
         receive_ms = 0,
       },
       trace_id = "",
+      active_tracing_trace_id = trace_bytes,
       request_id = request_id_value,
       tries = {
         {
@@ -520,6 +528,7 @@ describe("extract request log properly", function()
         receive_ms = 0,
       },
       trace_id = trace_bytes,
+      active_tracing_trace_id = trace_bytes,
       request_id = request_id_value,
       tries = {
         {
@@ -711,6 +720,7 @@ describe("extract request log properly", function()
         receive_ms = 0,
       },
       trace_id = trace_bytes,
+      active_tracing_trace_id = trace_bytes,
       request_id = request_id_value,
       tries = {
         {
@@ -996,6 +1006,7 @@ describe("proto buffer", function()
       client_ip = "",
       started_at = 0,
       trace_id = "",
+      active_tracing_trace_id = "",
       request_id = request_id_value,
       request = {
         body_size = 0,
@@ -1090,6 +1101,7 @@ describe("proto buffer", function()
       client_ip = "",
       started_at = 0,
       trace_id = "",
+      active_tracing_trace_id = "",
       request_id = request_id_value,
       request = {
         body_size = 0,
