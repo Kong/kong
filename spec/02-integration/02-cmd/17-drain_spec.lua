@@ -31,6 +31,21 @@ local function get_status_no_ssl_verify()
   return res.status
 end
 
+local function verify_status(status_client, code)
+  local res = status_client:send({
+    method = "GET",
+    path = "/status/ready",
+  })
+
+  local status = res and res.status
+
+  if status == code then
+    return true
+  end
+
+  return false
+end
+
 for _, strategy in helpers.each_strategy() do
   if strategy ~= "off" then
     -- skip the "off" strategy, as dbless has its own test suite
@@ -52,20 +67,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("should set Kong to 'draining'", function()
+        local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
         helpers.wait_until(function()
-          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
-
-          local res = http_client:send({
-            method = "GET",
-            path = "/status/ready",
-          })
-
-          local status = res and res.status
-          http_client:close()
-          if status == 200 then
-            return true
-          end
+          return verify_status(status_client, 200)
         end, 10)
+        status_client:close()
 
         local ok, err, msg = helpers.kong_exec("drain", {
           prefix = helpers.test_conf.prefix,
@@ -74,20 +81,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Kong's status successfully changed to 'draining'\n", msg)
         assert.equal(true, ok)
 
+        local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
         helpers.wait_until(function()
-          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
-
-          local res = http_client:send({
-            method = "GET",
-            path = "/status/ready",
-          })
-
-          local status = res and res.status
-          http_client:close()
-          if status == 503 then
-            return true
-          end
+          return verify_status(status_client, 503)
         end, 10)
+        status_client:close()
       end)
 
     end)
@@ -203,20 +202,12 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     end)
 
     it("should set Kong to 'draining'", function()
+      local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
       helpers.wait_until(function()
-        local http_client = helpers.http_client('127.0.0.1', dp_status_port)
-
-        local res = http_client:send({
-          method = "GET",
-          path = "/status/ready",
-        })
-
-        local status = res and res.status
-        http_client:close()
-        if status == 200 then
-          return true
-        end
+        return verify_status(status_client, 200)
       end, 10)
+      status_client:close()
 
       -- set dp to draining
       local ok, err, msg = helpers.kong_exec("drain --prefix serve_dp", {
@@ -227,20 +218,12 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
+      local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
       helpers.wait_until(function()
-        local http_client = helpers.http_client('127.0.0.1', dp_status_port)
-
-        local res = http_client:send({
-          method = "GET",
-          path = "/status/ready",
-        })
-
-        local status = res and res.status
-        http_client:close()
-        if status == 503 then
-          return true
-        end
+        return verify_status(status_client, 503)
       end, 10)
+      status_client:close()
 
       -- set cp to draining
       local ok, err, msg = helpers.kong_exec("drain --prefix serve_cp", {
@@ -250,20 +233,82 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
+      local status_client =  assert(helpers.http_client("127.0.0.1", cp_status_port, 20000))
+
       helpers.wait_until(function()
-        local http_client = helpers.http_client('127.0.0.1', cp_status_port)
-
-        local res = http_client:send({
-          method = "GET",
-          path = "/status/ready",
-        })
-
-        local status = res and res.status
-        http_client:close()
-        if status == 503 then
-          return true
-        end
+        return verify_status(status_client, 503)
       end, 10)
+      status_client:close()
     end)
   end)
 end
+
+describe("kong drain in DB-less mode #off", function()
+  local admin_client
+
+  lazy_setup(function()
+    assert(helpers.start_kong ({
+      status_listen = "127.0.0.1:8100",
+      plugins = "admin-api-method",
+      database = "off",
+      nginx_main_worker_processes = 8,
+      log_level = "info",
+    }))
+  end)
+
+  before_each(function()
+    admin_client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    if admin_client then
+      admin_client:close()
+    end
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("should set Kong to 'draining'", function()
+    local res = assert(admin_client:send {
+      method = "POST",
+      path = "/config",
+      body = {
+        config = [[
+        _format_version: "3.0"
+        services:
+          - name: example
+            url: http://mockbin.org
+        ]]
+      },
+      headers = {
+        ["Content-Type"] = "multipart/form-data"
+      },
+    })
+
+    assert.res_status(201, res)
+
+    local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
+    helpers.wait_until(function()
+      return verify_status(status_client, 200)
+    end, 10)
+    status_client:close()
+
+    local ok, err, msg = helpers.kong_exec("drain", {
+      prefix = helpers.test_conf.prefix,
+      database = "off",
+    })
+    assert.equal("", err)
+    assert.equal("Kong's status successfully changed to 'draining'\n", msg)
+    assert.equal(true, ok)
+
+    local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
+
+    helpers.wait_until(function()
+      return verify_status(status_client, 503)
+    end, 10)
+    status_client:close()
+  end)
+end)
