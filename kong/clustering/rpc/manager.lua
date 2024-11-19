@@ -428,6 +428,12 @@ function _M:connect(premature, node_id, host, path, cert, key)
     -- should like "kong.meta.v1"
     local meta_rpc_call = resp_headers["sec_websocket_protocol"]
 
+    if meta_rpc_call ~= RPC_MATA_V1 then
+      ngx_log(ngx_ERR, "[rpc] did not support protocol : ", meta_rpc_call)
+      c:send_close() -- can't do much if this fails
+      goto err
+    end
+
     local s = socket.new(self, c, node_id)
     s:start()
     self:_add_socket(s)
