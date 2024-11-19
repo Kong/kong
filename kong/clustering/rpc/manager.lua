@@ -451,23 +451,12 @@ function _M:connect(premature, node_id, host, path, cert, key)
         return
       end
 
-      local retry_count = 5
-
-      -- retry
-      for i = 1, retry_count do
-        local ok, err = self:_meta_call(s, meta_rpc_call)
-        if ok then
-          return
-        end
-
+      local ok, err = self:_meta_call(s, meta_rpc_call)
+      if not ok then
         ngx_log(ngx_ERR, "[rpc] unable to get peer capability list, node_id: ", node_id,
                          " err: ", err)
-
-        ngx.sleep(0.1 * i)
+        s:stop()
       end
-
-      -- retry failed
-      s:stop()
     end)
 
     ok, err = s:join() -- main event loop
