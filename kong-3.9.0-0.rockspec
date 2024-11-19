@@ -1026,6 +1026,7 @@ build = {
     ["kong.llm.plugin.shared-filters.serialize-analytics"] = "kong/llm/plugin/shared-filters/serialize-analytics.lua",
 
     ["kong.plugins.ai-prompt-template.handler"] = "kong/plugins/ai-prompt-template/handler.lua",
+    ["kong.plugins.ai-prompt-template.filters.render-prompt-template"] = "kong/plugins/ai-prompt-template/filters/render-prompt-template.lua",
     ["kong.plugins.ai-prompt-template.schema"]  = "kong/plugins/ai-prompt-template/schema.lua",
     ["kong.plugins.ai-prompt-template.templater"]  = "kong/plugins/ai-prompt-template/templater.lua",
 
