@@ -1,0 +1,4 @@
+message: |
+  **openid-connect**: Allowed `http_proxy_authorization` and `https_proxy_authorization` to be referenceable.
+type: feature
+scope: Plugin

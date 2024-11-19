@@ -2053,6 +2053,7 @@ local config = {
               description = "The HTTP proxy authorization.",
               required = false,
               type = "string",
+              referenceable = true,
             },
           },
           {
@@ -2066,6 +2067,7 @@ local config = {
               description = "The HTTPS proxy authorization.",
               required = false,
               type = "string",
+              referenceable = true,
             },
           },
           {

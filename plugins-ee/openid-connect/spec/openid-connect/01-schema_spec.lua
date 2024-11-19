@@ -342,12 +342,18 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
       helpers.setenv("TEST_SCOPE_BAR", "bar")
       helpers.setenv("TEST_LOGIN_URI", "http://login.test")
       helpers.setenv("TEST_LOGOUT_URI", "http://logout.test")
+      helpers.setenv("TEST_HTTP_PROXY_AUTHORIZATION", "Basic dXNlcjpwYXNzd29yZA==")
+      helpers.setenv("TEST_HTTPS_PROXY_AUTHORIZATION", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." ..
+        "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." ..
+        "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
     end)
     lazy_teardown(function()
       helpers.unsetenv("TEST_SCOPE_FOO")
       helpers.unsetenv("TEST_SCOPE_BAR")
       helpers.unsetenv("TEST_LOGIN_URI")
       helpers.unsetenv("TEST_LOGOUT_URI")
+      helpers.unsetenv("TEST_HTTP_PROXY_AUTHORIZATION")
+      helpers.unsetenv("TEST_HTTPS_PROXY_AUTHORIZATION")
       _G.kong = old_kong
     end)
 
@@ -369,6 +375,18 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
       assert.is_nil(err)
       assert.same({ "http://login.test" }, res.config.login_redirect_uri)
       assert.same({ "http://logout.test" }, res.config.logout_redirect_uri)
+    end)
+
+    it("http_proxy_authorization/https_proxy_authorization", function()
+      local res, err = process_plugin_config({
+        http_proxy_authorization = "{vault://env/test_http_proxy_authorization}",
+        https_proxy_authorization = "{vault://env/test_https_proxy_authorization}",
+      })
+      assert.is_nil(err)
+      assert.same("Basic dXNlcjpwYXNzd29yZA==", res.config.http_proxy_authorization)
+      assert.same("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." ..
+                    "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." ..
+                    "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", res.config.https_proxy_authorization)
     end)
 
   end)
