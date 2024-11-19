@@ -974,9 +974,11 @@ build = {
     ["kong.plugins.ai-proxy-advanced.balancer.state"] = "kong/plugins/ai-proxy-advanced/balancer/state.lua",
 
     ["kong.plugins.ai-request-transformer.handler"] = "kong/plugins/ai-request-transformer/handler.lua",
+    ["kong.plugins.ai-request-transformer.filters.transform-request"] = "kong/plugins/ai-request-transformer/filters/transform-request.lua",
     ["kong.plugins.ai-request-transformer.schema"] = "kong/plugins/ai-request-transformer/schema.lua",
 
     ["kong.plugins.ai-response-transformer.handler"] = "kong/plugins/ai-response-transformer/handler.lua",
+    ["kong.plugins.ai-response-transformer.filters.transform-response"] = "kong/plugins/ai-response-transformer/filters/transform-response.lua",
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
     ["kong.plugins.ai-semantic-prompt-guard.handler"] = "kong/plugins/ai-semantic-prompt-guard/handler.lua",
