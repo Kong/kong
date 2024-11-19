@@ -563,7 +563,7 @@ for _, strategy in strategies() do
           },{
             name = "requestPrompt",
             window_size = MOCK_RATE + 1,
-            limit = 210,
+            limit = 310,
           },{
             name = "cohere",
             window_size = MOCK_RATE + 2,
@@ -877,19 +877,24 @@ for _, strategy in strategies() do
 
         it("check response 200 for user 123", function()
             -- Additonal request, while limit is 6/window
-            proxy_client = helpers.proxy_client()
-            local res = assert(proxy_client:send {
-            method = "POST",
-            path = "/post?apikey=apikey123",
-            headers = {
-                ["Host"] = "test3.com",
-                ["Content-Type"] = "application/json",
-                ["accept"] = "application/json",
-            },
-            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
-            })
+            -- For this route we are limiting for transformer plugins
+            -- Although technically we can get instant counter increment as the response is already received,
+            -- we are delaying that to log phase to align with the behaviour when using proxy plugins
+            for _=1, 2 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+              method = "POST",
+              path = "/post?apikey=apikey123",
+              headers = {
+                  ["Host"] = "test3.com",
+                  ["Content-Type"] = "application/json",
+                  ["accept"] = "application/json",
+              },
+              body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
+              })
 
-            assert.res_status(200, res)
+              assert.res_status(200, res)
+            end
         end)
 
         it("check limit for user 123 with tokens for all openai and azure", function()
@@ -1062,19 +1067,22 @@ for _, strategy in strategies() do
 
         it("check response 200 for user 123", function()
             -- Additonal request, while limit is 6/window
-            proxy_client = helpers.proxy_client()
-            local res = assert(proxy_client:send {
-            method = "POST",
-            path = "/post?apikey=apikey123",
-            headers = {
-                ["Host"] = "test6.com",
-                ["Content-Type"] = "application/json",
-                ["accept"] = "application/json",
-            },
-            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
-            })
+            -- See above for the reason of for loop
+            for _=1, 2 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+              method = "POST",
+              path = "/post?apikey=apikey123",
+              headers = {
+                  ["Host"] = "test6.com",
+                  ["Content-Type"] = "application/json",
+                  ["accept"] = "application/json",
+              },
+              body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
+              })
 
-            assert.res_status(200, res)
+              assert.res_status(200, res)
+            end
         end)
 
         it("check limit for user 123 with tokens for all openai and azure", function()
@@ -1105,46 +1113,52 @@ for _, strategy in strategies() do
 
         it("check response 200 for user 456 with service config", function()
             -- Additonal request, while limit is 6/window
-            proxy_client = helpers.proxy_client()
-            local res = assert(proxy_client:send {
-            method = "POST",
-            path = "/post?apikey=apikey456",
-            headers = {
-                ["Host"] = "test6.com",
-                ["Content-Type"] = "application/json",
-                ["accept"] = "application/json",
-            },
-            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
-            })
+            -- See above for the reason of for loop
+            for i=1, 2 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+              method = "POST",
+              path = "/post?apikey=apikey456",
+              headers = {
+                  ["Host"] = "test6.com",
+                  ["Content-Type"] = "application/json",
+                  ["accept"] = "application/json",
+              },
+              body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
+              })
 
-            assert.res_status(200, res)
+              assert.res_status(200, res)
 
-            assert.are.same(100, tonumber(res.headers["x-ai-ratelimit-limit-5-cohere"]))
-            assert.are.same(10, tonumber(res.headers["x-ai-ratelimit-remaining-5-cohere"]))
-            assert.are.same(80, tonumber(res.headers["x-ai-ratelimit-limit-7-azure"]))
-            assert.are.same(10, tonumber(res.headers["x-ai-ratelimit-remaining-7-azure"]))
+              assert.are.same(100, tonumber(res.headers["x-ai-ratelimit-limit-5-cohere"]))
+              assert.are.same(100-(i-1)*90, tonumber(res.headers["x-ai-ratelimit-remaining-5-cohere"]))
+              assert.are.same(80, tonumber(res.headers["x-ai-ratelimit-limit-7-azure"]))
+              assert.are.same(80-(i-1)*70, tonumber(res.headers["x-ai-ratelimit-remaining-7-azure"]))
+            end
         end)
 
         it("check response 200 for user 789 with consumer group config", function()
             -- Additonal request, while limit is 6/window
-            proxy_client = helpers.proxy_client()
-            local res = assert(proxy_client:send {
-            method = "POST",
-            path = "/post?apikey=apikey789",
-            headers = {
-                ["Host"] = "test6.com",
-                ["Content-Type"] = "application/json",
-                ["accept"] = "application/json",
-            },
-            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
-            })
+            -- See above for the reason of for loop
+            for i=1, 2 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+              method = "POST",
+              path = "/post?apikey=apikey789",
+              headers = {
+                  ["Host"] = "test6.com",
+                  ["Content-Type"] = "application/json",
+                  ["accept"] = "application/json",
+              },
+              body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
+              })
 
-            assert.res_status(200, res)
+              assert.res_status(200, res)
 
-            assert.are.same(3000, tonumber(res.headers["x-ai-ratelimit-limit-5-cohere"]))
-            assert.are.same(2910, tonumber(res.headers["x-ai-ratelimit-remaining-5-cohere"]))
-            assert.are.same(1000, tonumber(res.headers["x-ai-ratelimit-limit-7-azure"]))
-            assert.are.same(930, tonumber(res.headers["x-ai-ratelimit-remaining-7-azure"]))
+              assert.are.same(3000, tonumber(res.headers["x-ai-ratelimit-limit-5-cohere"]))
+              assert.are.same(3000-(i-1)*90, tonumber(res.headers["x-ai-ratelimit-remaining-5-cohere"]))
+              assert.are.same(1000, tonumber(res.headers["x-ai-ratelimit-limit-7-azure"]))
+              assert.are.same(1000-(i-1)*70, tonumber(res.headers["x-ai-ratelimit-remaining-7-azure"]))
+            end
         end)
 
         it("failing if requestPrompt function not returning a number", function()

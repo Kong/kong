@@ -31,7 +31,7 @@ local llm_provider_schema = {
     }},
     { name = { description = "The LLM provider to which the rate limit applies.",
             type = "string",
-            one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "bedrock", "gemini", "requestPrompt" }, 
+            one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "bedrock", "gemini", "requestPrompt" },
             required = true,
     }},
     { limit = { description = "The limit applies to the LLM provider within the defined window size. It used the query cost from the tokens to increment the counter.",
