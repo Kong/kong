@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local split = require "kong.tools.string".split
 local cjson = require "cjson.safe"
+local pl_file = require "pl.file"
 local fmt = string.format
 
 local MOCK_PORT = helpers.get_available_port()
@@ -36,8 +37,19 @@ local MOCK_FIXTURE = [[
         ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/good.json"))
       }
     }
+
+    # llm mocks
+    location = "/llm/v1/chat/good" {
+      content_by_lua_block {
+        local pl_file = require "pl.file"
+        ngx.status = 200
+        ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/good.json"))
+      }
+    }
   }
 ]]
+
+local good_request_body = pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/good.json")
 
 local function wait_until_key_in_cache(vector_connector, key)
   -- wait until key is in cache (we get a 200 on plugin API) and execute
@@ -55,18 +67,6 @@ local function wait_until_key_in_cache(vector_connector, key)
     return res
   end, 5)
 end
-
-local PRE_FUNCTION_ACCESS_SCRIPT = [[
-  local pl_file = require("pl.file")
-  local cjson = require("cjson.safe")
-  local llm_state = require "kong.llm.state"
-
-  local original_request = cjson.decode(pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/good.json"))
-
-  llm_state.set_request_body_table(original_request)
-
-  llm_state.set_parsed_response(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/good.json"))
-]]
 
 local VECTORDB_SETUP = {
   strategy = "redis",
@@ -93,7 +93,7 @@ local EMBEDDINGS_SETUP = {
   },
 }
 
-for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     -- setup
     local proxy_client, admin_client
@@ -107,20 +107,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       fixtures.http_mock.llm = MOCK_FIXTURE
 
+      local svc = assert(bp.services:insert {
+        url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+      })
+
       local rt = assert(bp.routes:insert {
+        service = svc,
         protocols = { "http" },
         strip_path = true,
         paths = { "/llm" }
       })
-      bp.plugins:insert {
-        name = "pre-function",
-        route = { id = rt.id },
-        config = {
-          access = {
-            [1] = PRE_FUNCTION_ACCESS_SCRIPT,
-          },
-        },
-      }
       bp.plugins:insert {
         name = PLUGIN_NAME,
         id = PLUGIN_ID,
@@ -181,11 +177,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     describe("[GET] cache operations", function()
       it("can retrieve message from cache by global select", function()
         -- make llm request and trigger cache storage
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -195,11 +192,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- verify it's cached
         wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. PLUGIN_ID .. ":*")
 
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -230,11 +228,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("can retrieve message from cache by plugin-id specific", function()
         -- make llm request and trigger cache storage
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -244,11 +243,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- verify it's cached
         wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. PLUGIN_ID .. ":*")
 
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -280,11 +280,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     describe("[DELETE] cache operations", function()
       it("can delete message from cache by global select", function()
         -- make llm request and trigger cache storage
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -294,11 +295,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- verify it's cached
         wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. PLUGIN_ID .. ":*")
 
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -322,11 +324,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("can delete message from cache by global select", function()
         -- make llm request and trigger cache storage
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -336,11 +339,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- verify it's cached
         wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. PLUGIN_ID .. ":*")
 
-        local r = proxy_client:get("/llm", {
+        local r = proxy_client:post("/llm", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
+          body = good_request_body,
         })
 
         assert.res_status(200 , r)
@@ -363,4 +367,4 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
   end)
-end end -- end for each db_strategy, end if not cassandra
+end -- end for each db_strategy

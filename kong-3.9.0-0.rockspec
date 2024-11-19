@@ -1045,6 +1045,11 @@ build = {
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
     ["kong.plugins.ai-semantic-cache.handler"] = "kong/plugins/ai-semantic-cache/handler.lua",
+    ["kong.plugins.ai-semantic-cache.filters.response-cc-header"] = "kong/plugins/ai-semantic-cache/filters/response-cc-header.lua",
+    ["kong.plugins.ai-semantic-cache.filters.search-cache"] = "kong/plugins/ai-semantic-cache/filters/search-cache.lua",
+    ["kong.plugins.ai-semantic-cache.filters.serialize-analytics"] = "kong/plugins/ai-semantic-cache/filters/serialize-analytics.lua",
+    ["kong.plugins.ai-semantic-cache.filters.serve-response"] = "kong/plugins/ai-semantic-cache/filters/serve-response.lua",
+    ["kong.plugins.ai-semantic-cache.filters.store-cache"] = "kong/plugins/ai-semantic-cache/filters/store-cache.lua",
     ["kong.plugins.ai-semantic-cache.schema"]  = "kong/plugins/ai-semantic-cache/schema.lua",
     ["kong.plugins.ai-semantic-cache.api"]  = "kong/plugins/ai-semantic-cache/api.lua",
 
