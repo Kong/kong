@@ -175,10 +175,10 @@ function _M:_handle_meta_call(c, node_id)
   end
 
   -- should have necessary info
-  assert(info.kong_version and
-         info.kong_node_id and
-         info.kong_hostname and
-         info.kong_conf)
+  assert(type(info.kong_version) == "string")
+  assert(type(info.kong_node_id) == "string")
+  assert(type(info.kong_hostname) == "string")
+  assert(type(info.kong_conf) == "table")
 
   local capabilities_list = info.rpc_capabilities
 
