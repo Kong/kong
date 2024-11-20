@@ -43,6 +43,7 @@ describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
       cluster_server_name = "kong_clustering",
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
       cluster_incremental_sync = inc_sync,
+      worker_state_update_frequency = 1,
     }))
   end)
 
@@ -91,12 +92,9 @@ describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
   end)
 
   describe("sync works", function()
-    -- XXX FIXME
-    local skip_inc_sync = inc_sync == "on" and pending or it
-
     local route_id
 
-    skip_inc_sync("proxy on DP follows CP config", function()
+    it("proxy on DP follows CP config", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
         admin_client:close()
@@ -133,7 +131,7 @@ describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
       end, 10)
     end)
 
-    skip_inc_sync("cache invalidation works on config change", function()
+    it("cache invalidation works on config change", function()
       local admin_client = helpers.admin_client()
       finally(function()
         admin_client:close()
