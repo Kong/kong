@@ -83,8 +83,7 @@ local function start_kong_debug(env)
 end
 
 
---- XXX FIXME: enable inc_sync = on
-for _, inc_sync in ipairs { "off" } do
+for _, inc_sync in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
   describe("node id persistence " .. " inc_sync=" .. inc_sync, function()
 
@@ -111,6 +110,7 @@ for _, strategy in helpers.each_strategy() do
       untrusted_lua = "on",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_incremental_sync = inc_sync,
+      worker_state_update_frequency = 1,
     }
 
     local admin_client
