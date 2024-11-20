@@ -31,12 +31,15 @@ local function get_status_no_ssl_verify()
   return res.status
 end
 
-local function verify_status(status_client, code)
+local function verify_status(port, code)
+  local status_client =  assert(helpers.http_client("127.0.0.1", port, 20000))
+
   local res = status_client:send({
     method = "GET",
     path = "/status/ready",
   })
 
+  status_client:close()
   local status = res and res.status
 
   if status == code then
@@ -67,12 +70,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("should set Kong to 'draining'", function()
-        local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
-
         helpers.wait_until(function()
-          return verify_status(status_client, 200)
+          return verify_status(dp_status_port, 200)
         end, 10)
-        status_client:close()
 
         local ok, err, msg = helpers.kong_exec("drain", {
           prefix = helpers.test_conf.prefix,
@@ -81,14 +81,11 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Kong's status successfully changed to 'draining'\n", msg)
         assert.equal(true, ok)
 
-        local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
 
         helpers.wait_until(function()
-          return verify_status(status_client, 503)
+          return verify_status(dp_status_port, 503)
         end, 10)
-        status_client:close()
       end)
-
     end)
 
     describe("Kong without a status listener", function()
@@ -202,12 +199,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     end)
 
     it("should set Kong to 'draining'", function()
-      local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
-
       helpers.wait_until(function()
-        return verify_status(status_client, 200)
+        return verify_status(dp_status_port, 200)
       end, 10)
-      status_client:close()
 
       -- set dp to draining
       local ok, err, msg = helpers.kong_exec("drain --prefix serve_dp", {
@@ -218,12 +212,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
-      local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
-
       helpers.wait_until(function()
-        return verify_status(status_client, 503)
+        return verify_status(dp_status_port, 503)
       end, 10)
-      status_client:close()
 
       -- set cp to draining
       local ok, err, msg = helpers.kong_exec("drain --prefix serve_cp", {
@@ -233,12 +224,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equal("Kong's status successfully changed to 'draining'\n", msg)
       assert.equal(true, ok)
 
-      local status_client =  assert(helpers.http_client("127.0.0.1", cp_status_port, 20000))
-
       helpers.wait_until(function()
-        return verify_status(status_client, 503)
+        return verify_status(cp_status_port, 503)
       end, 10)
-      status_client:close()
     end)
   end)
 end
@@ -289,12 +277,10 @@ describe("kong drain in DB-less mode #off", function()
 
     assert.res_status(201, res)
 
-    local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
-
     helpers.wait_until(function()
-      return verify_status(status_client, 200)
+      return verify_status(dp_status_port, 200)
     end, 10)
-    status_client:close()
+
 
     local ok, err, msg = helpers.kong_exec("drain", {
       prefix = helpers.test_conf.prefix,
@@ -304,11 +290,8 @@ describe("kong drain in DB-less mode #off", function()
     assert.equal("Kong's status successfully changed to 'draining'\n", msg)
     assert.equal(true, ok)
 
-    local status_client =  assert(helpers.http_client("127.0.0.1", dp_status_port, 20000))
-
     helpers.wait_until(function()
-      return verify_status(status_client, 503)
+      return verify_status(dp_status_port, 200)
     end, 10)
-    status_client:close()
   end)
 end)
