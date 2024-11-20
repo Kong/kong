@@ -1,0 +1,9 @@
+@@ -266,6 +430,8 @@
+   _mt.upsert_by_field = unsupported_by("create or update")
+   _mt.delete_by_field = unsupported_by("remove")
+   _mt.truncate = function() return true end
++
++  _mt.page_for_tags = page_for_tags
+ end
+ 
+ 
