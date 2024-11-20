@@ -258,6 +258,10 @@ plugins/standard-webhooks:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/standard-webhooks/**/*
 
+plugins/redirect:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/redirect/**/*
+
 schema-change-noteworthy:
 - changed-files:
   - any-glob-to-any-file: [

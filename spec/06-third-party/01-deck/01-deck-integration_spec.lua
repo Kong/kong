@@ -210,6 +210,12 @@ local function get_plugins_configs(service)
       config = {
         secret_v1 = "test",
       },
+    },
+    ["redirect"] = {
+      name = "redirect",
+      config = {
+        location = "https://example.com",
+      },
     }
   }
 end
