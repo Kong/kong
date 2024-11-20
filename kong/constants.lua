@@ -304,7 +304,7 @@ local constants = {
     },
     {
       KEY = "cached_response_headers",
-      FLAG = "cached_request_headers_flag",
+      FLAG = "cached_response_headers_flag",
       -- nginx buildin resp headers which only support single value
       SINGLE_VALUES = {"Server", "Date", "Content-Encoding","Location","Refresh","Last-Modified","Content-Range","Accept-Ranges", "WWW-Authenticate", "Expires", "E-Tag", "ETag", "Content-Length", "Content-Type"},
     },
