@@ -466,7 +466,7 @@ function _M:access(conf)
   local identity_interface = _KEYBASTION[conf]
 
   if identity_interface and identity_interface.error then
-    llm_state.set_response_transformer_skipped()
+    llm_state.disable_ai_proxy_response_transform()
     kong.log.err("error authenticating with cloud-provider, ", identity_interface.error)
     return bail(500, "LLM request failed before proxying")
   end
