@@ -1,0 +1,4 @@
+message: |
+  **ai-semantic-cache**: Plugin can now be enabled on Consumer Groups.
+type: feature
+scope: Plugin

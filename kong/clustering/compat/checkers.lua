@@ -54,6 +54,29 @@ do
 end
 
 local compatible_checkers = {
+  { 3009000000, --[[ 3.9.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-semantic-cache' then
+          local consumer_group_scope = plugin["consumer_group"]
+          if consumer_group_scope ~= cjson.null and consumer_group_scope ~= nil then
+            has_update = true
+            plugin.enabled = false
+
+            log_warn_message('configures ' .. plugin.name .. ' plugin consumer_group scope',
+                              'the entire plugin will be disabled on this dataplane node',
+                              dp_version,
+                              log_suffix)
+          end
+        end
+      end
+
+      return has_update
+    end,
+  },
   { 3008000000, --[[ 3.8.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

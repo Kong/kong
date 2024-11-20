@@ -15,7 +15,6 @@ local schema = {
   fields = {
     -- the 'fields' array is the top-level entry with fields defined by Kong
     { protocols = typedefs.protocols_http },
-    { consumer_group = typedefs.no_consumer_group },
     {
       config = {
         type = "record",
