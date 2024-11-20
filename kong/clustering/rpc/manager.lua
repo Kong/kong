@@ -189,14 +189,13 @@ function _M:_meta_call(c, meta_cap, node_id)
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
 
-      kong_version = KONG_VERSION,
-      kong_hostname = kong.node.get_hostname(),
-      kong_node_id = self.node_id,
-
       -- now we only support snappy
       rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
 
-      -- conf and others
+      kong_version = KONG_VERSION,
+      kong_hostname = kong.node.get_hostname(),
+      kong_node_id = self.node_id,
+      kong_conf = kong.configuration.remove_sensitive(),
     },
   }
 
