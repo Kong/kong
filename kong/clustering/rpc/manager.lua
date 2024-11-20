@@ -180,14 +180,6 @@ function _M:_handle_meta_call(c)
   assert(type(info.kong_hostname) == "string")
   assert(type(info.kong_conf) == "table")
 
-  local capabilities_list = info.rpc_capabilities
-  local node_id = info.kong_node_id
-
-  self.client_capabilities[node_id] = {
-    set = pl_tablex_makeset(capabilities_list),
-    list = capabilities_list,
-  }
-
   local payload = {
     jsonrpc = "2.0",
     result = {
@@ -202,6 +194,20 @@ function _M:_handle_meta_call(c)
   if not bytes then
     return nil, err
   end
+
+  local capabilities_list = info.rpc_capabilities
+  local node_id = info.kong_node_id
+
+  self.client_capabilities[node_id] = {
+    set = pl_tablex_makeset(capabilities_list),
+    list = capabilities_list,
+  }
+
+  -- store DP's ip addr
+  self.client_info[node_id] = {
+    ip = ngx_var.remote_addr,
+    version = info.kong_version,
+  }
 
   return node_id
 end
@@ -245,17 +251,17 @@ function _M:_meta_call(c, meta_cap, node_id)
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
 
+  -- now we only support snappy
+  if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
+    return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
+  end
+
   local capabilities_list = payload.result.rpc_capabilities
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
-
-  -- now we only support snappy
-  if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
-    return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
-  end
 
   return true
 end
@@ -397,9 +403,6 @@ function _M:handle_websocket()
 
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s)
-
-  -- store DP's ip addr
-  self.client_info[node_id] =  { ip = ngx_var.remote_addr, version = kong_version, }
 
   s:start()
   local res, err = s:join()
