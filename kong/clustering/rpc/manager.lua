@@ -178,7 +178,7 @@ function _M:_handle_meta_call(c, node_id)
          info.kong_hostname and
          info.kong_conf)
 
-  local capabilities_list = info.capabilities
+  local capabilities_list = info.rpc_capabilities
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
@@ -188,7 +188,7 @@ function _M:_handle_meta_call(c, node_id)
   local payload = {
     jsonrpc = "2.0",
     result = {
-      capabilities = self.callbacks:get_capabilities_list(),
+      rpc_capabilities = self.callbacks:get_capabilities_list(),
       -- now we only support snappy
       rpc_frame_encoding = RPC_SNAPPY_FRAMED,
       },
@@ -207,7 +207,7 @@ end
 -- DP => CP
 function _M:_meta_call(c, meta_cap, node_id)
   local info = {
-    capabilities = self.callbacks:get_capabilities_list(),
+    rpc_capabilities = self.callbacks:get_capabilities_list(),
 
     -- now we only support snappy
     rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
@@ -240,7 +240,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
 
-  local capabilities_list = payload.result.capabilities
+  local capabilities_list = payload.result.rpc_capabilities
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
