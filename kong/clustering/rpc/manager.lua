@@ -12,6 +12,7 @@ local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
 local pl_tablex = require("pl.tablex")
+local cjson = require("cjson.safe")
 local string_tools = require("kong.tools.string")
 
 
@@ -23,6 +24,8 @@ local ngx_exit = ngx.exit
 local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
 local pl_tablex_makeset = pl_tablex.makeset
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 
@@ -146,7 +149,7 @@ function _M:_handle_meta_call(c, node_id)
 
   assert(typ == "binary")
 
-  local payload = utils.decompress_payload(data)
+  local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
 
   if payload.method ~= RPC_MATA_V1 .. ".hello" then
@@ -170,7 +173,7 @@ function _M:_handle_meta_call(c, node_id)
     id = 1,
   }
 
-  local bytes, err = c:send_binary(utils.compress_payload(payload))
+  local bytes, err = c:send_binary(cjson_encode(payload))
   if not bytes then
     return nil, err
   end
@@ -187,7 +190,7 @@ function _M:_meta_call(c, meta_cap, node_id)
 
       kong_version = KONG_VERSION,
       kong_hostname = kong.node.get_hostname(),
-      kong_node_id = self.node_id
+      kong_node_id = self.node_id,
 
       -- now we only support snappy
       rpc_frame_encodings =  { "x-snappy-framed", },
@@ -203,7 +206,7 @@ function _M:_meta_call(c, meta_cap, node_id)
     id = 1,
   }
 
-  local bytes, err = c:send_binary(utils.compress_payload(payload))
+  local bytes, err = c:send_binary(cjson_encode(payload))
   if not bytes then
     return nil, err
   end
@@ -215,7 +218,7 @@ function _M:_meta_call(c, meta_cap, node_id)
 
   assert(typ == "binary")
 
-  local payload = utils.decompress_payload(data)
+  local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
 
   local capabilities_list = payload.result.capabilities
