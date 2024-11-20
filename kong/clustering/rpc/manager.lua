@@ -149,7 +149,7 @@ function _M:_handle_meta_call(c, node_id)
   local payload = utils.decompress_payload(data)
   assert(payload.jsonrpc == "2.0")
 
-  if payload.method ~= RPC_MATA_V1 then
+  if payload.method ~= RPC_MATA_V1 .. ".hello" then
     return nil, "wrong RPC meta call: " .. tostring(payload.method)
   end
 
@@ -176,7 +176,7 @@ end
 
 
 -- DP => CP
-function _M:_meta_call(c, method, node_id)
+function _M:_meta_call(c, meta_cap, node_id)
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
@@ -189,7 +189,7 @@ function _M:_meta_call(c, method, node_id)
 
   local payload = {
     jsonrpc = "2.0",
-    method = method,
+    method = meta_cap .. ".hello",
     params = params,
     id = 1,
   }
@@ -458,16 +458,16 @@ function _M:connect(premature, node_id, host, path, cert, key)
     end
 
     -- should like "kong.meta.v1"
-    local meta_rpc_call = resp_headers["sec_websocket_protocol"]
+    local meta_cap = resp_headers["sec_websocket_protocol"]
 
-    if meta_rpc_call ~= RPC_MATA_V1 then
-      ngx_log(ngx_ERR, "[rpc] did not support protocol : ", meta_rpc_call)
+    if meta_cap ~= RPC_MATA_V1 then
+      ngx_log(ngx_ERR, "[rpc] did not support protocol : ", meta_cap)
       c:send_close() -- can't do much if this fails
       goto err
     end
 
     -- if timeout (default is 5s) we will close the connection
-    local ok, err = self:_meta_call(c, meta_rpc_call, node_id)
+    local ok, err = self:_meta_call(c, meta_cap, node_id)
     if not ok then
       ngx_log(ngx_ERR, "[rpc] unable to handshake with server, node_id: ", node_id,
                        " err: ", err)
