@@ -149,7 +149,9 @@ function _M:_handle_meta_call(c, node_id)
     return nil, err
   end
 
-  assert(typ == "binary")
+  if typ ~= "binary" then
+    return nil, "wrong frame type: " .. type
+  end
 
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
@@ -235,7 +237,9 @@ function _M:_meta_call(c, meta_cap, node_id)
     return nil, err
   end
 
-  assert(typ == "binary")
+  if typ ~= "binary" then
+    return nil, "wrong frame type: " .. type
+  end
 
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
