@@ -123,8 +123,13 @@ local function teardown_generator(plugin_name)
       BEGIN
       UPDATE plugins
       SET config =
-        jsonb_set(config, '{redis}', (config -> 'redis') - 'sentinel_addresses' - 'cluster_addresses')
-      WHERE name = '%s';
+        CASE WHEN config ? 'redis' THEN
+          jsonb_set(config, '{redis}', (config -> 'redis') - 'sentinel_addresses' - 'cluster_addresses')
+        ELSE
+          config
+        END
+      WHERE name = '%s'
+        AND config ? 'redis';
       EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
         -- Do nothing, accept existing state
       END$$;
