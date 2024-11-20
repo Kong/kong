@@ -2429,7 +2429,8 @@ for _, strategy in strategies() do
               name = "rate-limiting-advanced",
               consumer_group = { id = consumer_group_gold_ws1.id },
               config = {
-                window_size = { 20 },   -- a window_size different from that in the default config
+                window_size = { 21 },   -- a window_size different from that in the default config
+                                        -- and different from that in the consumer_group_gold
                 limit = { OVERRIDE_LIMIT },
               }
           }, ws1))
@@ -2461,9 +2462,10 @@ for _, strategy in strategies() do
 
           assert(bp.plugins:insert_ws(
             build_plugin_fn("redis")(
-              route_for_consumer_group_window_size_ws1.id, 10, DEFAULT_LIMIT, 0.1, nil,
+              -- a different window_size from that in the default workspace
+              route_for_consumer_group_window_size_ws1.id, 11, DEFAULT_LIMIT, 0.1, nil,
               nil, redis_configuration, {
-                namespace = "Bja3la2PxdkaeUEMC2dcHa8pocMy241d",
+                namespace = "Yk2xqm2AMteaeENCW5dAHL3ikcPygj1c", -- same as in the default workspace
                 enforce_consumer_groups = true,
                 consumer_groups = { "consumer_group_gold_ws1", "consumer_group_silver_ws1" }
               }

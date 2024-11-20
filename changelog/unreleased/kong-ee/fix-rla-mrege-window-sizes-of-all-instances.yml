@@ -1,0 +1,3 @@
+message: "**rate-limiting-advanced:** Fixed an issue where multiple plugin instances sharing the same namespace enforced consumer groups and different `window_size`s were used in the consumer group overriding configs, then the rate limiting of some consumer groups would fall back to local strategy. Now every plugin instance sharing the same namespace can set different `window_size`."
+type: bugfix
+scope: Plugin

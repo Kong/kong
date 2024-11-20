@@ -14,6 +14,7 @@ local meta = require "kong.meta"
 local uuid = require "kong.tools.uuid"
 local pl_tablex = require "pl.tablex"
 local pdk_private_rl = require "kong.pdk.private.rate_limiting"
+local concurrency = require "kong.concurrency"
 
 local ngx = ngx
 local null = ngx.null
@@ -101,22 +102,31 @@ local id_lookup = {
 }
 
 
-local function merge_consumer_group_window_size(merged_sizes, seen_sizes, consumer_group_window_size)
-  for _, size in ipairs(consumer_group_window_size) do
-    if not seen_sizes[size] then
-      seen_sizes[size] = true
-      table.insert(merged_sizes, size)
+local function merge_size_table(merged_sizes, window_size)
+  -- The reason why we use two tables to store the array part and the map part
+  -- is because size is also a number type, which will conflict with index.
+  for _, size in ipairs(window_size) do
+    if not merged_sizes.map[size] then
+      merged_sizes.map[size] = true
+      local count = merged_sizes.count + 1
+      merged_sizes.count = count
+      merged_sizes.array[count] = size
     end
   end
+
+  return merged_sizes
 end
 
 
-local function merge_consumer_groups_window_size(config)
-  local base_window_size = config.window_size
+-- merge the window sizes (including the base window sizes and consumer group window sizes)
+-- into the table `merged_sizes`
+-- returns a table including the array part and the map part
+local function merge_window_size(config, merged_sizes)
+  merged_sizes = merged_sizes or { array = {}, map = {}, count = 0 }
   local ws_id = config.__ws_id
 
-  local merged_sizes    -- array of window sizes
-  local seen_sizes      -- map of window sizes
+  -- merge the base window_size
+  merged_sizes = merge_size_table(merged_sizes, config.window_size)
 
   if config.enforce_consumer_groups and config.consumer_groups then
     for _, group_name in ipairs(config.consumer_groups) do
@@ -126,24 +136,14 @@ local function merge_consumer_groups_window_size(config)
         local consumer_group_window_size = consumer_group_config and consumer_group_config.config
                                            and consumer_group_config.config.window_size
         if consumer_group_window_size then
-          if not merged_sizes then
-            merged_sizes = {}
-            seen_sizes = {}
-
-            for _, size in ipairs(base_window_size) do
-              seen_sizes[size] = true
-              table.insert(merged_sizes, size)
-            end
-          end
-
           -- merge the window_size in the overriding config of the consumer group
-          merge_consumer_group_window_size(merged_sizes, seen_sizes, consumer_group_window_size)
+          merged_sizes = merge_size_table(merged_sizes, consumer_group_window_size)
         end
       end
     end
   end
 
-  return merged_sizes or base_window_size
+  return merged_sizes
 end
 
 
@@ -166,7 +166,7 @@ local function create_timer(config)
 end
 
 
-local function new_namespace(config, timer_id)
+local function new_namespace(config, timer_id, merged_window_size)
   if not config then
     kong.log.warn("[rate-limiting-advanced] no config was specified.",
                   " Skipping the namespace creation.")
@@ -223,7 +223,7 @@ local function new_namespace(config, timer_id)
       strategy_opts = strategy_opts,
       dict          = dict_name,
       lock_dict     = lock_dict_name,
-      window_sizes  = merge_consumer_groups_window_size(config),
+      window_sizes  = merged_window_size,
       db            = kong.db,
       timer_id      = timer_id,
     })
@@ -238,7 +238,7 @@ local function new_namespace(config, timer_id)
 end
 
 
-local function update_namespace(config, timer_id)
+local function update_namespace(config, timer_id, merged_window_size)
   if not config then
     kong.log.warn("[rate-limiting-advanced] no config was specified.",
                   " Skipping the namespace creation.")
@@ -295,7 +295,7 @@ local function update_namespace(config, timer_id)
       strategy_opts = strategy_opts,
       dict          = dict_name,
       lock_dict     = lock_dict_name,
-      window_sizes  = merge_consumer_groups_window_size(config),
+      window_sizes  = merged_window_size,
       db            = kong.db,
       timer_id      = timer_id,
     })
@@ -312,7 +312,7 @@ end
 
 -- fields that are required for synchronizing counters for a namespace
 local sync_fields = {
-  "window_size", "sync_rate", "strategy", "dictionary_name", "redis",
+  "sync_rate", "strategy", "dictionary_name", "redis",
 }
 
 local function get_sync_conf(conf)
@@ -340,17 +340,10 @@ end
 
 function NewRLHandler:configure(configs)
   local namespaces = {}
+  local merged_window_sizes = {}
   if configs then
     for _, config in ipairs(configs) do
       local namespace = config.namespace
-      -- if nil, do not sync with DB or Redis
-      local sync_rate = config.sync_rate
-      if not sync_rate or
-         sync_rate == null
-      then
-        sync_rate = -1
-      end
-
       if namespaces[namespace] then
         if not are_same_config(namespaces[namespace], get_sync_conf(config)) then
           kong.log.err("multiple rate-limiting-advanced plugins with the namespace '", namespace,
@@ -361,12 +354,46 @@ function NewRLHandler:configure(configs)
         namespaces[namespace] = get_sync_conf(config)
       end
 
+      merged_window_sizes[namespace] = merge_window_size(config, merged_window_sizes[namespace])
+    end
+
+    for namespace, config in pairs(namespaces) do
+      -- if nil, do not sync with DB or Redis
+      local sync_rate = config.sync_rate
+      if not sync_rate or sync_rate == null then
+        sync_rate = -1
+      end
+
       kong.log.debug("clear and reset ", namespace)
 
+      config.namespace = namespace
       -- previous config doesn't exist for this worker
       -- create a namespace for the new config and return, similar to "rl:create"
       if not ratelimiting.config[namespace] then
-        new_namespace(config)
+        local ok, err = concurrency.with_coroutine_mutex({ name = namespace }, function()
+          -- double check
+          if ratelimiting.config[namespace] then
+            local timer_id
+            -- if the previous config has a timer_id, i.e., a background timer already exists,
+            -- and the current config still needs a timer, we pass the timer_id to reuse the
+            -- existing timer
+            if sync_rate > 0 then
+              timer_id = ratelimiting.config[namespace].timer_id
+            end
+
+            update_namespace(config, timer_id, merged_window_sizes[namespace].array)
+
+          else
+
+            new_namespace(config, nil, merged_window_sizes[namespace].array)
+          end
+
+          return true
+        end)
+
+        if not ok then
+          kong.log.err(err)
+        end
 
       else
         local timer_id
@@ -378,12 +405,12 @@ function NewRLHandler:configure(configs)
           timer_id = ratelimiting.config[namespace].timer_id
         end
 
-        update_namespace(config, timer_id)
+        update_namespace(config, timer_id, merged_window_sizes[namespace].array)
+      end
 
-        -- recommendation have changed with FT-928
-        if sync_rate > 0 and sync_rate < 1 then
-          kong.log.warn("Config option 'sync_rate' " .. sync_rate .. " is between 0 and 1; a config update is recommended")
-        end
+      -- recommendation have changed with FT-928
+      if sync_rate > 0 and sync_rate < 1 then
+        kong.log.warn("Config option 'sync_rate' " .. sync_rate .. " is between 0 and 1; a config update is recommended")
       end
     end
   end
@@ -422,7 +449,27 @@ function NewRLHandler:access(conf)
   -- changes in https://github.com/Kong/kong-plugin-enterprise-rate-limiting/pull/35
   -- currently rely on this in scenarios where workers initialize without database availability
   if not ratelimiting.config[namespace] then
-    new_namespace(conf)
+    -- because `new_namespace` may yield, to avoid the namespace is created in the configure()
+    -- first and then overridden here, a mutex is added to protect the namespace creation
+    local ok, err = concurrency.with_coroutine_mutex({ name = namespace }, function()
+      -- double check
+      if ratelimiting.config[namespace] then
+        return true
+      end
+
+      local ret = new_namespace(conf, nil, merge_window_size(conf).array)
+      if not ret then
+        return nil
+      end
+
+      return true
+    end)
+
+    -- maybe the namespace has been created by another coroutine
+    if not ok and not ratelimiting.config[namespace] then
+      kong.log.err("failed to new namespace ", namespace, ": ", err)
+      kong.response.error(500, "An unexpected error occurred")
+    end
   end
 
   -- create the timer lazily so that no timers are created for zombie plugins.
