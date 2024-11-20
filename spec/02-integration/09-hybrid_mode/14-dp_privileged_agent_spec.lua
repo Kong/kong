@@ -41,6 +41,7 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       nginx_worker_processes = 2, -- multiple workers
 
+      cluster_rpc = "off", -- DISABLE rpc
       cluster_incremental_sync = "off", -- DISABLE incremental sync
 
       dedicated_config_processing = dedicated, -- privileged agent
