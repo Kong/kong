@@ -589,6 +589,8 @@ jobs:
         gateway_mode: ['classic', 'hybrid']
         exclude:
           # execute only one install method (any, doesn't matter) for fips packages and for alpine as we use wget to download kong
+          - package_name: 'ubuntu-24.04-fips'
+            install_method: 'repository'
           - package_name: 'ubuntu-22.04-fips'
             install_method: 'repository'
           - package_name: 'ubuntu-20.04-fips'
