@@ -31,6 +31,7 @@ local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 
 
 local RPC_MATA_V1 = "kong.meta.v1"
+local RPC_SNAPPY_FRAMED = "x-snappy-framed"
 
 
 local WS_OPTS = {
@@ -168,7 +169,7 @@ function _M:_handle_meta_call(c, node_id)
     result = {
       capabilities = self.callbacks:get_capabilities_list(),
       -- now we only support snappy
-      rpc_frame_encoding = "x-snappy-framed",
+      rpc_frame_encoding = RPC_SNAPPY_FRAMED,
       },
     id = 1,
   }
@@ -193,7 +194,7 @@ function _M:_meta_call(c, meta_cap, node_id)
       kong_node_id = self.node_id,
 
       -- now we only support snappy
-      rpc_frame_encodings =  { "x-snappy-framed", },
+      rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
 
       -- conf and others
     },
@@ -229,7 +230,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   }
 
   -- now we only support snappy
-  if payload.result.rpc_frame_encoding ~= "x-snappy-framed" then
+  if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
     return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
   end
 
