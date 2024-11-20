@@ -206,24 +206,22 @@ end
 
 -- DP => CP
 function _M:_meta_call(c, meta_cap, node_id)
-  local params = {
-    { -- info
-      capabilities = self.callbacks:get_capabilities_list(),
+  local info = {
+    capabilities = self.callbacks:get_capabilities_list(),
 
-      -- now we only support snappy
-      rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
+    -- now we only support snappy
+    rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
 
-      kong_version = KONG_VERSION,
-      kong_hostname = kong.node.get_hostname(),
-      kong_node_id = self.node_id,
-      kong_conf = kong.configuration.remove_sensitive(),
-    },
+    kong_version = KONG_VERSION,
+    kong_hostname = kong.node.get_hostname(),
+    kong_node_id = self.node_id,
+    kong_conf = kong.configuration.remove_sensitive(),
   }
 
   local payload = {
     jsonrpc = "2.0",
     method = meta_cap .. ".hello",
-    params = params,
+    params = { info },
     id = 1,
   }
 
