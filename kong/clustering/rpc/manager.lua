@@ -162,7 +162,11 @@ function _M:_handle_meta_call(c, node_id)
 
   local payload = {
     jsonrpc = "2.0",
-    result = { capabilities = self.callbacks:get_capabilities_list() },
+    result = {
+      capabilities = self.callbacks:get_capabilities_list(),
+      -- now we only support snappy
+      rpc_frame_encoding = "x-snappy-framed",
+      },
     id = 1,
   }
 
@@ -180,9 +184,14 @@ function _M:_meta_call(c, meta_cap, node_id)
   local params = {
     { -- info
       capabilities = self.callbacks:get_capabilities_list(),
+
       kong_version = KONG_VERSION,
       kong_hostname = kong.node.get_hostname(),
       kong_node_id = self.node_id
+
+      -- now we only support snappy
+      rpc_frame_encodings =  { "x-snappy-framed", },
+
       -- conf and others
     },
   }
@@ -215,6 +224,11 @@ function _M:_meta_call(c, meta_cap, node_id)
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
+
+  -- now we only support snappy
+  if payload.result.rpc_frame_encoding ~= "x-snappy-framed" then
+    return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
+  end
 
   return true
 end
@@ -313,15 +327,9 @@ end
 function _M:handle_websocket()
   local node_id = ngx_var.http_x_kong_node_id
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
-  local content_encoding = ngx_var.http_content_encoding
 
   if not node_id then
     ngx_log(ngx_ERR, "[rpc] client did not provide node ID")
-    return ngx_exit(ngx.HTTP_CLOSE)
-  end
-
-  if content_encoding ~= "x-snappy-framed" then
-    ngx_log(ngx_ERR, "[rpc] client does use Snappy compressed frames")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
@@ -423,7 +431,6 @@ function _M:connect(premature, node_id, host, path, cert, key)
     protocols = RPC_MATA_V1,
     headers = {
       "X-Kong-Node-Id: " .. self.node_id,
-      "Content-Encoding: x-snappy-framed",
     },
   }
 
