@@ -61,7 +61,7 @@ function KafkaLogHandler:log(conf, other)
     end
   end
 
-  kong.log.notice("Creating timer")
+  kong.log.debug("Creating timer")
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   local ws_id = ngx.ctx.workspace or kong.default_workspace
   local ok, err = ngx.timer.at(0, timer_log, conf, message, ws_id)

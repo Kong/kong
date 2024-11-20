@@ -1,0 +1,3 @@
+message: "**kafka-log**: Reduced noisy logs from kafka-log and counters."
+type: bugfix
+scope: Plugin

@@ -152,7 +152,7 @@ function _M:poll_worker_data(flush_key, expected)
     -- wait for a bit for all workers to report, then write what we've got
     i = i + 1
     if i > 10 then
-      log(INFO, _log_prefix, num_posted, " of ", expected, " workers reported.")
+      log(DEBUG, _log_prefix, num_posted, " of ", expected, " workers reported.")
       break
     end
   end
