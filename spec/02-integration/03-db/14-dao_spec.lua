@@ -155,6 +155,9 @@ for _, strategy in helpers.all_strategies() do
 
       local read_plugin, err = kong.db.plugins:update_by_instance_name(plugin2.instance_name, updated_plugin)
       assert.is_nil(err)
+      -- skip the updated_at field during comparison as it is updated during the update operation
+      assert.is_true(read_plugin.updated_at >= plugin2.updated_at);
+      updated_plugin.updated_at = read_plugin.updated_at
       assert.same(updated_plugin, read_plugin)
     end)
 
@@ -167,6 +170,9 @@ for _, strategy in helpers.all_strategies() do
 
       local read_plugin, err = kong.db.plugins:upsert_by_instance_name(plugin2.instance_name, updated_plugin)
       assert.is_nil(err)
+      -- skip the updated_at field during comparison as it is updated during the upsert operation
+      assert.is_true(read_plugin.updated_at >= plugin2.updated_at);
+      updated_plugin.updated_at = read_plugin.updated_at
       assert.same(updated_plugin, read_plugin)
 
       -- new plugin upsert (insert part of upsert)
