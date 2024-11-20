@@ -394,7 +394,18 @@ end
 
 
 function _M:sync_once(delay)
-  --- XXX TODO: check rpc connection is ready
+  --- check rpc connection is ready
+  for i = 1, 5 do
+    local res = kong.rpc:get_peers()
+
+    -- control_plane is ready
+    if res["control_plane"] then
+      break
+    end
+
+    -- retry later
+    ngx.sleep(0.1 * i)
+  end
 
   return start_sync_timer(ngx.timer.at, delay or 0)
 end
