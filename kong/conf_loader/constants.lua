@@ -514,6 +514,7 @@ local CONF_PARSERS = {
   cluster_dp_labels = { typ = "array" },
   cluster_rpc = { typ = "boolean" },
   cluster_incremental_sync = { typ = "boolean" },
+  cluster_full_sync_threshold = { typ = "number" },
   cluster_cjson = { typ = "boolean" },
 
   kic = { typ = "boolean" },
