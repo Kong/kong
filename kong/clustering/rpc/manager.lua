@@ -16,6 +16,7 @@ local cjson = require("cjson.safe")
 local string_tools = require("kong.tools.string")
 
 
+local ipairs = ipairs
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
@@ -157,7 +158,27 @@ function _M:_handle_meta_call(c, node_id)
     return nil, "wrong RPC meta call: " .. tostring(payload.method)
   end
 
-  local capabilities_list = payload.params[1].capabilities
+  local info = payload.params[1]
+
+  local snappy_supported
+  for _, v in ipairs(info.rpc_frame_encodings) do
+    if v == RPC_SNAPPY_FRAMED then
+      snappy_supported = true
+      break
+    end
+  end
+
+  if not snappy_supported then
+    return nil, "unknown encodings: " .. cjson_encode(info.rpc_frame_encodings)
+  end
+
+  -- should have necessary info
+  assert(info.kong_version and
+         info.kong_node_id and
+         info.kong_hostname and
+         info.kong_conf)
+
+  local capabilities_list = info.capabilities
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
