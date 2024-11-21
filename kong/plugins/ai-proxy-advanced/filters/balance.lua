@@ -56,6 +56,7 @@ function _M:run(conf)
   selected.__key__ = conf.__key__
   selected.__plugin_id = conf.__plugin_id
   selected.max_request_body_size = conf.max_request_body_size
+  selected.response_streaming = conf.response_streaming
   selected.model_name_header = conf.model_name_header
 
   set_ctx("selected_target", selected)

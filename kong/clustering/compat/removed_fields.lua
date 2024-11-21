@@ -469,6 +469,9 @@ return {
     ai_semantic_cache = {
       "ignore_tool_prompts"
     },
+    ai_proxy_advanced = {
+      "response_streaming",
+    },
     openid_connect = {
       "introspection_post_args_client_headers",
     },

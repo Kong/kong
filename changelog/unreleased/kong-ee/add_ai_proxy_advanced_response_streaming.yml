@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy-advanced**: Added support for streaming responses to the AI Proxy Advanced plugin.
+type: "feature"
+scope: "Plugin"
