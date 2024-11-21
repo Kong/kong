@@ -291,7 +291,7 @@ describe("kong drain in DB-less mode #off", function()
     assert.equal(true, ok)
 
     helpers.wait_until(function()
-      return verify_status(dp_status_port, 200)
+      return verify_status(dp_status_port, 503)
     end, 10)
   end)
 end)
