@@ -163,7 +163,7 @@ end
 -- ("and"/"or").
 --
 -- @items    : a Lua array, where each item has a `tags` array indicating its
---             associated tags.
+--             associated tags, e.g., { "admin", "private" }.
 -- @tags     : a Lua array containing tag names, e.g., { "admin", "public" }.
 -- @tags_cond : specifies the condition for tag matching: "and" requires all tags
 --             to match, while "or" requires at least one tag to match.
