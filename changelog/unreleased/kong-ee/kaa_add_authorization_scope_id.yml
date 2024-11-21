@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: Added authorization_scope_id to application context.
+type: feature
+scope: Plugin

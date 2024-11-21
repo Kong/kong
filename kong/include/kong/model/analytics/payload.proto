@@ -115,6 +115,7 @@ message ApplicationContext {
   string portal_id = 3;
   string developer_id = 4;
   string product_version_id = 5;
+  string authorization_scope_id = 6;
 }
 
 message ConsumerGroupInfo {

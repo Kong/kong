@@ -330,8 +330,10 @@ local function apply_application_context(plugin_conf, application)
   local app_context = application and application.application_context
   if app_context then
     local execution_context = {
-      product_version_id = plugin_conf.scope
+      product_version_id = plugin_conf.scope,
+      authorization_scope_id = plugin_conf.scope,
     }
+
     set_context(app_context, execution_context)
 
     if app_context.application_id then

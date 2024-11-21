@@ -383,6 +383,7 @@ function _M:create_payload(message)
       organization_id = "",
       developer_id = "",
       product_version_id = "",
+      authorization_scope_id = "",
     },
     consumer_groups = {},
     websocket = false,
@@ -616,6 +617,7 @@ function _M:create_payload(message)
     app.organization_id = app_context.organization_id or ""
     app.developer_id = app_context.developer_id or ""
     app.product_version_id = app_context.product_version_id or ""
+    app.authorization_scope_id = app_context.authorization_scope_id or ""
   end
 
   local consumer_groups = kong.client.get_consumer_groups()

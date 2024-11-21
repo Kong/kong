@@ -133,6 +133,7 @@ local request_log = {
     organization_id = "org_id",
     developer_id = "dev_id",
     product_version_id = "pv_id",
+    authorization_scope_id = "as_id",
   },
   consumer_groups = {
     { name = "c_group1" },
@@ -251,6 +252,7 @@ local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
     }
   }
@@ -369,6 +371,7 @@ describe("extract request log properly", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
       consumer_groups = {
         { id = "1" },
@@ -520,6 +523,7 @@ describe("extract request log properly", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
       consumer_groups = {
         { id = "1" },
@@ -702,6 +706,7 @@ describe("extract request log properly", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
       consumer_groups = {
         { id = "1" },
@@ -1019,6 +1024,7 @@ describe("proto buffer", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
       consumer = {
         id = "",
@@ -1111,6 +1117,7 @@ describe("proto buffer", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+        authorization_scope_id = "as_id",
       },
       consumer = {
         id = "",

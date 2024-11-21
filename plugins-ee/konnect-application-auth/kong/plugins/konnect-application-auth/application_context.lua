@@ -26,6 +26,7 @@ local function set_context(application_context, execution_context)
     developer_id = application_context.developer_id,
     organization_id = application_context.organization_id,
     product_version_id = exec_context.product_version_id,
+    authorization_scope_id = exec_context.authorization_scope_id,
   }
 end
 
