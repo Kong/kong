@@ -21,7 +21,8 @@ local ngx_WARN = ngx.WARN
 local _log_prefix = "[clustering] "
 
 
-local log_warn_message, _AI_PROVIDER_INCOMPATIBLE
+local log_warn_message, _AI_PROVIDER_INCOMPATIBLE,
+        _AI_PRE_FREEHAND_EMBEDDINGS, _AI_PRE_FREEHAND_DEFAULT_MODELS
 do
   local fmt = string.format
 
@@ -51,15 +52,53 @@ do
 
     return false
   end
+
+  -- AI embeddings compatible models,
+  -- before the field was made free-text
+  _AI_PRE_FREEHAND_EMBEDDINGS = {
+    -- openai
+    ["text-embedding-3-large"] = true,
+    ["text-embedding-3-small"] = true,
+    -- mistral
+    ["mistral-embed"] = true,
+  }
+  _AI_PRE_FREEHAND_DEFAULT_MODELS = {
+    ["openai"] = "text-embedding-3-small",
+    ["mistral"] = "mistral-embed",
+  }
 end
 
 local compatible_checkers = {
   { 3009000000, --[[ 3.9.0.0 ]]
     function(config_table, dp_version, log_suffix)
-
       local has_update
 
       for _, plugin in ipairs(config_table.plugins or {}) do
+        local plugin_name = plugin.name
+
+        -- For versions before 3.9, change the entered embeddings model
+        -- back to the default for the selected provider, because the
+        -- freehand text field is not supported
+        if plugin_name == 'ai-proxy-advanced'
+              or plugin_name == 'ai-semantic-cache'
+              or plugin_name == 'ai-semantic-prompt-guard' then
+          local config = plugin.config
+
+          if config.embeddings
+              and config.embeddings.model
+              and config.embeddings.model.name
+              and (not _AI_PRE_FREEHAND_EMBEDDINGS[config.embeddings.model.name]) then
+
+            -- set back to provider default
+            config.embeddings.model.name = _AI_PRE_FREEHAND_DEFAULT_MODELS[config.embeddings.model.provider]
+
+            log_warn_message('configures ' .. plugin_name .. ' plugin with free-hand model name, ',
+                            'overwritten with default value `' .. config.embeddings.model.name .. '`.',
+                            dp_version, log_suffix)
+            has_update = true
+          end
+        end
+
         if plugin.name == 'ai-semantic-cache' then
           local consumer_group_scope = plugin["consumer_group"]
           if consumer_group_scope ~= cjson.null and consumer_group_scope ~= nil then
@@ -72,10 +111,11 @@ local compatible_checkers = {
                               log_suffix)
           end
         end
+
       end
 
       return has_update
-    end,
+    end
   },
   { 3008000000, --[[ 3.8.0.0 ]]
     function(config_table, dp_version, log_suffix)

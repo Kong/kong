@@ -38,13 +38,6 @@ return {
             type        = "string",
             description = "Model name to execute.",
             required    = true,
-            one_of      = {
-              -- openai
-              "text-embedding-3-large",
-              "text-embedding-3-small",
-              -- mistralai
-              "mistral-embed",
-            },
           },
         },
         {

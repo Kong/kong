@@ -1,0 +1,6 @@
+message: |
+  **ai-semantic-cache**, **ai-semantic-prompt-guard**, **ai-proxy-advanced**: Made the
+  `embeddings.model.name` config field a free text entry, enabling use of a
+  self-hosted (or otherwise compatible) model.
+type: "feature"
+scope: "Plugin"

@@ -1684,6 +1684,99 @@ describe("CP/DP config compat #" .. strategy, function()
             return config.introspection_post_args_client_headers == nil
           end
         },
+        {
+          plugin = "ai-proxy-advanced",
+          label = "w/ embeddings.model.name openai set to freehand text field",
+          pending = false,
+          config = {
+            embeddings = {
+              model = {
+                name = "freehand-text-entry",
+                provider = "openai",
+              },
+              auth = {
+                header_name = "Authorization",
+                header_value = "A",
+              },
+            },
+            targets = {
+              {
+                weight = 50,
+                route_type = "llm/v1/chat",
+                model = {
+                  provider = "cohere",
+                  name = "command-light",
+                },
+              },
+            },
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.embeddings.model.name == "text-embedding-3-small"
+          end
+        },
+        {
+          plugin = "ai-proxy-advanced",
+          label = "w/ embeddings.model.name mistral set to freehand text field",
+          pending = false,
+          config = {
+            embeddings = {
+              model = {
+                name = "freehand-text-entry",
+                provider = "mistral",
+              },
+              auth = {
+                header_name = "Authorization",
+                header_value = "A",
+              },
+            },
+            targets = {
+              {
+                weight = 50,
+                route_type = "llm/v1/chat",
+                model = {
+                  provider = "cohere",
+                  name = "command-light",
+                },
+              },
+            },
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.embeddings.model.name == "mistral-embed"
+          end
+        },
+        {
+          plugin = "ai-proxy-advanced",
+          label = "w/ embeddings.model.name openai ignores old supported value",
+          pending = false,
+          config = {
+            embeddings = {
+              model = {
+                name = "text-embedding-3-large",
+                provider = "openai",
+              },
+              auth = {
+                header_name = "Authorization",
+                header_value = "A",
+              },
+            },
+            targets = {
+              {
+                weight = 50,
+                route_type = "llm/v1/chat",
+                model = {
+                  provider = "cohere",
+                  name = "command-light",
+                },
+              },
+            },
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.embeddings.model.name == "text-embedding-3-large"
+          end
+        },
       }
 
       for _, case in ipairs(CASES) do
