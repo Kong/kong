@@ -492,8 +492,6 @@ jobs:
         sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
         sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
-    - uses: actions/setup-go@v5 # should be reverted after the self-hosted runner image is updated
-
     - name: Install Kong dev
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
