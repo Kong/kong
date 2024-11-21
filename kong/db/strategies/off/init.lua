@@ -233,11 +233,11 @@ local function page_for_tags(self, size, offset, options)
     end
 
     -- Each page operation retrieves the entities of only one DAO type.
-    local offset_name, offset_token
+    local schema_name, offset_token
 
     if offset then
-      offset_name, offset_token = offset:match("^([^|]+)|(.+)")
-      if not offset_name then
+      schema_name, offset_token = offset:match("^([^|]+)|(.+)")
+      if not schema_name then
         return nil, self.errors:invalid_offset(offset, "bad offset string")
       end
 
@@ -255,12 +255,14 @@ local function page_for_tags(self, size, offset, options)
     local dao
 
     if offset_token then
-      dao = kong.db.daos[offset_name]
+      -- There are still some entities left from the last page operation that
+      -- haven't been retrieved, so we need to use the previous dao
+      dao = kong.db.daos[schema_name]
     else
-      offset_name, dao = next(kong.db.daos, offset_name)
+      schema_name, dao = next(kong.db.daos, schema_name)
     end
 
-    local prefix = item_key_prefix(offset_name, "*")
+    local prefix = item_key_prefix(schema_name, "*")
 
     local rows, err
 
@@ -283,16 +285,16 @@ local function page_for_tags(self, size, offset, options)
       for _, tag in ipairs(item.tags or {}) do
         -- TODO: Could item.id be used as entity_id precisely?
         if not matched_tags or matched_tags[tag] then
-          local item = { tag = tag, entity_name = name, entity_id = item.id }
+          local item = { tag = tag, entity_name = schema_name, entity_id = item.id }
           table.insert(items, item)
         end
       end
     end
 
-    if not offset_token and not next(kong.db.daos, offset_name) then  -- end
+    if not offset_token and not next(kong.db.daos, schema_name) then  -- end
       offset = nil
     else
-      offset = offset_name .. "|" .. (offset_token or "nil")
+      offset = schema_name .. "|" .. (offset_token or "nil")
     end
 
     return items, nil, offset
