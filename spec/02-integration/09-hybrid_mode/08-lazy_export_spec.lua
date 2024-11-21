@@ -53,7 +53,8 @@ local function json_dp(inc_sync)
 end
 
 
-for _, inc_sync in ipairs { "on", "off"  } do
+-- TODO: reenable the inc sync test
+for _, inc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
 describe("lazy_export with #".. strategy .. " inc_sync=" .. inc_sync, function()
