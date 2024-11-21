@@ -1,0 +1,3 @@
+message: "**OAS-Plugin**: Fixed an issue where the spec could not be located if the `Content-Type` in the request/response body included parameters (e.g., `application/json; charset=utf8`), while the openapi specification defined in `api_spec` did not include parameters."
+type: bugfix
+scope: Plugin

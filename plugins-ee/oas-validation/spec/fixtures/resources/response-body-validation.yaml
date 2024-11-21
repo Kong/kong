@@ -1,0 +1,38 @@
+openapi: "3.0.0"
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+paths:
+  /with_charset:
+    get:
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                type: object
+                required: [ "foo" ]
+                properties:
+                  key:
+                    type: string
+            application/json; charset=utf-8:
+              schema:
+                type: object
+                required: [ "key" ]
+                properties:
+                  key:
+                    type: string
+
+  /without_charset:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ "key" ]
+                properties:
+                  key:
+                    type: string

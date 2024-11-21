@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require("cjson.safe").new()
+local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
 
 local json_decode = cjson.decode
 local gsub = string.gsub
@@ -56,6 +57,15 @@ function _M.get_req_body_json()
   end
 
   return body
+end
+
+function _M.extract_media_type(content_type)
+  if content_type then
+    local media_type, media_subtype = parse_mime_type(content_type)
+    if media_type and media_subtype then
+      return media_type .. "/" .. media_subtype
+    end
+  end
 end
 
 function _M.retrieve_operation(spec, path, method)

@@ -36,6 +36,14 @@ local fixtures = {
             }
           }
 
+          location = "/content_type_with_charset" {
+            return 200;
+          }
+          
+          location = "/content_type_without_charset" {
+            return 200;
+          }
+
         }
     ]]
   }
@@ -68,6 +76,7 @@ for _, strategy in helpers.each_strategy() do
         config = {
           api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/request-body-oas.yaml"):read("*a")),
           validate_request_body = true,
+          verbose_response = true,
         },
       })
 
@@ -223,6 +232,62 @@ for _, strategy in helpers.each_strategy() do
         assert.logfile().has.line("request body content-type 'text/plain' is not supported yet, ignore validation")
         assert.logfile().has.line("response body content-type 'text/plain' is not supported yet, ignore validation")
       end)
+    end)
+
+    it("spec location by content-type", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/content_type_with_charset",
+        headers = {
+          host = "test1.test",
+          ["Content-Type"] = "application/json; charset=utf-8",
+        },
+        body = {
+          key = "hello",
+        }
+      })
+      assert.response(res).has.status(200)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/content_type_with_charset",
+        headers = {
+          host = "test1.test",
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          key = "hello",
+        }
+      })
+      -- hit the default content-type `*/*` when spec without charset
+      local body = cjson.decode(assert.res_status(400, res))
+      assert.equal("request body validation failed with error: 'property foo is required'", body.message)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/content_type_without_charset",
+        headers = {
+          host = "test1.test",
+          ["Content-Type"] = "application/json; charset=utf-8",
+        },
+        body = {
+          key = "hello",
+        }
+      })
+      assert.response(res).has.status(200)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/content_type_without_charset",
+        headers = {
+          host = "test1.test",
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          key = "hello",
+        }
+      })
+      assert.response(res).has.status(200)
     end)
   end)
 end

@@ -16,11 +16,11 @@ local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-
 local swagger_dereference = require "kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"
 local lrucache = require "resty.lrucache"
 local utils = require "kong.plugins.oas-validation.utils"
+local extract_media_type = utils.extract_media_type
 local validation_utils = require "kong.plugins.oas-validation.utils.validation"
 local sha256_hex = require "kong.tools.sha256".sha256_hex
 local normalize = require "kong.tools.uri".normalize
 local generator = require "kong.tools.json-schema.draft4".generate
-local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
 local meta = require "kong.meta"
 local constants = require "kong.plugins.oas-validation.constants"
 local cookie = require "resty.cookie"
@@ -476,18 +476,6 @@ function OASValidationPlugin:init_worker()
 end
 
 
-
-local function extract_media_type(content_type)
-  if content_type then
-    local media_type, media_subtype = parse_mime_type(content_type)
-    if media_type and media_subtype then
-      return media_type .. "/" .. media_subtype
-    end
-  end
-  return DEFAULT_CONTENT_TYPE
-end
-
-
 function OASValidationPlugin:response(conf)
   if not conf.validate_response_body then
     return
@@ -501,9 +489,10 @@ function OASValidationPlugin:response(conf)
 
   local resp_status_code = kong.service.response.get_status()
 
-  local content_type = extract_media_type(kong.service.response.get_header("Content-Type"))
-  if content_type ~= "application/json" then
-    local msg = "response body content-type '" .. content_type .. "' is not supported yet, ignore validation"
+  local content_type = kong.service.response.get_header("Content-Type")
+  local extracted_content_type = extract_media_type(content_type)
+  if extracted_content_type ~= "application/json" then
+    local msg = "response body content-type '" .. extracted_content_type .. "' is not supported yet, ignore validation"
     kong.log.info(msg)
     return
   end
@@ -694,16 +683,16 @@ function OASValidationPlugin:access(conf)
   end
 
   -- check content-type matches the spec
-  local content_type = extract_media_type(request_get_header("Content-Type"))
-  if content_type ~= "application/json" then
-    local msg = "request body content-type '" .. content_type .. "' is not supported yet, ignore validation"
+  local content_type = request_get_header("Content-Type") or DEFAULT_CONTENT_TYPE
+  local extracted_content_type = extract_media_type(content_type)
+  if extracted_content_type ~= "application/json" then
+    local msg = "request body content-type '" .. extracted_content_type .. "' is not supported yet, ignore validation"
     kong.log.info(msg)
     return
   end
 
   -- vars are lazy used
-  local content_type_check, content_type_check_err = content_type_allowed(content_type, request_method, method_spec)
-
+  local content_type_check, content_type_check_err = content_type_allowed(extracted_content_type, request_method, method_spec)
 
   for _, parameter in ipairs(parameters) do
     if need_validate_parameter(parameter, conf, parsed_spec) then

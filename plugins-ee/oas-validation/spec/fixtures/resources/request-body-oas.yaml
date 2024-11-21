@@ -7,7 +7,7 @@ paths:
   /notify:
     post:
       responses:
-        200:
+        '200':
           description: OK
 
   /notify-with-body:
@@ -37,12 +37,12 @@ paths:
   /multiple-content-types:
     post:
       requestBody:
+        required: true
         content:
           "*/*":
             schema:
               type: object
               format: byte
-      required: true
       responses:
         "200":
           content:
@@ -50,3 +50,36 @@ paths:
               schema:
                 type: object
           description: OK
+
+  /content_type_with_charset:
+    post:
+      requestBody:
+        content:
+          required: true
+          "*/*":
+              schema:
+                type: object
+                required: [ "foo" ]
+                properties:
+                  foo:
+                    type: string
+          "application/json; charset=utf-8":
+            schema:
+              type: object
+              required: [ "key" ]
+              properties:
+                key:
+                  type: string
+
+  /content_type_without_charset:
+    post:
+      requestBody:
+        content:
+          required: true
+          application/json:
+            schema:
+              type: object
+              required: [ "key" ]
+              properties:
+                key:
+                  type: string

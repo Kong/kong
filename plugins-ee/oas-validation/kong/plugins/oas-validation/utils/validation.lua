@@ -8,6 +8,8 @@
 local pl_tablex = require "pl.tablex"
 local split = require("pl.utils").split
 local constants = require "kong.plugins.oas-validation.constants"
+local utils = require "kong.plugins.oas-validation.utils"
+local extract_media_type = utils.extract_media_type
 
 local re_match = ngx.re.match
 
@@ -52,12 +54,15 @@ end
 -- @param content_type Content-Type of the request/response body.
 -- @return Schema of the request/response body if succeeed, nil otherwise.
 local function locate_content_schema_by_content_type(media_types, media_type)
+  -- Specific media types have preference over wildcard media types when interpreting the spec
   local schema
   if media_types then
-    schema = (media_types[media_type] and media_types[media_type].schema) or
-             (media_types[to_wildcard_subtype(media_type)] and media_types[to_wildcard_subtype(media_type)].schema) or
-             (media_types["*/*"] and media_types["*/*"].schema)
+    schema = (media_types[media_type] and media_types[media_type].schema)
+             or (media_types[to_wildcard_subtype(media_type)] and media_types[to_wildcard_subtype(media_type)].schema)
+             or (media_types[extract_media_type(media_type)] and media_types[extract_media_type(media_type)].schema)
+             or (media_types["*/*"] and media_types["*/*"].schema)
   end
+
   return schema
 end
 
