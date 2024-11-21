@@ -835,3 +835,64 @@ describe("Admin API: #" .. strategy, function()
 end)
 
 end
+
+for _, strategy in helpers.all_strategies() do
+  describe("#regression #" .. strategy, function()
+    local client
+    lazy_setup(function()
+      local bp, _ = helpers.get_db_utils(strategy)
+      bp.upstreams:insert {
+        name = "my-upstream",
+        slots = 100,
+      }
+      bp.upstreams:insert {
+        name = "my-upstream-2",
+        slots = 100,
+      }
+      bp.upstreams:insert {
+        name = "my-upstream-3",
+        slots = 100,
+      }
+
+      assert(helpers.start_kong{
+        database = strategy
+      })
+      client = assert(helpers.admin_client())
+    end)
+
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("page size 1", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/upstreams?size=1"
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal(1, #json.data)
+      assert.truthy(json.offset)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/upstreams",
+        query = {size = 1, offset = json.offset}
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal(1, #json.data)
+      assert.truthy(json.offset)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/upstreams?size=2"
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equal(2, #json.data)
+      assert.truthy(json.offset)
+    end)
+  end)
+end
