@@ -274,6 +274,7 @@ jobs:
       if: matrix.package == 'rpm' && matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum groupinstall -y 'Development Tools'
+        dnf install -y 'dnf-command(config-manager)'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         dnf config-manager --set-enabled crb || true # enable devel packages on rockylinux:9
         yum install -y libyaml-devel zlib-devel
