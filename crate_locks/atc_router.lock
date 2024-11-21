@@ -1,5 +1,5 @@
 {
-  "checksum": "71a528ead48a5f4f3d5eda359189caaecdd17e47fe58e6e0e5ab3a90d010e3d4",
+  "checksum": "a9a20974f77d4fa9001e79b35a202afc62efc5de414664912c347ea3475fe888",
   "crates": {
     "aho-corasick 1.1.3": {
       "name": "aho-corasick",
@@ -266,14 +266,14 @@
       ],
       "license_file": "LICENSE"
     },
-    "cpufeatures 0.2.14": {
+    "cpufeatures 0.2.15": {
       "name": "cpufeatures",
-      "version": "0.2.14",
+      "version": "0.2.15",
       "package_url": "https://github.com/RustCrypto/utils",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/cpufeatures/0.2.14/download",
-          "sha256": "608697df725056feaccfa42cffdaeeec3fccc4ffc38358ecd19b243e716a78e0"
+          "url": "https://static.crates.io/crates/cpufeatures/0.2.15/download",
+          "sha256": "0ca741a962e1b0bff6d724a1a0958b686406e853bb14061f218562e1896f95e6"
         }
       },
       "targets": [
@@ -300,32 +300,32 @@
           "selects": {
             "aarch64-linux-android": [
               {
-                "id": "libc 0.2.161",
+                "id": "libc 0.2.164",
                 "target": "libc"
               }
             ],
             "cfg(all(target_arch = \"aarch64\", target_os = \"linux\"))": [
               {
-                "id": "libc 0.2.161",
+                "id": "libc 0.2.164",
                 "target": "libc"
               }
             ],
             "cfg(all(target_arch = \"aarch64\", target_vendor = \"apple\"))": [
               {
-                "id": "libc 0.2.161",
+                "id": "libc 0.2.164",
                 "target": "libc"
               }
             ],
             "cfg(all(target_arch = \"loongarch64\", target_os = \"linux\"))": [
               {
-                "id": "libc 0.2.161",
+                "id": "libc 0.2.164",
                 "target": "libc"
               }
             ]
           }
         },
         "edition": "2018",
-        "version": "0.2.14"
+        "version": "0.2.15"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -614,14 +614,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "libc 0.2.161": {
+    "libc 0.2.164": {
       "name": "libc",
-      "version": "0.2.161",
+      "version": "0.2.164",
       "package_url": "https://github.com/rust-lang/libc",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/libc/0.2.161/download",
-          "sha256": "8e9489c2807c139ffd9c1794f4af0ebe86a828db53ecdc7fea2111d0fed085d1"
+          "url": "https://static.crates.io/crates/libc/0.2.164/download",
+          "sha256": "433bfe06b8c75da9b2e3fbea6e5329ff87748f0b144ef75306e674c3f6f7c13f"
         }
       },
       "targets": [
@@ -655,17 +655,24 @@
         "compile_data_glob": [
           "**"
         ],
+        "crate_features": {
+          "common": [
+            "default",
+            "std"
+          ],
+          "selects": {}
+        },
         "deps": {
           "common": [
             {
-              "id": "libc 0.2.161",
+              "id": "libc 0.2.164",
               "target": "build_script_build"
             }
           ],
           "selects": {}
         },
         "edition": "2015",
-        "version": "0.2.161"
+        "version": "0.2.164"
       },
       "build_script_attrs": {
         "data_glob": [
@@ -818,7 +825,7 @@
               "target": "memchr"
             },
             {
-              "id": "thiserror 1.0.68",
+              "id": "thiserror 1.0.69",
               "target": "thiserror"
             },
             {
@@ -943,7 +950,7 @@
               "target": "pest_meta"
             },
             {
-              "id": "proc-macro2 1.0.89",
+              "id": "proc-macro2 1.0.91",
               "target": "proc_macro2"
             },
             {
@@ -951,7 +958,7 @@
               "target": "quote"
             },
             {
-              "id": "syn 2.0.87",
+              "id": "syn 2.0.89",
               "target": "syn"
             }
           ],
@@ -1025,14 +1032,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "proc-macro2 1.0.89": {
+    "proc-macro2 1.0.91": {
       "name": "proc-macro2",
-      "version": "1.0.89",
+      "version": "1.0.91",
       "package_url": "https://github.com/dtolnay/proc-macro2",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/proc-macro2/1.0.89/download",
-          "sha256": "f139b0662de085916d1fb67d2b4169d1addddda1919e696f3252b740b629986e"
+          "url": "https://static.crates.io/crates/proc-macro2/1.0.91/download",
+          "sha256": "307e3004becf10f5a6e0d59d20f3cd28231b0e0827a96cd3e0ce6d14bc1e4bb3"
         }
       },
       "targets": [
@@ -1076,18 +1083,18 @@
         "deps": {
           "common": [
             {
-              "id": "proc-macro2 1.0.89",
+              "id": "proc-macro2 1.0.91",
               "target": "build_script_build"
             },
             {
-              "id": "unicode-ident 1.0.13",
+              "id": "unicode-ident 1.0.14",
               "target": "unicode_ident"
             }
           ],
           "selects": {}
         },
         "edition": "2021",
-        "version": "1.0.89"
+        "version": "1.0.91"
       },
       "build_script_attrs": {
         "data_glob": [
@@ -1140,7 +1147,7 @@
         "deps": {
           "common": [
             {
-              "id": "proc-macro2 1.0.89",
+              "id": "proc-macro2 1.0.91",
               "target": "proc_macro2"
             }
           ],
@@ -1218,7 +1225,7 @@
               "target": "memchr"
             },
             {
-              "id": "regex-automata 0.4.8",
+              "id": "regex-automata 0.4.9",
               "target": "regex_automata"
             },
             {
@@ -1238,14 +1245,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "regex-automata 0.4.8": {
+    "regex-automata 0.4.9": {
       "name": "regex-automata",
-      "version": "0.4.8",
+      "version": "0.4.9",
       "package_url": "https://github.com/rust-lang/regex/tree/master/regex-automata",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/regex-automata/0.4.8/download",
-          "sha256": "368758f23274712b504848e9d5a6f010445cc8b87a7cdb4d7cbee666c1288da3"
+          "url": "https://static.crates.io/crates/regex-automata/0.4.9/download",
+          "sha256": "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
         }
       },
       "targets": [
@@ -1312,7 +1319,7 @@
           "selects": {}
         },
         "edition": "2021",
-        "version": "0.4.8"
+        "version": "0.4.9"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1418,7 +1425,7 @@
           "selects": {
             "cfg(any(target_arch = \"aarch64\", target_arch = \"x86_64\", target_arch = \"x86\"))": [
               {
-                "id": "cpufeatures 0.2.14",
+                "id": "cpufeatures 0.2.15",
                 "target": "cpufeatures"
               }
             ]
@@ -1434,14 +1441,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "syn 2.0.87": {
+    "syn 2.0.89": {
       "name": "syn",
-      "version": "2.0.87",
+      "version": "2.0.89",
       "package_url": "https://github.com/dtolnay/syn",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/syn/2.0.87/download",
-          "sha256": "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
+          "url": "https://static.crates.io/crates/syn/2.0.89/download",
+          "sha256": "44d46482f1c1c87acd84dea20c1bf5ebff4c757009ed6bf19cfd36fb10e92c4e"
         }
       },
       "targets": [
@@ -1477,7 +1484,7 @@
         "deps": {
           "common": [
             {
-              "id": "proc-macro2 1.0.89",
+              "id": "proc-macro2 1.0.91",
               "target": "proc_macro2"
             },
             {
@@ -1485,14 +1492,14 @@
               "target": "quote"
             },
             {
-              "id": "unicode-ident 1.0.13",
+              "id": "unicode-ident 1.0.14",
               "target": "unicode_ident"
             }
           ],
           "selects": {}
         },
         "edition": "2021",
-        "version": "2.0.87"
+        "version": "2.0.89"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1501,14 +1508,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "thiserror 1.0.68": {
+    "thiserror 1.0.69": {
       "name": "thiserror",
-      "version": "1.0.68",
+      "version": "1.0.69",
       "package_url": "https://github.com/dtolnay/thiserror",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/thiserror/1.0.68/download",
-          "sha256": "02dd99dc800bbb97186339685293e1cc5d9df1f8fae2d0aecd9ff1c77efea892"
+          "url": "https://static.crates.io/crates/thiserror/1.0.69/download",
+          "sha256": "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
         }
       },
       "targets": [
@@ -1545,7 +1552,7 @@
         "deps": {
           "common": [
             {
-              "id": "thiserror 1.0.68",
+              "id": "thiserror 1.0.69",
               "target": "build_script_build"
             }
           ],
@@ -1555,13 +1562,13 @@
         "proc_macro_deps": {
           "common": [
             {
-              "id": "thiserror-impl 1.0.68",
+              "id": "thiserror-impl 1.0.69",
               "target": "thiserror_impl"
             }
           ],
           "selects": {}
         },
-        "version": "1.0.68"
+        "version": "1.0.69"
       },
       "build_script_attrs": {
         "data_glob": [
@@ -1575,14 +1582,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "thiserror-impl 1.0.68": {
+    "thiserror-impl 1.0.69": {
       "name": "thiserror-impl",
-      "version": "1.0.68",
+      "version": "1.0.69",
       "package_url": "https://github.com/dtolnay/thiserror",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/thiserror-impl/1.0.68/download",
-          "sha256": "a7c61ec9a6f64d2793d8a45faba21efbe3ced62a886d44c36a009b2b519b4c7e"
+          "url": "https://static.crates.io/crates/thiserror-impl/1.0.69/download",
+          "sha256": "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
         }
       },
       "targets": [
@@ -1607,7 +1614,7 @@
         "deps": {
           "common": [
             {
-              "id": "proc-macro2 1.0.89",
+              "id": "proc-macro2 1.0.91",
               "target": "proc_macro2"
             },
             {
@@ -1615,14 +1622,14 @@
               "target": "quote"
             },
             {
-              "id": "syn 2.0.87",
+              "id": "syn 2.0.89",
               "target": "syn"
             }
           ],
           "selects": {}
         },
         "edition": "2021",
-        "version": "1.0.68"
+        "version": "1.0.69"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1741,14 +1748,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "unicode-ident 1.0.13": {
+    "unicode-ident 1.0.14": {
       "name": "unicode-ident",
-      "version": "1.0.13",
+      "version": "1.0.14",
       "package_url": "https://github.com/dtolnay/unicode-ident",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/unicode-ident/1.0.13/download",
-          "sha256": "e91b56cd4cadaeb79bbf1a5645f6b4f8dc5bde8834ad5894a8db35fda9efa1fe"
+          "url": "https://static.crates.io/crates/unicode-ident/1.0.14/download",
+          "sha256": "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
         }
       },
       "targets": [
@@ -1771,14 +1778,10 @@
           "**"
         ],
         "edition": "2018",
-        "version": "1.0.13"
+        "version": "1.0.14"
       },
-      "license": "(MIT OR Apache-2.0) AND Unicode-DFS-2016",
-      "license_ids": [
-        "Apache-2.0",
-        "MIT",
-        "Unicode-DFS-2016"
-      ],
+      "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "license_ids": [],
       "license_file": "LICENSE-APACHE"
     },
     "uuid 1.11.0": {
