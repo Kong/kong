@@ -14,6 +14,8 @@ local http = require("resty.http")
 
 local gzip = require("kong.tools.gzip")
 local build_request = require("kong.llm.embeddings.utils").build_request
+local sha256_hex    = require "kong.tools.sha256".sha256_hex
+
 
 local OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings"
 
@@ -59,6 +61,17 @@ function Driver:generate(prompt)
   local embeddings_url = self.config.model.options and
                         self.config.model.options.upstream_url or
                         OPENAI_EMBEDDINGS_URL
+
+  local cache_key = "openai-url:" .. embeddings_url .. "model:" .. self.config.model.name .. "prompt:" .. prompt
+  local cache_hex_key = sha256_hex(cache_key)
+  if cache_hex_key == nil then
+    return nil, nil, "failed to generate cache key"
+  end
+
+  if ngx.ctx.ai_embeddings_cache and ngx.ctx.ai_embeddings_cache[cache_hex_key] then
+      return ngx.ctx.ai_embeddings_cache[cache_hex_key].embeddings, ngx.ctx.ai_embeddings_cache[cache_hex_key].tokens, nil
+  end
+
 
   -- prepare prompt for embedding generation
   local body = {
@@ -121,6 +134,18 @@ function Driver:generate(prompt)
   end
 
   local embeddings_tokens = embeddings_response.usage and embeddings_response.usage.total_tokens or 0
+
+  if not ngx.ctx.ai_embeddings_cache then
+    ngx.ctx.ai_embeddings_cache = {}
+  end
+
+  -- save the embeddings in the context
+  ngx.ctx.ai_embeddings_cache[cache_hex_key] = {
+    tokens = embeddings_tokens,
+    embeddings = embeddings_response.data[1].embedding,
+    model = self.config.model.name,
+    prompt = prompt,
+  }
 
   return embeddings_response.data[1].embedding, embeddings_tokens, nil
 end

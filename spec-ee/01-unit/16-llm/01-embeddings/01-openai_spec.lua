@@ -12,7 +12,7 @@
 local openai_mock = require("spec.helpers.ai.openai_mock")
 
 local known_text_embeddings = require("spec.helpers.ai.embeddings_mock").known_text_embeddings
-
+local tablex = require "pl.tablex"
 --
 -- test setup
 --
@@ -44,6 +44,19 @@ describe("[openai]", function()
         assert.are.same(8, embeddings_tokens)
         assert.are.same(embedding, found_embedding)
       end
+      assert.not_nil(ngx.ctx.ai_embeddings_cache)
+      local before_len = tablex.size(ngx.ctx.ai_embeddings_cache)
+      
+      for prompt, embedding in pairs(known_text_embeddings) do
+        local found_embedding, embeddings_tokens, err = embeddings:generate(prompt, 128)
+        assert.is_nil(err)
+        assert.are.same(8, embeddings_tokens)
+        assert.are.same(embedding, found_embedding)
+      end
+      
+      assert.not_nil(ngx.ctx.ai_embeddings_cache)
+      local current_len = tablex.size(ngx.ctx.ai_embeddings_cache)
+      assert.are.same(before_len, current_len)
     end)
   end)
 end)

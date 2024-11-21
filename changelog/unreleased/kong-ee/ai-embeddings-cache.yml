@@ -1,0 +1,4 @@
+message: |
+  let the embedding driver cache the embeddings for a given model in the current request
+type: "feature"
+scope: "Core"
