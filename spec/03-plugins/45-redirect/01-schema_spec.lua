@@ -30,35 +30,7 @@ describe("Plugin: redirect (schema)", function()
         assert.is_truthy(ok)
     end)
 
-    it("incoming_path can be 'ignore'", function()
-        local ok, err = validate({
-            status_code = 301,
-            location = "https://example.com",
-            incoming_path = "ignore"
-        })
-        assert.is_nil(err)
-        assert.is_truthy(ok)
-    end)
 
-    it("incoming_path can be 'keep'", function()
-        local ok, err = validate({
-            status_code = 301,
-            location = "https://example.com",
-            incoming_path = "keep"
-        })
-        assert.is_nil(err)
-        assert.is_truthy(ok)
-    end)
-
-    it("incoming_path can be 'merge'", function()
-        local ok, err = validate({
-            status_code = 301,
-            location = "https://example.com",
-            incoming_path = "merge"
-        })
-        assert.is_nil(err)
-        assert.is_truthy(ok)
-    end)
 
     describe("errors", function()
         it("status_code should only accept integers", function()
@@ -105,14 +77,23 @@ describe("Plugin: redirect (schema)", function()
             assert.same("required field missing", err.config.location)
         end)
 
-        it("incoming_path must be a one_of value", function()
+        it("location must be a url", function()
+            local ok, err = validate({
+                status_code = 301,
+                location = "definitely_not_a_url"
+            })
+            assert.falsy(ok)
+            assert.same("missing host in url", err.config.location)
+        end)
+
+        it("incoming_path must be a boolean", function()
             local ok, err = validate({
                 status_code = 301,
                 location = "https://example.com",
-                incoming_path = "invalid"
+                keep_incoming_path = "invalid"
             })
             assert.falsy(ok)
-            assert.same("expected one of: ignore, keep, merge", err.config.incoming_path)
+            assert.same("expected a boolean", err.config.keep_incoming_path)
         end)
     end)
 end)

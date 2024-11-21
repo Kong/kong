@@ -20,21 +20,16 @@ return {
                         }
                     },
                     {
-                        -- This is intentionally flexible and does not require a http/https prefix in order to support
-                        -- redirecting to uris such as someapp://path
-                        location = {
+                        location = typedefs.url {
                             description = "The URL to redirect to",
-                            type = "string",
                             required = true
                         }
                     },
                     {
-                        incoming_path = {
-                            description =
-                            "What to do with the incoming path. 'ignore' will use the path from the 'location' field, 'keep' will keep the incoming path, 'merge' will merge the incoming path with the location path, choosing the location query parameters over the incoming one.",
-                            type = "string",
-                            default = "ignore",
-                            one_of = { "ignore", "keep", "merge" }
+                        keep_incoming_path = {
+                            description = "Use the incoming request's path and query string in the redirect URL",
+                            type = "boolean",
+                            default = false
                         }
                     }
                 }

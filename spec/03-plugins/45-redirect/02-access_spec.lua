@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
                 }
             }
 
-            -- config.incoming_path = "ignore"
+            -- config.keep_incoming_path = false
             local route3 = bp.routes:insert({
                 hosts = { "api3.redirect.test" }
             })
@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
                 }
             }
 
-            -- config.incoming_path = "keep"
+            -- config.keep_incoming_path = true
             local route4 = bp.routes:insert({
                 hosts = { "api4.redirect.test" }
             })
@@ -66,39 +66,7 @@ for _, strategy in helpers.each_strategy() do
                 },
                 config = {
                     location = "https://example.com/some_path?foo=bar",
-                    incoming_path = "keep"
-                }
-            }
-
-            -- config.incoming_path = "merge"
-            local route5 = bp.routes:insert({
-                hosts = { "api5.redirect.test" }
-            })
-
-            bp.plugins:insert {
-                name = "redirect",
-                route = {
-                    id = route5.id
-                },
-                config = {
-                    location = "https://example.com/some_path?foo=bar",
-                    incoming_path = "merge"
-                }
-            }
-
-            -- config.incoming_path = "merge" with overlapping keys
-            local route6 = bp.routes:insert({
-                hosts = { "api6.redirect.test" }
-            })
-
-            bp.plugins:insert {
-                name = "redirect",
-                route = {
-                    id = route6.id
-                },
-                config = {
-                    location = "https://example.com/some_path?foo=bar",
-                    incoming_path = "merge"
+                    keep_incoming_path = true
                 }
             }
 
@@ -174,30 +142,6 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local header = assert.response(res).has.header("location")
                 assert.equals("https://example.com/status/200?keep=this", header)
-            end)
-
-            it("merges path + query params, with no overlap", function()
-                local res = assert(proxy_client:send {
-                    method = "GET",
-                    path = "/status/200?keep=this",
-                    headers = {
-                        ["Host"] = "api5.redirect.test"
-                    }
-                })
-                local header = assert.response(res).has.header("location")
-                assert.equals("https://example.com/some_path/status/200?foo=bar&keep=this", header)
-            end)
-
-            it("merges path + query params, preferring the location query params", function()
-                local res = assert(proxy_client:send {
-                    method = "GET",
-                    path = "/status/200?keep=this&foo=bee",
-                    headers = {
-                        ["Host"] = "api5.redirect.test"
-                    }
-                })
-                local header = assert.response(res).has.header("location")
-                assert.equals("https://example.com/some_path/status/200?foo=bar&keep=this", header)
             end)
         end)
     end)
