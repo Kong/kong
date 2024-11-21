@@ -112,7 +112,7 @@ local function select_by_key(schema, key, follow)
 end
 
 
-local function page_for_prefix(self, prefix, size, offset, options, follow)
+local function page_for_prefix(self, prefix, size, offset, options, follow, schema)
   if not size then
     size = self.connector:get_page_size(options)
   end
@@ -126,8 +126,9 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
 
   local ret = {}
   local ret_idx = 0
-  local schema = self.schema
   local last_key
+
+  schema = schema or self.schema
 
   for _, kv in ipairs(res) do
     last_key = kv.key
@@ -233,7 +234,7 @@ local function page_for_tags(self, size, offset, options)
     end
 
     -- Each page operation retrieves the entities of only one DAO type.
-    local schema_name, offset_token
+    local schema_name, offset_token, dao
 
     if offset then
       schema_name, offset_token = offset:match("^([^|]+)|(.+)")
@@ -252,8 +253,6 @@ local function page_for_tags(self, size, offset, options)
       end
     end
 
-    local dao
-
     if offset_token then
       -- There are still some entities left from the last page operation that
       -- haven't been retrieved, so we need to use the previous dao
@@ -266,16 +265,8 @@ local function page_for_tags(self, size, offset, options)
 
     local rows, err
 
-    -- TODO: need a more elegant solution, page_for_prefix will use
-    --       self.schema to search entities
-    local orig_schema = self.schema -- use dao schema instead
-    self.schema = dao.schema
-
     rows, err, offset_token = page_for_prefix(self, prefix, size, offset_token,
-                                              options, true)
-
-    self.schema = orig_schema -- restore schema
-
+                                              options, true, dao.schema)
     if not rows then
       return nil, err
     end
