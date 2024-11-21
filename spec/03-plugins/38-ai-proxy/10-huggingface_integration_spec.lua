@@ -403,7 +403,7 @@ for _, strategy in helpers.all_strategies() do
 
           local body = assert.res_status(400, r)
           local json = cjson.decode(body)
-          assert.equals(json.error.message, "request format not recognised")
+          assert.equals(json.error.message, "request body doesn't contain valid prompts")
         end)
         it("bad completions request", function()
           local r = client:get("/huggingface/llm/v1/completions/good", {
@@ -416,7 +416,7 @@ for _, strategy in helpers.all_strategies() do
 
           local body = assert.res_status(400, r)
           local json = cjson.decode(body)
-          assert.equals(json.error.message, "request format not recognised")
+          assert.equals(json.error.message, "request body doesn't contain valid prompts")
         end)
       end)
       describe("huggingface bad response", function()
