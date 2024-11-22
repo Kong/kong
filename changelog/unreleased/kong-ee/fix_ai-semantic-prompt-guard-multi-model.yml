@@ -1,0 +1,4 @@
+message: |
+  "**ai-semantic-prompt-guard**: Fixed an issue where requests with multiple models caused failures."
+type: bugfix
+scope: Plugin

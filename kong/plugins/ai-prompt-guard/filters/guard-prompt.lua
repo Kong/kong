@@ -8,6 +8,7 @@
 local buffer = require("string.buffer")
 local ngx_re_find = ngx.re.find
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local cjson = require("cjson")
 
 local _M = {
   NAME = "guard-prompt",
@@ -58,11 +59,14 @@ local execute do
           return nil, bad_format_error
         end
         if v.role == "user" or conf.match_all_roles then
-          if type(v.content) ~= "string" then
+          if type(v.content) == "string" then
+            buf:put(v.content)
+          elseif type(v.content) == "table" then
+            local content = cjson.encode(v.content)
+            buf:put(content)
+          else
             return nil, bad_format_error
           end
-          buf:put(v.content)
-
           if just_pick_latest then
             break
           end

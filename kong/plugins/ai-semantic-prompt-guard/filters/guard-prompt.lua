@@ -10,7 +10,7 @@ local buffer = require("string.buffer")
 local guard = require("kong.plugins.ai-semantic-prompt-guard.guard")
 local vectordb = require("kong.llm.vectordb")
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
-
+local cjson = require("cjson")
 
 local _M = {
   NAME = "semantic-guard-prompt",
@@ -54,10 +54,14 @@ local execute do
           return nil, bad_format_error
         end
         if v.role == "user" or conf.rules.match_all_roles then
-          if type(v.content) ~= "string" then
+          if type(v.content) == "string" then
+            buf:put(v.content)
+          elseif type(v.content) == "table" then
+            local content = cjson.encode(v.content)
+            buf:put(content)
+          else
             return nil, bad_format_error
           end
-          buf:put(v.content)
 
           if not conf.rules.match_all_conversation_history then
             break

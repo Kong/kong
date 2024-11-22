@@ -81,18 +81,39 @@ local function format_chat(messages, countback, discard_system, discard_assistan
   end
 
   local buf = buffer.new()
+  local content
 
   for i = #messages, #messages - countback + 1, -1 do
     local message = messages[i]
     if message then
       if message.role == "system" and not discard_system then
-        buf:putf("%s: %s\n\n", message.role, message.content)
+        if type(message.content) == "table" then
+          content = cjson.encode(message.content)
+        else
+          content = message.content
+        end
+        buf:putf("%s: %s\n\n", message.role, content)
       elseif message.role == "assistant" and not discard_assistant then
-        buf:putf("%s: %s\n\n", message.role, message.content)
+        if type(message.content) == "table" then
+          content = cjson.encode(message.content)
+        else
+          content = message.content
+        end
+        buf:putf("%s: %s\n\n", message.role, content)
       elseif message.role == "user" then
-        buf:putf("%s\n\n", message.content)
+        if type(message.content) == "table" then
+          content = cjson.encode(message.content)
+        else
+          content = message.content
+        end
+        buf:putf("%s: %s\n\n", message.role, content)
       elseif message.role == "tool" and not discard_tool then
-        buf:putf("%s: %s\n\n", message.role, message.content)
+        if type(message.content) == "table" then
+          content = cjson.encode(message.content)
+        else
+          content = message.content
+        end
+        buf:putf("%s: %s\n\n", message.role, content)
       end
     end
   end

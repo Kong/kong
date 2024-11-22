@@ -78,15 +78,15 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
       -- test truncate to two messages
       output = search_cache._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 2, false, false)
-      assert.same(output, 'What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\n')
+      assert.same(output, 'user: What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\n')
 
       -- test discard system messages
       output = search_cache._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 20, true, false)
-      assert.same(output, 'What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\nWhat is Pi?\n\n')
+      assert.same(output, 'user: What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\nuser: What is Pi?\n\n')
 
       -- test discard assistant messages
       output = search_cache._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 20, false, true)
-      assert.same(output, 'What is 2π?\n\nWhat is Pi?\n\nsystem: You are a mathematician.\n\n')
+      assert.same(output, 'user: What is 2π?\n\nuser: What is Pi?\n\nsystem: You are a mathematician.\n\n')
     end)
 
   end)

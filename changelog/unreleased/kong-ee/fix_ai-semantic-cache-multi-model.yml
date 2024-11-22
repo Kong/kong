@@ -1,0 +1,4 @@
+message: |
+  "**ai-semantic-cache**: Fixed an issue where the plugin failed when handling requests with multiple models."
+type: bugfix
+scope: Plugin
