@@ -61,6 +61,7 @@ return {
     "key-auth-enc",
     "mocking",
     "oauth2-introspection",
+    "service-protection",
     "rate-limiting-advanced",
     "graphql-rate-limiting-advanced",
     "request-transformer-advanced",

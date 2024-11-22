@@ -1,0 +1,4 @@
+message: |
+  "**service-protection**: Implemented a new plugin to protect services with request rate limiting."
+type: "feature"
+scope: "Plugin"

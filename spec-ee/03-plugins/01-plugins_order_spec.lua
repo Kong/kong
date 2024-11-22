@@ -29,6 +29,7 @@ local all_plugins = {
   "openid-connect",
   "proxy-cache-advanced",
   "ai-semantic-cache",
+  "service-protection",
   "rate-limiting-advanced",
   "ai-rate-limiting-advanced",
   "request-validator",
@@ -158,6 +159,7 @@ describe("Plugins", function()
       'acl',
       'opa',
       -- authz
+      "service-protection",
       'rate-limiting-advanced',
       'rate-limiting',
       'ai-rate-limiting-advanced',

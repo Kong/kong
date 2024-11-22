@@ -164,6 +164,7 @@ build = {
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
+    ["kong.enterprise_edition.rl_plugin_helpers"] = "kong/enterprise_edition/rl_plugin_helpers.lua",
 
     ["kong.enterprise_edition.redis"] = "kong/enterprise_edition/redis/init.lua",
     ["kong.enterprise_edition.tools.redis.v2"] = "kong/enterprise_edition/tools/redis/v2/init.lua",
@@ -715,6 +716,8 @@ build = {
     ["kong.plugins.rate-limiting-advanced.migrations"] = "kong/plugins/rate-limiting-advanced/migrations/init.lua",
     ["kong.plugins.rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/001_370_to_380.lua",
     ["kong.plugins.rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/002_370_to_380.lua",
+    ["kong.plugins.service-protection.handler"] = "kong/plugins/service-protection/handler.lua",
+    ["kong.plugins.service-protection.schema"] = "kong/plugins/service-protection/schema.lua",
 
     ["kong.plugins.ai-rate-limiting-advanced.handler"] = "kong/plugins/ai-rate-limiting-advanced/handler.lua",
     ["kong.plugins.ai-rate-limiting-advanced.namespaces"] = "kong/plugins/ai-rate-limiting-advanced/namespaces.lua",

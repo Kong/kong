@@ -15,6 +15,7 @@ local FLAGS = {
   RATE_LIMITING_RESTRICT_REDIS_ONLY = "rate_limiting_restrict_redis_only",
   RESPONSE_RATELIMITING_RESTRICT_REDIS_ONLY = "response_ratelimiting_restrict_redis_only",
   RATE_LIMITING_ADVANCED_RESTRICT_REDIS_ONLY = "rate_limiting_advanced_restrict_redis_only",
+  SERVICE_PROTECTION_RESTRICT_REDIS_ONLY = "service_protection_restrict_redis_only",
   RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY = "response_transformation_enable_limit_body",
   VITALS_PROMETHEUS_ENABLE_CLUSTER_LEVEL = "vitals_prometheus_enable_cluster_level",
 }

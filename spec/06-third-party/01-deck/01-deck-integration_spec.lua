@@ -239,6 +239,13 @@ local function get_plugins_configs(service)
         limit = { 10 },
       }
     },
+    ["service-protection"] = {
+      name = "service-protection",
+      config = {
+        window_size = { 10 },
+        limit = { 10 },
+      }
+    },
     ["ldap-auth-advanced"] = {
       name = "ldap-auth-advanced",
       config = {

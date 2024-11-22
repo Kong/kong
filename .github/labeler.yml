@@ -419,6 +419,10 @@ plugins/rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/rate-limiting-advanced/**/*
 
+plugins/service-protection:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/service-protection/**/*
+
 plugins/ai-rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/ai-rate-limiting-advanced/**/*
