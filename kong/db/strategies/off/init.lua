@@ -120,17 +120,10 @@ local function select_by_key(schema, key, follow)
 end
 
 
-local LMDB_MIN_PAGE_SIZE = 2
-
-
 local function page_for_prefix(self, prefix, size, offset, options, follow)
   if not size then
     size = self.connector:get_page_size(options)
   end
-
-  -- LMDB 'page_size' can not be less than 2
-  -- see: https://github.com/Kong/lua-resty-lmdb?tab=readme-ov-file#page
-  size = math.max(size, LMDB_MIN_PAGE_SIZE)
 
   offset = offset or prefix
 
