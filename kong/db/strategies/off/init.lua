@@ -126,9 +126,8 @@ local function page_for_prefix(self, prefix, size, offset, options, follow, sche
 
   local ret = {}
   local ret_idx = 0
+  local schema = schema or self.schema
   local last_key
-
-  schema = schema or self.schema
 
   for _, kv in ipairs(res) do
     last_key = kv.key
