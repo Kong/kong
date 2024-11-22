@@ -1,0 +1,4 @@
+message: |
+  "**redirect**: Add a new plugin to redirect requests to another location
+type: "feature"
+scope: "Plugin"

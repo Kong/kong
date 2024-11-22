@@ -73,6 +73,7 @@ describe("Plugins", function()
       "response-ratelimiting",
       "request-transformer",
       "response-transformer",
+      "redirect",
       "ai-request-transformer",
       "ai-prompt-template",
       "ai-prompt-decorator",
