@@ -67,6 +67,123 @@ end
 
 
 describe("rate-limiting-advanced schema", function()
+  it("support Enoy Redis proxy", function()
+    local res, config, err
+    res, err = v({
+      window_size = { 60 },
+      limit = { 5 },
+      identifier = "consumer",
+      sync_rate = 1,
+      strategy = "redis",
+      redis = {
+        connection_is_proxied = true,
+        host = "proxy",
+        port = 1999,
+        username = "foo",
+        password = "bar",
+        redis_proxy_type = "envoy_v1.31",
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(res)
+    config = res.config
+    assert.is_truthy(config)
+    assert.are_equal("redis", config.strategy)
+    assert.are_equal(1, config.sync_rate)
+    assert.are_equal(true, config.redis.connection_is_proxied)
+    assert.are_equal("proxy", config.redis.host)
+    assert.are_equal(1999, config.redis.port)
+    assert.are_equal("envoy_v1.31", config.redis.redis_proxy_type)
+
+    res, err = v({
+      window_size = { 60 },
+      limit = { 5 },
+      identifier = "consumer",
+      sync_rate = 1,
+      strategy = "redis",
+      redis = {
+        connection_is_proxied = true,
+        host = "proxy",
+        port = 1999,
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(res)
+    config = res.config
+    assert.is_truthy(config)
+    assert.are_equal("redis", config.strategy)
+    assert.are_equal(1, config.sync_rate)
+    assert.are_equal(true, config.redis.connection_is_proxied)
+    assert.are_equal("proxy", config.redis.host)
+    assert.are_equal(1999, config.redis.port)
+    assert.are_equal(ngx_null, config.redis.redis_proxy_type)
+
+    res, err = v({
+      window_size = { 60 },
+      limit = { 5 },
+      identifier = "consumer",
+      sync_rate = 1,
+      strategy = "redis",
+      redis = {
+        connection_is_proxied = nil,
+        host = "redis.test",
+        port = 6379,
+        username = "foo",
+        password = "bar",
+        redis_proxy_type = nil,
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(res)
+    config = res.config
+    assert.is_truthy(config)
+    assert.are_equal("redis", config.strategy)
+    assert.are_equal(1, config.sync_rate)
+    assert.are_equal(false, config.redis.connection_is_proxied)
+    assert.are_equal("redis.test", config.redis.host)
+    assert.are_equal(6379, config.redis.port)
+    assert.are_equal(ngx_null, config.redis.redis_proxy_type)
+
+    res, err = v({
+      window_size = { 60 },
+      limit = { 5 },
+      identifier = "consumer",
+      sync_rate = 1,
+      strategy = "redis",
+      redis = {
+        connection_is_proxied = nil,
+        host = "proxy",
+        port = 1999,
+        username = "foo",
+        password = "bar",
+        redis_proxy_type = "envoy_v1.31",
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(res)
+    assert.are_equal("'redis_proxy_type' makes sense only when 'connection_is_proxied' is 'true'.", err["@entity"][1])
+
+    res, err = v({
+      window_size = { 60 },
+      limit = { 5 },
+      identifier = "consumer",
+      sync_rate = 1,
+      strategy = "local",
+      redis = {
+        connection_is_proxied = true,
+        host = "proxy",
+        port = 1999,
+        redis_proxy_type = "envoy_v1.31",
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(res)
+    assert.are_equal("'redis_proxy_type' makes sense only when 'strategy' is 'redis'.", err["@entity"][1])
+  end)
+
   it("timeout does not overwrite connect/read/send timeout to null", function()
     local config, err = v({
       window_size     = { 60 },

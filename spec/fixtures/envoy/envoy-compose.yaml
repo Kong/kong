@@ -1,0 +1,24 @@
+name: envoy-redis
+services:
+  redis-auth:
+    image: redis:7.0.5
+    ports:
+    - "7379:6379"
+    volumes:
+    - redis-auth-data:/data
+    command: redis-server --requirepass kong --port 6379
+  proxy:
+    image: envoyproxy/envoy:v1.31-latest
+    ports:
+    - "1999:1999"
+    volumes:
+    - ./envoy-redis.yaml:/etc/envoy/envoy.yaml
+    depends_on:
+    - redis-auth
+
+volumes:
+  redis-auth-data:
+
+networks:
+  default:
+    name: envoy-redis

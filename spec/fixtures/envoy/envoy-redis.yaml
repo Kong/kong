@@ -1,0 +1,50 @@
+static_resources:
+  listeners:
+  - name: redis_listener
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 1999
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.redis_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.redis_proxy.v3.RedisProxy
+          stat_prefix: egress_redis
+          prefix_routes:
+            catch_all_route:
+              cluster: redis_cluster
+          downstream_auth_username:
+            inline_string: "default"
+          downstream_auth_passwords:
+          - inline_string: "kong"
+          settings:
+            op_timeout: 5s
+            enable_redirection: true
+            dns_cache_config:
+              name: dns_cache_for_redis
+              dns_lookup_family: V4_ONLY
+              max_hosts: 100
+  clusters:
+  - name: redis_cluster
+    type: strict_dns
+    lb_policy: MAGLEV
+    connect_timeout: 1s
+    load_assignment:
+      cluster_name: redis_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: redis-auth
+                port_value: 6379
+    typed_extension_protocol_options:
+      envoy.filters.network.redis_proxy:
+        "@type": type.googleapis.com/google.protobuf.Struct
+        value:
+          auth_username:
+            inline_string: "default"
+          auth_password:
+            inline_string: "kong"
+

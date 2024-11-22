@@ -464,7 +464,8 @@ return {
   [3009000000] = {
     -- Enterprise plugins
     rate_limiting_advanced = {
-      "lock_dictionary_name"
+      "lock_dictionary_name",
+      "redis.redis_proxy_type",
     },
     ai_semantic_cache = {
       "ignore_tool_prompts"

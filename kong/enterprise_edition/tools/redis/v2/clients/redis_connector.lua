@@ -6,8 +6,11 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local redis_connector = require "resty.redis.connector"
+local redis_config_utils = require "kong.enterprise_edition.tools.redis.v2.config_utils"
+
 local string_format   = string.format
 local table_concat    = table.concat
+local redis_proxy_custom_disabled_commands = redis_config_utils.redis_proxy_custom_disabled_commands
 
 
 -- Create a connection with Redis; expects a table with
@@ -46,6 +49,7 @@ local function connect(conf, connect_opts)
     connection_options = connect_opts,
     -- https://github.com/ledgetech/lua-resty-redis-connector?tab=readme-ov-file#proxy-mode
     connection_is_proxied = conf.connection_is_proxied,
+    disabled_commands     = redis_proxy_custom_disabled_commands[conf.redis_proxy_type],
   })
 
   -- When trying to connect on multiple hosts, the resty-redis-connector will record the errors

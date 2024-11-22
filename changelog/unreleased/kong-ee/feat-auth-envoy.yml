@@ -1,0 +1,4 @@
+message: >-
+  **Rate-Limiting-Advanced**: Added support for authentication from Kong Gateway to Envoy Proxy.
+type: "feature"
+scope: "Plugin"

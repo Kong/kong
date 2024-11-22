@@ -6,10 +6,36 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local redis  = require "kong.enterprise_edition.tools.redis.v2"
+local redis_config_utils = require "kong.enterprise_edition.tools.redis.v2.config_utils"
 local typedefs = require "kong.db.schema.typedefs"
+local tablex = require "pl.tablex"
+
 
 local ngx = ngx
+local ngx_null = ngx.null
 local concat = table.concat
+local tbx_deepcopy = tablex.deepcopy
+local tbl_insert = table.insert
+
+local redis_schema = redis.config_schema
+local redis_proxy_types = redis_config_utils.redis_proxy_types
+
+local rla_redis_schema = tbx_deepcopy(redis_schema)
+tbl_insert(rla_redis_schema.fields,
+  { redis_proxy_type = {
+      description = "If the `connection_is_proxied` is enabled, this field indicates the proxy type and version you are using. For example, you can enable this optioin when you want authentication between Kong and Envoy proxy.",
+      type = "string",
+      one_of = redis_proxy_types,
+      required = false,
+      default = nil,
+    }
+  }
+)
+
+
+local function is_present(value)
+  return value ~= nil and value ~= ngx_null
+end
 
 local function check_shdict(name)
   if not ngx.shared[name] then
@@ -77,7 +103,7 @@ return {
           }},
           { header_name = typedefs.header_name, },
           { path = typedefs.path },
-          { redis = redis.config_schema},
+          { redis = rla_redis_schema },
           { enforce_consumer_groups = { description = "Determines if consumer groups are allowed to override the rate limiting settings for the given Route or Service. Flipping `enforce_consumer_groups` from `true` to `false` disables the group override, but does not clear the list of consumer groups. You can then flip `enforce_consumer_groups` to `true` to re-enforce the groups.", type = "boolean",
             default = false,
           }},
@@ -137,20 +163,30 @@ return {
         end
 
         if config.strategy == "redis" then
-          if config.redis.host == ngx.null and
-             config.redis.sentinel_nodes == ngx.null and
-             config.redis.cluster_nodes == ngx.null then
+          if config.redis.host == ngx_null and
+             config.redis.sentinel_nodes == ngx_null and
+             config.redis.cluster_nodes == ngx_null then
             return nil, "No redis config provided"
           end
         end
 
+        if is_present(config.redis.redis_proxy_type) then
+          if config.strategy ~= "redis" then
+            return nil, "'redis_proxy_type' makes sense only when 'strategy' is 'redis'."
+          end
+
+          if config.redis.connection_is_proxied ~= true then
+            return nil, "'redis_proxy_type' makes sense only when 'connection_is_proxied' is 'true'."
+          end
+        end
+
         if config.strategy == "local" then
-          if config.sync_rate ~= ngx.null and config.sync_rate > -1 then
+          if config.sync_rate ~= ngx_null and config.sync_rate > -1 then
             return nil, "sync_rate cannot be configured when using a local strategy"
           end
           config.sync_rate = -1
         else
-          if config.sync_rate == ngx.null then
+          if config.sync_rate == ngx_null then
             return nil, "sync_rate is required if not using a local strategy"
           end
         end
@@ -170,13 +206,13 @@ return {
         end
 
         if config.identifier == "header" then
-          if config.header_name == ngx.null then
+          if config.header_name == ngx_null then
             return nil, "No header name provided"
           end
         end
 
         if config.identifier == "path" then
-          if config.path == ngx.null then
+          if config.path == ngx_null then
             return nil, "No path provided"
           end
         end
@@ -191,7 +227,7 @@ return {
         end
 
         if config.enforce_consumer_groups then
-          if config.consumer_groups == ngx.null then
+          if config.consumer_groups == ngx_null then
             return nil, "No consumer groups provided"
           end
         end

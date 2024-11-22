@@ -143,7 +143,8 @@ export const expectRedisFieldsInPlugins = (resp) => {
     'sentinel_role',
     'sentinel_master',
     'username',
-    'connection_is_proxied'
+    'connection_is_proxied',
+    'redis_proxy_type'
   ]
 
   expect(redisConfigurations, 'Should have redis object in plugin response').to.be.a(
