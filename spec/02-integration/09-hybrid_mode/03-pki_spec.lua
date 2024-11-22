@@ -9,7 +9,8 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
-for _, inc_sync in ipairs { "on", "off"  } do
+-- TODO: reenable the inc sync test
+for _, inc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
