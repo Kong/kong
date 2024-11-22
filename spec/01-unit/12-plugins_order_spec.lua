@@ -109,6 +109,7 @@ describe("Plugins", function()
       "response-transformer-advanced",
       "response-transformer",
       "route-transformer-advanced",
+      "redirect",
       "ai-request-transformer",
       "ai-semantic-prompt-guard",
       "ai-azure-content-safety",

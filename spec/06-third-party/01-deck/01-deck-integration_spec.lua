@@ -220,6 +220,12 @@ local function get_plugins_configs(service)
         secret_v1 = "test",
       },
     },
+    ["redirect"] = {
+      name = "redirect",
+      config = {
+        location = "https://example.com",
+      }
+    },
     ["proxy-cache-advanced"] = {
       name = "proxy-cache-advanced",
       config = {
