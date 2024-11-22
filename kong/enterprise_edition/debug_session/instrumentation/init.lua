@@ -22,6 +22,7 @@ local time_ns = require("kong.tools.time").time_ns
 
 local tablepool_release = tablepool.release
 local get_method = ngx.req.get_method
+local ngx_get_phase = ngx.get_phase
 local get_ctx_key = utils.get_ctx_key
 local log = utils.log
 local cjson_encode = cjson.encode
@@ -105,6 +106,22 @@ local SPAN_NAMES = {
   CLIENT_HEADERS = "kong.read_client_http_headers",
 }
 
+local VALID_TRACING_PHASES = {
+  ssl_cert = true,
+  rewrite = true,
+  access = true,
+  header_filter = true,
+  body_filter = true,
+  log = true,
+  content = true,
+}
+
+
+local function is_valid_phase()
+  local phase = ngx_get_phase()
+  return VALID_TRACING_PHASES[phase]
+end
+
 
 local function is_enabled(instrumentation)
   return band(enabled_instrums, instrumentation) ~= 0
@@ -138,6 +155,11 @@ end
 
 
 local function check_initialize_trace(start_time)
+  if not is_valid_phase() then
+    -- nothing to initialize
+    return
+  end
+
   start_time = start_time or time_ns()
   if not tracer.get_root_span() then
     create_root_span(start_time)
@@ -146,6 +168,11 @@ end
 
 
 local function start_subspan(...)
+  if not is_valid_phase() then
+    -- not in a request: ignore
+    return
+  end
+
   -- if a subspan is started while the session is starting, we skip it
   -- this avoids generating partial traces if a session is started mid-request
   if is_session_activating() then
@@ -950,6 +977,7 @@ _M.INSTRUMENTATIONS = INSTRUMENTATIONS
 
 _M.is_session_activating = is_session_activating
 _M.should_skip_instrumentation = should_skip_instrumentation
+_M.is_valid_phase = is_valid_phase
 
 -- add an instrumentation to a bitmask of enabled instrumentations
 -- @param number all_enabled the bitmask of all enabled instrumentations

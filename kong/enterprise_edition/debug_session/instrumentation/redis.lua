@@ -39,6 +39,10 @@ function _M.instrument()
         return old_func(self, ...)
       end
 
+      if not instrum.is_valid_phase() then
+        return old_func(self, ...)
+      end
+
       if instrum.should_skip_instrumentation(instrum.INSTRUMENTATIONS.io) then
         return old_func(self, ...)
       end

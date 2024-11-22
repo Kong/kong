@@ -37,6 +37,10 @@ local function patched_connect(self, ...)
     return old_tcp_connect(self, ...)
   end
 
+  if not instrum.is_valid_phase() then
+    return old_tcp_connect(self, ...)
+  end
+
   if instrum.should_skip_instrumentation(instrum.INSTRUMENTATIONS.io) then
     return old_tcp_connect(self, ...)
   end
@@ -58,6 +62,10 @@ end
 
 local function patched_sslhandshake(self, ...)
   if not initialized() then
+    return old_tcp_sslhandshake(self, ...)
+  end
+
+  if not instrum.is_valid_phase() then
     return old_tcp_sslhandshake(self, ...)
   end
 
@@ -84,6 +92,10 @@ local function patched_send(self, ...)
     return old_tcp_send(self, ...)
   end
 
+  if not instrum.is_valid_phase() then
+    return old_tcp_send(self, ...)
+  end
+
   if instrum.should_skip_instrumentation(instrum.INSTRUMENTATIONS.io) then
     return old_tcp_send(self, ...)
   end
@@ -104,6 +116,10 @@ end
 
 local function patch_receive(self, ...)
   if not initialized() then
+    return old_tcp_receive(self, ...)
+  end
+
+  if not instrum.is_valid_phase() then
     return old_tcp_receive(self, ...)
   end
 
