@@ -3,8 +3,7 @@ local join = require("pl.stringx").join
 
 local ENABLED_PLUGINS = { "dummy" , "reconfiguration-completion"}
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("deprecations are not reported on DP but on CP " .. " inc_sync=" .. inc_sync, function()
     local cp_prefix = "servroot1"
