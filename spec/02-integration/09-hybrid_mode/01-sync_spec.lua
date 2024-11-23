@@ -12,8 +12,7 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
---- XXX FIXME: enable incremental sync "on"
-for _, inc_sync in ipairs { "off" } do
+for _, inc_sync in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
 
 --- XXX FIXME: enable inc_sync = on
