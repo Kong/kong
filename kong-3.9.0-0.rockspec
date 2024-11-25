@@ -1014,6 +1014,7 @@ build = {
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
     ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
+    ["kong.llm.drivers.huggingface"] = "kong/llm/drivers/huggingface.lua",
 
 
     ["kong.llm.vectordb"] = "kong/llm/vectordb/init.lua",
