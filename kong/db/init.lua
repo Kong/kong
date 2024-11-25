@@ -89,6 +89,10 @@ function DB.new(kong_config, strategy)
 
   local connector, strategies, err = Strategies.new(kong_config, strategy,
                                                     schemas, errors)
+  -- check pagination.max_page_size
+  assert(connector.defaults.pagination.max_page_size ==
+         strategy == "off" and 2048 or 50000)
+
   if err then
     return nil, err
   end
@@ -114,6 +118,10 @@ function DB.new(kong_config, strategy)
         return nil, fmt("no strategy found for schema '%s'", schema.name)
       end
       daos[schema.name] = DAO.new(self, schema, strategy, errors)
+
+      -- check pagination.max_page_size
+      assert(daos[schema.name].pagination.max_page_size ==
+             strategy == "off" and 2048 or 50000)
     end
   end
 
