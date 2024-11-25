@@ -971,7 +971,7 @@ function _M.new(db, schema, strategy, errors)
     schema     = schema,
     strategy   = strategy,
     errors     = errors,
-    pagination = kong_table.shallow_copy(defaults.pagination),
+    pagination = kong_table.shallow_copy(strategy.connector.defaults.pagination),
     super      = super,
   }
 
