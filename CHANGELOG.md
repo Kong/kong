@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.8.1](#381)
 - [3.8.0](#380)
 - [3.7.0](#370)
 - [3.6.1](#361)
@@ -17,6 +18,59 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.8.1
+
+## Kong
+
+#### Dependencies
+##### Core
+
+- Bumped lua-kong-nginx-module from 0.11.0 to 0.11.1 to fix an issue where the upstream cert chain wasn't properly set.
+ [#12752](https://github.com/Kong/kong/issues/12752)
+ [KAG-4050](https://konghq.atlassian.net/browse/KAG-4050)
+##### Default
+
+- Bumped lua-resty-aws to 1.5.4, to fix a bug inside region prefix generating
+ [#12846](https://github.com/Kong/kong/issues/12846)
+ [KAG-3424](https://konghq.atlassian.net/browse/KAG-3424) [FTI-5732](https://konghq.atlassian.net/browse/FTI-5732)
+
+#### Features
+##### Plugin
+
+- **Prometheus**: Bumped KONG_LATENCY_BUCKETS bucket's maximal capacity to 6000
+ [#13797](https://github.com/Kong/kong/issues/13797)
+ [FTI-5990](https://konghq.atlassian.net/browse/FTI-5990)
+
+#### Fixes
+##### Core
+
+- **Vault**: Fixed an issue where updating a vault entity in a non-default workspace will not take effect.
+ [#13670](https://github.com/Kong/kong/issues/13670)
+ [FTI-6152](https://konghq.atlassian.net/browse/FTI-6152)
+##### Plugin
+
+- **ai-proxy**: Fixed an issue where AI Transformer plugins always returned a 404 error when using 'Google One' Gemini subscriptions.
+ [#13753](https://github.com/Kong/kong/issues/13753)
+
+
+- **ai-transformers**: Fixed a bug where the correct LLM error message was not propagated to the caller.
+ [#13753](https://github.com/Kong/kong/issues/13753)
+
+
+- Fixed an bug that AI semantic cache can't use request provided models
+ [#13633](https://github.com/Kong/kong/issues/13633)
+
+
+- **Rate-Limiting**: Fixed an issue that caused a 500 error when using the rate-limiting plugin. When the `hide_client_headers` option is set to true and a 429 error is triggered, 
+it should return a 429 error code instead of a 500 error code.
+ [#13759](https://github.com/Kong/kong/issues/13759)
+ [KAG-5492](https://konghq.atlassian.net/browse/KAG-5492)
+##### Admin API
+
+- Fixed an issue where sending `tags= `(empty parameter) resulted in 500 error. Now, Kong returns a 400 error, as empty explicit tags are not allowed.
+ [#13813](https://github.com/Kong/kong/issues/13813)
+ [KAG-5496](https://konghq.atlassian.net/browse/KAG-5496)
 
 ## 3.8.0
 
