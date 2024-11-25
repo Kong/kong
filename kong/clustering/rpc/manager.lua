@@ -245,7 +245,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   end
 
   if typ ~= "binary" then
-    return nil, "wrong frame type: " .. type
+    return nil, "wrong frame type: " .. typ
   end
 
   local payload = cjson_decode(data)
