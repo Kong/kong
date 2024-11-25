@@ -30,6 +30,7 @@ local cmds = {
   roar = true,
   hybrid = true,
   vault = true,
+  drain = true,
   -- [=[ EE
   runner = true,
   debug = true,
@@ -46,6 +47,7 @@ local skip_inject_cmds = {
   health = true,
   hybrid = true,
   debug = true,
+  drain = true,
 }
 
 for k in pairs(cmds) do
