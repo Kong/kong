@@ -31,6 +31,7 @@ local cmds = {
   roar = true,
   hybrid = true,
   vault = true,
+  drain = true,
 }
 
 -- unnecessary to inject nginx directives for these simple cmds
@@ -42,6 +43,7 @@ local skip_inject_cmds = {
   quit = true,
   health = true,
   hybrid = true,
+  drain = true,
 }
 
 for k in pairs(cmds) do
