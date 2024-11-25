@@ -6,7 +6,10 @@ local Connector = {
   defaults = {
     pagination = {
       page_size     = 1000,
-      max_page_size = 50000,
+      -- lmdb will not support huge page size
+      max_page_size = kong and kong.configuration and
+                      kong.configuration.database == "off" and
+                      2048 or 50000,
     },
   },
 }

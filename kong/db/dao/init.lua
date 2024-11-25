@@ -966,16 +966,12 @@ function _M.new(db, schema, strategy, errors)
   local fk_methods = generate_foreign_key_methods(schema)
   local super      = setmetatable(fk_methods, DAO)
 
-  local pagination = strategy.connector and
-                     strategy.connector.defaults.pagination or
-                     defaults.pagination
-
   local self = {
     db         = db,
     schema     = schema,
     strategy   = strategy,
     errors     = errors,
-    pagination = kong_table.shallow_copy(pagination),
+    pagination = kong_table.shallow_copy(defaults.pagination),
     super      = super,
   }
 
