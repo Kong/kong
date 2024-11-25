@@ -60,6 +60,42 @@ local id_lookup = {
   end
 }
 
+
+local function get_key(conf)
+  local key
+  if type(conf.compound_identifier) == "table" and #conf.compound_identifier > 0 then
+    local n = #conf.compound_identifier
+    key = ""
+    for i, item in ipairs(conf.compound_identifier) do
+      local part_key = id_lookup[item](conf)
+      if part_key then
+        key = key .. part_key
+        if i ~= n then
+          key = key .. ":"
+        end
+
+      else
+        -- fallback to conf.identifier
+        goto fallback
+      end
+    end
+
+    return key
+  end
+
+  ::fallback::
+  local key = id_lookup[conf.identifier](conf)
+
+  -- legacy logic, if authenticated consumer or credential is not found
+  -- use the IP
+  if not key then
+    key = id_lookup["ip"]()
+  end
+
+  return key
+end
+
+
 function NewRLHandler:init_worker()
   event_hooks.publish(PLUGIN_NAME, "rate-limit-exceeded", {
     fields = { "consumer", "ip", "service", "rate", "limit", "window" },
@@ -75,15 +111,9 @@ end
 
 
 function NewRLHandler:access(conf)
-  local key_id = id_lookup[conf.identifier](conf)
+  local key = get_key(conf)
 
-  -- legacy logic, if authenticated consumer or credential is not found
-  -- use the IP
-  if not key_id then
-    key_id = id_lookup["ip"]()
-  end
-
-  handler_helper.access_helper(conf, key_id, ratelimiting, schema, PLUGIN_NAME, false)
+  handler_helper.access_helper(conf, key, ratelimiting, schema, PLUGIN_NAME, false)
 end
 
 return NewRLHandler

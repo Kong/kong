@@ -37,6 +37,7 @@ local function is_present(value)
   return value ~= nil and value ~= ngx_null
 end
 
+
 local function check_shdict(name)
   if not ngx.shared[name] then
     return false, "missing shared dict '" .. name .. "'"
@@ -46,6 +47,8 @@ local function check_shdict(name)
 end
 
 
+local identifier_items = { "ip", "credential", "consumer", "service", "header", "path", "consumer-group" }
+
 return {
   name = "rate-limiting-advanced",
   fields = {
@@ -54,9 +57,15 @@ return {
         type = "record",
         fields = {
           { identifier = { description = "The type of identifier used to generate the rate limit key. Defines the scope used to increment the rate limiting counters. Can be `ip`, `credential`, `consumer`, `service`, `header`, `path` or `consumer-group`.", type = "string",
-            one_of = { "ip", "credential", "consumer", "service", "header", "path", "consumer-group" },
+            one_of = identifier_items,
             default = "consumer",
             required = true,
+          }},
+          { compound_identifier = { description = "Similar to `identifer`, but supports combining multiple items. The priority of `compound_identifier` is higher than `identifier`, which means if `compound_identifer` is set, it will be used, otherwise `identifier` will be used.", type = "array",
+            elements = {
+              type = "string",
+              one_of = identifier_items,
+            },
           }},
           { window_size = { description = "One or more window sizes to apply a limit to (defined in seconds). There must be a matching number of window limits and sizes specified.", type = "array",
             elements = {
@@ -208,6 +217,18 @@ return {
         if config.identifier == "header" then
           if config.header_name == ngx_null then
             return nil, "No header name provided"
+          end
+        end
+
+        -- Ensure that no items are duplicated
+        if type(config.compound_identifier) == "table" then
+          local seen = {}
+          for _, item in ipairs(config.compound_identifier) do
+            if seen[item] then
+              return nil, "Duplicated items found in 'compound_identifier': '" .. item .. "'"
+            end
+
+            seen[item] = true
           end
         end
 

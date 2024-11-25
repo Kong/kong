@@ -362,6 +362,46 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ "No path provided" }, err["@entity"])
   end)
 
+  it("accepts a config with a valid compound_identifier", function()
+    local ok, err = v({
+      strategy = "cluster",
+      window_size = { 60 },
+      limit = { 10 },
+      compound_identifier = { "service", "consumer" },
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("accepts a config with a valid compound_identifier and a valid identifier", function()
+    local ok, err = v({
+      strategy = "cluster",
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "ip",
+      compound_identifier = { "service", "consumer" },
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("errors with an invalid item in compound_identifier", function()
+    local ok, err = v({
+      strategy = "cluster",
+      window_size = { 60 },
+      limit = { 10 },
+      compound_identifier = { "consumer", "consumer" },
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "Duplicated items found in 'compound_identifier': 'consumer'" }, err["@entity"])
+  end)
+
   it("casts window_size and window_limit values to numbers", function()
     local schema = {
       window_size = { 10, 20 },

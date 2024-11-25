@@ -3000,6 +3000,112 @@ for _, strategy in strategies() do
       end)
     end
   end
+
+  describe(base .. " compound_identifier", function()
+    local bp, consumer, service1, service2, proxy_client
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
+                                    nil,
+                                    { "rate-limiting-advanced" })
+
+      consumer = assert(bp.consumers:insert {
+        custom_id = "alice"
+      })
+      assert(bp.keyauth_credentials:insert {
+        key = "apikeyalice",
+        consumer = { id = consumer.id },
+      })
+      service1 = bp.services:insert {
+        name = "service1-compound-identifier",
+      }
+      service2 = bp.services:insert {
+        name = "service2-compound-identifier",
+      }
+      local route1 = assert(bp.routes:insert {
+        name = "route1-compound-identifer",
+        hosts = { "route1-compound-identifier.test" },
+        service = { id = service1.id },
+      })
+      local route2 = assert(bp.routes:insert {
+        name = "route2-compound-identifer",
+        hosts = { "route2-compound-identifier.test" },
+        service = { id = service2.id },
+      })
+      assert(bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route1.id },
+      })
+      assert(bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route2.id },
+      })
+      local rla_config = {
+        strategy = "local",
+        namespace = "thesamenamespace",
+        window_size = { 60 },
+        limit = { 2 },
+        compound_identifier = { "service", "consumer" },
+      }
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route1.id },
+        config = rla_config
+      })
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route2.id },
+        config = rla_config
+      })
+
+      assert(helpers.start_kong{
+        plugins = "rate-limiting-advanced,key-auth,exit-transformer",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        database = strategy ~= "off" and strategy or nil,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+        nginx_worker_processes = 1,
+      })
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then proxy_client:close() end
+    end)
+
+    it("works", function()
+      for srv_id, host in pairs({ [service1.id] = "route1-compound-identifier.test",
+                                  [service2.id] = "route2-compound-identifier.test" }) do
+        for i = 1, 2 do   -- limit: 2
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/get?apikey=apikeyalice",
+            headers = {
+              ["Host"] = host,
+            }
+          })
+          assert.res_status(200, res)
+        end
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/get?apikey=apikeyalice",
+          headers = {
+            ["Host"] = host,
+          }
+        })
+        assert.res_status(429, res)
+
+        -- the key is correct
+        assert.logfile().has.line("cur_prefix .+|" .. srv_id .. ":" .. consumer.id, false, 10)
+      end
+    end)
+  end)
 end
 
 for _, strategy in ipairs({ "off" }) do

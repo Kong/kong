@@ -1,0 +1,4 @@
+message: >
+  "**Rate-Limiting-Advanced**: Added support for combining multiple identifier items with the new configuration field `compound_identifier`.
+type: feature
+scope: Plugin

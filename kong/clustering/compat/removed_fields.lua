@@ -466,6 +466,7 @@ return {
     rate_limiting_advanced = {
       "lock_dictionary_name",
       "redis.redis_proxy_type",
+      "compound_identifier",
     },
     ai_semantic_cache = {
       "ignore_tool_prompts"
