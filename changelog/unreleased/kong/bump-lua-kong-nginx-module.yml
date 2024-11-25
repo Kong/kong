@@ -1,4 +1,4 @@
 message: |
-  Bumped lua-kong-nginx-module from 0.11.0 to 0.11.1 to fix an issue where the upstream cert chain wasn't properly set.
+  Bumped lua-kong-nginx-module from 0.11.0 to 0.13.1 to fix the upstream cert chain issue and enable the new API for retrieving SSL pointer.
 type: dependency
 scope: Core

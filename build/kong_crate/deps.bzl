@@ -77,3 +77,13 @@ def kong_crate_repositories(cargo_home_isolated = True):
             "@jsonschema//:Cargo.toml",
         ],
     )
+
+    crates_repository(
+        name = "resty_ja4_crate_index",
+        cargo_lockfile = "//:crate_locks/resty_ja4.Cargo.lock",
+        isolated = cargo_home_isolated,
+        lockfile = "//:crate_locks/resty_ja4.lock",
+        manifests = [
+            "@resty_ja4//:Cargo.toml",
+        ],
+    )

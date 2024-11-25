@@ -95,6 +95,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
         .functions \
         .contain("validator_new_from_json")
 
+    expect("/usr/local/openresty/site/lualib/libresty_ja4.so", "ja4 should have ffi module compiled") \
+        .functions \
+        .contain("resty_ja4_ffi_ja4")
+
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
             .needed_libraries.contain("libcrypt.so.2")

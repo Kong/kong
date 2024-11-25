@@ -1,0 +1,3 @@
+message: Added support for collecting TLS client hello information and generating JA4 fingerprints.
+type: feature
+scope: Core

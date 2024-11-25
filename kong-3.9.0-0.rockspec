@@ -193,6 +193,7 @@ build = {
     ["kong.enterprise_edition.consumer_groups_helpers"] = "kong/enterprise_edition/consumer_groups_helpers.lua",
     ["kong.enterprise_edition.tls.plugins.certificate"] = "kong/enterprise_edition/tls/plugins/certificate.lua",
     ["kong.enterprise_edition.tls.plugins.sni_filter"] = "kong/enterprise_edition/tls/plugins/sni_filter.lua",
+    ["kong.enterprise_edition.tls.ja4"] = "kong/enterprise_edition/tls/ja4/init.lua",
     ["kong.enterprise_edition.profiling"] = "kong/enterprise_edition/profiling/init.lua",
     ["kong.enterprise_edition.profiling.cpu"] = "kong/enterprise_edition/profiling/cpu.lua",
     ["kong.enterprise_edition.profiling.memory"] = "kong/enterprise_edition/profiling/memory.lua",

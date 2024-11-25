@@ -1,0 +1,3 @@
+message: Added `kong.client.tls.get_ja4_fingerprint` to retrieve the JA4 fingerprint associated with the current request.
+type: feature
+scope: PDK

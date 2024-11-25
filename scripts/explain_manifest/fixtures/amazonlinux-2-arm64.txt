@@ -327,6 +327,13 @@
   - libdl.so.2
   - libc.so.6
 
+- Path      : /usr/local/openresty/site/lualib/libresty_ja4.so
+  Needed    :
+  - libgcc_s.so.1
+  - libpthread.so.0
+  - libdl.so.2
+  - libc.so.6
+
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory
 

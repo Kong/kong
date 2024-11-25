@@ -99,6 +99,7 @@ kong_rules_group(
         "@passwdqc",
         "@json_threat_protection",
         "@jsonschema//:lua_resty_jsonschema_rs",
+        "@resty_ja4",
         "@curl",
         # END:  EE only targets ]]
     ],
@@ -153,6 +154,7 @@ lualib_deps = [
     # EE only
     "@jsonschema//:lualib_srcs",
     "@json_threat_protection//:lualib_srcs",
+    "@resty_ja4//:lualib_srcs",
 ]
 
 # TODO: merge into luaclib_deps once amazonlinux2 support is dropped
@@ -180,6 +182,7 @@ luaclib_deps = [
     # EE only
     "@jsonschema//:lua_resty_jsonschema_rs",
     "@json_threat_protection",
+    "@resty_ja4",
 ]
 
 # TODO: merge into luaclib_deps once amazonlinux2 support is dropped

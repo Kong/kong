@@ -287,6 +287,11 @@
   - libgcc_s.so.1
   - libm.so.6
   - libc.so.6
+  
+- Path      : /usr/local/openresty/site/lualib/libresty_ja4.so
+  Needed    :
+  - libgcc_s.so.1
+  - libc.so.6
 
 - Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
   Needed    :

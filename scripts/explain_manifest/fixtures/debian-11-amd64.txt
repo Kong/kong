@@ -283,6 +283,15 @@
   - libc.so.6
   - ld-linux-x86-64.so.2
 
+- Path      : /usr/local/openresty/site/lualib/libresty_ja4.so
+  Needed    :
+  - libgcc_s.so.1
+  - libpthread.so.0
+  - libdl.so.2
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+
+
 - Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
   Needed    :
   - libstdc++.so.6
