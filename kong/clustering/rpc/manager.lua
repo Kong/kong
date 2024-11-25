@@ -203,6 +203,10 @@ function _M:_handle_meta_call(c)
     list = capabilities_list,
   }
 
+  -- we are on cp side
+  assert(self.concentrator)
+  assert(self.client_info)
+
   -- store DP's ip addr
   self.client_info[node_id] = {
     ip = ngx_var.remote_addr,
