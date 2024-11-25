@@ -1554,6 +1554,92 @@ for _, strategy in helpers.each_strategy() do
               end)
             end)
           end)
+
+          describe("max attempts with ttl", function()
+            local read_only_admin4
+
+            lazy_setup(function()
+              truncate_tables(db)
+
+              assert(helpers.start_kong({
+                database                      = strategy,
+                admin_gui_auth                = "basic-auth",
+                admin_gui_session_conf        = "{ \"secret\": \"super-secret\" }",
+                enforce_rbac                  = rbac_mode,
+                admin_gui_auth_config         = "{ \"hide_credentials\": true }",
+                rbac_auth_header              = 'Kong-Admin-Token',
+                smtp_mock                     = true,
+                admin_gui_auth_login_attempts = 3,
+                admin_gui_auth_login_attempts_ttl = 10,
+              }))
+
+              client = assert(helpers.admin_client())
+
+              local ws = setup_ws_defaults(dao, db, "default")
+              read_only_admin4 = admin(db, ws, 'gruce4', 'read-only', 'test4@konghq.com')
+
+              assert(db.basicauth_credentials:insert {
+                username = read_only_admin4.username,
+                password = "hunter2",
+                consumer = {
+                  id = read_only_admin4.consumer.id,
+                },
+              })
+            end)
+
+            lazy_teardown(function()
+              helpers.stop_kong()
+              if client then
+                client:close()
+              end
+            end)
+
+            describe("GET", function()
+              it("user is locked out after max login attempts", function()
+                request_invalid(read_only_admin4.username, 3)
+                assert.equals(3, retrieve_login_attempts(read_only_admin4.consumer).attempts["127.0.0.1"])
+
+                -- Now that user is LOCKED_OUT, check to make sure that even a valid
+                -- password will not work
+                local res = assert(client:send {
+                  method = "GET",
+                  path = "/auth",
+                  headers = {
+                    ["Authorization"] = "Basic "
+                        .. ngx.encode_base64(read_only_admin4.username .. ":hunter2"),
+                    ["Kong-Admin-User"] = read_only_admin4.username,
+                  }
+                })
+
+                local body = assert.res_status(401, res)
+                local json = cjson.decode(body)
+                assert.equals("Unauthorized", json.message)
+              end)
+
+              it("attempts are reset when ttl is expired login successfully", function()
+                assert.equals(3, retrieve_login_attempts(read_only_admin4.consumer).attempts["127.0.0.1"])
+                -- wait for login attempts record is deleted successfully
+                ngx.sleep(10)
+
+                local res
+                helpers.wait_until(function()
+                  res = assert(client:send {
+                    method = "GET",
+                    path = "/auth",
+                    headers = {
+                      ["Authorization"] = "Basic "
+                          .. ngx.encode_base64(read_only_admin4.username .. ":hunter2"),
+                      ["Kong-Admin-User"] = read_only_admin4.username,
+                    }
+                  })
+                  return res.status == 200
+                end, 1)
+
+                assert.res_status(200, res)
+                assert.is_nil(retrieve_login_attempts(read_only_admin4.consumer))
+              end)
+            end)
+          end)
         end)
       end)
 

@@ -217,6 +217,7 @@ local LOGIN_ATTEMPTS_CONFIGURATIONS = {
     default_ttl = 604800,
     configurations = {
       attempt = "admin_gui_auth_login_attempts",
+      ttl     = "admin_gui_auth_login_attempts_ttl",
     },
     final_handler = function(self, entity, attempt, success)
       if self:is_exceed_max_attempts(attempt) then
@@ -233,7 +234,7 @@ local LOGIN_ATTEMPTS_CONFIGURATIONS = {
     default_ttl = 86400,
     configurations = {
       attempt = "admin_gui_auth_change_password_attempts",
-      ttl = "admin_gui_auth_change_password_ttl",
+      ttl     = "admin_gui_auth_change_password_ttl",
     },
     final_handler = function() end,
   }

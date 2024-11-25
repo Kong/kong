@@ -2450,6 +2450,16 @@
 #admin_gui_auth_login_attempts = 0
                         # Number of times a user can attempt to login to Kong
                         # Manager. 0 means infinite attempts allowed.
+
+#admin_gui_auth_login_attempts_ttl = 604800
+                        # Length, in seconds, of the TTL for changing login attempts
+                        # records. Records in the database older than
+                        # their TTL are automatically purged.
+                        #
+                        # This argument can be set to an integer between 0 and 100000000.
+                        #
+                        # Example, 7 days: `7 * 24 * 60 * 60 = 604800.`
+
 #admin_gui_auth_change_password_attempts = 0
                         # Number of times a user can attempt to change password.
                         # 0 means infinite attempts allowed.

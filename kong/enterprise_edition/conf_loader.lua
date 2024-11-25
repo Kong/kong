@@ -92,6 +92,7 @@ local EE_CONF_INFERENCES = {
   admin_gui_auth_password_complexity = {typ = "string"},
   admin_gui_session_conf = {typ = "string"},
   admin_gui_auth_login_attempts = {typ = "number"},
+  admin_gui_auth_login_attempts_ttl = { typ = "number" },
   admin_gui_auth_change_password_attempts = {typ = "number"},
   admin_gui_auth_change_password_ttl = { typ = "number" },
   admin_emails_from = {typ = "string"},
