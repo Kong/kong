@@ -691,6 +691,44 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
     describe("ai plugins supported providers", function()
       it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "header",
+              header_value = "value",
+            },
+            model = {
+              name = "any-model-name",
+              provider = "huggingface",
+              options = {
+                max_tokens = 512,
+                temperature = 0.5,
+                huggingface = {
+                  use_cache = true,
+                  wait_for_model = true,
+                },
+              },
+            },
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_proxy)
+
+        -- 'ai fallback' field sets
+        expected.config.route_type = "preserve"
+        expected.config.model.provider = "openai"
+        expected.config.model.options.huggingface = nil
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+
         -- [[ 3.8.x ]] --
         local ai_proxy = admin.plugins:insert {
           name = "ai-proxy",
@@ -724,7 +762,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
         -- ]]
 
-        local expected = cycle_aware_deep_copy(ai_proxy)
+        expected = cycle_aware_deep_copy(ai_proxy)
 
         -- max body size
         expected.config.max_request_body_size = nil
@@ -763,7 +801,91 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = ai_proxy.id })
       end)
 
+      it("[ai-proxy-advanced] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_proxy_advanced = admin.plugins:insert {
+          name = "ai-proxy-advanced",
+          enabled = true,
+          config = {
+            response_streaming = "allow",
+            targets = { {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+              },
+              model = {
+                name = "any-model-name",
+                provider = "huggingface",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  huggingface = {
+                    use_cache = true,
+                    wait_for_model = true,
+                  },
+                },
+              },
+            } },
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_proxy_advanced)
+
+        -- 'ai fallback' field sets
+        expected.config.response_streaming = nil
+        expected.config.targets[1].route_type = "preserve"
+        expected.config.targets[1].model.provider = "openai"
+        expected.config.targets[1].model.options.huggingface = nil
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy_advanced.id })
+      end)
+
       it("[ai-request-transformer] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_request_transformer = admin.plugins:insert {
+          name = "ai-request-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+              },
+              model = {
+                name = "any-model-name",
+                provider = "huggingface",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  huggingface = {
+                    use_cache = true,
+                    wait_for_model = true,
+                  },
+                },
+              },
+            },
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_request_transformer)
+
+        -- 'ai fallback' field sets
+        expected.config.llm.model.provider = "openai"
+        expected.config.llm.model.options.huggingface = nil
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_request_transformer.id })
+
         -- [[ 3.8.x ]] --
         local ai_request_transformer = admin.plugins:insert {
           name = "ai-request-transformer",
@@ -798,7 +920,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
         -- ]]
 
-        local expected = cycle_aware_deep_copy(ai_request_transformer)
+        expected = cycle_aware_deep_copy(ai_request_transformer)
 
         -- shared
         expected.config.max_request_body_size = nil
@@ -833,6 +955,46 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
 
       it("[ai-response-transformer] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_response_transformer = admin.plugins:insert {
+          name = "ai-response-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+              },
+              model = {
+                name = "any-model-name",
+                provider = "huggingface",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  huggingface = {
+                    use_cache = true,
+                    wait_for_model = true,
+                  },
+                },
+              },
+            },
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_response_transformer)
+
+        -- 'ai fallback' field sets
+        expected.config.llm.model.provider = "openai"
+        expected.config.llm.model.options.huggingface = nil
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_response_transformer.id })
+
         -- [[ 3.8.x ]] --
         local ai_response_transformer = admin.plugins:insert {
           name = "ai-response-transformer",

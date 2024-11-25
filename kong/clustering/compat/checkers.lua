@@ -37,6 +37,9 @@ do
   end
 
   local _AI_PROVIDERS_ADDED = {
+    [3009000000] = {
+      "huggingface",
+    },
     [3008000000] = {
       "gemini",
       "bedrock",
@@ -85,6 +88,7 @@ local compatible_checkers = {
           local config = plugin.config
 
           if config.embeddings
+              and config.embeddings ~= null
               and config.embeddings.model
               and config.embeddings.model.name
               and (not _AI_PRE_FREEHAND_EMBEDDINGS[config.embeddings.model.name]) then
@@ -109,6 +113,75 @@ local compatible_checkers = {
                               'the entire plugin will be disabled on this dataplane node',
                               dp_version,
                               log_suffix)
+          end
+        end
+
+        if plugin_name == 'ai-proxy-advanced' then
+        local config = plugin.config
+
+        if config.response_streaming then
+          log_warn_message('configures ' .. plugin_name .. ' plugin with response_streaming, ',
+                          'overwritten with default behaviour.',
+                          dp_version, log_suffix)
+          config.response_streaming = nil
+
+          has_update = true
+        end
+      end
+
+        -- Fallback the unsupported huggingface provider
+        if plugin_name == 'ai-proxy' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3009000000) then
+            log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.model.provider = "openai"
+            config.route_type = "preserve"
+            if config.model.options and config.model.options ~= null then
+              config.model.options.huggingface = nil
+            end
+
+            has_update = true
+          end
+        end
+
+        if plugin_name == "ai-proxy-advanced" and plugin.config.targets and plugin.config.targets ~= null then
+          local config = plugin.config
+          for _, target in ipairs(config.targets) do
+            if _AI_PROVIDER_INCOMPATIBLE(target.model.provider, 3009000000) then
+              log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+              ' "openai preserve mode", because ' .. target.model.provider .. ' provider ' ..
+              ' is not supported in this release',
+              dp_version, log_suffix)
+
+              target.model.provider = "openai"
+              target.route_type = "preserve"
+              if target.model.options and target.model.options ~= null then
+                target.model.options.huggingface = nil
+              end
+
+              has_update = true
+            end
+          end
+        end
+
+        if plugin_name == 'ai-request-transformer' or plugin_name == 'ai-response-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3009000000) then
+            log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+            ' "openai", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+            if config.llm.model.options and config.llm.model.options ~= null then
+              config.llm.model.options.huggingface = nil
+            end
+
+            has_update = true
           end
         end
 
