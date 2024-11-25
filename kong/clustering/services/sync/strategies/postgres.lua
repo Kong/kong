@@ -28,7 +28,7 @@ end
 
 local PURGE_QUERY = [[
   DELETE FROM clustering_sync_version
-  WHERE "version" < (
+  WHERE "version" > 1 AND "version" <= (
       SELECT MAX("version") - %d
       FROM clustering_sync_version
   );

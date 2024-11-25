@@ -70,9 +70,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("dp status ready endpoint for no config", function()
-      -- XXX FIXME
-      local skip_inc_sync = inc_sync == "on" and pending or it
-
       lazy_setup(function()
         assert(start_kong_cp())
         assert(start_kong_dp())
@@ -104,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- now dp receive config from cp, so dp should be ready
 
-      skip_inc_sync("should return 200 on data plane after configuring", function()
+      it("should return 200 on data plane after configuring", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
