@@ -82,6 +82,7 @@ local ai_proxy_e2e_tests = {
   llama2 = "07-llama2_integration_spec",
   encoding = "08-encoding_integration_spec",
   streaming = "09-streaming_integration_spec",
+  huggingface = "10-huggingface_integration_spec",
 }
 
 
