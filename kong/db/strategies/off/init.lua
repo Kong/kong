@@ -120,7 +120,7 @@ local function select_by_key(schema, key, follow)
 end
 
 
-local function page_for_prefix(self, prefix, size, offset, options, follow)
+local function page_for_prefix(self, prefix, size, offset, options, follow, schema)
   if not size then
     size = self.connector:get_page_size(options)
   end
@@ -134,7 +134,7 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
 
   local ret = {}
   local ret_idx = 0
-  local schema = self.schema
+  local schema = schema or self.schema
   local last_key
 
   for _, kv in ipairs(res) do
@@ -165,6 +165,154 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
 end
 
 
+-- Define the filter logic
+local function matches_condition(item_tags, tags, tags_cond)
+  local matches = {}
+  for _, tag in ipairs(tags) do
+    matches[tag] = false
+  end
+
+  -- Mark matches
+  for _, item_tag in ipairs(item_tags) do
+    if matches[item_tag] ~= nil then
+      matches[item_tag] = true
+    end
+  end
+
+  -- Evaluate the condition
+  if tags_cond == "and" then
+    for _, matched in pairs(matches) do
+      if not matched then
+        return false
+      end
+    end
+    return true
+  end
+
+  if tags_cond == "or" then
+    for _, matched in pairs(matches) do
+      if matched then
+        return true
+      end
+    end
+    return false
+  end
+end
+
+
+-- AI generated function:
+--
+-- This function filters a list of items based on a set of tags and a condition
+-- ("and"/"or").
+--
+-- @items    : a Lua array, where each item has a `tags` array indicating its
+--             associated tags, e.g., { "admin", "private" }.
+-- @tags     : a Lua array containing tag names, e.g., { "admin", "public" }.
+-- @tags_cond : specifies the condition for tag matching: "and" requires all tags
+--             to match, while "or" requires at least one tag to match.
+local function filter_tag_items(items, tags, tags_cond)
+  assert(tags_cond == "and" or tags_cond == "or")
+
+  -- Filter the items
+  local filtered_items = {}
+  for _, item in ipairs(items) do
+    if item.tags and matches_condition(item.tags, tags, tags_cond) then
+      table.insert(filtered_items, item)
+    end
+  end
+
+  return filtered_items
+end
+
+
+-- Tags are a global concept across workspaces, there we don't need to handle
+-- ws_id here.
+local function page_for_tags(self, size, offset, options)
+  -- /:entitiy?tags=:tags
+  -- search all key-values: <entity_name>|*|*|<pk_string> => actual item key
+  if self.schema.name ~= "tags" then
+    local prefix = item_key_prefix(self.schema.name, "*") -- "<entity_name>|*|*|"
+    local items, err, offset = page_for_prefix(self, prefix, size, offset,
+                                              options, true)
+    if not items then
+      return nil, err
+    end
+
+    items = filter_tag_items(items, options.tags, options.tags_cond)
+
+    return items, err, offset
+  end
+
+  -- /tags
+  -- /tags/:tags
+  local matched_tags = nil
+
+  if options.tags then
+    matched_tags = {}
+    for _, tag in ipairs(options.tags) do
+      matched_tags[tag] = true
+    end
+  end
+
+  -- Each page operation retrieves the entities of only one DAO type.
+  local schema_name, offset_token, dao
+
+  if offset then
+    schema_name, offset_token = offset:match("^([^|]+)|(.+)")
+    if not schema_name then
+      return nil, self.errors:invalid_offset(offset, "bad offset string")
+    end
+
+    if offset_token == "nil" then
+      offset_token = nil
+
+    else
+      offset_token = decode_base64(offset_token)
+      if not offset_token then
+        return nil, self.errors:invalid_offset(offset_token, "bad base64 encoding")
+      end
+    end
+  end
+
+  if offset_token then
+    -- There are still some entities left from the last page operation that
+    -- haven't been retrieved, so we need to use the previous dao
+    dao = kong.db.daos[schema_name]
+  else
+    schema_name, dao = next(kong.db.daos, schema_name)
+  end
+
+  local prefix = item_key_prefix(schema_name, "*")
+
+  local rows, err
+
+  rows, err, offset_token = page_for_prefix(self, prefix, size, offset_token,
+                                            options, true, dao.schema)
+  if not rows then
+    return nil, err
+  end
+
+  local items = {}
+  for _, item in ipairs(rows) do
+    for _, tag in ipairs(item.tags or {}) do
+      -- TODO: Could item.id be used as entity_id precisely?
+      if not matched_tags or matched_tags[tag] then
+        local item = { tag = tag, entity_name = schema_name, entity_id = item.id }
+        table.insert(items, item)
+      end
+    end
+  end
+
+  if not offset_token and not next(kong.db.daos, schema_name) then  -- end
+    offset = nil
+  else
+    offset = schema_name .. "|" .. (offset_token or "nil")
+  end
+
+  return items, nil, offset
+end
+
+
 local function page(self, size, offset, options)
   local schema = self.schema
   local ws_id = workspace_id(schema, options)
@@ -177,6 +325,11 @@ local function page(self, size, offset, options)
     end
 
     offset = token
+  end
+
+  -- Used by /:entity?tags=:tag endpoint
+  if options and options.tags then
+    return page_for_tags(self, size, offset, options)
   end
 
   return page_for_prefix(self, prefix, size, offset, options, need_follow(ws_id))
@@ -254,6 +407,8 @@ do
   _mt.upsert_by_field = unsupported_by("create or update")
   _mt.delete_by_field = unsupported_by("remove")
   _mt.truncate = function() return true end
+
+  _mt.page_for_tags = page_for_tags
 end
 
 

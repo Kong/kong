@@ -13,7 +13,7 @@ local cjson = require "cjson"
 -- This test we test on the correctness of the admin API response so that
 -- we can ensure the right function (page()) is executed.
 describe("Admin API - tags", function()
-  for _, strategy in helpers.each_strategy() do
+  for _, strategy in helpers.all_strategies() do
     describe("/entities?tags= with DB: #" .. strategy, function()
       local client, bp
 
@@ -212,34 +212,42 @@ describe("Admin API - tags", function()
         helpers.stop_kong()
       end)
 
+      -- lmdb tags will output pagenated list of entities
+      local function pagenated_get_json_data(path)
+        local data = {}
+
+        while path and path ~= ngx.null do
+          local res = assert(client:send { method = "GET", path = path, })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          if strategy ~= "off" then -- off strategy (lmdb) needs pagenation
+            return json.data
+          end
+
+          for _, v in ipairs(json.data) do
+            table.insert(data, v)
+          end
+
+          path = json.next
+        end
+
+        return data
+      end
+
       it("/tags", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(4, #json.data)
+        local data = pagenated_get_json_data("/tags")
+        assert.equals(4, #data)
       end)
 
       it("/tags/:tags", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags/corp_%20a"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(2, #json.data)
+        local data = pagenated_get_json_data("/tags/corp_%20a")
+        assert.equals(2, #data)
       end)
 
       it("/tags/:tags with a not exist tag", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags/does-not-exist"
-        })
-        local body = assert.res_status(200, res)
-        local ok = string.find(body, '"data":[]', nil, true)
-        assert.truthy(ok)
+        local data = pagenated_get_json_data("/tags/does-not-exist")
+        assert.equals(0, #data)
       end)
 
       it("/tags/:tags with invalid :tags value", function()
@@ -253,39 +261,19 @@ describe("Admin API - tags", function()
       end)
 
       it("/tags ignores ?tags= query", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags?tags=not_a_tag"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(4, #json.data)
+        local data = pagenated_get_json_data("/tags?tags=not_a_tag")
+        assert.equals(4, #data)
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags?tags=invalid@tag"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(4, #json.data)
+        data = pagenated_get_json_data("/tags?tags=invalid@tag")
+        assert.equals(4, #data)
       end)
 
       it("/tags/:tags ignores ?tags= query", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags/corp_%20a?tags=not_a_tag"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(2, #json.data)
+        local data = pagenated_get_json_data("/tags/corp_%20a?tags=not_a_tag")
+        assert.equals(2, #data)
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/tags/corp_%20a?tags=invalid@tag"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equals(2, #json.data)
+        data = pagenated_get_json_data("/tags/corp_%20a?tags=invalid@tag")
+        assert.equals(2, #data)
       end)
     end)
   end
