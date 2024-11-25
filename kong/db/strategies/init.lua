@@ -33,7 +33,6 @@ function _M.new(kong_config, database, schemas, errors)
 
   do
     local base_connector = require "kong.db.strategies.connector"
-
     local mt = getmetatable(connector)
     setmetatable(mt, {
       __index = function(t, k)
