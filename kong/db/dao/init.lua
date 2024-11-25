@@ -1,7 +1,6 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
 local kong_table = require "kong.tools.table"
-local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
