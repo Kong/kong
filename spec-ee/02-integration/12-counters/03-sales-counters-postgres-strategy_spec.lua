@@ -9,6 +9,7 @@ local pg_strategy = require "kong.enterprise_edition.counters.sales.strategies.p
 local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
+local enums       = require "kong.enterprise_edition.dao.enums"
 
 local null = ngx.null
 
@@ -375,24 +376,22 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         }
       }
 
-      local default_workspace = db.workspaces:select_by_name("default")
-
-      db.workspace_entity_counters:insert {
-        workspace_id = default_workspace.id,
-        entity_type = "services",
-        count = 1,
+      -- consumers
+      db.consumers:insert {
+        username = "consumer1",
+        custom_id = "1234",
       }
 
-      db.workspace_entity_counters:insert {
-        workspace_id = default_workspace.id,
-        entity_type = "routes",
-        count = 3,
+      db.consumers:insert {
+        username = "consumer2",
+        custom_id = "4321",
       }
 
-      db.workspace_entity_counters:insert {
-        workspace_id = default_workspace.id,
-        entity_type = "plugins",
-        count = 6,
+      -- non-proxy consumers shouldn't be count
+      db.consumers:insert {
+        username = "consumer3",
+        custom_id = "0000",
+        type = enums.CONSUMERS.TYPE.ADMIN,
       }
 
       assert(helpers.start_kong {
@@ -429,7 +428,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.not_nil(report.deployment_info, "missing deployment_info")
       assert.not_nil(report.plugins_count, "missing plugins_count")
       assert.equals(1, report.services_count)
-      assert.equals(3, report.routes_count)
+      assert.equals(4, report.routes_count)
+      assert.equals(2, report.consumers_count)
+      assert.equals(nil, report.rbac_users)
       assert.equals(1, report.plugins_count.unique_route_lambdas)
       assert.equals(1, report.plugins_count.unique_route_kafkas)
       assert.equals(4, report.plugins_count.tiers.enterprise["kafka-upstream"])

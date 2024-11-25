@@ -1781,7 +1781,7 @@ NOT_PERMIT_ROUTE["/admins/:admins/workspaces/:workspaces"] = {
     local wss = _M.find_all_ws_for_rbac_user(rbac_user, null, true)
     local has_permissions = false
     local workspace_name = workspace.name
-    
+
     for _, ws in ipairs(wss or {}) do
       if ws.name == workspace_name or ws.name == '*' then
         has_permissions = true
@@ -1789,7 +1789,7 @@ NOT_PERMIT_ROUTE["/admins/:admins/workspaces/:workspaces"] = {
       end
     end
 
-    if not has_permissions then  
+    if not has_permissions then
       local err = fmt("you don't have any permissions for this workspace[name=%s]", workspace_name)
       return true, 403, err
     end
@@ -1929,7 +1929,7 @@ do
   local reports = require "kong.reports"
   local counters = require "kong.workspaces.counters"
   local rbac_users_count = function()
-    local counts, err = counters.entity_counts()
+    local counts, err = counters.entity_counts(nil, { kong.db.daos.rbac_users })
     if err then
       kong.log.warn("failed to get count of RBAC users: ", err)
       return nil

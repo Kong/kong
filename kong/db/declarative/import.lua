@@ -22,6 +22,9 @@ local sha256_hex = require("kong.tools.sha256").sha256_hex
 local pk_string = declarative_config.pk_string
 local EMPTY = require("kong.tools.table").EMPTY
 
+-- XXX: EE Only
+local ee_enums = require("kong.enterprise_edition.dao.enums")
+
 local assert = assert
 local type = type
 local pairs = pairs
@@ -465,6 +468,7 @@ local function load_into_cache(entities, meta, hash)
 
   yield()   -- XXX
   local phase = get_phase()
+  local count_by_ws = { ["*"] = {} } -- XXX: EE Only
 
   for entity_name, items in pairs(entities) do
     yield(true, phase)
@@ -503,7 +507,19 @@ local function load_into_cache(entities, meta, hash)
       if not res then
         return nil, err
       end
+
+      -- XXX: EE Only, count item
+      if not (entity_name == "consumers" and item.type ~= ee_enums.CONSUMERS.TYPE.PROXY) then
+        count_by_ws["*"][entity_name] = (count_by_ws["*"][entity_name] or 0) + 1
+        if count_by_ws[item.ws_id] == nil then
+          count_by_ws[item.ws_id] = {}
+        end
+        count_by_ws[item.ws_id][entity_name] = (count_by_ws[item.ws_id][entity_name] or 0) + 1
+      end
     end -- for for _, item
+
+    -- XXX: EE Only, count item
+    t:set(constants.DECLARATIVE_ENTITY_COUNT_KEY, marshall(count_by_ws))
   end -- for entity_name, items
 
   t:set(DECLARATIVE_HASH_KEY, hash)

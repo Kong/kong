@@ -192,8 +192,8 @@ for _, strategy in helpers.each_strategy() do
       })
       body = assert.res_status(200, res)
       entity = cjson.decode(body)
-      assert.equal(0, entity.counts.upstreams)
-      assert.equal(0, entity.counts.targets)
+      assert.equal(nil, entity.counts.upstreams)
+      assert.equal(nil, entity.counts.targets)
 
       res = admin_client:delete("/workspaces/ws1", {
         headers = headers,

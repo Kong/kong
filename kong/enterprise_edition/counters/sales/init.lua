@@ -11,7 +11,9 @@ local str              = require "resty.string"
 local constants        = require "kong.constants"
 local system           = require "kong.tools.system"
 local counters_service = require "kong.enterprise_edition.counters"
-local workspace_counters = require "kong.workspaces.counters"
+local enums            = require "kong.enterprise_edition.dao.enums"
+local lmdb_get         = require "resty.lmdb".get
+local unmarshall         = require "kong.db.declarative.marshaller".unmarshall
 
 
 local timer_at   = ngx.timer.at
@@ -32,6 +34,7 @@ local _log_prefix = "[sales counters] "
 
 local EMPTY = {}
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local ENTITIES_TO_COUNT = { "rbac_users", "services", "routes", "consumers" }
 
 local _M = {}
 local mt = { __index = _M }
@@ -281,13 +284,42 @@ local function get_workspaces_count()
 end
 
 local function get_workspace_entity_counts()
-  local counts, err = workspace_counters.entity_counts()
+  local db_strategy = kong.db.strategy
 
-  if not counts then
-    log(ERR, _log_prefix, "failed to retrieve entity counts: ", err)
+  if db_strategy == "postgres" then
+    local counts = { }
+    for _, entity in ipairs(ENTITIES_TO_COUNT) do
+      -- Not abstract it to DAO because unwanted usage may happend on proxy path
+      local where_clause = ""
+      if entity == "consumers" then
+        -- Skip counting non-proxy consumers
+        where_clause = " WHERE type = " .. enums.CONSUMERS.TYPE.PROXY
+      end
+      local query_string = "SELECT COUNT(*) FROM " .. entity .. where_clause .. ";"
+      local res, err = kong.db.connector:query(query_string, "read")
+      if err then
+        log(ERR, _log_prefix, "failed to retrieve entity counts for ", entity, ": ", err)
+        return EMPTY, err
+      end
+      local count = res[1].count
+      counts[entity] = count ~= 0 and count or nil
+    end
+    return counts
+
+  elseif db_strategy == "off" then
+    -- This is only for DB-Less mode, not for Hybrid-DP
+    local value, err = lmdb_get(constants.DECLARATIVE_ENTITY_COUNT_KEY)
+    local count_by_ws, err = unmarshall(value, err)
+    if err then
+      log(ERR, _log_prefix, "failed to retrieve entity counts: ", err)
+      return EMPTY, err
+    end
+    return count_by_ws and count_by_ws["*"] or {}
   end
 
-  return counts or EMPTY
+  local err = "unsupported db strategy \"" .. db_strategy .. "\" for entity count"
+  log(ERR, _log_prefix, err)
+  return EMPTY, err
 end
 
 local function merge_counter(counter_data)

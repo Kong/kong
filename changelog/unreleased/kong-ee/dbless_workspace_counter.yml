@@ -1,0 +1,3 @@
+message: "`/workspaces?counter` and `/workspace/<workspace>/meta` could retrieve entity counts under db-less mode."
+type: feature
+scope: Admin API

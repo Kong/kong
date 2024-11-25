@@ -5,12 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local enums = require "kong.enterprise_edition.dao.enums"
-local hooks = require "kong.hooks"
+local enums      = require "kong.enterprise_edition.dao.enums"
+local hooks      = require "kong.hooks"
+local constants  = require "kong.constants"
+local lmdb       = require "resty.lmdb"
+local unmarshall = require "kong.db.declarative.marshaller".unmarshall
 
-
-local format  = string.format
-local ipairs = ipairs
+local format      = string.format
+local ipairs      = ipairs
+local null        = ngx.null
 
 
 local _M = {}
@@ -45,21 +48,57 @@ end
 -- On failure, returns `nil` and an error string
 --
 -- @tparam[opt] string workspace_id restrict results to a single workspace
+-- @tparam[opt] table daos a table of DAOs to count entities from
 -- @treturn table|nil  counts
 -- @treturn nil|string error
-function _M.entity_counts(workspace_id)
+function _M.entity_counts(workspace_id, daos)
   local counts = {}
 
-  for row, err in kong.db.workspace_entity_counters:each() do
+  local strategy = kong.db.strategy
+  if strategy == "postgres" then
+    local where_clause = ""
+    if workspace_id then
+      where_clause = " WHERE ws_id = '" .. workspace_id .. "'"
+    end
+
+    for _, entity in countable_schemas(daos) do
+      local query_string = "SELECT COUNT(*) FROM " .. entity .. where_clause
+      if entity == "consumers" then
+        -- Skip counting non-proxy consumers
+        if where_clause == "" then
+          query_string = query_string .. " WHERE type = " .. enums.CONSUMERS.TYPE.PROXY
+        else
+          query_string = query_string .. " AND type = " .. enums.CONSUMERS.TYPE.PROXY
+        end
+      end
+      query_string = query_string .. ";"
+
+      local res, err = kong.db.connector:query(query_string, "read")
+      if err then
+        return nil, err
+      end
+      local count = res[1].count
+      counts[entity] = count ~= 0 and count or nil
+    end
+
+  elseif strategy == "off" then
+    local ws_id
+
+    if workspace_id == null or not workspace_id then
+      ws_id = "*"
+    else
+      ws_id = workspace_id
+    end
+
+    local value, err = lmdb.get(constants.DECLARATIVE_ENTITY_COUNT_KEY)
+    local count_by_ws, err = unmarshall(value, err)
     if err then
       return nil, err
     end
+    counts = count_by_ws and count_by_ws[ws_id] or {}
 
-    local entity = row.entity_type
-
-    if (not workspace_id) or workspace_id == row.workspace_id then
-      counts[entity] = (counts[entity] or 0) + row.count
-    end
+  else
+    return nil, "unsupported strategy: " .. strategy
   end
 
   return counts
