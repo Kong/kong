@@ -54,6 +54,7 @@ local MOCK_FIXTURE = [[
 
         if body.model == "text-embedding-3-large" and token == "Bearer openai-key" then
           ngx.status = 200
+          ngx.sleep(0.1) -- make sure we have some latency to catch
           if body.input:match("what") then
             ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/good.json"))
           else
@@ -251,6 +252,7 @@ local TEST_SCANARIOS = {
   { id = "4819bbfb-7669-4d7d-a7b8-1c60dc71d2a8", desc = "stream request rest response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_request = true },
   { id = "e73873a3-aec5-429d-b36d-8cfc6bcaed3a", desc = "rest request stream response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_response = true },
   { id = "ee2b67b2-b766-46f4-b718-af5811f0e365", desc = "good caching short countback", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 1,  expect = 200, append_message = true },
+  { id = "a736c42c-0559-169c-b7a0-0cd52c2dd06b", desc = "good caching exact cache",     vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 200, exact_caching = true },
   { id = "802b9c2d-efd3-4cdf-b141-4a8f4886b3f8", desc = "bad too few dimensions",       vector_config = "good", embeddings_config = "bad_too_few_dimensions", embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 500 },
   { id = "ad7c8591-415a-49f4-8ae2-b36c3522fa0a", desc = "bad vectordb configuration",   vector_config = "bad",  embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 500 },
   { id = "8d89e29e-76ee-4ba7-83a3-eb1c6157877a", desc = "bad embeddings configuration", vector_config = "good", embeddings_config = "bad_unauthorized",       embeddings_response = "good", chat_request = "good", stop_on_failure = true, message_countback = 10, expect = 500 },
@@ -353,6 +355,7 @@ for _, strategy in helpers.all_strategies() do
                 ignore_system_prompts = true,
                 ignore_tool_prompts = true,
                 stop_on_failure = TEST_SCENARIO.stop_on_failure or true,
+                exact_caching = TEST_SCENARIO.exact_caching or false,
                 embeddings = {
                   auth = {
                     header_name = "Authorization",
@@ -625,7 +628,8 @@ for _, strategy in helpers.all_strategies() do
                   local x_cache_ttl = assert.header("X-Cache-Ttl", r)
                   local x_cache_key = assert.header("X-Cache-Key", r)
                   assert.equals("Hit", x_cache_status)
-                  assert.equals("300", x_cache_ttl)
+                  assert.truthy(tonumber(x_cache_ttl) <= 300)
+                  assert.truthy(tonumber(x_cache_ttl) >= 295) -- allow the embeddings API to respond slow
                   assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
 
                   -- logs
@@ -638,6 +642,14 @@ for _, strategy in helpers.all_strategies() do
                   assert.not_nil(ai_node.cache.fetch_latency)
                   assert.not_nil(ai_node.cache.embeddings_latency)
                   assert.not_nil(ai_node.cache.embeddings_tokens)
+
+                  if TEST_SCENARIO.exact_caching then
+                    assert.equals(0, ai_node.cache.embeddings_latency)
+                    assert.equals(0, ai_node.cache.embeddings_tokens)
+                  else
+                    assert.not_equals(0, ai_node.cache.embeddings_latency)
+                    assert.not_equals(0, ai_node.cache.embeddings_tokens)
+                  end
 
                   if TEST_SCENARIO.with_ai_proxy then
                     assert.not_nil(ai_node.cache.cost_savings)

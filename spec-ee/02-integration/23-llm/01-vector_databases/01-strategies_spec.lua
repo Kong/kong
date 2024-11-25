@@ -140,7 +140,7 @@ describe("[" .. strategy .. " vectordb]", function()
       end
     end)
 
-    it("insert and get ttl", function()
+    it("insert, set and get ttl", function()
       local mod = require("kong.llm.vectordb")
 
       local client, err = mod.new(strategy, test_indexes[1], {
@@ -162,6 +162,17 @@ describe("[" .. strategy .. " vectordb]", function()
       assert.same(test_payloads[1], value)
       assert.truthy(out.ttl > 0)
       assert.truthy(out.ttl < 100)
+      
+      local key, err = client:set("mykey", test_payloads[1], 100)
+      assert.is_nil(err)
+      assert.truthy(key)
+
+      local out = {}
+      local value, err = client:get("mykey", out)
+      assert.is_nil(err)
+      assert.same(test_payloads[1], value)
+      assert.truthy(out.ttl > 0)
+      assert.truthy(out.ttl <= 100)
     end)
 
     it("delete", function()

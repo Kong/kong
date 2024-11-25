@@ -1,0 +1,4 @@
+message: |
+  **ai-semantic-cache**: Fixed the exact matching to catch everything including embeddings.
+type: "bugfix"
+scope: "Plugin"

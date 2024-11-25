@@ -137,7 +137,7 @@ describe("[redis vectordb]", function()
 
     end)
 
-    it("insert and get ttl", function()
+    it("insert, set and get ttl", function()
       redis_mock.setup(finally)
       local mod = require("kong.llm.vectordb.strategies.redis")
 
@@ -158,7 +158,18 @@ describe("[redis vectordb]", function()
       assert.is_nil(err)
       assert.same(test_payloads[1], value)
       assert.truthy(out.ttl > 0)
-      assert.truthy(out.ttl < 100)
+      assert.truthy(out.ttl <= 100)
+
+      local key, err = client:set("mykey", test_payloads[1], 100)
+      assert.is_nil(err)
+      assert.truthy(key)
+
+      local out = {}
+      local value, err = client:get("mykey", out)
+      assert.is_nil(err)
+      assert.same(test_payloads[1], value)
+      assert.truthy(out.ttl > 0)
+      assert.truthy(out.ttl <= 100)
     end)
 
     it("delete", function()

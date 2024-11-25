@@ -29,6 +29,7 @@ local FILTER_OUTPUT_SCHEMA = {
   cache_key = "string",
   embeddings_vector = "table",
   vectordb_namespace = "string",
+  store_embeddings_vector_needed = "boolean",
 
   -- metrics
   embeddings_latency = "number",
@@ -137,6 +138,7 @@ local function check_error(conf, err, message)
     return bail(500, message)
   end
 
+  set_cache_status(STATUS_FAILED)
   kong.log.warn(message, ": ", err)
 end
 
@@ -148,7 +150,7 @@ local function handle_cache_hit(conf, filter_start_time, metadata, cache_respons
   do
     ngx.update_time()
 
-    ai_plugin_o11y.metrics_set("llm_e2e_latency", math.floor(ngx.now() - filter_start_time) * 1000)
+    ai_plugin_o11y.metrics_set("llm_e2e_latency", math.floor((ngx.now() - filter_start_time) * 1000))
 
     local completion_tokens_count = cache_response and cache_response.usage and cache_response.usage.completion_tokens
     if completion_tokens_count and completion_tokens_count > 0 then
@@ -249,38 +251,55 @@ function _M:run(conf)
 
     if cache_response then
       ngx.update_time()
-      set_ctx("cache_fetch_latency", math.floor(ngx.now() - cache_fetch_start_time) * 1000)
+      set_ctx("cache_fetch_latency", math.floor((ngx.now() - cache_fetch_start_time) * 1000))
       return handle_cache_hit(conf, filter_start_time, metadata_out, cache_response)
     end
   end
 
-  -- embeddings init
   local embeddings_vector
-  do
+  local embeddings_tokens_count = 0
+  -- exact match embeddings vector cache
+  if conf.exact_caching then
+    local embeddings_cached, err = vectordb_driver:get(vectordb_namespace .. "_vectors:" .. cache_key)
+    embeddings_vector = embeddings_cached
+    if err or not embeddings_vector then
+      kong.log.debug("No cache or malformed cache vectors when doing exact caching: ", err)
+    end
+  end
+
+
+  -- embeddings init
+  local embeddings_start_time = ngx.now()
+  if not embeddings_vector then
     local embeddings_driver, err = embeddings.new(conf.embeddings, conf.vectordb.dimensions)
     check_error(conf, err, "Failed to instantiate embeddings driver")
 
     kong.log.debug("Generating the embeddings for the prompt")
-    local embeddings_start_time = ngx.now()
-    local embeddings_tokens_count
     embeddings_vector, embeddings_tokens_count, err = embeddings_driver:generate(formatted_chat)
     check_error(conf, err, "Failed to generate embeddings")
 
-    if not embeddings_vector then
-      set_cache_status(STATUS_FAILED)
-    elseif #embeddings_vector ~= conf.vectordb.dimensions then
-      return bail(500, "Embedding dimensions do not match the configured vector database. Embeddings were " ..
-        #embeddings_vector .. " dimensions, but the vector database is configured for " ..
-        conf.vectordb.dimensions .. " dimensions.", "Embedding dimensions do not match the configured vector database")
+    -- in exact match mode, we also cache the embeddings in addition to the response
+    -- so that next time we don't even need to query the embeddings services
+    if conf.exact_caching then
+      set_ctx("store_embeddings_vector_needed", true)
     end
-
-    -- update timer for latency calculation
-    ngx.update_time()
-    set_ctx("embeddings_latency", math.floor(ngx.now() - embeddings_start_time) * 1000)
-
-    set_ctx("embeddings_tokens_count", embeddings_tokens_count or 0)
-    set_ctx("embeddings_vector", embeddings_vector or {})
   end
+
+  if not embeddings_vector then
+    set_cache_status(STATUS_FAILED)
+    return true
+  elseif #embeddings_vector ~= conf.vectordb.dimensions then
+    return bail(500, "Embedding dimensions do not match the configured vector database. Embeddings were " ..
+      #embeddings_vector .. " dimensions, but the vector database is configured for " ..
+      conf.vectordb.dimensions .. " dimensions.", "Embedding dimensions do not match the configured vector database")
+  end
+
+  -- update timer for latency calculation
+  ngx.update_time()
+  set_ctx("embeddings_latency", math.floor((ngx.now() - embeddings_start_time) * 1000))
+
+  set_ctx("embeddings_tokens_count", embeddings_tokens_count)
+  set_ctx("embeddings_vector", embeddings_vector)
 
   -- semantic match
   local cache_fetch_start_time = ngx.now()
@@ -294,7 +313,8 @@ function _M:run(conf)
 
 
   ngx.update_time()
-  set_ctx("cache_fetch_latency", math.floor(ngx.now() - cache_fetch_start_time) * 1000)
+  set_ctx("cache_fetch_latency", math.floor((ngx.now() - cache_fetch_start_time) * 1000))
+
   -- finally, cache hit
   return handle_cache_hit(conf, filter_start_time, metadata_out, cache_response)
 end

@@ -305,5 +305,24 @@ function Redis:get(key, metadata_out)
   return res
 end
 
+-- Set a cache entry for a given vector and payload.
+--
+-- @param key the key to be set
+-- @param string|number|table payload the payload to store as value
+-- @param number[opt] ttl the TTL of the key.
+-- @treturn boolean indicating success
+-- @treturn string error message if any
+function Redis:set(key, payload, ttl)
+  payload_t.payload = payload
+  payload_t.vector = nil
+  local encoded, err = cjson.encode(payload_t)
+  if err then
+    return nil, "unable to json encode the payload: " .. err
+  end
+
+  return redis_op(self.config, "JSON.SET", key, {"$", encoded, ttl = ttl})
+end
+
+
 
 return Redis

@@ -27,34 +27,41 @@ end
 
 function _M:run(conf)
   local cache_status = ai_plugin_ctx.get_namespaced_ctx("ai-semantic-cache-search-cache", "cache_status")
-  if cache_status == "Hit" or kong.response.get_source() ~= "service" or kong.service.response.get_status() ~= 200 or cache_status == "Bypass" then
+  local store_embeddings_vector_needed = ai_plugin_ctx.get_namespaced_ctx("ai-semantic-cache-search-cache", "store_embeddings_vector_needed")
+  local store_response_needed = (cache_status == "Miss" or cache_status == "Refresh") and kong.response.get_source() == "service" and kong.service.response.get_status() == 200
+  if not store_response_needed and not store_embeddings_vector_needed then
     -- do nothing, cache hit or don't want to cache
     return true
   end
 
   local cc = res_cc()
 
-  local response_body, source = get_global_ctx("response_body")
-  if not response_body then
-    -- do nothing, headers are already sent
-    if get_global_ctx("stream_mode") then
-      -- TODO
-      kong.log.warn("ai-proxy or ai-proxy-advanced plugin is currently needed to cache streaming response")
-    else
-      kong.log.warn("No cached response found while caching response")
-    end
-
-    return true
-  end
-
-  kong.log.debug("caching response from source: ", source)
   local storage_ttl = conf.cache_control and calculate_resource_ttl(cc) or
-                conf.cache_ttl
+  conf.cache_ttl
 
   local cache_key = ai_plugin_ctx.get_namespaced_ctx("ai-semantic-cache-search-cache", "cache_key")
 
-  response_body = cjson.decode(response_body)
-  response_body.id = cache_key
+  local response_body
+  if store_response_needed then
+    local source
+    response_body, source = get_global_ctx("response_body")
+    if not response_body then
+      -- do nothing, headers are already sent
+      if get_global_ctx("stream_mode") then
+        -- TODO
+        kong.log.warn("ai-proxy or ai-proxy-advanced plugin is currently needed to cache streaming response")
+      else
+        kong.log.warn("No cached response found while caching response")
+      end
+
+      return true
+    end
+
+    kong.log.debug("caching response from source: ", source)
+
+    response_body = cjson.decode(response_body)
+    response_body.id = cache_key
+  end
 
   local vectordb_namespace = ai_plugin_ctx.get_namespaced_ctx("ai-semantic-cache-search-cache", "vectordb_namespace")
   if not vectordb_namespace then
@@ -80,11 +87,21 @@ function _M:run(conf)
       return
     end
 
-    local _, err = vectordb_driver:insert(embeddings, body, cache_key, storage_ttl)
-    if err then
-      kong.log.warn("Unable to store response in the cache: ", err)
+    if store_embeddings_vector_needed then
+      local _, err = vectordb_driver:set(vectordb_namespace .. "_vectors:" .. cache_key, embeddings, storage_ttl)
+      if err then
+        kong.log.warn("Unable to store embeddings in the cache: ", err)
+      end
+      kong.log.debug("Embeddings loaded in the cache")
     end
-    kong.log.debug("Response loaded in the cache ")
+
+    if store_response_needed then
+      local _, err = vectordb_driver:insert(embeddings, body, cache_key, storage_ttl)
+      if err then
+        kong.log.warn("Unable to store response in the cache: ", err)
+      end
+      kong.log.debug("Response loaded in the cache")
+    end
   end, conf, embeddings_vector, response_body, cache_key, storage_ttl)
 
   return true

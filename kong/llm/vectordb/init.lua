@@ -121,5 +121,16 @@ function _M:get(pk, metadata_out)
   return self.connector:get(pk, metadata_out)
 end
 
+-- Set an entry by pk.
+--
+-- @tparam string the primary key of the entry to delete
+-- @tparam string|number|table payload the payload to insert
+-- @tparam number[opt] ttl the TTL of the key.
+-- @treturn boolean indicating success
+-- @treturn string error message if any
+function _M:set(pk, payload, ttl)
+  return self.connector:set(pk, payload, ttl)
+end
+
 
 return _M
