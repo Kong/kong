@@ -29,6 +29,7 @@ message RequestMetadata {
   bool websocket = 18;
   bool sse = 19;
   repeated AiInfo ai = 20;
+  Threats threats = 21;
 }
 
 message RequestInfo {
@@ -153,4 +154,16 @@ message AICacheInfo {
   uint32 embeddings_latency = 5;
   uint32 embeddings_tokens = 6;
   double cost_caching = 7;
+}
+
+// Threats, such as Injection, JSON, XML
+message Threats {
+  InjectionThreat injection = 1;
+}
+
+message InjectionThreat {
+  string name = 1;
+  string location = 2;
+  string details = 3;
+  string action = 4;
 }

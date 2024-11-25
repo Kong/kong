@@ -506,7 +506,7 @@ local function get_plugins_configs(service)
         cluster_api_key = "test",
         cluster_api_secret = "secret",
       },
-    }
+    },
   }
 end
 
@@ -648,7 +648,6 @@ for _, strategy in helpers.each_strategy({ "postgres" }) do
       local config_file = "deck-config.yml"
       local config_dir
       config_dir, cleanup = helpers.make_temp_dir()
-
       -- dump the config
       local result = { os.execute(get_docker_run_cmd("dump", config_dir, config_file)) }
       assert.same({ true, "exit", 0 }, result)

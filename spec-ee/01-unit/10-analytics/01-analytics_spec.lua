@@ -190,6 +190,14 @@ local request_log = {
       },
     },
   },
+  threats = {
+    injection = {
+      name = "sql",
+      location = "body",
+      details = "sql injection",
+      action = "blocked",
+    },
+  },
 }
 
 local resp_hdr_mt = {
@@ -433,6 +441,14 @@ describe("extract request log properly", function()
 
         }
       },
+      threats = {
+        injection = {
+          name = "sql",
+          location = "body",
+          details = "sql injection",
+          action = "blocked",
+        },
+      },
     }
 
     table_sort(expected.ai, compare_tables)
@@ -583,6 +599,14 @@ describe("extract request log properly", function()
             cost_caching = 0.0020,
           },
         }
+      },
+      threats = {
+        injection = {
+          name = "sql",
+          location = "body",
+          details = "sql injection",
+          action = "blocked",
+        },
       },
     }
 
@@ -766,6 +790,14 @@ describe("extract request log properly", function()
             cost_caching = 0.0020,
           },
         }
+      },
+      threats = {
+        injection = {
+          name = "sql",
+          location = "body",
+          details = "sql injection",
+          action = "blocked",
+        },
       },
     }
 
@@ -1041,6 +1073,7 @@ describe("proto buffer", function()
       websocket = false,
       sse = false,
       ai = {},
+      threats = {},
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -1134,6 +1167,7 @@ describe("proto buffer", function()
       websocket = false,
       sse = false,
       ai = {},
+      threats = {},
     }
     assert.are.same(default, decoded)
   end)

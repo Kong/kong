@@ -1,0 +1,3 @@
+message: "**injection-protection**: Added the `injection-protection` plugin that supports blocking requests based on regex patterns."
+type: feature
+scope: Plugin

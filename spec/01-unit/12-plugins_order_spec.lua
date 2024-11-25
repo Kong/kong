@@ -87,6 +87,7 @@ describe("Plugins", function()
       'jwt-signer',
       "json-threat-protection",
       "xml-threat-protection",
+      "injection-protection",
       "websocket-validator",
       "websocket-size-limit",
       "grpc-gateway",

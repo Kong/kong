@@ -144,6 +144,7 @@ describe("Plugins", function()
       -- authn end
       'json-threat-protection',
       'xml-threat-protection',
+      'injection-protection',
       'websocket-validator',
       'websocket-size-limit',
       'request-validator',

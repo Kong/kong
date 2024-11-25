@@ -309,6 +309,7 @@ function _M:create_payload(message)
     websocket = false,
     sse = false,
     ai = {},
+    threats = {},
   }
 
   payload.client_ip = message.client_ip
@@ -549,6 +550,10 @@ function _M:create_payload(message)
 
   if message.ai ~= nil then
     payload.ai = self:transform_ai_data(message.ai)
+  end
+
+  if message.threats ~= nil then
+    payload.threats = message.threats
   end
 
   return payload

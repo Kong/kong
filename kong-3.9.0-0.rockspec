@@ -1114,6 +1114,9 @@ build = {
     ["kong.plugins.graphql-proxy-cache-advanced.migrations.001_370_to_380"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/001_370_to_380.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.migrations.002_370_to_380"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/002_370_to_380.lua",
 
+    ["kong.plugins.injection-protection.handler"] = "kong/plugins/injection-protection/handler.lua",
+    ["kong.plugins.injection-protection.schema"] = "kong/plugins/injection-protection/schema.lua",
+
     ["kong.plugins.jq.cache"] = "kong/plugins/jq/cache.lua",
     ["kong.plugins.jq.handler"] = "kong/plugins/jq/handler.lua",
     ["kong.plugins.jq.schema"] = "kong/plugins/jq/schema.lua",

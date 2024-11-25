@@ -55,6 +55,7 @@ return {
     "forward-proxy",
     "proxy-cache-advanced",
     "graphql-proxy-cache-advanced",
+    "injection-protection",
     "jq",
     "jwe-decrypt",
     "jwt-signer",

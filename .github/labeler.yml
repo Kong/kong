@@ -286,6 +286,10 @@ plugins/graphql-rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/graphql-rate-limiting-advanced/**/*
 
+plugins/injection-protection:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/injection-protection/**/*
+
 plugins/jq:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/jq/**/*
