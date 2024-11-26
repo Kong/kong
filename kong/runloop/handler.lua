@@ -437,7 +437,7 @@ local function build_router(version)
     local err
     ROUTER, err = Router.new(EMPTY, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
     if not ROUTER then
-      log(ERR, "could not initialize router: ", err)
+      log(ERR, "could not create an empty router: ", err)
     end
   end
 
