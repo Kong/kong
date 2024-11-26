@@ -19,8 +19,9 @@ function LmdbPaginationTestHandler:init_worker()
 end
 
 function LmdbPaginationTestHandler:access(conf)
-  local rows, _, _, offset = kong.db.routes:page()
-  ngx.header["X-Rows-Number"] = #rows
+  local page_size = tonumber(ngx.var.arg_size)
+  local rows, err, _, offset = kong.db.routes:page(page_size)
+  ngx.header["X-Rows-Number"] = rows and #rows or err
   ngx.header["X-rows-offset"] = tostring(offset)
 
   ngx.header["X-Max-Page-Size"] = kong.db.routes.pagination.max_page_size
