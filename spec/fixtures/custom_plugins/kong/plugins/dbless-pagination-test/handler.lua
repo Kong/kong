@@ -7,15 +7,10 @@ local LmdbPaginationTestHandler = {
 }
 
 
-local log = ngx.log
-local ERR = ngx.ERR
-
-
 local function test()
   local db = kong.db
 
-  --assert(db.routes.pagination.max_page_size == 2048)
-  ngx.log(ngx.DEBUG, "xxx LmdbPaginationTestHandler ", db.routes.pagination.max_page_size)
+  assert(db.routes.pagination.max_page_size == 2048)
 end
 
 
