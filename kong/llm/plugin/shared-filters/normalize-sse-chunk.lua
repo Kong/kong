@@ -80,7 +80,7 @@ local function handle_streaming_frame(conf, chunk, finished)
     -- how do we know if this is false but some other filter will need the body?
     if conf.logging and conf.logging.log_payloads and not body_buffer then
       body_buffer = buffer.new()
-      set_global_ctx("sse_body_buffer", buffer)
+      set_global_ctx("sse_body_buffer", body_buffer)
     else
       kong.log.debug("using existing body buffer created by: ", source)
     end
