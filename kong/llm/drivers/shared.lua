@@ -78,6 +78,12 @@ _M._CONST = {
   ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
 }
 
+_M._SUPPORTED_STREAMING_CONTENT_TYPES = {
+  ["text/event-stream"] = true,
+  ["application/vnd.amazon.eventstream"] = true,
+  ["application/json"] = true,
+}
+
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
