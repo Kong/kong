@@ -4,7 +4,9 @@ local helpers = require "spec.helpers"
 local cp_status_port = helpers.get_available_port()
 local dp_status_port = 8100
 
-for _, inc_sync in ipairs { "on", "off" } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
 
   describe("Hybrid Mode - status ready #" .. strategy .. " inc_sync=" .. inc_sync, function()
@@ -22,7 +24,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "127.0.0.1:9002",
         nginx_main_worker_processes = 8,
         status_listen = "127.0.0.1:" .. dp_status_port,
-        cluster_rpc = "on",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       })
     end
@@ -37,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         status_listen = "127.0.0.1:" .. cp_status_port,
-        cluster_rpc = "on",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       })
     end
