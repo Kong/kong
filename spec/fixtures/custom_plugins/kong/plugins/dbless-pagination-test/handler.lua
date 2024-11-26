@@ -18,5 +18,12 @@ function LmdbPaginationTestHandler:init_worker()
   ngx.timer.at(0, test)
 end
 
+function LmdbPaginationTestHandler:access(conf)
+  ngx.log(ngx.INFO, "xxxxxxxxxxxxxx")
+  local rows, err, err_t, offset = kong.db.routes:page()
+
+  ngx.header["X-rows-number"] = #rows
+end
+
 
 return LmdbPaginationTestHandler

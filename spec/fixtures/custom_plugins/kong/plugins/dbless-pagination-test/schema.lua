@@ -1,5 +1,5 @@
 return {
-  name = "dns-client-test",
+  name = "dbless-pagination-test",
   fields = {
     {
       config = {
