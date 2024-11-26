@@ -8,6 +8,7 @@ local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-request-transformer"
 
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
+local FILE_LOG_PATH_GEMINI_STATS_ONLY = os.tmpname()
 
 local function wait_for_json_log_entry(FILE_LOG_PATH)
   local json
@@ -55,6 +56,29 @@ local OPENAI_FLAT_RESPONSE = {
 }
 
 local GEMINI_GOOD = {
+  route_type = "llm/v1/chat",
+  logging = {
+    log_payloads = false,
+    log_statistics = true,
+  },
+  model = {
+    name = "gemini-1.5-flash",
+    provider = "gemini",
+    options = {
+      max_tokens = 512,
+      temperature = 0.6,
+      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/geminiflat",
+      input_cost = 20.0,
+      output_cost = 20.0,
+    },
+  },
+  auth = {
+    header_name = "x-goog-api-key",
+    header_value = "123",
+  },
+}
+
+local GEMINI_GOOD_FAILS_SAFETY = {
   route_type = "llm/v1/chat",
   logging = {
     log_payloads = false,
@@ -160,6 +184,28 @@ local _EXPECTED_CHAT_STATS = {
   },
 }
 
+
+local _EXPECTED_CHAT_STATS_GEMINI = {
+  ["ai-request-transformer"] = {
+    meta = {
+      plugin_id = '71083e79-4921-4f9f-97a4-ee7810b6cd8b',
+      provider_name = 'gemini',
+      request_model = 'UNSPECIFIED',
+      response_model = 'gemini-1.5-flash',
+      llm_latency = 1
+    },
+    usage = {
+      prompt_tokens = 2,
+      completion_tokens = 11,
+      total_tokens = 13,
+      time_per_token = 1,
+      cost = 0.00026,
+    },
+    cache = {}
+  },
+}
+
+
 local SYSTEM_PROMPT = "You are a mathematician. "
                    .. "Multiply all numbers in my JSON request, by 2."
 
@@ -188,6 +234,13 @@ for _, strategy in helpers.all_strategies() do
               content_by_lua_block {
                 local pl_file = require "pl.file"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/request-transformer/response-in-json.json"))
+              }
+            }
+
+            location ~/geminiflat {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/request-transformer/response-in-json.json"))
               }
             }
 
@@ -234,12 +287,32 @@ for _, strategy in helpers.all_strategies() do
           llm = OPENAI_FLAT_RESPONSE,
         },
       }
-
       bp.plugins:insert {
         name = "file-log",
         route = { id = without_response_instructions.id },
         config = {
           path = FILE_LOG_PATH_STATS_ONLY,
+        },
+      }
+
+      -- echo server via 'non-openai' LLM
+      local gemini_without_response_instructions = assert(bp.routes:insert {
+        paths = { "/gemini-echo-flat" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        id = "71083e79-4921-4f9f-97a4-ee7810b6cd8b",
+        route = { id = gemini_without_response_instructions.id },
+        config = {
+          prompt = SYSTEM_PROMPT,
+          llm = GEMINI_GOOD,
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = gemini_without_response_instructions.id },
+        config = {
+          path = FILE_LOG_PATH_GEMINI_STATS_ONLY,
         },
       }
 
@@ -263,7 +336,7 @@ for _, strategy in helpers.all_strategies() do
         route = { id = fails_safety.id },
         config = {
           prompt = SYSTEM_PROMPT,
-          llm = GEMINI_GOOD,
+          llm = GEMINI_GOOD_FAILS_SAFETY,
         },
       }
 
@@ -322,7 +395,7 @@ for _, strategy in helpers.all_strategies() do
         assert.same(EXPECTED_RESULT_FLAT, body_table.post_data.params)
       end)
 
-      it("logs statistics", function()
+      it("logs statistics - openai format", function()
         local r = client:get("/echo-flat", {
           headers = {
             ["content-type"] = "application/json",
@@ -351,6 +424,39 @@ for _, strategy in helpers.all_strategies() do
         log_message.ai["ai-request-transformer"].usage.time_per_token = 1
 
         assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
+        assert.is_true(actual_llm_latency >= 0)
+        assert.same(actual_time_per_token, time_per_token)
+      end)
+
+      it("logs statistics - non-openai format", function()
+        local r = client:get("/gemini-echo-flat", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = REQUEST_BODY,
+        })
+
+        local body = assert.res_status(200 , r)
+        local _, err = cjson.decode(body)
+
+        assert.is_nil(err)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_GEMINI_STATS_ONLY)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-request-transformer stats
+        local actual_chat_stats = log_message.ai
+        local actual_llm_latency = actual_chat_stats["ai-request-transformer"].meta.llm_latency
+        local actual_time_per_token = actual_chat_stats["ai-request-transformer"].usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / actual_chat_stats["ai-request-transformer"].usage.completion_tokens)
+
+        log_message.ai["ai-request-transformer"].meta.llm_latency = 1
+        log_message.ai["ai-request-transformer"].usage.time_per_token = 1
+
+        assert.same(_EXPECTED_CHAT_STATS_GEMINI, log_message.ai)
         assert.is_true(actual_llm_latency >= 0)
         assert.same(actual_time_per_token, time_per_token)
       end)
