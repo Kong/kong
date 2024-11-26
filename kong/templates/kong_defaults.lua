@@ -41,7 +41,7 @@ cluster_ocsp = off
 cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
-cluster_rpc = on
+cluster_rpc = off
 cluster_incremental_sync = off
 cluster_cjson = off
 
