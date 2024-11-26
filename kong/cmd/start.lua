@@ -14,6 +14,7 @@ local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local lfs = require "lfs"
+local wasm = require "kong.runloop.wasm"
 
 local fmt = string.format
 
@@ -133,6 +134,10 @@ local function execute(args)
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf)
+
+  -- FIXME: this is needed to make wasm plugin schemas accessible during startup
+  -- but should be refactored/made unnecessary
+  wasm.init(conf)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
