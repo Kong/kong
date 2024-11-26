@@ -185,6 +185,23 @@ local compatible_checkers = {
           end
         end
 
+        if plugin_name == 'ai-rate-limiting-advanced' then
+          local config = plugin.config
+
+          for i = #config.llm_providers, 1, -1 do
+            local provider_name = config.llm_providers[i].name
+            if provider_name == "huggingface" then
+              config.llm_providers[i].name = "requestPrompt"
+              log_warn_message('configures ' .. plugin.name .. ' plugin with llm_providers[' .. i .. '].name == ' .. provider_name,
+                              'overwritten with `requestPrompt`.',
+                              dp_version, log_suffix)
+              has_update = true
+            end
+          end
+
+        end
+
+
       end
 
       return has_update

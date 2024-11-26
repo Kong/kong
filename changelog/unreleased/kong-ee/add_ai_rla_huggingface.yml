@@ -1,0 +1,4 @@
+message: |
+  **ai-rate-limiting-advanced**: Added support for Huggingface provider to the AI Rate Limiting Advanced plugin.
+type: "feature"
+scope: "Plugin"

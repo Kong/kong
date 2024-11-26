@@ -1062,6 +1062,33 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = ai_response_transformer.id })
       end)
+
+      it("[ai-rate-limiting-advanced] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_rla = admin.plugins:insert {
+          name = "ai-rate-limiting-advanced",
+          enabled = true,
+          config = {
+            llm_providers = {{
+              name = "huggingface",
+              window_size = 60,
+              limit = 10,
+            }},
+            strategy = "local",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_rla)
+
+        -- 'ai fallback' field sets
+        expected.config.llm_providers[1].name = "requestPrompt"
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_rla.id })
+      end)
     end)
 
     describe("ai plugins shared options", function()
