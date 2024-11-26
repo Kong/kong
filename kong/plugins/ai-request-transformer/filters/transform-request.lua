@@ -70,7 +70,7 @@ function _M:run(conf)
   local identity_interface = _KEYBASTION[conf.llm]
 
   if identity_interface and identity_interface.error then
-    kong.log.err("error authenticating with ", conf.model.provider, " using native provider auth, ", identity_interface.error)
+    kong.log.err("error authenticating with ", conf.llm.model.provider, " using native provider auth, ", identity_interface.error)
     return kong.response.exit(500, "LLM request failed before proxying")
   end
 
