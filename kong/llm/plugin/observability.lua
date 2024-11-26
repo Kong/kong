@@ -77,7 +77,11 @@ function _M.metrics_get(key)
   -- process automatic calculation
   if not metrics[key] then
     if key == "llm_tpot_latency" then
-      return math.floor(_M.metrics_get("llm_e2e_latency") / _M.metrics_get("llm_completion_tokens_count"))
+      local llm_completion_tokens_count = _M.metrics_get("llm_completion_tokens_count")
+      if llm_completion_tokens_count  > 0 then
+        return _M.metrics_get("llm_e2e_latency") / llm_completion_tokens_count
+      end
+      return 0
     elseif key == "llm_total_tokens_count" then
       return _M.metrics_get("llm_prompt_tokens_count") + _M.metrics_get("llm_completion_tokens_count")
     end

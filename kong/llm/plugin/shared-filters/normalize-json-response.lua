@@ -44,6 +44,8 @@ local function transform_body(conf)
     response_body = cjson.encode({ error = { message = err }})
   end
 
+  -- TODO: avoid json encode and decode when transforming
+  --             deduplicate body usage parsing from parse-json-response
   local t, err
   if response_body then
     t, err = cjson.decode(response_body)
