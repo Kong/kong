@@ -150,7 +150,7 @@ end
 
 
 -- CP => DP
-function _M:_handle_meta_call(c, node_id)
+function _M:_handle_meta_call(c)
   local data, typ, err = c:recv_frame()
   if err then
     return nil, err
@@ -188,6 +188,7 @@ function _M:_handle_meta_call(c, node_id)
   assert(type(info.kong_conf) == "table")
 
   local capabilities_list = info.rpc_capabilities
+  local node_id = info.kong_node_id
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
@@ -209,7 +210,7 @@ function _M:_handle_meta_call(c, node_id)
     return nil, err
   end
 
-  return true
+  return node_id
 end
 
 
@@ -358,13 +359,7 @@ end
 
 -- handle incoming client connections
 function _M:handle_websocket()
-  local node_id = ngx_var.http_x_kong_node_id
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
-
-  if not node_id then
-    ngx_log(ngx_ERR, "[rpc] client did not provide node ID")
-    return ngx_exit(ngx.HTTP_CLOSE)
-  end
 
   local meta_v1_supported
   local protocols = string_tools.split(rpc_protocol, ",")
@@ -401,8 +396,8 @@ function _M:handle_websocket()
   end
 
   -- if timeout (default is 5s) we will close the connection
-  local ok, err = self:_handle_meta_call(wb, node_id)
-  if not ok then
+  local node_id, err = self:_handle_meta_call(wb)
+  if not node_id then
     ngx_log(ngx_ERR, "[rpc] unable to handshake with client: ", err)
     return ngx_exit(ngx.HTTP_CLOSE)
   end
@@ -462,9 +457,6 @@ function _M:connect(premature, node_id, host, path, cert, key)
     client_cert = cert,
     client_priv_key = key,
     protocols = RPC_MATA_V1,
-    headers = {
-      "X-Kong-Node-Id: " .. self.node_id,
-    },
   }
 
   if self.conf.cluster_mtls == "shared" then
