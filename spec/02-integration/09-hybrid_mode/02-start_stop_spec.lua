@@ -12,6 +12,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         admin_listen = "off",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -27,6 +28,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_listen = "off",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -42,6 +44,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = "off",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -57,6 +60,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_mtls = "pki",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -74,6 +78,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         proxy_listen = "off",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -88,6 +93,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -105,6 +111,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_dp_labels = "w@:_a",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
 
@@ -122,6 +129,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         proxy_listen = "0.0.0.0:" .. helpers.get_available_port(),
         cluster_dp_labels = "Aa-._zZ_key:Aa-._zZ_val",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       })
       assert.True(ok)
@@ -137,6 +145,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
+          cluster_rpc = "on",
           cluster_incremental_sync = inc_sync,
         })
 
@@ -151,6 +160,7 @@ describe("invalid config are rejected" .. " inc_sync=" .. inc_sync, function()
           database = param[2],
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_rpc = "on",
           cluster_incremental_sync = inc_sync,
         })
 
@@ -175,6 +185,7 @@ describe("when CP exits before DP" .. " inc_sync=" .. inc_sync, function()
       cluster_cert = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_listen = "127.0.0.1:9005",
+      cluster_rpc = "on",
       cluster_incremental_sync = inc_sync,
     }))
     assert(helpers.start_kong({
@@ -185,6 +196,7 @@ describe("when CP exits before DP" .. " inc_sync=" .. inc_sync, function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       database = "off",
+      cluster_rpc = "on",
       cluster_incremental_sync = inc_sync,
       -- EE [[
       -- vitals uses the clustering strategy by default, and it logs the exact

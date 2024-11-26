@@ -40,6 +40,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         cluster_listen = "127.0.0.1:9005",
         cluster_telemetry_listen = "127.0.0.1:9006",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -53,6 +54,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         cluster_control_plane = "127.0.0.1:9005",
         cluster_telemetry_endpoint = "127.0.0.1:9006",
         proxy_listen = "0.0.0.0:9002",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       }))
     end)

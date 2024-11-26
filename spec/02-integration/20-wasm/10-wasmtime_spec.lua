@@ -19,6 +19,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         role = role,
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -94,6 +95,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         status_listen = "127.0.0.1:" .. status_port,
         nginx_main_worker_processes = 2,
 
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -116,6 +118,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           status_listen = "off",
           nginx_main_worker_processes = 2,
+          cluster_rpc = "on",
           cluster_incremental_sync = inc_sync,
         }))
       end
