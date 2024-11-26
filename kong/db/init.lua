@@ -89,9 +89,6 @@ function DB.new(kong_config, strategy)
 
   local connector, strategies, err = Strategies.new(kong_config, strategy,
                                                     schemas, errors)
-  -- check pagination.max_page_size
-  assert(connector.defaults.pagination.max_page_size ==
-         strategy == "off" and 2048 or 50000)
 
   if err then
     return nil, err

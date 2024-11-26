@@ -6,7 +6,6 @@ local Connector = {
   defaults = {
     pagination = {
       page_size     = 1000,
-      -- lmdb will not support huge page size
       max_page_size = 50000,
     },
   },
