@@ -44,6 +44,22 @@ local function transform_body(conf)
     response_body = cjson.encode({ error = { message = err }})
   end
 
+  local t, err
+  if response_body then
+    t, err = cjson.decode(response_body)
+    if err then
+      kong.log.warn("failed to decode response body for usage introspection: ", err)
+    end
+
+    if t and t.usage and t.usage.prompt_tokens then
+      ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", t.usage.prompt_tokens)
+    end
+
+    if t and t.usage and t.usage.completion_tokens then
+      ai_plugin_o11y.metrics_set("llm_completion_tokens_count", t.usage.completion_tokens)
+    end
+  end
+
   set_global_ctx("response_body", response_body) -- to be sent out later or consumed by other plugins
 
   return #response_body
