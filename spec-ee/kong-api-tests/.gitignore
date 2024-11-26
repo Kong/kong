@@ -13,3 +13,6 @@ certificate.crt
 certificate.csr
 private.pem
 public.pem
+
+# ignore test failures file
+failed-tests.txt

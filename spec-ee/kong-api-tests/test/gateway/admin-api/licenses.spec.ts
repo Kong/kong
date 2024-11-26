@@ -13,6 +13,10 @@ import {
   deleteUser,
   deletePlugin,
   waitForConfigRebuild,
+  createConsumer,
+  deleteConsumer,
+  eventually,
+  clearAllKongResources,
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {
@@ -46,6 +50,7 @@ describe('Gateway /licenses API tests', function () {
   const rbacUsersUrl = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/users`;
+  const reportUrl = `${url.split('licenses')[0]}license/report`;
 
   let licenseId: string;
   let expiredLicenseId: string;
@@ -56,6 +61,7 @@ describe('Gateway /licenses API tests', function () {
   let eeKeyAuthEncPluginId: string;
   let basePayload: any;
   let rbacUserId: string;
+  let consumerId: string;
 
   const assertBasicRespDetails = (resp: AxiosResponse) => {
     expect(resp.data.created_at, 'Should have created_at entry').to.be.a(
@@ -78,6 +84,9 @@ describe('Gateway /licenses API tests', function () {
         id: serviceId,
       },
     };
+
+    const consumer = await createConsumer();
+    consumerId = consumer.id
   });
 
   it('should GET all licenses and see the existing license', async function () {
@@ -163,6 +172,19 @@ describe('Gateway /licenses API tests', function () {
 
     licenseValidId = resp.data.id;
     await waitForConfigRebuild();
+  });
+
+  it('should see correct entity counts in license/report', async function () {
+    await eventually(async () => {
+      const resp = await axios(reportUrl);
+
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.workspaces_count, 'Should see workspaces_count in response').to.eq(1);
+      expect(resp.data.services_count, 'Should see services_count in response').to.eq(2);
+      expect(resp.data.consumers_count, 'Should see consumers_count in response').to.eq(1);
+      expect(resp.data.rbac_users, 'Should see rbac_users in response').to.eq(1);
+      expect(resp.data.plugins_count.tiers.enterprise, 'Should see no plugins').to.be.empty;
+    });
   });
 
   it('should create a RBAC user with valid license successfully', async function () {
@@ -331,8 +353,7 @@ describe('Gateway /licenses API tests', function () {
     assertBasicRespDetails(resp);
   });
 
-  it('should GET the license report', async function () {
-    const reportUrl = `${url.split('licenses')[0]}license/report`;
+  it('should GET the license/report', async function () {
     const resp = await axios(reportUrl);
     logResponse(resp);
 
@@ -340,8 +361,6 @@ describe('Gateway /licenses API tests', function () {
     expect(resp.data.license.license_key, 'Should see correct license key').to.eq(
       licenseKey
     );
-    expect(resp.data.plugins_count, 'Should see plugins_count in response').to
-      .exist;
     expect(resp.data.deployment_info, 'Should see deployment_info in response').to
       .exist;
     expect(resp.data.timestamp, 'Should see timestamp in response').to
@@ -367,6 +386,33 @@ describe('Gateway /licenses API tests', function () {
       resp.data.db_version,
       'Should see db_version in response'
     ).to.include('postgres');
+    expect(resp.data.services_count, 'Should see services_count in response').to.eq(2);
+    expect(resp.data.consumers_count, 'Should see consumers_count in response').to.eq(1);
+    expect(resp.data.rbac_users, 'Should see rbac_users in response').to.eq(2);
+
+    expect(resp.data.plugins_count.tiers.enterprise, 'Should see existing plugins count').to.deep.equal({
+      'key-auth-enc': 1,
+      'jwt-signer': 1
+    });
+  });
+
+  it('should see updated license/report after entity numbers change', async function () {
+    // remove some resources to change the entity numbers in license report
+    await deleteGatewayService(expiredLicenseServiceId);
+    await deletePlugin(eeJWTPluginId);
+    await deleteUser(rbacUserId);
+    await deleteConsumer(consumerId);
+
+    await eventually(async () => {
+      const resp = await axios(reportUrl);
+
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.workspaces_count, 'Should see workspaces_count in response').to.eq(1);
+      expect(resp.data.services_count, 'Should see services_count in response').to.eq(1);
+      expect(resp.data.consumers_count, 'Should not see consumers_count if counter is 0').to.not.exist;
+      expect(resp.data.rbac_users, 'Should see rbac_users in response').to.eq(1);
+      expect(resp.data.plugins_count.tiers.enterprise, 'should see plugins').to.deep.equal({'key-auth-enc': 1});
+    });
   });
 
   // unskip when https://konghq.atlassian.net/browse/KAG-4341 is fixed
@@ -393,9 +439,6 @@ describe('Gateway /licenses API tests', function () {
     logResponse(resp);
 
     await deleteGatewayService(serviceId);
-    await deleteGatewayService(expiredLicenseServiceId);
-    await deletePlugin(eeJWTPluginId);
     await deletePlugin(eeKeyAuthEncPluginId);
-    await deleteUser(rbacUserId);
   });
 });
