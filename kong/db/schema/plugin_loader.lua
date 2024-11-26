@@ -24,10 +24,10 @@ function plugin_loader.load_subschema(parent_schema, plugin, errors)
   local plugin_schema = "kong.plugins." .. plugin .. ".schema"
   local ok, schema = load_module_if_exists(plugin_schema)
   if not ok then
-    ok, schema = plugin_servers.load_schema(plugin)
+    ok, schema = wasm_plugins.load_schema(plugin)
   end
   if not ok then
-    ok, schema = wasm_plugins.load_schema(plugin)
+    ok, schema = plugin_servers.load_schema(plugin)
   end
 
   if not ok then

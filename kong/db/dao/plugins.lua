@@ -224,16 +224,16 @@ local load_plugin_handler do
     local plugin_handler = "kong.plugins." .. plugin .. ".handler"
     local ok, handler = load_module_if_exists(plugin_handler)
     if not ok then
-      ok, handler = plugin_servers.load_plugin(plugin)
+      ok, handler = wasm_plugins.load_plugin(plugin)
       if type(handler) == "table" then
-        handler._go = true
+        handler._wasm = true
       end
     end
 
     if not ok then
-      ok, handler = wasm_plugins.load_plugin(plugin)
+      ok, handler = plugin_servers.load_plugin(plugin)
       if type(handler) == "table" then
-        handler._wasm = true
+        handler._go = true
       end
     end
 
