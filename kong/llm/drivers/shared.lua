@@ -719,7 +719,10 @@ function _M.post_request(conf, response_object)
     meta_container[log_entry_keys.LLM_LATENCY] = llm_latency
 
     if response_object.usage and response_object.usage.completion_tokens then
-      local time_per_token = math.floor(llm_latency / response_object.usage.completion_tokens)
+      local time_per_token = 0
+      if response_object.usage.completion_tokens > 0 then
+        time_per_token  = math.floor(llm_latency / response_object.usage.completion_tokens)
+      end
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = time_per_token
     end
   end
