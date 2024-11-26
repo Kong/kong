@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where massive routes insertion causes crashing and 500.
+type: "bugfix"
+scope: "Core"

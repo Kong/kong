@@ -215,7 +215,17 @@ end
 -- methods]. The function returns false iff none of the variants
 -- collide.
 local function is_route_crud_allowed_smart(req, router)
-  router = router or runloop.get_router()
+  -- this gives another chance for the router to be updated
+  -- but it does not always work when violent amount of routes are
+  -- being inserted
+  router = router or runloop.get_updated_router_immediate()
+
+  -- the router is not ready yet
+  -- we are inserting the very first batch of routes
+  if not router then
+    return true
+  end
+
   local args = req.args and req.args.post or {}
 
   local methods, uris, headers, snis
