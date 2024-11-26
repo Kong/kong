@@ -101,7 +101,8 @@ end
 
 local function unset_process_secrets_env(has_process_secrets)
   if has_process_secrets then
-    C.unsetenv("KONG_PROCESS_SECRETS")
+    C.unsetenv("KONG_PROCESS_SECRETS_HTTP")
+    C.unsetenv("KONG_PROCESS_SECRETS_STREAM")
   end
 end
 
