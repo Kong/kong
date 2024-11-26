@@ -20,7 +20,7 @@ local function handle_streaming_frame(conf, chunk, finished)
 
   local content_type = kong.service.response.get_header("Content-Type")
   local normalized_content_type = content_type and content_type:sub(1, (content_type:find(";") or 0) - 1)
-  if normalized_content_type and normalized_content_type ~= "text/event-stream" and normalized_content_type ~= ai_shared._CONST.AWS_STREAM_CONTENT_TYPE then
+  if normalized_content_type and (not ai_shared._SUPPORTED_STREAMING_CONTENT_TYPES[normalized_content_type]) then
     return true
   end
 
