@@ -991,6 +991,12 @@ local function load(path, custom_conf, opts)
     conf.cluster_incremental_sync = false
   end
 
+  if conf.active_tracing and not conf.cluster_rpc then
+    log.warn("Active tracing has been forcibly disabled, " ..
+             "please enable cluster RPC.")
+    conf.active_tracing = false
+  end
+
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))

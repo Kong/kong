@@ -95,7 +95,7 @@ local function setup_kong(cp_config, dp_config, db_setup)
 
   local cp_prefix = helpers.test_conf.prefix
 
-  local env_cp = table_merge(cp_config or {}, {
+  local env_cp = table_merge({
     role = "control_plane",
     cluster_cert = "spec/fixtures/kong_clustering.crt",
     cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -106,10 +106,10 @@ local function setup_kong(cp_config, dp_config, db_setup)
     log_level = "info",
     nginx_conf = "spec/fixtures/custom_nginx.template",
     prefix = cp_prefix,
-  })
+  }, cp_config or {})
   assert(helpers.start_kong(env_cp, nil, true))
 
-  local env_dp = (table_merge(dp_config or {}, {
+  local env_dp = (table_merge({
     role = "data_plane",
     database = "off",
     prefix = "servroot2",
@@ -124,7 +124,8 @@ local function setup_kong(cp_config, dp_config, db_setup)
     nginx_conf = "spec/fixtures/custom_nginx.template",
     untrusted_lua = "on",
     konnect_mode = true,
-  }))
+    active_tracing = "on",
+  }, dp_config or {}))
   assert(helpers.start_kong(env_dp))
   wait_until_ready()
   return {

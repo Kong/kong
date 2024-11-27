@@ -71,8 +71,9 @@ local NOOP_DEBUG_SESSION = {
   module_enabled = false,
 }
 
-function _M:new()
-  if ngx.config.subsystem ~= "http" then
+function _M:new(enabled)
+  enabled = enabled or false
+  if ngx.config.subsystem ~= "http" or not enabled then
     return NOOP_DEBUG_SESSION
   end
 

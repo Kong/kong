@@ -31,7 +31,7 @@ describe("debuggability", function()
 
   setup(function()
     helpers.get_db_utils("off")
-    ds = ds_mod:new()
+    ds = ds_mod:new(true)
     context = ds.context
     reporter = ds.reporter
     shm = context.shm
@@ -64,9 +64,9 @@ describe("debuggability", function()
     -- at the moment active tracing does not support the "stream"
     -- subsystem: new() returns a noop instance
     ngx.config.subsystem = "stream" -- luacheck: ignore
-    local noop_ds = ds_mod:new()
+    local noop_ds = ds_mod:new(true)
     ngx.config.subsystem = "http" -- luacheck: ignore
-    local http_ds = ds_mod:new()
+    local http_ds = ds_mod:new(true)
 
     -- Restore old value
     ngx.config.subsystem = old_ngx_config_subsystem -- luacheck: ignore

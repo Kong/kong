@@ -585,7 +585,7 @@ describe("ee conf loader", function()
     end)
 
     it("prints warnings if redirect URIs are missing", function()
-      local _, err
+      local err
       for _, parameter in ipairs({ "redirect_uri", "login_redirect_uri", "logout_redirect_uri" }) do
         _, err = conf_loader(nil, {
           enforce_rbac = "on",
@@ -1074,5 +1074,35 @@ describe("portal_api_ssl_protocols", function()
     assert.is_nil(err)
     assert.is_table(conf)
     assert.equal("TLSv1.2", conf.portal_api_ssl_protocols)
+  end)
+end)
+
+describe("active_tracing", function()
+  it("is off by default", function()
+    local conf, err = conf_loader()
+    assert.is_nil(err)
+    assert.is_table(conf)
+
+    assert.is_false(conf.active_tracing)
+  end)
+
+  it("disables when cluster_rpc is not enabled", function()
+    local conf, err = conf_loader(nil, {
+      active_tracing = "on",
+      cluster_rpc = "off"
+    })
+    assert.is_false(conf.active_tracing)
+    assert.is_nil(err)
+
+  end)
+
+  it("can be enabled when prerequisite is met", function()
+    local conf, err = conf_loader(nil, {
+      active_tracing = "on",
+      cluster_rpc = "on"
+    })
+    assert.is_nil(err)
+    assert.is_table(conf)
+    assert.is_true(conf.active_tracing)
   end)
 end)

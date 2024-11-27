@@ -1138,7 +1138,8 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  kong.debug_session = debug_session:new()
+  kong.debug_session = debug_session:new(kong.configuration.active_tracing)
+
   -- rpc and incremental sync
   if is_http_module then
 

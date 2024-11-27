@@ -413,5 +413,7 @@ wasm_filters = bundled,user
 request_debug = on
 request_debug_token =
 
+active_tracing = off
+
 healthz_ids = NONE
 ]]

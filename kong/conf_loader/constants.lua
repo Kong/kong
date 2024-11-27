@@ -521,6 +521,7 @@ local CONF_PARSERS = {
   cluster_rpc = { typ = "boolean" },
   cluster_incremental_sync = { typ = "boolean" },
   cluster_cjson = { typ = "boolean" },
+  active_tracing = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
