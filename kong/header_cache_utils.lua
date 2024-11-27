@@ -7,35 +7,35 @@ local function normalize_header_name(header)
   -- return str_replace_char(header:lower(), "-", "_")
 end
 
-local function Set (list)
-  local set = {}
-  for _, l in ipairs(list) do set[normalize_header_name(l)] = true end
-  return set
-end
+-- local function Set (list)
+--   local set = {}
+--   for _, l in ipairs(list) do set[normalize_header_name(l)] = true end
+--   return set
+-- end
 
-do
-  for k, v in pairs(CACHE_HEADERS) do
-    v.SINGLE_VALUES = Set(v.SINGLE_VALUES)
-  end
-end
+-- do
+--   for k, v in pairs(CACHE_HEADERS) do
+--     v.SINGLE_VALUES = Set(v.SINGLE_VALUES)
+--   end
+-- end
 
-local function normalize_header_value(value)
-  local tvalue = type(value)
+-- local function normalize_header_value(value)
+--   local tvalue = type(value)
 
-  if tvalue == "table" then
-    for i, v in ipairs(value) do
-      value[i] = normalize_header_value(v)
-    end
-    return value
-  elseif value == nil or (value == "") then
-    return nil
-  elseif tvalue == "string" then
-    return value
-  end
+--   if tvalue == "table" then
+--     for i, v in ipairs(value) do
+--       value[i] = normalize_header_value(v)
+--     end
+--     return value
+--   elseif value == nil or (value == "") then
+--     return nil
+--   elseif tvalue == "string" then
+--     return value
+--   end
 
-  -- header is number or boolean
-  return tostring(value)
-end
+--   -- header is number or boolean
+--   return tostring(value)
+-- end
 
 -- local function get_recover_cache(proxy)
 --   if (next(proxy.kmagic_inner) ~= nil) then
@@ -58,50 +58,53 @@ end
 -- end
 
 
-local function get_headers_cache_proxy(group)
-  local cache_key = CACHE_HEADERS[group].KEY
-  if ngx.ctx[cache_key] then
-    return ngx.ctx[cache_key]
-  end
-  ngx.ctx[cache_key] = {}
-  return ngx.ctx[cache_key]
-  -- ngx.ctx[cache_key] = {
-  --   kmagic_dirty = {},
-  --   kmagic_inner = {},
-  --   kmagic_added = {},
-  -- }
-  -- local pxy = ngx.ctx[cache_key]
-  -- local mt2 = {
-  --   __index = function(_, k)
-  --     return pxy.kmagic_inner[normalize_header_name(k)]
-  --   end,
-  --   __newindex = function(_, k, v)
-  --     k = normalize_header_name(k)
-  --     local t = pxy.kmagic_inner
-  --     local dirty = pxy.kmagic_dirty
-  --     local added = pxy.kmagic_added
-  --     if dirty[k] == nil and t[k] then
-  --       dirty[k] = t[k]
-  --     end
-  --     if added[k] == nil and t[k] == nil and v ~= nil then
-  --       added[k]=true
-  --     end
-  --     t[k] = v
-  --   end,
-  --   __pairs = function()
-  --     return next, pxy.kmagic_inner, nil
-  --   end
-  -- }
-  -- setmetatable(pxy, mt2)
-  -- return pxy
-end
+-- local function get_headers_cache_proxy(group)
+--   -- local underscore = kong.configuration.nginx_http_lua_transform_underscores_in_response_headers
+--   -- local underscore2 = kong.configuration.http_lua_transform_underscores_in_response_headers
+--   -- ngx.log(ngx.WARN, "UNDERSCORE: ", underscore, " and: ", underscore2)
+--   local cache_key = CACHE_HEADERS[group].KEY
+--   if ngx.ctx[cache_key] then
+--     return ngx.ctx[cache_key]
+--   end
+--   ngx.ctx[cache_key] = {}
+--   return ngx.ctx[cache_key]
+--   -- ngx.ctx[cache_key] = {
+--   --   kmagic_dirty = {},
+--   --   kmagic_inner = {},
+--   --   kmagic_added = {},
+--   -- }
+--   -- local pxy = ngx.ctx[cache_key]
+--   -- local mt2 = {
+--   --   __index = function(_, k)
+--   --     return pxy.kmagic_inner[normalize_header_name(k)]
+--   --   end,
+--   --   __newindex = function(_, k, v)
+--   --     k = normalize_header_name(k)
+--   --     local t = pxy.kmagic_inner
+--   --     local dirty = pxy.kmagic_dirty
+--   --     local added = pxy.kmagic_added
+--   --     if dirty[k] == nil and t[k] then
+--   --       dirty[k] = t[k]
+--   --     end
+--   --     if added[k] == nil and t[k] == nil and v ~= nil then
+--   --       added[k]=true
+--   --     end
+--   --     t[k] = v
+--   --   end,
+--   --   __pairs = function()
+--   --     return next, pxy.kmagic_inner, nil
+--   --   end
+--   -- }
+--   -- setmetatable(pxy, mt2)
+--   -- return pxy
+-- end
 
 local function clear_header_cache_proxy(group)
-  -- local proxy = get_headers_cache_proxy(group)
-  ngx.ctx[CACHE_HEADERS[group].KEY] = {}
-  -- proxy.kmagic_inner = {}
-  -- proxy.kmagic_dirty = {}
-  -- proxy.kmagic_added = {}
+  ngx.ctx[CACHE_HEADERS[group].KEY] = nil
+end
+
+local function set_dirty(group)
+  ngx.ctx[CACHE_HEADERS[group].FLAG] = nil
 end
 
 local lower_fetch = function(tbl, key)
@@ -118,115 +121,146 @@ local mt = {
 }
 
 local function get_headers_cache(group)
-  local proxy = get_headers_cache_proxy(group)
-  -- get_recover_cache(proxy)
-  if not ngx.ctx[CACHE_HEADERS[group].FLAG] then
-    return nil
+  local cache_key = CACHE_HEADERS[group].KEY
+  local cache_flag = CACHE_HEADERS[group].FLAG
+  if ngx.ctx[cache_key] and ngx.ctx[cache_flag] then
+    return ngx.ctx[cache_key]
   end
-  local new_table = clone(proxy)
-  setmetatable(new_table, mt)
-  return new_table
+  return nil
 end
 
-local function builtin_header_single_handler(cache, key, value)
-  key = normalize_header_name(key)
-  if type(value) == "table" then
-    if (#value == 0) then
-      cache[key] = nil
-    else
-      cache[key] = normalize_header_value(value[#value])
-    end
-  else
-      cache[key] = normalize_header_value(value)
-  end
-end
+-- local function builtin_header_single_handler(cache, key, value)
+--   key = normalize_header_name(key)
+--   if type(value) == "table" then
+--     if (#value == 0) then
+--       cache[key] = nil
+--     else
+--       cache[key] = normalize_header_value(value[#value])
+--     end
+--   else
+--       cache[key] = normalize_header_value(value)
+--   end
+-- end
 
-local function multi_value_handler(cache, key, value, override)
-  key = normalize_header_name(key)
+-- local function multi_value_handler(cache, key, value, override)
+--   key = normalize_header_name(key)
 
-  -- if add_header with empty string (override == nil and value == ""), special handling to keep consistency
-  if (override or value ~= "") then
-    value = normalize_header_value(value)
-  end
+--   -- if add_header with empty string (override == nil and value == ""), special handling to keep consistency
+--   if (override or value ~= "") then
+--     value = normalize_header_value(value)
+--   end
 
-  if override then
-    -- override mode, assign directly
-    cache[key] = value
-  else
-    if not cache[key] then
-    -- if cache key not exists, assign directly
-      cache[key]  = value
-      return
-    end
+--   if override then
+--     -- override mode, assign directly
+--     cache[key] = value
+--   else
+--     if not cache[key] then
+--     -- if cache key not exists, assign directly
+--       cache[key]  = value
+--       return
+--     end
 
-    -- field exists for adding, change single value to list
-    if type(cache[key]) ~= "table" then
-      cache[key] = { cache[key] }
-    end
+--     -- field exists for adding, change single value to list
+--     if type(cache[key]) ~= "table" then
+--       cache[key] = { cache[key] }
+--     end
 
-    -- values insert
-    if type(value) == "table" then
-        for i, v in ipairs(value) do
-            table.insert(cache[key], v)
-        end
-    else
-        table.insert(cache[key], value)
-    end
-  end
-end
+--     -- values insert
+--     if type(value) == "table" then
+--         for i, v in ipairs(value) do
+--             table.insert(cache[key], v)
+--         end
+--     else
+--         table.insert(cache[key], value)
+--     end
+--   end
+-- end
 
-local function set_header_cache(group, name, value, override)
-  name = normalize_header_name(name)
-  -- local cache = ngx.ctx[CACHE_HEADERS[group].KEY]
-  local cache = get_headers_cache_proxy(group)
-  -- local proxy = get_headers_cache_proxy(group)
-  -- local cache = proxy.kmagic_inner
-  -- if (proxy.kmagic_dirty[name]) then
-  --   proxy.kmagic_dirty[name] = nil
-  -- elseif (proxy.kmagic_added[name]) then
-  --   proxy.kmagic_added[name] = nil
-  -- end
-  if CACHE_HEADERS[group].SINGLE_VALUES[name] then
-    builtin_header_single_handler(cache, name, value)
-  else
-    multi_value_handler(cache, name, value, override)
-  end
-end
+-- local function set_header_cache(group, name, value, override)
+--   name = normalize_header_name(name)
+--   -- local cache = ngx.ctx[CACHE_HEADERS[group].KEY]
+--   local cache = get_headers_cache_proxy(group)
+--   -- local proxy = get_headers_cache_proxy(group)
+--   -- local cache = proxy.kmagic_inner
+--   -- if (proxy.kmagic_dirty[name]) then
+--   --   proxy.kmagic_dirty[name] = nil
+--   -- elseif (proxy.kmagic_added[name]) then
+--   --   proxy.kmagic_added[name] = nil
+--   -- end
+--   if CACHE_HEADERS[group].SINGLE_VALUES[name] then
+--     builtin_header_single_handler(cache, name, value)
+--   else
+--     multi_value_handler(cache, name, value, override)
+--   end
+-- end
 
 -- set cache headers by group[request/response]
 local function set_headers_cache(group, values)
   -- if no key specified, assign the whole cache group value
+  local cache_key = CACHE_HEADERS[group].KEY
   local cache_flag = CACHE_HEADERS[group].FLAG
   clear_header_cache_proxy(group)
-  ngx.ctx[CACHE_HEADERS[group].KEY] = values
-  -- proxy.kmagic_inner = values
-  if not ngx.ctx[cache_flag] then
-    ngx.ctx[cache_flag] = true
+  ngx.ctx[cache_key] = values
+  ngx.ctx[cache_flag] = true
+end
+
+local function set_single_header_cache(group, name, values)
+  -- if no key specified, assign the whole cache group value
+  local cache_key = CACHE_HEADERS[group].KEY
+  local cache_flag = CACHE_HEADERS[group].FLAG
+  if ngx.ctx[cache_key] == nil then
+    ngx.ctx[cache_key] = {}
   end
+  ngx.ctx[cache_key][normalize_header_name(name)] = values
 end
 
 
 -- get cache header
 local function get_header_cache(group, name)
-  local proxy = get_headers_cache_proxy(group)
-  -- get_recover_cache(proxy)
-  return proxy[name]
+  local cache_key = CACHE_HEADERS[group].KEY
+  local cache_flag = CACHE_HEADERS[group].FLAG
+  if ngx.ctx[cache_key] then
+    local value = ngx.ctx[cache_key][normalize_header_name(name)]
+    if value == nil then
+      return nil
+    end
+    if type(value) ~= "table" then
+      return value
+    else
+      -- 防止对于result的修改直接作用到cache
+      return clone(value)
+    end
+  end
+  return nil
 end
 
 local function clear_headers_cache()
   clear_header_cache_proxy(1)
   clear_header_cache_proxy(2)
-  -- ngx.ctx[CACHE_HEADERS[1].KEY] = nil
-  -- ngx.ctx[CACHE_HEADERS[2].KEY] = nil
-  ngx.ctx[CACHE_HEADERS[1].FLAG] = nil
-  ngx.ctx[CACHE_HEADERS[2].FLAG] = nil
+  set_dirty(1)
+  set_dirty(2)
+end
+
+local function set_cache_dirty(group, name)
+  local cache = get_headers_cache(group)
+  if cache then
+    cache[normalize_header_name(name)] = nil
+    set_dirty(group)
+  end
+end
+
+local function duplicate_headers_cache(group)
+  local new_headers = clone(get_headers_cache(group))
+  setmetatable(new_headers, mt)
+  return new_headers
 end
 
 return {
-  set_header_cache = set_header_cache,
   set_headers_cache = set_headers_cache,
   get_headers_cache = get_headers_cache,
   get_header_cache = get_header_cache,
   clear_headers_cache = clear_headers_cache,
-  normalize_header_name = normalize_header_name,
+  duplicate_headers_cache = duplicate_headers_cache,
+  set_cache_dirty = set_cache_dirty,
+  set_single_header_cache = set_single_header_cache,
 }

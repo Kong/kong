@@ -300,13 +300,13 @@ local constants = {
       KEY = "cached_request_headers",
       FLAG = "cached_request_headers_flag",
       -- nginx buildin req headers which only support single value
-      SINGLE_VALUES = {"Host", "Connection", "If-Modified-Since","If-Unmodified-Since","If-Match","If-None-Match","User-Agent","Referer", "Content-Length", "Content-Type", "Range", "If-Range", "Transfer-Encoding", "Expect", "Upgrade", "Accept-Encoding", "Via", "Authorization", "Keep-Alive", "X-Real-IP", "Depth", "Destination", "Overwrite","Date"},
+      -- SINGLE_VALUES = {"Host", "Connection", "If-Modified-Since","If-Unmodified-Since","If-Match","If-None-Match","User-Agent","Referer", "Content-Length", "Content-Type", "Range", "If-Range", "Transfer-Encoding", "Expect", "Upgrade", "Accept-Encoding", "Via", "Authorization", "Keep-Alive", "X-Real-IP", "Depth", "Destination", "Overwrite","Date"},
     },
     {
       KEY = "cached_response_headers",
       FLAG = "cached_response_headers_flag",
       -- nginx buildin resp headers which only support single value
-      SINGLE_VALUES = {"Server", "Date", "Content-Encoding","Location","Refresh","Last-Modified","Content-Range","Accept-Ranges", "WWW-Authenticate", "Expires", "E-Tag", "ETag", "Content-Length", "Content-Type"},
+      -- SINGLE_VALUES = {"Server", "Date", "Content-Encoding","Location","Refresh","Last-Modified","Content-Range","Accept-Ranges", "WWW-Authenticate", "Expires", "E-Tag", "ETag", "Content-Length", "Content-Type"},
     },
   }
 }
