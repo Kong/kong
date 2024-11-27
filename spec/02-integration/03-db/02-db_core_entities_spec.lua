@@ -93,6 +93,11 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("pagination options", function()
+          it("default page_size and max_page_size", function()
+            assert.equal(db.routes.pagination.page_size, 1000)
+            assert.equal(db.routes.pagination.max_page_size, 50000)
+          end)
+
           it("errors on invalid page size", function()
             local ok, err, err_t = db.routes:page(nil, nil, {
               pagination = {
