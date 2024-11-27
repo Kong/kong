@@ -33,6 +33,12 @@ function _M.new(kong_config, database, schemas, errors)
 
   do
     local base_connector = require "kong.db.strategies.connector"
+
+    -- lmdb will not support huge page size
+    if database == "off" then
+      base_connector.defaults.pagination.max_page_size = 2048
+    end
+
     local mt = getmetatable(connector)
     setmetatable(mt, {
       __index = function(t, k)
