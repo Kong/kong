@@ -15,6 +15,9 @@ function _M.new()
     capabilities_list = {}, -- updated as register() is called
   }
 
+  -- it should always be an array when json encoding
+  setmetatable(self.capabilities_list, cjson.array_mt)
+
   return setmetatable(self, _MT)
 end
 
