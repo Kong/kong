@@ -57,7 +57,7 @@ function _M.new(conf, node_id)
 
   if conf.role == "control_plane" then
     self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
-    self.client_ips = {}  -- store DP node's ip addr
+    self.client_info = {}  -- store DP node's ip addr and version
   end
 
   return setmetatable(self, _MT)
@@ -96,7 +96,7 @@ function _M:_remove_socket(socket)
     self.client_capabilities[node_id] = nil
 
     if self.concentrator then
-      self.client_ips[node_id] = nil
+      self.client_info[node_id] = nil
       assert(self.concentrator:_enqueue_unsubscribe(node_id))
     end
   end
@@ -180,14 +180,6 @@ function _M:_handle_meta_call(c)
   assert(type(info.kong_hostname) == "string")
   assert(type(info.kong_conf) == "table")
 
-  local capabilities_list = info.rpc_capabilities
-  local node_id = info.kong_node_id
-
-  self.client_capabilities[node_id] = {
-    set = pl_tablex_makeset(capabilities_list),
-    list = capabilities_list,
-  }
-
   local payload = {
     jsonrpc = "2.0",
     result = {
@@ -202,6 +194,24 @@ function _M:_handle_meta_call(c)
   if not bytes then
     return nil, err
   end
+
+  local capabilities_list = info.rpc_capabilities
+  local node_id = info.kong_node_id
+
+  self.client_capabilities[node_id] = {
+    set = pl_tablex_makeset(capabilities_list),
+    list = capabilities_list,
+  }
+
+  -- we are on cp side
+  assert(self.concentrator)
+  assert(self.client_info)
+
+  -- store DP's ip addr
+  self.client_info[node_id] = {
+    ip = ngx_var.remote_addr,
+    version = info.kong_version,
+  }
 
   return node_id
 end
@@ -239,11 +249,16 @@ function _M:_meta_call(c, meta_cap, node_id)
   end
 
   if typ ~= "binary" then
-    return nil, "wrong frame type: " .. type
+    return nil, "wrong frame type: " .. typ
   end
 
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == "2.0")
+
+  -- now we only support snappy
+  if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
+    return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
+  end
 
   local capabilities_list = payload.result.rpc_capabilities
 
@@ -251,11 +266,6 @@ function _M:_meta_call(c, meta_cap, node_id)
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
-
-  -- now we only support snappy
-  if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
-    return nil, "unknown encoding: " .. payload.result.rpc_frame_encoding
-  end
 
   return true
 end
@@ -398,9 +408,6 @@ function _M:handle_websocket()
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s)
 
-  -- store DP's ip addr
-  self.client_ips[node_id] = ngx_var.remote_addr
-
   s:start()
   local res, err = s:join()
   self:_remove_socket(s)
@@ -533,8 +540,8 @@ function _M:get_peers()
 end
 
 
-function _M:get_peer_ip(node_id)
-  return self.client_ips[node_id]
+function _M:get_peer_info(node_id)
+  return self.client_info[node_id]
 end
 
 
