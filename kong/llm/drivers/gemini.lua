@@ -268,22 +268,23 @@ local function from_gemini_chat_openai(response, model_info, route_type)
       messages.model = model_info.name
 
     elseif is_tool_content(response) then
+      messages.choices[1] = {
+        index = 0,
+        message = {
+          role = "assistant",
+          tool_calls = {},
+        },
+      }
+
       local function_call_responses = response.candidates[1].content.parts
       for i, v in ipairs(function_call_responses) do
-        messages.choices[i] = {
-          index = 0,
-          message = {
-            role = "assistant",
-            tool_calls = {
-              {
-                ['function'] = {
-                  name = v.functionCall.name,
-                  arguments = cjson.encode(v.functionCall.args),
-                },
-              },
+        messages.choices[1].message.tool_calls[i] =
+          {
+            ['function'] = {
+              name = v.functionCall.name,
+              arguments = cjson.encode(v.functionCall.args),
             },
-          },
-        }
+          }
       end
     end
 
