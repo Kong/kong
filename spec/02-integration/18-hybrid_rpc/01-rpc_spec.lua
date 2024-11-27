@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
+local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
 -- we need incremental sync to verify rpc
 for _, inc_sync in ipairs { "on" } do
@@ -65,9 +66,17 @@ for _, strategy in helpers.each_strategy() do
           -- TODO: perhaps need a new test method
           for _, v in pairs(json.data) do
             if v.ip == "127.0.0.1" and v.rpc_capabilities and #v.rpc_capabilities ~= 0 then
-              table.sort(v.rpc_capabilities)
               assert.near(14 * 86400, v.ttl, 3)
+              assert.matches("^(%d+%.%d+)%.%d+", v.version)
+              assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+
+              local reg = [[^(\d+)\.(\d+)]]
+              local m = assert(ngx.re.match(v.version, reg))
+              assert(tonumber(m[1]) >= 3)
+              assert(tonumber(m[2]) >= 9)
+
               -- check the available rpc service
+              table.sort(v.rpc_capabilities)
               assert.same("kong.sync.v2", v.rpc_capabilities[1])
               return true
             end
