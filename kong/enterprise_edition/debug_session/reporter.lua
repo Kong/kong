@@ -18,6 +18,7 @@ local log                   = utils.log
 local ngx_ERR = ngx.ERR
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
+local ANALYTICS_TRACING_PATH = "/v1/analytics/tracing?node_id=%s&node_hostname=%s&node_version=%s"
 
 
 local function get_queue_conf(name)
@@ -107,10 +108,9 @@ function _M:new()
   local scheme = port:sub(-3) == "443" and "wss://" or "ws://"
   local endpoint = scheme .. telemetry_endpoint
 
-  local path = string.format(
-    "/v1/analytics/tracing?node_id=%s&node_hostname=%s&node_version=%s",
-    kong.node.get_id(), kong.node.get_hostname(), kong.version
-  )
+  local path = string.format(ANALYTICS_TRACING_PATH, kong.node.get_id(),
+                                                     kong.node.get_hostname(),
+                                                     kong.version)
 
   local obj = {
     dispatcher = assert(telemetry_dispatcher.new({

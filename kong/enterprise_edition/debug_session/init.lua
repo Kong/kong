@@ -353,7 +353,10 @@ function _M:update_sessions_from_cp()
   -- store the event id for the next request
   self.context:set_event_id(res.event_id)
   -- processing updates
-  self:process_updates(res)
+  local ok, pu_err = self:process_updates(res)
+  if not ok then
+    log(ngx_ERR, "failed to process debug session updates: ", pu_err)
+  end
 end
 
 -- exposed for unit testing
