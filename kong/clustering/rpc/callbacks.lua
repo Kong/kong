@@ -9,6 +9,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local cjson = require("cjson.safe")
 local utils = require("kong.clustering.rpc.utils")
 
 
@@ -21,6 +22,9 @@ function _M.new()
     capabilities = {}, -- updated as register() is called
     capabilities_list = {}, -- updated as register() is called
   }
+
+  -- it should always be an array when json encoding
+  setmetatable(self.capabilities_list, cjson.array_mt)
 
   return setmetatable(self, _MT)
 end
