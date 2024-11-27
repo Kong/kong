@@ -12,7 +12,7 @@ local SERVICE_YML = [[
 ]]
 
 
-local POST_FUNC = [[
+local POST_FUNC_YML = [[
 plugins:
   - name: key-auth
   - name: post-function
@@ -75,8 +75,8 @@ describe("dbless pagination #off", function()
     helpers.stop_kong()
   end)
 
-  it("Routes", function()
-    local buffer = {"_format_version: '3.0'", POST_FUNC, "services:"}
+  it("max pagesize should be 2048", function()
+    local buffer = {"_format_version: '3.0'", POST_FUNC_YML, "services:"}
     for i = 1, COUNT do
       buffer[#buffer + 1] = fmt(SERVICE_YML, i, i, i, i)
     end
@@ -101,5 +101,7 @@ describe("dbless pagination #off", function()
 
     res = assert(proxy_client:get("/1", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
+
+    assert.logfile().has.no.line("[error]", true)
   end)
 end)
