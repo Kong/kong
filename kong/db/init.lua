@@ -89,7 +89,6 @@ function DB.new(kong_config, strategy)
 
   local connector, strategies, err = Strategies.new(kong_config, strategy,
                                                     schemas, errors)
-
   if err then
     return nil, err
   end
