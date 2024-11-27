@@ -159,34 +159,34 @@ return function(options)
         if not get_request() then
           error("no request found")
         end
+        -- use cache if it's fresh, return `nil` means cache stale
         local cached_headers = header_cache.get_headers_cache(1)
         if cached_headers then
-          return header_cache.duplicate_headers_cache(1)
+          return cached_headers
         end
         MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
         _G.ngx.req.get_headers = get_req_headers_real
         local headers = get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        -- refresh cache
         header_cache.set_headers_cache(1, headers)
-        return header_cache.duplicate_headers_cache(1);
-        -- return get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        -- return headers here, to avoid unnecessary copy of cache table
+        return headers
       end
 
+      -- use lazy load for headers cache, only set stale flag, not refresh cache immediately
       _G.ngx.req.set_header = function(header_name, header_value)
         set_req_header(header_name, header_value)
-        -- header_cache.set_header_cache(1, header_name, header_value, true)
-        header_cache.set_cache_dirty(1, header_name)
+        header_cache.set_cache_stale(1, header_name)
       end
 
       _G.ngx.req.clear_header = function(header_name)
         clear_req_header(header_name)
-        -- header_cache.set_header_cache(1, header_name, nil, true)
-        header_cache.set_cache_dirty(1, header_name)
+        header_cache.set_cache_stale(1, header_name)
       end
 
       _G.ngx.req.add_header = function(header_name, header_value)
         add_req_header(header_name, header_value)
-        -- header_cache.set_header_cache(1, header_name, header_value)
-        header_cache.set_cache_dirty(1, header_name)
+        header_cache.set_cache_stale(1, header_name)
       end
       -- ]
 
@@ -203,22 +203,23 @@ return function(options)
         if not get_request() then
           error("no request found")
         end
+        -- use cache if it's fresh, return `nil` means cache stale
         local cached_headers = header_cache.get_headers_cache(2)
         if cached_headers then
-          return header_cache.duplicate_headers_cache(2)
+          return cached_headers
         end
         MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
         _G.ngx.resp.get_headers = get_resp_headers_real
         local headers = get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
+        -- refresh cache
         header_cache.set_headers_cache(2, headers)
-        return header_cache.duplicate_headers_cache(2);
-        -- return get_resp_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+        -- return headers here, to avoid unnecessary copy of cache table
+        return headers
       end
 
       _G.ngx.resp.add_header = function(header_name, header_value)
         add_resp_header(header_name, header_value)
-        -- header_cache.set_header_cache(2, header_name, header_value)
-        header_cache.set_cache_dirty(2, header_name)
+        header_cache.set_cache_stale(2, header_name)
       end
 
       -- patch resp header getter/setter `ngx.header.HEADER`
@@ -227,19 +228,26 @@ return function(options)
         local mt = table.new(0, 2)
         
         mt.__index = function(t, k)
+          -- get header value from cache, `nil` means header in cache is stale
+          -- or not exist, so use `ngx.header` to fetch the real(latest) value.
           local value = header_cache.get_header_cache(2, k)
           if value == nil then
             value = resp_header[k]
+            -- refresh cache
             header_cache.set_single_header_cache(2, k, value)
           end
-          return header_cache.get_header_cache(2, k)
+          return value
         end
         mt.__newindex = function(t, k, v)
           resp_header[k] = v
-          -- header_cache.set_header_cache(2, k, v, true)
-          header_cache.set_cache_dirty(2, k)
+          -- mark cache stale, cache will be refresh for next `ngx.header[k]`
+          -- or `get_headers`. Benefit of lazyload is: 1. avoid mismatch of
+          -- value assignment(there are logic like value escaping underlying
+          -- resty API, assign to cache by value got from resty API gurantee
+          -- the consistency); 2. no cache assignment happens if the header
+          -- not called in subsequential workflow.
+          header_cache.set_cache_stale(2, k)
         end
-        
         ngx.header = setmetatable(table.new(0, 0), mt)
       end
       -- ]
