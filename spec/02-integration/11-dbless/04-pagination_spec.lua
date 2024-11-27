@@ -14,7 +14,6 @@ local SERVICE_YML = [[
 
 local POST_FUNC_YML = [[
 plugins:
-  - name: key-auth
   - name: post-function
     config:
       rewrite:
@@ -57,6 +56,8 @@ plugins:
             local entities, err = db.routes:page(2049)
             assert(not entities)
             assert(err == "[off] size must be an integer between 1 and 2048")
+
+            ngx.exit(200)
           end
 ]]
 
@@ -100,7 +101,7 @@ describe("dbless pagination #off", function()
     local proxy_client = assert(helpers.proxy_client())
 
     res = assert(proxy_client:get("/1", { headers = { host = "example1.dev" } }))
-    assert.res_status(401, res)
+    assert.res_status(200, res)
 
     assert.logfile().has.no.line("[error]", true)
   end)
