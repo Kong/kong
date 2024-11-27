@@ -17,12 +17,26 @@ plugins:
   - name: key-auth
   - name: post-function
     config:
-      log:
+      rewrite:
         - |
           return function(conf)
             local db = kong.db
 
             assert(db.routes.pagination.max_page_size == 2048)
+            assert(db.services.pagination.max_page_size == 2048)
+
+            local r, err = db.routes:each(1000)
+            assert(r and not err)
+
+            local r, err = db.routes:each(2047)
+            assert(r and not err)
+
+            local r, err = db.routes:each(2048)
+            assert(r and not err)
+
+            local r, err = db.routes:each(2049)
+            assert(not r)
+            assert(err == "[off] size must be an integer between 1 and 2048")
           end
 ]]
 
