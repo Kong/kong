@@ -39,6 +39,7 @@ for _, strategy in helpers.each_strategy() do
     local hs_jwt_secret_2
     local proxy_client
     local admin_client
+    local nonexisting_anonymous = uuid.uuid() -- a nonexisting consumer id
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -128,7 +129,7 @@ for _, strategy in helpers.each_strategy() do
       plugins:insert({
         name     = "jwt",
         route = { id = routes[7].id },
-        config   = { anonymous = uuid.uuid() },
+        config   = { anonymous = nonexisting_anonymous }, -- a nonexisting consumer id
       })
 
       plugins:insert({
@@ -1263,7 +1264,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "jwt7.test"
           }
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
     end)
   end)

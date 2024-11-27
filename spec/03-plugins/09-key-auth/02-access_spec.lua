@@ -28,6 +28,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: key-auth (access) [#" .. strategy .. "] " .. proto, function()
     local kong_cred
+    local nonexisting_anonymous = uuid.uuid()  -- a nonexisting consumer id
 
     lazy_setup(function()
       mock = http_mock.new(MOCK_PORT)
@@ -140,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "key-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = uuid.uuid(),  -- unknown consumer
+          anonymous = nonexisting_anonymous,  -- a nonexisting consumer id
         },
       }
 
@@ -838,7 +839,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "key-auth4.test"
           }
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
     end)
   end)

@@ -49,6 +49,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local admin_client
         local route2
         local plugin2
+        local nonexisting_anonymous = uuid.uuid() -- a non existing consumer id
 
         lazy_setup(function()
           local bp = helpers.get_db_utils(strategy, {
@@ -158,7 +159,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 2,
-              anonymous = uuid.uuid(), -- non existing consumer
+              anonymous = nonexisting_anonymous,  -- a non existing consumer id
             }
           }
 
@@ -633,7 +634,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
                 ["Host"] = "ldap4.test"
               }
             })
-            assert.response(res).has.status(500)
+            local body = cjson.decode(assert.res_status(500, res))
+            assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
           end)
         end)
       end)

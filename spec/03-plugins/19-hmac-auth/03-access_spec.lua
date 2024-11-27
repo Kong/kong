@@ -41,6 +41,7 @@ for proto, conf in ee_helpers.each_protocol() do
   describe("Plugin: hmac-auth (access) [#" .. strategy .. "] (" .. proto .. ")", function()
     local consumer
     local credential
+    local nonexisting_anonymous = uuid.uuid() -- a nonexisting consumer id
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -122,7 +123,7 @@ for proto, conf in ee_helpers.each_protocol() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = uuid.uuid(),  -- non existing consumer
+          anonymous  = nonexisting_anonymous,  -- a non existing consumer id
           clock_skew = 3000
         }
       }
@@ -1239,7 +1240,8 @@ for proto, conf in ee_helpers.each_protocol() do
             ["Host"] = "hmacauth3.test",
           },
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
 
       if proto ~= "websocket" then -- no body validation w/ WebSockets

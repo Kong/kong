@@ -15,6 +15,7 @@ local ee_helpers = require "spec-ee.helpers"
 for _, strategy in helpers.each_strategy() do
   for proto, conf in ee_helpers.each_protocol() do
     local proxy_client
+    local nonexisting_anonymous = uuid.uuid() -- a non-existing consumer id
 
   describe("Plugin: basic-auth (access) [#" .. strategy .. "] #" .. proto, function()
     lazy_setup(function()
@@ -116,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "basic-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = uuid.uuid(), -- a non-existing consumer id
+          anonymous = nonexisting_anonymous, -- a non-existing consumer id
         },
       }
 
@@ -442,7 +443,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "basic-auth4.test"
           }
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
 
     end)
