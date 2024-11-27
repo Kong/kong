@@ -51,6 +51,7 @@ local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
 local uuid              = require("kong.tools.uuid").uuid
+local EMPTY            = require("kong.tools.table").EMPTY
 
 local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
@@ -429,6 +430,17 @@ end
 
 
 local function build_router(version)
+  -- as new_router may be interrupted, and after init_worker we assume
+  -- the ROUTE is never nil, we create an empty router which cannot be
+  -- interrupted and will be replaced by the new_router
+  if version == "init" then
+    local err
+    ROUTER, err = Router.new(EMPTY, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
+    if not ROUTER then
+      log(ERR, "could not create an empty router: ", err)
+    end
+  end
+
   local router, err = new_router(version)
   if not router then
     return nil, err
