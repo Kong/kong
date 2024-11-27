@@ -1,11 +1,58 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
+local strip = require("kong.tools.string").strip
 
 local http = require("resty.http")
 
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
+
+local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
+
+local _EXPECTED_CHAT_STATS = {
+  meta = {
+    plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+    provider_name = 'openai',
+    request_model = 'gpt-3.5-turbo',
+    response_model = 'gpt-3.5-turbo',
+    llm_latency = 1
+  },
+  usage = {
+    prompt_tokens = 18,
+    completion_tokens = 7,
+    total_tokens = 25,
+    time_per_token = 1,
+    cost = 0.00037,
+  },
+}
+
+local truncate_file = function(path)
+  local file = io.open(path, "w")
+  file:close()
+end
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy  .. "]", function()
@@ -353,12 +400,17 @@ for _, strategy in helpers.all_strategies() do
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
+        id = "6e7c40f6-ce96-48e4-a366-d109c169e444",
         route = { id = openai_chat_partial.id },
         config = {
           route_type = "llm/v1/chat",
           auth = {
             header_name = "Authorization",
             header_value = "Bearer openai-key",
+          },
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
           },
           model = {
             name = "gpt-3.5-turbo",
@@ -369,6 +421,13 @@ for _, strategy in helpers.all_strategies() do
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/partial"
             },
           },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = openai_chat_partial.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -497,10 +556,12 @@ for _, strategy in helpers.all_strategies() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     before_each(function()
       client = helpers.proxy_client()
+      truncate_file(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     after_each(function()
