@@ -51,7 +51,6 @@ plugins:
 
             local entities, err = db.routes:page(2048)
             assert(#entities == 2048 and not err)
-            ngx.log(ngx.INFO, "xxx #entities", #entities)
 
             local entities, err = db.routes:page(2049)
             assert(not entities)
