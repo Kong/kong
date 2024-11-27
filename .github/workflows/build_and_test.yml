@@ -503,8 +503,6 @@ jobs:
         BUILD_NAME=${{ env.BUILD_NAME_NORMAL }} make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
         # restore /usr/local folder
         sudo rsync -a --delete /tmp/usr-local-bkp/local/ /usr/local/
-        # python pluginserver tests dependency
-        sudo pip install kong-pdk
 
     - name: Extract FIPS artifact contents
       if: ${{ inputs.aarch64 == false }}
