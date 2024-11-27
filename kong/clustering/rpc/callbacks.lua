@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local cjson = require("cjson.safe")
 local utils = require("kong.clustering.rpc.utils")
 
 
