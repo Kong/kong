@@ -169,8 +169,7 @@ return function(options)
         local headers = get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
         -- refresh cache
         header_cache.set_headers_cache(1, headers)
-        -- return headers here, to avoid unnecessary copy of cache table
-        return headers
+        return header_cache.get_headers_cache(1)
       end
 
       -- use lazy load for headers cache, only set stale flag, not refresh cache immediately
@@ -213,8 +212,7 @@ return function(options)
         local headers = get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
         -- refresh cache
         header_cache.set_headers_cache(2, headers)
-        -- return headers here, to avoid unnecessary copy of cache table
-        return headers
+        return header_cache.get_headers_cache(2)
       end
 
       _G.ngx.resp.add_header = function(header_name, header_value)
@@ -232,11 +230,13 @@ return function(options)
           -- or not exist, so use `ngx.header` to fetch the real(latest) value.
           local value = header_cache.get_header_cache(2, k)
           if value == nil then
-            value = resp_header[k]
+            local v = resp_header[k]
             -- refresh cache
-            header_cache.set_single_header_cache(2, k, value)
+            if v ~= nil then
+              header_cache.set_single_header_cache(2, k, v)
+            end
           end
-          return value
+          return value or header_cache.get_header_cache(2, k)
         end
         mt.__newindex = function(t, k, v)
           resp_header[k] = v
