@@ -172,6 +172,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     local proxy_ssl_client
     local proxy_client
     local client1
+    local nonexisting_anonymous = uuid.uuid() -- a non existing consumer id
 
     lazy_setup(function()
 
@@ -511,7 +512,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
-          anonymous          = uuid.uuid(), -- a non existing consumer
+          anonymous          = nonexisting_anonymous, -- a non existing consumer id
         },
       })
 
@@ -3373,7 +3374,8 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
             ["Host"] = "oauth2_10.test"
           }
         })
-        assert.res_status(500, res)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
       it("returns success and the token should have the right expiration when a custom header is passed", function()
         local res = assert(proxy_ssl_client:send {

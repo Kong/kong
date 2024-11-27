@@ -6,6 +6,7 @@ local uuid    = require "kong.tools.uuid"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
+    local nonexisting_anonymous = uuid.uuid() -- a non-existing consumer id
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -104,7 +105,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "basic-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = uuid.uuid(), -- a non-existing consumer id
+          anonymous = nonexisting_anonymous, -- a non-existing consumer id
         },
       }
 
@@ -430,7 +431,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "basic-auth4.test"
           }
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
 
     end)

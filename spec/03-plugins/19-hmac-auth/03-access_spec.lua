@@ -20,6 +20,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local consumer
     local credential
+    local nonexisting_anonymous = uuid.uuid() -- a nonexisting consumer id
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -96,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = uuid.uuid(),  -- non existing consumer
+          anonymous  = nonexisting_anonymous,  -- a non existing consumer id
           clock_skew = 3000
         }
       }
@@ -1204,7 +1205,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "hmacauth3.test",
           },
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
       end)
 
       it("should pass with GET when body validation enabled", function()
