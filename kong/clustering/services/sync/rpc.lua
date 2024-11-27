@@ -181,7 +181,27 @@ function _M:init(manager, is_cp)
 end
 
 
+-- check if rpc connection is ready
+local function is_rpc_ready()
+  for i = 1, 5 do
+    local res = kong.rpc:get_peers()
+
+    -- control_plane is ready
+    if res["control_plane"] then
+      return true
+    end
+
+    -- retry later
+    ngx.sleep(0.1 * i)
+  end
+end
+
+
 local function do_sync()
+  if not is_rpc_ready() then
+    return nil, "rpc is not ready"
+  end
+
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
                                        { default =
                                          { version =
@@ -394,8 +414,6 @@ end
 
 
 function _M:sync_once(delay)
-  --- XXX TODO: check rpc connection is ready
-
   return start_sync_timer(ngx.timer.at, delay or 0)
 end
 
