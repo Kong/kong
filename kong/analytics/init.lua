@@ -8,6 +8,7 @@
 local reports            = require("kong.reports")
 local new_tab            = require("table.new")
 local request_id         = require("kong.observability.tracing.request_id")
+local tracing_context    = require("kong.observability.tracing.tracing_context")
 local telemetry_dispatcher = require ("kong.clustering.telemetry_dispatcher")
 local Queue              = require("kong.tools.queue")
 local pb                 = require("pb")
@@ -319,8 +320,8 @@ function _M:create_payload(message)
 
   local ngx_ctx = ngx.ctx
   local root_span = ngx_ctx.KONG_SPANS and ngx_ctx.KONG_SPANS[1]
-  local trace_id = root_span and root_span.trace_id
-  if trace_id and root_span.should_sample then
+  local trace_id = tracing_context.get_raw_trace_id()
+  if trace_id and root_span and root_span.should_sample then
     log(DEBUG, _log_prefix, "Attaching raw trace_id of to_hex(trace_id): ", to_hex(trace_id))
     payload.trace_id = trace_id
   end

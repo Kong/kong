@@ -17,6 +17,7 @@ local protoc = require "protoc"
 local pb = require "pb"
 local analytics = require "kong.analytics"
 local to_hex = require "resty.string".to_hex
+local tracing_context = require "kong.observability.tracing.tracing_context"
 local at_instrum = require "kong.enterprise_edition.debug_session.instrumentation"
 
 local orig_ngx_var_mt = getmetatable(ngx.var)
@@ -229,8 +230,8 @@ end
 
 local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
   if trace_bytes then
+    tracing_context.set_raw_trace_id(trace_bytes)
     _G.ngx.ctx["KONG_SPANS"] = {{
-      trace_id = trace_bytes,
       should_sample = true
     }}
     stub(at_instrum, "get_root_span").returns({
@@ -288,6 +289,7 @@ end
 
 local function reset_context()
   _G.ngx.ctx.KONG_SPANS = nil
+  tracing_context.set_raw_trace_id(nil)
   _G.ngx.ctx.__rate_limiting_context__ = nil
   setmetatable(_G.ngx.var, orig_ngx_var_mt)
   _G.ngx.header = orig_ngx_header

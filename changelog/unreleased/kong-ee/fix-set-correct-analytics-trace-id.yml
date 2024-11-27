@@ -1,0 +1,3 @@
+message: '**Analytics**: Fixed an issue where `trace_id` did not honor the value extracted during tracing headers propagation.'
+type: bugfix
+scope: Core
