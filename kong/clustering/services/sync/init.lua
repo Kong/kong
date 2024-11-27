@@ -14,8 +14,7 @@ local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
 
 
--- TODO: what is the proper value?
-local FIRST_SYNC_DELAY = 0.5  -- seconds
+local FIRST_SYNC_DELAY = 0.2  -- seconds
 local EACH_SYNC_DELAY  = 30   -- seconds
 
 
