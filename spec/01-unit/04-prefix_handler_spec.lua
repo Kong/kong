@@ -315,6 +315,7 @@ describe("NGINX conf compiler", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_listen = "127.0.0.1:9005",
+        cluster_rpc = "on",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)

@@ -18,6 +18,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync, -- incremental sync
       }))
 
@@ -30,6 +31,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = "on",
         cluster_incremental_sync = inc_sync, -- incremental sync
       }))
     end)

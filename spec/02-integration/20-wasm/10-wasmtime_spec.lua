@@ -1,7 +1,9 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 
-for _, inc_sync in ipairs { "off", "on" } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, role in ipairs({"traditional", "control_plane", "data_plane"}) do
 
 describe("#wasm wasmtime (role: " .. role .. ")", function()
@@ -19,6 +21,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         role = role,
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -94,6 +97,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
         status_listen = "127.0.0.1:" .. status_port,
         nginx_main_worker_processes = 2,
 
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -116,6 +120,7 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           status_listen = "off",
           nginx_main_worker_processes = 2,
+          cluster_rpc = rpc,
           cluster_incremental_sync = inc_sync,
         }))
       end

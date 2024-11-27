@@ -83,7 +83,9 @@ local function start_kong_debug(env)
 end
 
 
-for _, inc_sync in ipairs { "on", "off" } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
   describe("node id persistence " .. " inc_sync=" .. inc_sync, function()
 
@@ -94,6 +96,7 @@ for _, strategy in helpers.each_strategy() do
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }
 
@@ -109,6 +112,7 @@ for _, strategy in helpers.each_strategy() do
       database = "off",
       untrusted_lua = "on",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
       worker_state_update_frequency = 1,
     }
