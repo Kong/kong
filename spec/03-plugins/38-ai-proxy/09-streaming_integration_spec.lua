@@ -632,6 +632,31 @@ for _, strategy in helpers.all_strategies() do
 
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
+
+        -- test analytics on this item
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        local actual_stats = log_message.ai.proxy
+
+        local actual_llm_latency = actual_stats.meta.llm_latency
+        local actual_time_per_token = actual_stats.usage.time_per_token
+        local time_per_token = actual_llm_latency / actual_stats.usage.completion_tokens
+
+        local actual_request_log = actual_stats.payload.request or "ERROR: NONE_RETURNED"
+        local actual_response_log = actual_stats.payload.response or "ERROR: NONE_RETURNED"
+        actual_stats.payload = nil
+
+        actual_stats.meta.llm_latency = 1
+        actual_stats.usage.time_per_token = 1
+
+        assert.same(_EXPECTED_CHAT_STATS, actual_stats)
+        assert.is_true(actual_llm_latency >= 0)
+        assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
+        assert.match_re(actual_request_log, [[.*content.*What is 1 \+ 1.*]])
+        assert.match_re(actual_response_log, [[.*content.*The answer.*]])
       end)
 
       it("good stream request cohere", function()
