@@ -315,6 +315,13 @@ function OAuth2Introspection:access(conf)
       if err then
         return kong.response.exit(500, err)
       end
+
+      if not consumer then
+        local err_msg = "anonymous consumer " .. conf.anonymous .. " is configured but doesn't exist"
+        kong.log.err(err_msg)
+        return kong.response.error(500, err_msg)
+      end
+
       set_anonymous_consumer(consumer)
 
     else

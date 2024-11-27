@@ -18,6 +18,8 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 for _, strategy in strategies() do
   describe("Plugin: key-auth-enc (access) [#" .. strategy .. "]", function()
     local mock, proxy_client
+    local nonexisting_anonymous_id = utils.uuid()
+    local nonexisting_anonymous_username = "nonexisting"
 
     lazy_setup(function()
       mock = http_mock.new(MOCK_PORT)
@@ -116,7 +118,7 @@ for _, strategy in strategies() do
         name     = "key-auth-enc",
         route = { id = route4.id },
         config   = {
-          anonymous = utils.uuid(),  -- unknown consumer
+          anonymous = nonexisting_anonymous_id,  -- unknown consumer
         },
       }
 
@@ -166,7 +168,7 @@ for _, strategy in strategies() do
         name     = "key-auth-enc",
         route = { id = route10.id },
         config   = {
-          anonymous = "not-exist",  -- user not created yet, 500
+          anonymous = nonexisting_anonymous_username,  -- user not created yet, 500
         },
       }
 
@@ -604,7 +606,8 @@ for _, strategy in strategies() do
             ["Host"] = "key-auth-enc4.test"
           }
         })
-        assert.response(res).has.status(500)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous_id .. " is configured but doesn't exist", body.message)
       end)
       -- FTI-3288
       it("works with right credentials with anonymous username exists", function()
@@ -655,9 +658,8 @@ for _, strategy in strategies() do
             ["apikey"] = "konghq",
           },
         })
-        local body = assert.res_status(500, res)
-        local json = cjson.decode(body)
-        assert.equal('An unexpected error occurred', json.message)
+        local body = cjson.decode(assert.res_status(500, res))
+        assert.same("anonymous consumer " .. nonexisting_anonymous_username .. " is configured but doesn't exist", body.message)
       end)
     end)
   end)

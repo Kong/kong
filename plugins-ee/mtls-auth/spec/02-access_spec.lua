@@ -927,11 +927,12 @@ for _, strategy in strategies() do
 
 
       it("errors when anonymous user doesn't exist", function()
+        local nonexisting_anonymous = "00000000-0000-0000-0000-000000000000"
         local res = assert(admin_client:send({
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { anonymous = "00000000-0000-0000-0000-000000000000", },
+            config = { anonymous = nonexisting_anonymous, },
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -947,7 +948,9 @@ for _, strategy in strategies() do
               ["Host"] = "example.com"
             }
           })
-          assert.res_status(500, res)
+
+          local body = cjson.decode(assert.res_status(500, res))
+          assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
         end).with_timeout(3)
             .has_no_error("Invalid response code")
       end)

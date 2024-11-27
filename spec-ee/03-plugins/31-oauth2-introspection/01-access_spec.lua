@@ -96,6 +96,7 @@ for _ , strategy in strategies() do
   describe("Plugin: oauth2-introspection (access) #" .. strategy, function()
     local client , admin_client, introspect_client
     local db_strategy = strategy ~= "off" and strategy or nil
+    local nonexisting_anonymous = utils.uuid()  -- a non-existing consumer id
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection", "ctx-checker-last"})
@@ -216,7 +217,7 @@ for _ , strategy in strategies() do
           introspection_url = introspection_url,
           authorization_value = "hello",
           ttl = 1,
-          anonymous = utils.uuid(),
+          anonymous = nonexisting_anonymous,  -- a non-existing consumer id
         }
       }
 
@@ -635,7 +636,8 @@ for _ , strategy in strategies() do
               ["Host"] = "introspection4.test"
             }
           })
-          assert.response(res).has.status(500)
+          local body = cjson.decode(assert.res_status(500, res))
+          assert.same("anonymous consumer " .. nonexisting_anonymous .. " is configured but doesn't exist", body.message)
         end)
       end)
     end)

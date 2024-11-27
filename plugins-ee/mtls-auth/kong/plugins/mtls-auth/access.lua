@@ -517,6 +517,12 @@ function _M.execute(conf)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
+      if not consumer then
+        local err_msg = "anonymous consumer " .. conf.anonymous .. " is configured but doesn't exist"
+        kong.log.err(err_msg)
+        return kong.response.error(500, err_msg)
+      end
+
       set_consumer(consumer, nil)
 
     else
