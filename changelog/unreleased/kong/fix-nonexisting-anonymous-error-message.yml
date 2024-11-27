@@ -1,0 +1,3 @@
+message: "**authentication-plugins**: Improved the error message when an anonymous consumer was configured but did not exist."
+type: bugfix
+scope: Plugin
