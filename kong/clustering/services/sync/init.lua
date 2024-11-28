@@ -9,13 +9,14 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
 
 
 local FIRST_SYNC_DELAY = 0.2  -- seconds
-local EACH_SYNC_DELAY  = 30   -- seconds
+local EACH_SYNC_DELAY  = constants.CLUSTERING_PING_INTERVAL   -- 30 seconds
 
 
 function _M.new(db, is_cp)
