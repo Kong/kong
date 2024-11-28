@@ -43,7 +43,7 @@ env:
 jobs:
   metadata:
     name: Metadata
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
@@ -110,7 +110,7 @@ jobs:
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ matrix.image }}
       options: --privileged
@@ -272,7 +272,7 @@ jobs:
   verify-manifest-packages:
     needs: [metadata, build-packages]
     name: Verify Manifest - Package ${{ matrix.label }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -304,7 +304,7 @@ jobs:
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     permissions:
       # create comments on commits for docker images needs the `write` permission
@@ -408,7 +408,7 @@ jobs:
   verify-manifest-images:
     needs: [metadata, build-images]
     name: Verify Manifest - Image ${{ matrix.label }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
 
     strategy:
@@ -442,7 +442,7 @@ jobs:
   scan-images:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: |-
       always()
@@ -510,7 +510,7 @@ jobs:
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
@@ -575,7 +575,7 @@ jobs:
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
