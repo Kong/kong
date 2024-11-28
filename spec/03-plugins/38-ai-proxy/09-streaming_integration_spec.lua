@@ -27,10 +27,10 @@ local _EXPECTED_CHAT_STATS = {
   },
   usage = {
     prompt_tokens = 18,
-    completion_tokens = 7,
-    total_tokens = 25,
+    completion_tokens = 13, -- this was from estimation
+    total_tokens = 31,
     time_per_token = 1,
-    cost = 0.00037,
+    cost = 0.00031,
   },
 }
 
@@ -384,7 +384,9 @@ for _, strategy in helpers.all_strategies() do
             options = {
               max_tokens = 256,
               temperature = 1.0,
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/good"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/good",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
@@ -425,7 +427,9 @@ for _, strategy in helpers.all_strategies() do
             options = {
               max_tokens = 256,
               temperature = 1.0,
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/partial"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/partial",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
@@ -461,7 +465,9 @@ for _, strategy in helpers.all_strategies() do
             options = {
               max_tokens = 256,
               temperature = 1.0,
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/cohere/llm/v1/chat/good"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/cohere/llm/v1/chat/good",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
@@ -499,6 +505,8 @@ for _, strategy in helpers.all_strategies() do
               temperature = 1.0,
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/anthropic/llm/v1/chat/good",
               anthropic_version = "2023-06-01",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
@@ -534,7 +542,9 @@ for _, strategy in helpers.all_strategies() do
             options = {
               max_tokens = 256,
               temperature = 1.0,
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/bad"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/openai/llm/v1/chat/bad",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },

@@ -27,6 +27,13 @@ local STAGES = {
   RES_POST_PROCESSING = 7,
 }
 
+-- Filters in those stages are allowed to execute more than one time in a request
+-- TODO: implement singleton support, that in one iteration of of body_filter only one filter
+-- only ran one times. This is not an issue today as they are only used in one plugin.
+local REPEATED_PHASES = {
+  [STAGES.STREAMING] = true,
+}
+
 local MetaPlugin = {}
 
 local all_filters = {}
@@ -46,7 +53,7 @@ local function run_stage(stage, sub_plugin, conf)
     if not f then
       kong.log.err("no filter named '" .. name .. "' registered")
 
-    elseif not ai_executed_filters[name] then
+    elseif not ai_executed_filters[name] or REPEATED_PHASES[stage] then
       ai_executed_filters[name] = true
 
       kong.log.debug("executing filter ", name)

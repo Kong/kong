@@ -879,14 +879,14 @@ for _, strategy in helpers.all_strategies() do
 
         local actual_llm_latency = first_got.meta.llm_latency
         local actual_time_per_token = first_got.usage.time_per_token
-        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
+        local time_per_token = actual_llm_latency / first_got.usage.completion_tokens
 
         first_got.meta.llm_latency = 1
         first_got.usage.time_per_token = 1
 
         assert.same(first_expected, first_got)
         assert.is_true(actual_llm_latency >= 0)
-        assert.same(actual_time_per_token, time_per_token)
+        assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
         assert.same(first_got.meta.request_model, "gpt-3.5-turbo")
       end)
 
@@ -1537,14 +1537,14 @@ for _, strategy in helpers.all_strategies() do
 
         local actual_llm_latency = first_got.meta.llm_latency
         local actual_time_per_token = first_got.usage.time_per_token
-        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
+        local time_per_token = actual_llm_latency / first_got.usage.completion_tokens
 
         first_got.meta.llm_latency = 1
         first_got.usage.time_per_token = 1
 
         assert.same(first_expected, first_got)
         assert.is_true(actual_llm_latency >= 0)
-        assert.same(actual_time_per_token, time_per_token)
+        assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
       end)
 
       it("logs payloads", function()
