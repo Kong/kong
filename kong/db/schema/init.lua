@@ -1301,7 +1301,7 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
       if (not checker.run_with_missing_fields) and
          (not arg.run_with_missing_fields) and
          (required_fields and required_fields[fname]) and
-         (not get_schema_field(self, fname).nilable) then
+         (not (get_schema_field(self, fname) or {}).nilable) then
         missing = missing or {}
         insert(missing, fname)
       end
