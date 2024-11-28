@@ -16,9 +16,6 @@
 local phase_checker = require "kong.pdk.private.phases"
 local kong_tls = require "resty.kong.tls"
 local ngx_ssl = require "ngx.ssl"
-local ja4 = require "kong.enterprise_edition.tls.ja4"
-
-local band = require("bit").band
 
 
 local check_phase = phase_checker.check
@@ -37,14 +34,6 @@ local REWRITE_BEFORE_LOG = phase_checker.new(PHASES.rewrite,
                                              PHASES.access,
                                              PHASES.response,
                                              PHASES.balancer)
-local CERTIFICATE_AND_LATER = phase_checker.new(PHASES.certificate,
-                                                PHASES.rewrite,
-                                                PHASES.access,
-                                                PHASES.response,
-                                                PHASES.header_filter,
-                                                PHASES.body_filter,
-                                                PHASES.balancer,
-                                                PHASES.log)
 
 
 local function new()
@@ -202,88 +191,6 @@ local function new()
     check_phase(PHASES.client_hello)
     return kong_tls.disable_http2_alpn()
   end
-
-
-  ---
-  -- Computes the JA4 client fingerprint of the current TLS connection.
-  --
-  -- The JA4 fingerprint is a hash of the client's TLS Client Hello message.
-  -- It is used to uniquely identify a client's TLS connection.
-  --
-  -- @function kong.client.tls.compute_client_ja4
-  -- @phases client_hello
-  -- @treturn true|nil Returns true if it is in HTTP module and
-  -- the TLS connection is established, or `nil` if an error occurred.
-  -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
-  --
-  -- @usage
-  -- local ok, err = kong.client.tls.compute_client_ja4()
-  -- if not ok then
-  --   -- do something with err
-  -- end
-  --
-  function _TLS.compute_client_ja4()
-    check_phase(PHASES.client_hello)
-
-    if ngx.config.subsystem ~= "http" then
-      return nil, "Not in HTTP module"
-    end
-
-    local tls_connection, err = kong_tls.get_request_ssl_pointer()
-    if not tls_connection then
-      return nil, err
-    end
-
-    local fingerprint, err = ja4.compute_ja4_fingerprint(tls_connection)
-    if not fingerprint then
-      return nil, err
-    end
-
-    ngx.ctx.ja4_fingerprint = fingerprint
-
-    return true
-  end
-
-
-  ---
-  -- Returns the JA4 client fingerprint of the current TLS connection.
-  --
-  -- The JA4 fingerprint is a hash of the client's TLS Client Hello message.
-  -- It is used to uniquely identify a client's TLS connection.
-  --
-  -- @function kong.client.tls.get_computed_client_ja4
-  -- @phases certificate, rewrite, access, balancer, header_filter, body_filter, log
-  -- @treturn string|nil Returns the JA4 fingerprint if the TLS connection is
-  -- established, or `nil` if an error occurred.
-  -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
-  --
-  -- @usage
-  -- local ja4, err = kong.client.tls.get_computed_client_ja4()
-  -- if not ja4 then
-  --   -- do something with err
-  -- end
-  --
-  function _TLS.get_computed_client_ja4()
-    check_phase(CERTIFICATE_AND_LATER)
-
-    if not ngx.ctx.ja4_fingerprint then
-      local ja4_fingerprint, stale = ja4.get_fingerprint_from_cache(ngx.var.connection)
-      ja4_fingerprint = ja4_fingerprint or stale
-
-      if not ja4_fingerprint then
-        return nil, "JA4 fingerprint not generated"
-      end
-
-      ngx.ctx.ja4_fingerprint = ja4_fingerprint
-    end
-
-    if ngx.ctx.KONG_PHASE and band(ngx.ctx.KONG_PHASE, CERTIFICATE_AND_LATER) ~= 0 then
-      ja4.set_fingerprint_to_cache(ngx.var.connection, ngx.ctx.ja4_fingerprint)
-    end
-
-    return ngx.ctx.ja4_fingerprint
-  end
-
 
   return _TLS
 end

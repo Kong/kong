@@ -35,6 +35,7 @@ local SupportedVersions = ffi.new("uint16_t", 0x002b)
 
 
 local ja4_cache
+local is_little_endian = ffi.abi("le")
 
 local _M = {}
 
@@ -105,7 +106,12 @@ end
 
 function _M.compute_ja4_fingerprint(ssl_ptr)
   local protocol = ffi.C.SSL_is_dtls(ssl_ptr) == 1 and DTLS or TCP
+
   local tls_version = ffi.C.SSL_version(ssl_ptr)
+  if is_little_endian then
+    tls_version = bit.rshift(bit.bswap(tonumber(tls_version)), 16)
+  end
+
   local supported_version, supported_version_n = to_u16_array(1, get_extension(ssl_ptr, SupportedVersions))
 
   local ciphers_ffi = ffi.new("const uint8_t*[1]")
@@ -122,11 +128,14 @@ function _M.compute_ja4_fingerprint(ssl_ptr)
   local extension_list = ffi.new("uint16_t[?]", extension_n[0])
   for i = 0, tonumber(extension_n[0]) - 1 do
     extension_list[i] = extension_list_raw[0][i]
+    if is_little_endian then
+       extension_list[i] = bit.rshift(bit.bswap(tonumber(extension_list[i])), 16)
+    end
   end
 
   local to_free = ffi.cast("void*",extension_list_raw[0])
   -- change the line according when the file is changed
-  ffi.C.CRYPTO_free(to_free, "kong/enterprise_edition/tls/ja4/init.lua", 129)
+  ffi.C.CRYPTO_free(to_free, "kong/enterprise_edition/tls/ja4/init.lua", 138)
 
   local alpn, alpn_len = get_extension(ssl_ptr, ClientProtocolNegotiation)
   if alpn and alpn_len > 2 then

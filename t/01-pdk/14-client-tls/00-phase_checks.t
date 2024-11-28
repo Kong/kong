@@ -62,16 +62,6 @@ qq{
     }
 
     init_worker_by_lua_block {
-        _G.kong = {
-            configuration = {
-                nginx_events_worker_connections = 1000
-            }
-        }
-        ngx.ctx = {
-            ja4_fingerprint = "t13d1516h2_8daaf6152771_e5627efa2ab1"
-        }
-        ngx.var = {connection = 1}
-
         phases = require("kong.pdk.private.phases").phases
 
         phase_check_module = "client.tls"
@@ -141,32 +131,6 @@ qq{
                 body_filter   = false,
                 log           = false,
                 admin_api     = false,
-            }, {
-                method           = "compute_client_ja4",
-                args             = {},
-                init_worker      = "forced false",
-                client_hello     = true,
-                certificate      = "forced false",
-                rewrite          = false,
-                access           = false,
-                response         = false,
-                header_filter    = "forced false",
-                body_filter      = "forced false",
-                log              = "forced false",
-                admin_api        = false,
-            }, {
-                method           = "get_computed_client_ja4",
-                args             = {},
-                init_worker      = "forced false",
-                client_hello     = "forced false",
-                certificate      = true,
-                rewrite          = true,
-                access           = true,
-                response         = true,
-                header_filter    = true,
-                body_filter      = true,
-                log              = true,
-                admin_api        = false,
             }
         }
 
