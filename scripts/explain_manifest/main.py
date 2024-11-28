@@ -90,8 +90,8 @@ def gather_files(path: str, image: str):
             # rpm2archive has changed the behaviour to extract to stdout if stdout is not tty
             code = os.system(
                 """
-                    rpm2archive %s | tar -C %s -xz
-                """ % (path, t.name))
+                    rpm2archive %s | tar -C %s -xz || rpm2archive %s && tar -C %s -xf %s.tgz
+                """ % (path, t.name, path, t.name, path))
         elif ext == ".gz":
             code = os.system("tar -C %s -xf %s" % (t.name, path))
 
