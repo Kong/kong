@@ -1480,6 +1480,26 @@ describe("schema", function()
 
     describe("entity_checkers", function()
 
+      describe("at_least_one_of", function()
+        local Test = Schema.new({
+          fields = {
+            { a = { type = "number" }, },
+            { b = { type = "string" }, },
+            { c = { type = "string" }, },
+          },
+          entity_checks = {
+            { at_least_one_of = {"d"} },
+          }
+        })
+
+        it("runs check on invalid fields", function()
+          local ok, errs = Test:validate_insert({ a = 1 })
+          assert.is_nil(ok)
+          assert.same({
+            "at least one of these fields must be non-empty: 'd'"
+          }, errs["@entity"])
+        end)
+      end)
       describe("conditional_at_least_one_of", function()
         local Test = Schema.new({
           fields = {
