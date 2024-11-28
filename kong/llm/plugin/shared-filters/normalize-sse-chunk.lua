@@ -83,6 +83,8 @@ local function handle_streaming_frame(conf, chunk, finished)
 
 
   for _, event in ipairs(events) do
+    -- TODO: currently only subset of driver follow the body, err, metadata pattern
+    -- unify this so that it was always extracted from the body
     local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
 
     if formatted then
@@ -106,12 +108,6 @@ local function handle_streaming_frame(conf, chunk, finished)
         if body_buffer then
           body_buffer:put(token_t)
         end
-
-        -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-        -- but this is all we can do until OpenAI fixes this...
-        --
-        -- essentially, every 4 characters is a token, with minimum of 1*4 per event
-        ai_plugin_o11y.metrics_add("llm_completion_tokens_count", math.ceil(#strip(token_t) / 4))
       end
     end
 
@@ -141,6 +137,19 @@ local function handle_streaming_frame(conf, chunk, finished)
 
     local prompt_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_tokens_count")
     local completion_tokens_count = ai_plugin_o11y.metrics_get("llm_completion_tokens_count")
+
+    if conf.logging and conf.logging.log_statistics then
+      -- no metadata populated in the event streams, do our estimation
+      if completion_tokens_count == 0 then
+        -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+        -- but this is all we can do until OpenAI fixes this...
+        --
+        -- essentially, every 4 characters is a token, with minimum of 1*4 per event
+        completion_tokens_count = math.ceil(#strip(response) / 4)
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", completion_tokens_count)
+      end
+    end
+
     -- populate cost
     if conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then
       local cost = (prompt_tokens_count * conf.model.options.input_cost +
