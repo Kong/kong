@@ -14,8 +14,9 @@ local function set_ocsp_status(status)
 end
 
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
 
 describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, function()
@@ -42,6 +43,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -60,6 +62,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_mtls = "pki",
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)
@@ -114,6 +117,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -132,6 +136,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)
@@ -184,6 +189,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -202,6 +208,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)
@@ -257,6 +264,7 @@ describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sy
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -275,6 +283,7 @@ describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sy
         cluster_mtls = "pki",
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)
@@ -331,6 +340,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -349,6 +359,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)
@@ -401,6 +412,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         -- additional attributes for PKI:
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -419,6 +431,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
     end)

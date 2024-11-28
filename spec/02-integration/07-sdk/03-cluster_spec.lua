@@ -40,8 +40,9 @@ fixtures_cp.http_mock.my_server_block = [[
   }
 ]]
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
   describe("PDK: kong.cluster for #" .. strategy .. " inc_sync=" .. inc_sync, function()
     local proxy_client
@@ -63,6 +64,7 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency = 0.1,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }, nil, nil, fixtures_cp))
 
@@ -75,6 +77,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }, nil, nil, fixtures_dp))
     end)

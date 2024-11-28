@@ -20,8 +20,9 @@ local function find_in_file(filepath, pat)
 end
 
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
   describe("CP/CP sync works with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
     lazy_setup(function()
@@ -37,6 +38,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -50,6 +52,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
