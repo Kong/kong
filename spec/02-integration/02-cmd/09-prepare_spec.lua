@@ -20,7 +20,7 @@ local TEST_PREFIX = "servroot_prepared_test"
 local function assert_no_stderr(logs)
 
   for line in logs:gmatch("[^\r\n]+") do
-    if not line:find("portal and vitals are deprecated") then 
+    if not line:find("portal and vitals are deprecated") then
       assert.truthy(
         line:find("Using development (e.g. not a release) license validation", nil, true),
         "expected no stderr, found:\n" .. tostring(line)
@@ -219,7 +219,16 @@ describe("kong prepare", function()
         local cmd = fmt("%s -p %s -c %s", nginx_bin, TEST_PREFIX, "nginx.conf")
         local ok, _, stderr = shell.run(cmd, nil, 0)
 
-        assert.equal("", stderr)
+        local stderr_res = {}
+        for line, _ in stderr:gmatch("[^\n]+") do
+          if not line:find("ERROR_VALIDATION_PASS") then
+            table.insert(stderr_res, line)
+          end
+        end
+
+        local stderr_without_license_warning = table.concat(stderr_res, "\n")
+
+        assert.equal("", stderr_without_license_warning)
         assert.truthy(ok)
         local error_log_path = helpers.path.join(TEST_PREFIX, "logs/error.log")
         assert.logfile(error_log_path).has.no.line("[error]", true, 0)
