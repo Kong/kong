@@ -207,7 +207,6 @@ local _EXPECTED_CHAT_STATS_GEMINI = {
       time_per_token = 1,
       cost = 0.00026,
     },
-    cache = {}
   },
 }
 
