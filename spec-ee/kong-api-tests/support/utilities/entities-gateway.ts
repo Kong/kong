@@ -5,7 +5,7 @@ import { logResponse } from './logging';
 import { randomString, wait } from './random';
 import { retryRequest } from './retry-axios';
 import { getNegative } from './negative-axios';
-import { isKongOSS } from '@support';
+import { isKongOSS, eventually } from '@support';
 
 export const getUrl = (endpoint: string, workspaceNameOrId?: string) => {
   let basePath = getBasePath({
@@ -817,6 +817,14 @@ export const getRouterFlavor = async () => {
  * @property {object} proxyReqHeader - custom proxy request header e.g. key-auth key
  */
 export const waitForConfigRebuild = async (options: any = {}) => {
+  // ensure admin API is ready before creating entities
+  await eventually(async () => {
+    const admin_url = getUrl("/")
+    const resp = await axios.get(`${admin_url}`)
+
+    expect(resp.status, 'Kong Gateway Admin API timed out').to.equal(200)
+  });
+
   // create a service
   const service = await createGatewayService(`routerRebuild-${randomString()}`);
   const serviceId = service.id;
