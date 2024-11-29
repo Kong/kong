@@ -77,6 +77,11 @@ function _M._dispatch(premature, self, cb, payload)
     return
   end
 
+  -- it is a notification
+  if not payload.id then
+    return
+  end
+
   -- success
   res, err = self.outgoing:push({
     jsonrpc = jsonrpc.VERSION,
