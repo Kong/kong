@@ -287,9 +287,13 @@ end
 -- This way the manager code wouldn't tell the difference
 -- between calls made over WebSocket or concentrator
 function _M:call(node_id, method, params, callback)
-  local id = self:_get_next_id()
+  local id
 
-  self.interest[id] = callback
+  -- notification has no callback or id
+  if callback then
+    id = self:_get_next_id()
+    self.interest[id] = callback
+  end
 
   return self:_enqueue_rpc_request(node_id, {
     jsonrpc = jsonrpc.VERSION,

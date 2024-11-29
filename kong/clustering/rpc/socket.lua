@@ -276,27 +276,19 @@ end
 function _M:call(node_id, method, params, callback)
   assert(node_id == self.node_id)
 
-  local id = self:_get_next_id()
+  local id
 
-  self.interest[id] = callback
+  -- notification has no callback or id
+  if callback then
+    id = self:_get_next_id()
+    self.interest[id] = callback
+  end
 
   return self.outgoing:push({
     jsonrpc = jsonrpc.VERSION,
     method = method,
     params = params,
     id = id,
-  })
-end
-
-
-function _M:notify(node_id, method, params)
-  assert(node_id == self.node_id)
-
-  return self.outgoing:push({
-    jsonrpc = "2.0",
-    method = method,
-    params = params,
-    -- notification has no id
   })
 end
 
