@@ -155,6 +155,12 @@ function _M:_event_loop(lconn)
 
           local res, err = self.manager:_local_call(target_id, payload.method,
                                                     payload.params)
+
+          -- notification has no callback or id
+          if not payload.id then
+            goto continue
+          end
+
           if res then
             -- call success
             res, err = self:_enqueue_rpc_response(reply_to, {
@@ -180,6 +186,8 @@ function _M:_event_loop(lconn)
               ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
             end
           end
+
+          ::continue::
         end
       end
     end
