@@ -185,7 +185,9 @@ end
 
 -- check if rpc connection is ready
 local function is_rpc_ready()
-  for i = 1, 5 do
+  -- TODO: find a better way to detect when the RPC layer, including caps list,
+  --       has been fully initialized, instead of waiting for up to 5.5 seconds
+  for i = 1, 10 do
     local res = kong.rpc:get_peers()
 
     -- control_plane is ready
