@@ -792,6 +792,9 @@ end
 
 
 function _M.runloop_log_before(ctx)
+  -- set the root span end time to `log:before`
+  local root_span_end_time = time_ns()
+
   -- add balancer selection time
   _M.balancer_upstream_selection(ctx)
 
@@ -801,8 +804,7 @@ function _M.runloop_log_before(ctx)
     return
   end
 
-  local end_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
-  root_span:finish(end_time)
+  root_span:finish(root_span_end_time)
 end
 
 -- serialize lazily

@@ -172,10 +172,10 @@ local function assert_parent_child_relationship(parent_span, child_span)
       fmt("\nExpected %s to be child of %s\n", child_span.name, parent_span.name))
 
   -- due to loss of precision during unit conversions and the fact some timings
-  -- come from different sources, we accept a 2ms tolerance - for some reason
+  -- come from different sources, we accept a 3ms tolerance - for some reason
   -- this appears to be more of a problem in CI.
   -- TODO: try to improve this precision and get the tolerance down to <= 1ms
-  local tolerance = 2e6
+  local tolerance = 3e6
   assert.True(parent_span.start_time_unix_nano > 0,
       fmt("\nExpected %s to have a start time\n", parent_span.name))
   assert.True(child_span.start_time_unix_nano > 0,

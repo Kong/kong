@@ -32,13 +32,17 @@ local SKIP_SAMPLE_CTX_KEY = get_ctx_key("skip_sample")
 
 
 local instance = nil
+local module_enabled = false
 
 local _M = {}
 _M.__index = _M
-_M.module_enabled = false
 
 local function is_module_enabled()
-  return _M.module_enabled ~= false
+  return module_enabled ~= false
+end
+
+local function set_module_enabled(enabled)
+  module_enabled = enabled
 end
 
 local function stop_sampling_for_request()
@@ -68,7 +72,8 @@ local NOOP_DEBUG_SESSION = {
   handle_action = NOOP_FUN,
   process_updates = NOOP_FUN,
   update_sessions_from_cp = NOOP_FUN,
-  module_enabled = false,
+  _is_module_enabled = NOOP_FUN,
+  _set_module_enabled = NOOP_FUN,
 }
 
 function _M:new(enabled)
@@ -125,8 +130,7 @@ function _M:init_worker()
   if not kong.configuration.konnect_mode then
     return
   end
-  _M.module_enabled = true
-
+  set_module_enabled(true)
 
   -- initialize worker events
   events.init(
@@ -351,6 +355,11 @@ function _M:update_sessions_from_cp()
   -- processing updates
   self:process_updates(res)
 end
+
+-- exposed for unit testing
+
+_M._is_module_enabled = is_module_enabled
+_M._set_module_enabled = set_module_enabled
 
 
 return _M

@@ -40,8 +40,8 @@ describe("debuggability", function()
         assert(require "kong.global".init_worker_events(kong.configuration))
     stub(kong.worker_events, "post")
     stub(updates, "get").returns(sample_rpc_response)
-    old_mod_enabled = ds_mod.module_enabled
-    ds_mod.module_enabled = true
+    old_mod_enabled = ds_mod._is_module_enabled()
+    ds_mod._set_module_enabled(true)
   end)
 
   before_each(function()
@@ -56,7 +56,7 @@ describe("debuggability", function()
   lazy_teardown(function()
     kong.worker_events.post:revert()
     updates.get:revert()
-    ds_mod.module_enabled = old_mod_enabled
+    ds_mod._set_module_enabled(old_mod_enabled)
   end)
 
   it("#exposes the same functionalities in NOOP mode", function()
@@ -385,13 +385,13 @@ describe("debuggability", function()
     end)
 
     it("#module_disabled", function()
-      ds_mod.module_enabled = false
+      ds_mod._set_module_enabled(false)
       context:set_session({
         id = "session-id",
         action = "START",
       })
       assert.is_false(ds:should_record_samples())
-      ds_mod.module_enabled = true
+      ds_mod._set_module_enabled(true)
     end)
 
     it("#ngx.ctx.ACTIVE_TRACING_skip_sample is true", function()
