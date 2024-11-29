@@ -260,7 +260,7 @@ jobs:
           if ${{ contains(env.GW_IMAGE, 'fips') }}; then FIPS_MODE=on; else FIPS_MODE=off; fi;
           echo "FIPS_MODE=$FIPS_MODE" >> $GITHUB_ENV
 
-          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' ]]; then
+          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' || $RUN_SPEC == 'custom-rla' ]]; then
             CUSTOM_PLUGIN=true
           else
             CUSTOM_PLUGIN=false
@@ -454,7 +454,7 @@ jobs:
 
       - name: Set CUSTOM_PLUGIN Variable
         run: |
-          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' ]]; then
+          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-plugins" || $RUN_SPEC == 'all' || $RUN_SPEC == 'custom-rla' ]]; then
             CUSTOM_PLUGIN=true
           else
             CUSTOM_PLUGIN=false
@@ -647,7 +647,7 @@ jobs:
 
       - name: Set CUSTOM_PLUGIN Variable
         run: |
-          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-rla" || $RUN_SPEC == 'all' ]]; then
+          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-rla" || $RUN_SPEC == 'all' || $RUN_SPEC == 'custom-plugins' ]]; then
             CUSTOM_PLUGIN=true
           else
             CUSTOM_PLUGIN=false
@@ -680,7 +680,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
           ACME: true
-          CUSTOM_PLUGIN: ${{ env.CUSTOM_PLUGIN_VAR }}
+          CUSTOM_PLUGIN: ${{ endsWith(env.KONG_PACKAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           OTEL: true
 
       - name: Logs from Gateway Start
