@@ -70,7 +70,7 @@ function _M._dispatch(premature, self, cb, payload)
 
     if payload.id then
       res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
-                                            err))
+                                              err))
       if not res then
         ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
       end

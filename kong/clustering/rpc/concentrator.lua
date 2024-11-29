@@ -154,7 +154,7 @@ function _M:_event_loop(lconn)
                                   "unknown requester for RPC")
 
           local res, err = self.manager:_local_call(target_id, payload.method,
-                                                    payload.params)
+                                                    payload.params, not payload.id)
 
           -- notification has no callback or id
           if not payload.id then
