@@ -18,9 +18,11 @@ jobs:
           - branch: master
             version: "nightly"
             active_branch: "yes"
+          - branch: next/3.9.x.x
+            version: "3.9.x.x"
+            active_branch: "yes"
           - branch: next/3.8.x.x
             version: "3.8.x.x"
-            active_branch: "yes"
           - branch: next/3.7.x.x
             version: "3.7.x.x"
           - branch: next/3.6.x.x
