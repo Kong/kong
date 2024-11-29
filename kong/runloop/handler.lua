@@ -27,6 +27,7 @@ local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.observability.tracing.instrumentation"
 local debug_instrumentation = require "kong.enterprise_edition.debug_session.instrumentation"
+local SPAN_ATTRIBUTES = require "kong.enterprise_edition.debug_session.instrumentation.attributes".SPAN_ATTRIBUTES
 local req_dyn_hook   = require "kong.dynamic_hook"
 
 
@@ -1313,6 +1314,7 @@ return {
           span:finish()
         end
         if debug_span then
+          debug_span:set_attribute(SPAN_ATTRIBUTES.KONG_ROUTER_MATCHED, false)
           debug_span:set_status(2)
           debug_span:finish()
         end
@@ -1328,6 +1330,10 @@ return {
         span:finish()
       end
       if debug_span then
+        debug_span:set_attribute(SPAN_ATTRIBUTES.KONG_ROUTER_MATCHED, true)
+        debug_span:set_attribute(SPAN_ATTRIBUTES.KONG_ROUTE_ID, match_t.route and match_t.route.id)
+        debug_span:set_attribute(SPAN_ATTRIBUTES.KONG_SERVICE_ID, match_t.service and match_t.service.id)
+        debug_span:set_attribute(SPAN_ATTRIBUTES.KONG_ROUTER_UPSTREAM_URL, match_t.upstream_url_t and match_t.upstream_url_t.path)
         debug_span:finish()
       end
 

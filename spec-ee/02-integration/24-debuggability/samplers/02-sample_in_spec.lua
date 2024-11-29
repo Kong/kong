@@ -70,6 +70,7 @@ describe("Active Tracing Sampling in/out", function()
           path = "/sampled",
           headers = {
             ["host"] = "example.com",
+            ["x-another-header"] = "that-increases-header-size"
           },
         })
         assert.response(res).has.status(200)
@@ -102,6 +103,10 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('client.address == 127.0.0.1'))
       end)
 
+      it("#client.port", function()
+        assert(test_sampling_rule('client.port >= 1'))
+      end)
+
       it("#client.address alias -> net.src.ip", function()
         assert(test_sampling_rule('net.src.ip == 127.0.0.1'))
       end)
@@ -110,8 +115,8 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('http.response.status_code == 200'))
       end)
 
-      it("#proxy.kong.latency_total_ms", function()
-        assert(test_sampling_rule('proxy.kong.latency_total_ms <= 10000'))
+      it("#proxy.kong.latency.total", function()
+        assert(test_sampling_rule('proxy.kong.latency.total <= 10000'))
       end)
 
       it("#kong.proxy.route.id", function()
@@ -122,16 +127,24 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule(fmt('proxy.kong.service.id == "%s"', service_id)))
       end)
 
-      it("#proxy.kong.tcpsock.total_io_ms", function()
-        assert(test_sampling_rule('proxy.kong.tcpsock.total_io_ms <= 10000'))
+      it("#proxy.kong.tcpsock.total_io", function()
+        assert(test_sampling_rule('proxy.kong.latency.tcpsock.total_io <= 10000'))
       end)
 
-      it("#proxy.kong.redis.total_io_ms", function()
-        assert(test_sampling_rule('proxy.kong.redis.total_io_ms <= 10000'))
+      it("#proxy.kong.redis.total_io", function()
+        assert(test_sampling_rule('proxy.kong.latency.redis.total_io <= 10000'))
       end)
 
       it("#network.peer.address", function ()
         assert(test_sampling_rule('network.peer.address == 127.0.0.1'))
+      end)
+
+      it("#network.peer.port", function ()
+        assert(test_sampling_rule('network.peer.port >= 1'))
+      end)
+
+      it("#network.protocol.name", function ()
+        assert(test_sampling_rule('network.protocol.name == "http"'))
       end)
 
       it("#url.full", function ()
@@ -142,8 +155,8 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('url.scheme == "http"'))
       end)
 
-      it("#proxy.kong.upstream.ttfb_ms", function ()
-        assert(test_sampling_rule('proxy.kong.upstream.ttfb_ms <= 10'))
+      it("#proxy.kong.latency.upstream.ttfb", function ()
+        assert(test_sampling_rule('proxy.kong.latency.upstream.ttfb <= 10'))
       end)
 
       -- TODO: this seems not quite right. Review
@@ -164,12 +177,16 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('http.request.header.host == "example.com"'))
       end)
 
-      it("#read_response_duration_ms", function ()
-        assert(test_sampling_rule('proxy.kong.upstream.read_response_duration_ms <= 10000'))
+      it("#read_response_duration", function ()
+        assert(test_sampling_rule('proxy.kong.latency.upstream.read_response_duration <= 10000'))
       end)
 
       it("#proxy.kong.upstream.id", function()
         assert(test_sampling_rule(fmt('proxy.kong.upstream.id == "%s"', upstream_id)))
+      end)
+
+      it("#http.request.size", function()
+        assert(test_sampling_rule('http.request.size >= 1'))
       end)
 
     end)
@@ -193,19 +210,20 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('http.request.method == "POST"', false))
       end)
 
-
       it("#client.address NEG", function()
         assert(test_sampling_rule('client.address == 192.168.0.1', false))
       end)
-
 
       it("#client.address alias -> net.src.ip NEG", function()
         assert(test_sampling_rule('net.src.ip == 192.168.0.1', false))
       end)
 
+      it("#client.port NEG", function()
+        assert(test_sampling_rule('client.port <= 1', false))
+      end)
 
-      it("#proxy.kong.latency_total_ms NEG", function()
-        assert(test_sampling_rule('proxy.kong.latency_total_ms < 0', false))
+      it("#proxy.kong.latency.totals NEG", function()
+        assert(test_sampling_rule('proxy.kong.latency.total < 0', false))
       end)
 
       it("#route.id NEG", function()
@@ -215,16 +233,25 @@ describe("Active Tracing Sampling in/out", function()
       it("#service.id NEG", function()
         assert(test_sampling_rule(fmt('proxy.kong.service.id == "non-matching"'), false))
       end)
-      it("#proxy.kong.tcpsock.total_io_ms NEG", function()
-        assert(test_sampling_rule('proxy.kong.tcpsock.total_io_ms < 0', false))
+
+      it("#proxy.kong.tcpsock.total_io NEG", function()
+        assert(test_sampling_rule('proxy.kong.latency.tcpsock.total_io < 0', false))
       end)
 
-      it("#proxy.kong.redis.total_io_ms NEG", function()
-        assert(test_sampling_rule('proxy.kong.redis.total_io_ms < 0', false))
+      it("#proxy.kong.redis.total_io NEG", function()
+        assert(test_sampling_rule('proxy.kong.latency.redis.total_io < 0', false))
       end)
 
       it("#network.peer.address NEG", function()
         assert(test_sampling_rule('network.peer.address == "192.168.0.1"', false))
+      end)
+
+      it("#network.peer.port NEG", function ()
+        assert(test_sampling_rule('network.peer.port <= 1', false))
+      end)
+
+      it("#network.protocol.name NEG", function ()
+        assert(test_sampling_rule('network.protocol.name == "grpc"', false))
       end)
 
       it("#url.full NEG", function()
@@ -235,8 +262,8 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('url.scheme == "https"', false))
       end)
 
-      it("#proxy.kong.upstream.ttfb_ms NEG", function()
-        assert(test_sampling_rule('proxy.kong.upstream.ttfb_ms < 0', false))
+      it("#proxy.kong.lantency.upstream.ttfb NEG", function()
+        assert(test_sampling_rule('proxy.kong.latency.upstream.ttfb < 0', false))
       end)
 
       it("#proxy.kong.upstream.addr NEG", function()
@@ -255,12 +282,16 @@ describe("Active Tracing Sampling in/out", function()
         assert(test_sampling_rule('http.request.header.host == "certainly-not-example.com"', false))
       end)
 
-      it("#proxy.kong.upstream.read_response_duration_ms NEG", function()
-        assert(test_sampling_rule('proxy.kong.upstream.read_response_duration_ms < 0', false))
+      it("#proxy.kong.upstream.read_response_duration NEG", function()
+        assert(test_sampling_rule('proxy.kong.latency.upstream.read_response_duration < 0', false))
       end)
 
       it("#proxy.kong.upstream.id NEG", function()
         assert(test_sampling_rule('proxy.kong.upstream.id == "non-existent-id"', false))
+      end)
+
+      it("#http.request.size NEG", function()
+        assert(test_sampling_rule('http.request.size <= 0', false))
       end)
     end)
 

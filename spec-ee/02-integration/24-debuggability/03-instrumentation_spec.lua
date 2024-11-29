@@ -49,23 +49,26 @@ local function SPAN_ATTRIBUTES(entities, opts)
     ["kong"] = {
       ["proxy.kong.request.id"] = { assertion = "matches", expected_val = hex_128_pattern},
       ["network.protocol.version"] = { assertion = "equals", expected_val = "1.1"},
-      ["proxy.kong.upstream.read_response_duration_ms"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.upstream.read_response_duration"] = { assertion = "matches", expected_val = number_pattern},
       ["url.scheme"] = { assertion = "matches", expected_val = "http[s]?"},
-      ["proxy.kong.latency_total_ms"] = { assertion = "matches", expected_val = number_pattern},
-      ["proxy.kong.redis.total_io_ms"] = { assertion = "matches", expected_val = number_pattern},
-      ["proxy.kong.tcpsock.total_io_ms"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.total"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.redis.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.tcpsock.total_io"] = { assertion = "matches", expected_val = number_pattern},
       ["url.full"] = { assertion = "matches", expected_val = "http[s]?://localhost" .. path},
       ["http.request.header.host"] = { assertion = "equals", expected_val = "localhost"},
       ["http.response.status_code"] = { assertion = "equals", expected_val = 200},
       ["network.peer.address"] = { assertion = "equals", expected_val = "127.0.0.1"},
+      ["network.peer.port"] = { assertion = "matches", expected_val = number_pattern},
       ["proxy.kong.service.id"] = { assertion = "equals", expected_val = service_id},
       ["proxy.kong.route.id"] = { assertion = "equals", expected_val = route_id},
       ["proxy.kong.upstream.id"] = { assertion = "equals", expected_val = upstream_id},
       ["proxy.kong.target.id"] = { assertion = "equals", expected_val = target_id},
       ["proxy.kong.upstream.addr"] = { assertion = "equals", expected_val = "127.0.0.1"},
       ["proxy.kong.upstream.host"] = { assertion = "matches", expected_val = host_and_port_pattern},
-      ["proxy.kong.upstream.ttfb_ms"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.upstream.ttfb"] = { assertion = "matches", expected_val = number_pattern},
       ["client.address"] = { assertion = "equals", expected_val = "127.0.0.1"},
+      ["client.port"] = { assertion = "matches", expected_val = number_pattern},
+      ["http.request.size"] = { assertion = "matches", expected_val = number_pattern},
       ["http.route"] = { assertion = "equals", expected_val = path},
       ["http.request.method"] = { assertion = "equals", expected_val = method},
     },
@@ -76,7 +79,7 @@ local function SPAN_ATTRIBUTES(entities, opts)
       ["network.peer.name"] = { assertion = "equals", expected_val = "127.0.0.1"},
       ["keepalive"] = { assertion = "equals", expected_val = true},
       ["proxy.kong.target.id"] = { assertion = "equals", expected_val = target_id},
-      ["proxy.kong.upstream.connect_duration_ms"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.upstream.connect_duration"] = { assertion = "matches", expected_val = number_pattern},
     },
     ["kong.io.http.request"] = {
       ["http.url"] = { assertion = "equals", expected_val = "httpbin.konghq.com"},
@@ -95,8 +98,8 @@ local function SPAN_ATTRIBUTES(entities, opts)
       ["proxy.kong.dns.record.port"] = { assertion = "matches", expected_val = number_pattern},
     },
     ["kong.read_client_http_headers"] = {
-      ["raw_header_size_total"] = { assertion = "matches", expected_val = number_pattern},
-      ["raw_header_count"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.http.request.headers.size"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.http.request.headers.count"] = { assertion = "matches", expected_val = number_pattern},
     },
     ["kong.access.plugin.enable-buffering-response"] = {
       ["proxy.kong.plugin.id"] = { assertion = "matches", expected_val = uuid_pattern},
@@ -129,7 +132,12 @@ local function SPAN_ATTRIBUTES(entities, opts)
     ["kong.phase.body_filter"] = {},
     ["kong.phase.response"] = {},
     ["kong.read_client_http_body"] = {},
-    ["kong.router"] = {},
+    ["kong.router"] = {
+      ["proxy.kong.router.matched"] = { assertion = "equals", expected_val = true},
+      ["proxy.kong.route.id"] = { assertion = "equals", expected_val = route_id},
+      ["proxy.kong.service.id"] = { assertion = "equals", expected_val = service_id},
+      ["proxy.kong.router.upstream_path"] = { assertion = "equals", expected_val = "/"},
+    },
     ["kong.upstream.ttfb"] = {},
     ["kong.upstream.read_response"] = {},
     ["kong.io.socket.send"] = {},
@@ -600,7 +608,7 @@ describe("Active Tracing Instrumentation", function()
                   method = "GET",
                   path = "/anything",
                 })
-                
+
                 local tcp_sock = ngx.socket.tcp()
 
                 tcp_sock:connect("localhost", 4242)

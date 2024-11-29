@@ -178,6 +178,13 @@ function _M:enrich_root_span()
   local consumer_id = consumer and consumer.id
   root_span:set_attribute(SPAN_ATTRIBUTES.KONG_CONSUMER_ID, consumer_id)
 
+  -- client port and addr
+  root_span:set_attribute(SPAN_ATTRIBUTES.CLIENT_ADDRESS, ngx.var.remote_addr)
+  root_span:set_attribute(SPAN_ATTRIBUTES.CLIENT_PORT, ngx.var.remote_port)
+
+  -- request size
+  root_span:set_attribute(SPAN_ATTRIBUTES.REQUEST_SIZE, ngx.var.request_length)
+
   -- ngx attributes
   root_span:set_attribute(SPAN_ATTRIBUTES.TLS_SERVER_NAME_INDICATION, ngx.var.upstream_ssl_server_name)
   -- seconds to ms -> * 1e3
@@ -353,10 +360,7 @@ function _M:update_sessions_from_cp()
   -- store the event id for the next request
   self.context:set_event_id(res.event_id)
   -- processing updates
-  local ok, pu_err = self:process_updates(res)
-  if not ok then
-    log(ngx_ERR, "failed to process debug session updates: ", pu_err)
-  end
+  self:process_updates(res)
 end
 
 -- exposed for unit testing

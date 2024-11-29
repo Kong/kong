@@ -87,6 +87,11 @@ local ATTRIBUTES = {
     type = "String",
     use_for_sampling = true,
   },
+  REQUEST_SIZE = {
+    name = "http.request.size",
+    type = "Int",
+    use_for_sampling = true,
+  },
   -- TODO: NYI
   -- REQUEST_HEADER = {
   --   name = "http.request.header.<header_name>",
@@ -225,35 +230,35 @@ local ATTRIBUTES = {
   },
   -- TIMING INFORMATION
   KONG_UPSTREAM_TTFB_MS = {
-    name = fmt("%s.upstream.ttfb_ms", KONG_PREFIX),
+    name = fmt("%s.latency.upstream.ttfb", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_UPSTREAM_READ_RESPONSE_DURATION_MS = {
-    name = fmt("%s.upstream.read_response_duration_ms", KONG_PREFIX),
+    name = fmt("%s.latency.upstream.read_response_duration", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_UPSTREAM_CONNECT_DURATION_MS = {
-    name = fmt("%s.upstream.connect_duration_ms", KONG_PREFIX),
+    name = fmt("%s.latency.upstream.connect_duration", KONG_PREFIX),
     type = "Int",
   },
   KONG_UPSTREAM_RESPONSE_DURATION_MS = {
-    name = fmt("%s.upstream.response_duration_ms", KONG_PREFIX),
+    name = fmt("%s.latency.upstream.response_duration", KONG_PREFIX),
     type = "Int",
   },
   KONG_LATENCY_TOTAL_MS = {
-    name = fmt("%s.latency_total_ms", KONG_PREFIX),
+    name = fmt("%s.latency.total", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_TOTAL_IO_REDIS_MS = {
-    name = fmt("%s.redis.total_io_ms", KONG_PREFIX),
+    name = fmt("%s.latency.redis.total_io", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_TOTAL_IO_TCPSOCKET_MS = {
-    name = fmt("%s.tcpsock.total_io_ms", KONG_PREFIX),
+    name = fmt("%s.latency.tcpsock.total_io", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
@@ -265,6 +270,24 @@ local ATTRIBUTES = {
   DB_STATEMENT = {
     name = "db.statement",
     type = "String",
+  },
+  -- ROUTER
+  KONG_ROUTER_MATCHED = {
+    name = fmt("%s.router.matched", KONG_PREFIX),
+    type = "String",
+  },
+  KONG_ROUTER_UPSTREAM_URL= {
+    name = fmt("%s.router.upstream_path", KONG_PREFIX),
+    type = "String",
+  },
+  -- headers
+  KONG_HTTP_REQUEST_HEADER_COUNT = {
+    name = fmt("%s.http.request.headers.count", KONG_PREFIX),
+    type = "Int",
+  },
+  KONG_HTTP_REQUEST_HEADER_SIZE = {
+    name = fmt("%s.http.request.headers.size", KONG_PREFIX),
+    type = "Int",
   },
 }
 

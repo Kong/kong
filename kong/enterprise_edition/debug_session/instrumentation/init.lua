@@ -350,6 +350,8 @@ function _M.balancer_upstream_selection(ctx)
     root_span:set_attribute(SPAN_ATTRIBUTES.KONG_UPSTREAM_ADDR, selected_upstream_ip)
     root_span:set_attribute(SPAN_ATTRIBUTES.KONG_UPSTREAM_HOST, selected_upstream_ip .. ":" .. selected_upstream_port)
     root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TARGET_ID, selected_upstream_target_id)
+    root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PEER_PORT, selected_upstream_port)
+    root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PEER_ADDRESS, selected_upstream_ip)
   end
 end
 
@@ -580,6 +582,8 @@ local function initialize_trace(ctx)
   root_span:set_attribute(SPAN_ATTRIBUTES.HTTP_HOST_HEADER, host)
   root_span:set_attribute(SPAN_ATTRIBUTES.URL_SCHEME, scheme)
   root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PROTOCOL_VERSION, http_flavor)
+  -- http is the only protocol supported by Active Tracing
+  root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PROTOCOL, "http")
   root_span:set_attribute(SPAN_ATTRIBUTES.CLIENT_ADDRESS, client.get_forwarded_ip())
   root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PEER_ADDRESS, client.get_ip())
   root_span:set_attribute(SPAN_ATTRIBUTES.KONG_REQUEST_ID, request_id_get())
@@ -603,8 +607,8 @@ local function client_headers()
     start_time_ns = start_time,
     parent = tracer.get_root_span(),
     attributes = {
-      ["raw_header_count"] = headers_num,
-      ["raw_header_size_total"] = headers_bytes,
+      [SPAN_ATTRIBUTES.KONG_HTTP_REQUEST_HEADER_COUNT] = headers_num,
+      [SPAN_ATTRIBUTES.KONG_HTTP_REQUEST_HEADER_SIZE] = headers_bytes,
     }
   })
   if not span then
