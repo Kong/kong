@@ -591,6 +591,7 @@ local CONF_SENSITIVE = {
   admin_gui_ssl_cert_key = true,
   status_ssl_cert_key = true,
   debug_ssl_cert_key = true,
+  ["$refs"] = true, -- for internal use only, no need to log
 }
 
 
