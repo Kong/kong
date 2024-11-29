@@ -29,7 +29,7 @@ local function execute(args, opts)
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env, {
     prefix = args.prefix
-  }))
+  }, { stopping = true }))
   assert(nginx_signals.stop(conf))
 
   if opts.quiet then

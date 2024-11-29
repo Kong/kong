@@ -241,22 +241,24 @@ local function check_and_parse(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = conf_constants.CONF_PARSERS[k] or {}
+    if k ~= "$refs" then
+      local v_schema = conf_constants.CONF_PARSERS[k] or {}
 
-    value = parse_value(value, v_schema.typ)
+      value = parse_value(value, v_schema.typ)
 
-    local typ = v_schema.typ or "string"
-    if value and not conf_constants.TYP_CHECKS[typ](value) then
-      errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
-                                tostring(value))
+      local typ = v_schema.typ or "string"
+      if value and not conf_constants.TYP_CHECKS[typ](value) then
+        errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
+                                  tostring(value))
 
-    elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
-                                tostring(value), concat(v_schema.enum, ", "))
+      elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
+        errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
+                                  tostring(value), concat(v_schema.enum, ", "))
 
+      end
+
+      conf[k] = value
     end
-
-    conf[k] = value
   end
 
   ---------------------

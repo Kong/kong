@@ -38,6 +38,7 @@ local sort = table.sort
 local find = string.find
 local gsub = string.gsub
 local lower = string.lower
+local upper = string.upper
 local match = string.match
 local pairs = pairs
 local assert = assert
@@ -321,7 +322,7 @@ local function load(path, custom_conf, opts)
         return nil, err
       end
 
-      for k, v in pairs(env_vars) do
+      for k in pairs(env_vars) do
         local kong_var = match(lower(k), "^kong_(.+)")
         if kong_var then
           -- the value will be read in `overrides()`
@@ -368,7 +369,7 @@ local function load(path, custom_conf, opts)
   -- remove the unnecessary fields if we are still at the very early stage
   -- before executing the main `resty` cmd, i.e. still in `bin/kong`
   if opts.pre_cmd then
-    for k, v in pairs(conf) do
+    for k in pairs(conf) do
       if not conf_constants.CONF_BASIC[k] then
         conf[k] = nil
       end
@@ -404,67 +405,138 @@ local function load(path, custom_conf, opts)
 
     loaded_vaults = setmetatable(vaults, conf_constants._NOP_TOSTRING_MT)
 
-    if get_phase() == "init" then
-      local secrets = getenv("KONG_PROCESS_SECRETS")
-      if secrets then
-        unsetenv("KONG_PROCESS_SECRETS")
+    -- collect references
+    local is_reference = require "kong.pdk.vault".is_reference
+    for k, v in pairs(conf) do
+      local typ = (conf_constants.CONF_PARSERS[k] or {}).typ
+      v = parse_value(v, typ == "array" and "array" or "string")
+      if typ == "array" then
+        local found
 
-      else
-        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(conf_constants.PREFIX_PATHS.kong_process_secrets))
-        if exists(path) then
-          secrets, err = pl_file.read(path, true)
-          pl_file.delete(path)
-          if not secrets then
-            return nil, fmt("failed to read process secrets file: %s", err)
+        for i, r in ipairs(v) do
+          if is_reference(r) then
+            found = true
+            if not refs then
+              refs = setmetatable({}, conf_constants._NOP_TOSTRING_MT)
+            end
+            if not refs[k] then
+              refs[k] = {}
+            end
+            refs[k][i] = r
           end
         end
-      end
 
-      if secrets then
-        secrets, err = process_secrets.deserialize(secrets, path)
-        if not secrets then
-          return nil, err
+        if found then
+          conf[k] = v
         end
 
-        for k, deref in pairs(secrets) do
-          local v = parse_value(conf[k], "string")
-          if refs then
-            refs[k] = v
-          else
-            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
-          end
-
-          conf[k] = deref
+      elseif is_reference(v) then
+        if not refs then
+          refs = setmetatable({}, conf_constants._NOP_TOSTRING_MT)
         end
+        refs[k] = v
       end
+    end
+
+    local prefix = abspath(conf.prefix or ngx.config.prefix())
+    local secret_env
+    local secret_file
+    local secrets_env_var_name = upper("KONG_PROCESS_SECRETS_" .. ngx.config.subsystem)
+    local secrets = getenv(secrets_env_var_name)
+    if secrets then
+      secret_env = secrets_env_var_name
 
     else
+      local secrets_path = pl_path.join(prefix, unpack(conf_constants.PREFIX_PATHS.kong_process_secrets)) .. "_" .. ngx.config.subsystem
+      if exists(secrets_path) then
+        secrets, err = pl_file.read(secrets_path, true)
+        if not secrets then
+          pl_file.delete(secrets_path)
+          return nil, fmt("failed to read process secrets file: %s", err)
+        end
+        secret_file = secrets_path
+      end
+    end
+
+    if secrets then
+      local env_path = pl_path.join(prefix, unpack(conf_constants.PREFIX_PATHS.kong_env))
+      secrets, err = process_secrets.deserialize(secrets, env_path)
+      if not secrets then
+        return nil, err
+      end
+
+      for k, deref in pairs(secrets) do
+        conf[k] = deref
+      end
+    end
+
+    if get_phase() == "init" then
+      if secrets then
+        if secret_env then
+          unsetenv(secret_env)
+        end
+        if secret_file then
+          pl_file.delete(secret_file)
+        end
+      end
+
+    elseif refs then
       local vault_conf = { loaded_vaults = loaded_vaults }
       for k, v in pairs(conf) do
         if sub(k, 1, 6) == "vault_" then
           vault_conf[k] = parse_value(v, "string")
         end
       end
-
       local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
+      for k, v in pairs(refs) do
+        if type(v) == "table" then
+          for i, r in pairs(v) do
+            local deref, deref_err = vault.get(r)
+            if deref == nil or deref_err then
+              if opts.starting then
+                return nil, fmt("failed to dereference '%s': %s for config option '%s[%d]'", r, deref_err, k, i)
+              end
 
-      for k, v in pairs(conf) do
-        v = parse_value(v, "string")
-        if vault.is_reference(v) then
-          if refs then
-            refs[k] = v
-          else
-            refs = setmetatable({ [k] = v }, conf_constants._NOP_TOSTRING_MT)
+              -- not that fatal if resolving fails during stopping (e.g. missing environment variables)
+              if opts.stopping or opts.pre_cmd then
+                conf[k][i] = "_INVALID_VAULT_KONG_REFERENCE"
+              end
+
+            else
+              conf[k][i] = deref
+            end
           end
 
+        else
           local deref, deref_err = vault.get(v)
           if deref == nil or deref_err then
             if opts.starting then
               return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
             end
 
+            -- not that fatal if resolving fails during stopping (e.g. missing environment variables)
+            if opts.stopping or opts.pre_cmd then
+              conf[k] = ""
+              break
+            end
+
           else
             conf[k] = deref
+          end
+        end
+      end
+
+      -- remove invalid references and leave valid ones for
+      -- pre_cmd or non-fatal stopping scenarios
+      -- this adds some robustness if the vault reference is
+      -- inside an array style config field and the config field
+      -- is also needed by vault, for example the `lua_ssl_trusted_certificate`
+      if opts.stopping or opts.pre_cmd then
+        for k, v in pairs(refs) do
+          if type(v) == "table" then
+            conf[k] = setmetatable(tablex.filter(conf[k], function(v)
+              return v ~= "_INVALID_VAULT_KONG_REFERENCE"
+            end), nil)
           end
         end
       end
@@ -473,7 +545,6 @@ local function load(path, custom_conf, opts)
 
   -- validation
   local ok, err, errors = check_and_parse(conf, opts)
-
   if not opts.starting then
     log.enable()
   end
@@ -726,12 +797,14 @@ local function load(path, custom_conf, opts)
     local conf_arr = {}
 
     for k, v in pairs(conf) do
-      local to_print = v
-      if conf_constants.CONF_SENSITIVE[k] then
-        to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
-      end
+      if k ~= "$refs" then
+        local to_print = v
+        if conf_constants.CONF_SENSITIVE[k] then
+          to_print = conf_constants.CONF_SENSITIVE_PLACEHOLDER
+        end
 
-      conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
+        conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
+      end
     end
 
     sort(conf_arr)

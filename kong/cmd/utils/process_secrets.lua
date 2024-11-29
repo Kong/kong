@@ -18,6 +18,7 @@ local fmt = string.format
 local sub = string.sub
 local type = type
 local pairs = pairs
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local CIPHER_ALG = "aes-256-gcm"
@@ -71,7 +72,7 @@ local function extract(conf)
 
   local secrets = {}
   for k in pairs(refs) do
-    secrets[k] = conf[k]
+    secrets[k] = shallow_copy(conf[k])
   end
 
   return secrets
