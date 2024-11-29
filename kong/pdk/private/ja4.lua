@@ -10,7 +10,6 @@ local phase_checker = require "kong.pdk.private.phases"
 local kong_tls = require "resty.kong.tls"
 local ja4 = require "kong.enterprise_edition.tls.ja4"
 
-local band = require("bit").band
 local check_phase = phase_checker.check
 
 
@@ -53,22 +52,7 @@ end
 function _M.get_computed_client_ja4()
   check_phase(CERTIFICATE_AND_LATER)
 
-  if not ngx.ctx.ja4_fingerprint then
-    local ja4_fingerprint, stale = ja4.get_fingerprint_from_cache(ngx.var.connection)
-    ja4_fingerprint = ja4_fingerprint or stale
-
-    if not ja4_fingerprint then
-      return nil, "JA4 fingerprint not generated"
-    end
-
-    ngx.ctx.ja4_fingerprint = ja4_fingerprint
-  end
-
-  if ngx.ctx.KONG_PHASE and band(ngx.ctx.KONG_PHASE, CERTIFICATE_AND_LATER) ~= 0 then
-    ja4.set_fingerprint_to_cache(ngx.var.connection, ngx.ctx.ja4_fingerprint)
-  end
-
-  return ngx.ctx.ja4_fingerprint
+  return ngx.ctx.connection.ja4_fingerprint or nil, "fingerprint not generated"
 end
 
 

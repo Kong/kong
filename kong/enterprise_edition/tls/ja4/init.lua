@@ -7,7 +7,6 @@
 
 local ffi = require("ffi")
 local resty_ja4 = require "resty.ja4"
-local lrucache = require "resty.lrucache"
 
 ffi.cdef [[
   extern int SSL_version(const struct ssl_st *s);
@@ -23,9 +22,6 @@ ffi.cdef [[
   extern void CRYPTO_free(void *str, const char *file, int line);
 ]]
 
-local DEFAULT_CACHE_MAX_ITEMS = 16384
-local DEFAULT_KEEPALIVE_TIMEOUT = 75
-
 local DTLS = ffi.new("uint16_t", 1)
 local TCP = ffi.new("uint16_t", 0)
 
@@ -34,32 +30,9 @@ local ClientProtocolNegotiation = ffi.new("uint16_t", 0x0010)
 local SupportedVersions = ffi.new("uint16_t", 0x002b)
 
 
-local ja4_cache
 local is_little_endian = ffi.abi("le")
 
 local _M = {}
-
-
-local function init_cache()
-    local n = tonumber(kong.configuration.nginx_events_worker_connections)
-    if not n then
-      n = DEFAULT_CACHE_MAX_ITEMS
-    end
-    ja4_cache = lrucache.new(n)
-end
-
-
-local function get_ja4_cache_timeout()
-  local timeout
-
-  if kong and kong.configuration then
-    timeout = kong.configuration.nginx_location_keepalive_timeout
-              or kong.configuration.nginx_server_keepalive_timeout
-              or kong.configuration.nginx_http_keepalive_timeout
-  end
-
-  return timeout or DEFAULT_KEEPALIVE_TIMEOUT
-end
 
 
 local function get_extension(ssl_ptr, typ)
@@ -87,22 +60,6 @@ local function to_u16_array(strip, data, len)
   return ffi.cast("uint16_t*", data + strip), new_len
 end
 
-
-function _M.get_fingerprint_from_cache(connection_id)
-  if not ja4_cache then
-    return nil, "fingerprint not found"
-  end
-
-  return ja4_cache:get(connection_id)
-end
-
-function _M.set_fingerprint_to_cache(connection_id, fingerprint)
-  if not ja4_cache then
-    init_cache()
-  end
-
-  ja4_cache:set(connection_id, fingerprint, get_ja4_cache_timeout())
-end
 
 function _M.compute_ja4_fingerprint(ssl_ptr)
   local protocol = ffi.C.SSL_is_dtls(ssl_ptr) == 1 and DTLS or TCP

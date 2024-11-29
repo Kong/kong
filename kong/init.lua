@@ -113,7 +113,6 @@ local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local licensing = require "kong.enterprise_edition.licensing"
 local ee_constants = require "kong.enterprise_edition.constants"
-local set_fingerprint_to_cache = require("kong.enterprise_edition.tls.ja4").set_fingerprint_to_cache
 local debug_session = require "kong.enterprise_edition.debug_session"
 
 
@@ -1269,13 +1268,6 @@ function Kong.rewrite()
     ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
-    -- ctx.ja4_fingerprint will be set in PDK function compute_client_ja4.
-    -- The cache wasn't set in compute_client_ja4 because it's not possible
-    -- to retrieve a unique connection-related ID during the client hello phase.
-    if ctx.ja4_fingerprint then
-      set_fingerprint_to_cache(ngx.var.connection, ctx.ja4_fingerprint)
-    end
-
     return
   end
 
@@ -1292,13 +1284,6 @@ function Kong.rewrite()
     end
   else
     ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
-  end
-
-  -- ctx.ja4_fingerprint will be set in PDK function compute_client_ja4.
-  -- The cache wasn't set in compute_client_ja4 because it's not possible
-  -- to retrieve a unique connection-related ID during the client hello phase.
-  if ctx.ja4_fingerprint then
-    set_fingerprint_to_cache(ngx.var.connection, ctx.ja4_fingerprint)
   end
 
   if not ctx.KONG_PROCESSING_START then

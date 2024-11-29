@@ -27,6 +27,7 @@ qq{
             local ja4 = require "kong.pdk.private.ja4"
             local ret = ja4.compute_client_ja4()
             assert(ret == true, "unexpected value: " .. tostring(ret))
+            ngx.ctx.connection = ngx.ctx
             ret = ja4.get_computed_client_ja4()
             assert(ret ~= '', "unexpected value: " .. tostring(ret))
         }
