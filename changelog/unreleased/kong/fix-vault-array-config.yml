@@ -1,0 +1,4 @@
+message: |
+   **Vault**: Fixed an issue where array-like configuration fields cannot contain vault reference.
+type: bugfix
+scope: Core
