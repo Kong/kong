@@ -7,9 +7,11 @@
 
 local kong = kong
 local get_service = kong.router.get_service
+local get_consumer = kong.client.get_consumer
 local get_route = kong.router.get_route
 local get_header = kong.request.get_header
 local meta = require "kong.meta"
+local socket_url = require "socket.url"
 
 local appd
 do
@@ -340,13 +342,56 @@ function AppDynamicsHandler:log()
 
   -- Add further details if snapshot is occurring
   if appd.appd_bt_is_snapshotting(bt_handle) ~= 0 then
-    appd.appd_bt_add_user_data(bt_handle, "route", get_route().name)
+    local route = get_route()
+    if route then
+      if route.name then
+        appd.appd_bt_add_user_data(bt_handle, "route", route.name)
+      else
+        appd.appd_bt_add_user_data(bt_handle, "route", route.id)
+      end
+
+      appd.appd_bt_add_user_data(bt_handle, "route_uri", route and route.paths and route.paths[1] or "")
+    end
+
     local service = get_service()
-    if service and service.name then
-      appd.appd_bt_add_user_data(bt_handle, "service", service.name)
+    if service then
+      if service.name then
+        appd.appd_bt_add_user_data(bt_handle, "service", service.name)
+      else
+        appd.appd_bt_add_user_data(bt_handle, "service", service.id)
+      end
     end
 
     appd.appd_bt_add_user_data(bt_handle, "response_status", tostring(response_status))
+
+    local consumer = get_consumer()
+    if consumer then
+      if consumer.username then
+        appd.appd_bt_add_user_data(bt_handle, "consumer", consumer.username)
+      else
+        appd.appd_bt_add_user_data(bt_handle, "consumer", consumer.id)
+      end
+    end
+
+    local upstream_host_and_port = ngx.var.upstream_host
+    if upstream_host_and_port == nil then
+      local upstream_port = ngx.ctx.balancer_data.port
+      upstream_host_and_port = ngx.ctx.balancer_data.ip
+      if upstream_port and upstream_port ~= 80 and upstream_port ~= 443 then
+        upstream_host_and_port = upstream_host_and_port .. ":" .. upstream_port
+      end
+    end
+
+    local upstream_url = ngx.var.upstream_scheme .. "://" .. upstream_host_and_port.. ngx.var.upstream_uri
+    local _, err = socket_url.parse(upstream_url)
+    if not err then
+      appd.appd_bt_add_user_data(bt_handle, "upstream_url", upstream_url)
+    end
+
+    local proxy_latency = ngx.ctx.KONG_PROXY_LATENCY
+    if proxy_latency then
+      appd.appd_bt_add_user_data(bt_handle, "proxy_latency", tostring(proxy_latency))
+    end
 
     appd.appd_bt_set_url(
       bt_handle,

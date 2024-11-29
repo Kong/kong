@@ -3,7 +3,7 @@
 echo "Stopping previously running Kong"
 
 kong stop
-
+  
 pid_file=servroot/pids/nginx.pid
 while [ -f $pid_file ]
 do
@@ -40,24 +40,37 @@ export KONG_APPD_NODE_NAME=${KONG_APPD_NODE_NAME:-$(hostname)}          \
 
 echo "Starting Kong, AppDynamics node name: $KONG_APPD_NODE_NAME, service name"
 
-KONG_PLUGINS=app-dynamics kong start --conf=spec/kong_tests.conf --nginx-conf=spec/fixtures/custom_nginx.template
+KONG_PLUGINS=app-dynamics,bundled kong start --conf=spec/kong_tests.conf --nginx-conf=spec/fixtures/custom_nginx.template
 
 sleep 5
 
 echo "Adding route and plugin to service"
 
-service_id=$(http :8001/services | jq -r '.data[0].id')
-http -p h put :8001/services/$service_id        \
+service_id=$(http :9001/services | jq -r '.data[0].id')
+http -p h put :9001/services/$service_id        \
      'host=127.0.0.1'                           \
      'port:=15555'                              \
      'protocol=http'                            \
      'retries:=0'                               \
      'read_timeout:=600000'                     \
      "name=${KONG_APPD_SERVICE_NAME}"
-http -p h :8001/services/$service_id/routes     \
-     'hosts[0]=test1.com'
-http -p h :8001/services/$service_id/plugins    \
+http -p h :9001/services/$service_id/routes     \
+     'hosts[0]=test1.com'                       \
+     'paths[0]=/request'                        \
+     "paths[1]=/delay"                          \
+     "paths[2]=/does-not-exist"
+http -p h :9001/services/$service_id/plugins    \
      'name=app-dynamics'
+
+http -p h :9001/services/$service_id/plugins    \
+     'name=key-auth'                            \
+     'config.key_names[0]=apikey'
+
+http -p h :9001/consumers                       \
+     'username=alex'
+
+http -p h :9001/consumers/alex/key-auth        \
+     'key=alex'
 
 sleep 5
 
@@ -65,7 +78,7 @@ echo "Sending $NORMAL_TRANSACTION_COUNT successful requests: "
 
 for i in $(seq $NORMAL_TRANSACTION_COUNT)
 do
-    singularity_header=$(http -p b :9000/request host:test1.com | jq -r .headers.singularityheader)
+    singularity_header=$(http -p b :9000/request?apikey=alex host:test1.com | jq -r .headers.singularityheader)
     if ! [[ $singularity_header =~ appId=([^*]+).*cidfrom=([^*]+) ]]
     then
         echo
@@ -85,7 +98,7 @@ echo
 
 echo "Sending unsuccessful request"
 
-singularity_header=$(http -p b :9000/does-not-exist host:test1.com | jq -r .headers.singularityheader)
+singularity_header=$(http -p b :9000/does-not-exist?apikey=alex host:test1.com | jq -r .headers.singularityheader)
 if ! [[ $singularity_header =~ appId ]]
 then
     echo "Singularity header does not contain the expected tags: $singularity_header"
@@ -94,7 +107,7 @@ fi
 
 echo "Sending request with very slow response (5 minutes!)"
 
-singularity_header=$(http -p b :9000/delay/305 host:test1.com | jq -r .headers.singularityheader)
+singularity_header=$(http -p b :9000/delay/20?apikey=alex host:test1.com | jq -r .headers.singularityheader)
 if ! [[ $singularity_header =~ appId ]]
 then
     echo "Singularity header does not contain the expected tags: $singularity_header"
