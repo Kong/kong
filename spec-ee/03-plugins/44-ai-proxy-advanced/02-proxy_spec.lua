@@ -83,6 +83,7 @@ local ai_proxy_e2e_tests = {
   encoding = "08-encoding_integration_spec",
   streaming = "09-streaming_integration_spec",
   huggingface = "10-huggingface_integration_spec",
+  gemini = '11-gemini_integration_spec',
 }
 
 
