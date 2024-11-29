@@ -79,7 +79,7 @@ function _M._dispatch(premature, self, cb, payload)
 
   -- success
   res, err = self.outgoing:push({
-    jsonrpc = "2.0",
+    jsonrpc = jsonrpc.VERSION,
     id = payload.id,
     result = res,
   })
@@ -143,7 +143,7 @@ function _M:start()
       assert(typ == "binary")
 
       local payload = decompress_payload(data)
-      assert(payload.jsonrpc == "2.0")
+      assert(payload.jsonrpc == jsonrpc.VERSION)
 
       if payload.method then
         -- invoke
@@ -276,7 +276,7 @@ function _M:call(node_id, method, params, callback)
   self.interest[id] = callback
 
   return self.outgoing:push({
-    jsonrpc = "2.0",
+    jsonrpc = jsonrpc.VERSION,
     method = method,
     params = params,
     id = id,

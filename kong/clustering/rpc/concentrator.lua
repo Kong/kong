@@ -116,7 +116,7 @@ function _M:_event_loop(lconn)
       if n.channel == rpc_resp_channel_name then
         -- an response for a previous RPC call we asked for
         local payload = cjson_decode(n.payload)
-        assert(payload.jsonrpc == "2.0")
+        assert(payload.jsonrpc == jsonrpc.VERSION)
 
         -- response
         local cb = self.interest[payload.id]
@@ -158,7 +158,7 @@ function _M:_event_loop(lconn)
           if res then
             -- call success
             res, err = self:_enqueue_rpc_response(reply_to, {
-              jsonrpc = "2.0",
+              jsonrpc = jsonrpc.VERSION,
               id = payload.id,
               result = res,
             })
@@ -169,7 +169,7 @@ function _M:_event_loop(lconn)
           else
             -- call failure
             res, err = self:_enqueue_rpc_response(reply_to, {
-              jsonrpc = "2.0",
+              jsonrpc = jsonrpc.VERSION,
               id = payload.id,
               error = {
                 code = jsonrpc.SERVER_ERROR,
@@ -292,7 +292,7 @@ function _M:call(node_id, method, params, callback)
   self.interest[id] = callback
 
   return self:_enqueue_rpc_request(node_id, {
-    jsonrpc = "2.0",
+    jsonrpc = jsonrpc.VERSION,
     method = method,
     params = params,
     id = id,

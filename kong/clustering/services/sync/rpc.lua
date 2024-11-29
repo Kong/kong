@@ -13,9 +13,11 @@ local events = require("kong.runloop.events")
 local insert_entity_for_txn = declarative.insert_entity_for_txn
 local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+local CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = constants.CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
+local MAX_RETRY = 5
 
 
 local assert = assert
@@ -148,6 +150,7 @@ end
 
 
 function _M:init_dp(manager)
+  local kong_shm = ngx.shared.kong
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
@@ -166,6 +169,8 @@ function _M:init_dp(manager)
 
     local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
     if lmdb_ver < version then
+      -- set lastest version to shm
+      kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
       return self:sync_once()
     end
 
@@ -388,29 +393,19 @@ local function sync_handler(premature)
     return
   end
 
-  local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
-    -- `do_sync()` is run twice in a row to report back new version number
-    -- to CP quickly after sync. (`kong.sync.v2.get_delta` is used for both pulling delta
-    -- as well as status reporting)
-    for _ = 1, 2 do
-      local ok, err = do_sync()
-      if not ok then
-        return nil, err
-      end
-    end -- for
-
-    return true
-  end)
+  local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, do_sync)
   if not res and err ~= "timeout" then
     ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
   end
 end
 
 
-local function start_sync_timer(timer_func, delay)
-  local hdl, err = timer_func(delay, sync_handler)
+local sync_once_impl
 
-  if not hdl then
+
+local function start_sync_once_timer(retry_count)
+  local ok, err = ngx.timer.at(0, sync_once_impl, retry_count or 0)
+  if not ok then
     return nil, err
   end
 
@@ -418,13 +413,41 @@ local function start_sync_timer(timer_func, delay)
 end
 
 
+function sync_once_impl(premature, retry_count)
+  if premature then
+    return
+  end
+
+  sync_handler()  
+  
+  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
+  local current_version = tonumber(declarative.get_current_hash()) or 0
+
+  if not latest_notified_version then
+    ngx_log(ngx_DEBUG, "no version notified yet")
+    return
+  end
+
+  -- retry if the version is not updated
+  if current_version < latest_notified_version then
+    retry_count = retry_count or 0
+    if retry_count > MAX_RETRY then
+      ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
+      return
+    end
+
+    return start_sync_once_timer(retry_count + 1)
+  end
+end
+
+
 function _M:sync_once(delay)
-  return start_sync_timer(ngx.timer.at, delay or 0)
+  return ngx.timer.at(delay or 0, sync_once_impl, 0)
 end
 
 
 function _M:sync_every(delay)
-  return start_sync_timer(ngx.timer.every, delay)
+  return ngx.timer.every(delay, sync_handler)
 end
 
 

@@ -9,6 +9,8 @@ local _M = {
   INVALID_PARAMS = -32602,
   INTERNAL_ERROR = -32603,
   SERVER_ERROR = -32000,
+
+  VERSION = "2.0",
 }
 
 
@@ -40,7 +42,7 @@ function _M.new_error(id, code, msg)
   end
 
   return {
-    jsonrpc = "2.0",
+    jsonrpc = _M.VERSION,
     id = id,
     error = {
       code = code,
