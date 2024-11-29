@@ -289,4 +289,16 @@ function _M:call(node_id, method, params, callback)
 end
 
 
+function _M:notify(node_id, method, params)
+  assert(node_id == self.node_id)
+
+  return self.outgoing:push({
+    jsonrpc = "2.0",
+    method = method,
+    params = params,
+    -- notification has no id
+  })
+end
+
+
 return _M
