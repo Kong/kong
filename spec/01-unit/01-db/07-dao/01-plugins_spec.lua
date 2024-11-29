@@ -49,7 +49,7 @@ describe("kong.db.dao.plugins", function()
 
       for i = 1, #handlers do
         assert.is_number(handlers[i].handler.PRIORITY)
-        assert.matches("%d%.%d%.%d", handlers[i].handler.VERSION)
+        assert.matches("%d+%.%d+%.%d+", handlers[i].handler.VERSION)
         assert.is_function(handlers[i].handler.access)
       end
     end)
