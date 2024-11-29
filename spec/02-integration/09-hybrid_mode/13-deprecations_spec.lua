@@ -10,8 +10,9 @@ local join = require("pl.stringx").join
 
 local ENABLED_PLUGINS = { "dummy" , "reconfiguration-completion"}
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("deprecations are not reported on DP but on CP " .. " inc_sync=" .. inc_sync, function()
     local cp_prefix = "servroot1"
@@ -50,6 +51,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         admin_listen = "0.0.0.0:9001",
         proxy_listen = "off",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -65,6 +67,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         plugins = "bundled," .. join(",", ENABLED_PLUGINS),
         admin_listen = "off",
         proxy_listen = "0.0.0.0:9002",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
       dp_logfile = helpers.get_running_conf(dp_prefix).nginx_err_logs

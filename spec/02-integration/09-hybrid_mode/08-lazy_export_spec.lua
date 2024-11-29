@@ -9,7 +9,7 @@ local helpers = require "spec.helpers"
 
 local admin_client
 
-local function cp(strategy, inc_sync)
+local function cp(strategy, rpc, inc_sync)
   helpers.get_db_utils(strategy) -- make sure the DB is fresh n' clean
   assert(helpers.start_kong({
     role = "control_plane",
@@ -21,6 +21,7 @@ local function cp(strategy, inc_sync)
     -- additional attributes for PKI:
     cluster_mtls = "pki",
     cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+    cluster_rpc = rpc,
     cluster_incremental_sync = inc_sync,
   }))
   admin_client = assert(helpers.admin_client())
@@ -42,7 +43,7 @@ local function touch_config()
   }))
 end
 
-local function json_dp(inc_sync)
+local function json_dp(rpc, inc_sync)
   assert(helpers.start_kong({
     role = "data_plane",
     database = "off",
@@ -55,19 +56,21 @@ local function json_dp(inc_sync)
     cluster_mtls = "pki",
     cluster_server_name = "kong_clustering",
     cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+    cluster_rpc = rpc,
     cluster_incremental_sync = inc_sync,
   }))
 end
 
 
--- TODO: reenable the inc sync test
-for _, inc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
 
 describe("lazy_export with #".. strategy .. " inc_sync=" .. inc_sync, function()
   describe("no DP", function ()
     setup(function()
-      cp(strategy, inc_sync)
+      cp(strategy, rpc, inc_sync)
     end)
     teardown(function ()
       helpers.stop_kong()
@@ -85,8 +88,8 @@ describe("lazy_export with #".. strategy .. " inc_sync=" .. inc_sync, function()
 
   describe("only json DP", function()
     setup(function()
-      cp(strategy, inc_sync)
-      json_dp(inc_sync)
+      cp(strategy, rpc, inc_sync)
+      json_dp(rpc, inc_sync)
     end)
     teardown(function ()
       helpers.stop_kong("dp1")

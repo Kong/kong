@@ -20,8 +20,9 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
---- XXX FIXME: enable incremental sync "on"
-for _, inc_sync in ipairs { "off" } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
 
 --- XXX FIXME: enable inc_sync = on
@@ -41,6 +42,7 @@ describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, functi
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
 
@@ -53,6 +55,7 @@ describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, functi
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
       worker_state_update_frequency = 1,
     }))
@@ -375,6 +378,7 @@ describe("CP/DP #version check #" .. strategy .. " inc_sync=" .. inc_sync, funct
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_version_check = "major_minor",
+        cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
       }))
 
@@ -637,6 +641,7 @@ describe("CP/DP config sync #" .. strategy .. " inc_sync=" .. inc_sync, function
       database = strategy,
       db_update_frequency = 3,
       cluster_listen = "127.0.0.1:9005",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
 
@@ -649,6 +654,7 @@ describe("CP/DP config sync #" .. strategy .. " inc_sync=" .. inc_sync, function
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       cluster_incremental_sync = inc_sync,
+      cluster_rpc = rpc,
       worker_state_update_frequency = 1,
     }))
   end)
@@ -844,6 +850,7 @@ skip_inc_sync("CP/DP labels #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
 
@@ -857,6 +864,7 @@ skip_inc_sync("CP/DP labels #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_dp_labels="deployment:mycloud,region:us-east-1",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
   end)
@@ -906,6 +914,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, functio
       db_update_frequency = 0.1,
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
 
@@ -919,6 +928,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, functio
       proxy_listen = "0.0.0.0:9002",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_dp_labels="deployment:mycloud,region:us-east-1",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
   end)
@@ -966,6 +976,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
       -- additional attributes for PKI:
       cluster_mtls = "pki",
       cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
 
@@ -982,6 +993,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
       cluster_mtls = "pki",
       cluster_server_name = "kong_clustering",
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_rpc = rpc,
       cluster_incremental_sync = inc_sync,
     }))
   end)
