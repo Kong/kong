@@ -158,7 +158,7 @@ function _M:start()
         ngx_log(ngx_DEBUG, "[rpc] got RPC call: ", payload.method, " (id: ", payload.id, ")")
 
         local dispatch_cb = self.manager.callbacks.callbacks[payload.method]
-        if not dispatch_cb then
+        if not dispatch_cb and payload.id then
           local res, err = self.outgoing:push(new_error(payload.id, jsonrpc.METHOD_NOT_FOUND))
           if not res then
             return nil, "unable to send \"METHOD_NOT_FOUND\" error back to client: " .. err
