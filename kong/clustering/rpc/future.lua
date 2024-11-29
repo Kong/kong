@@ -10,6 +10,7 @@ local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
+local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 
 
 local STATE_NEW = 1
@@ -41,7 +42,7 @@ function _M:start()
   self.state = STATE_IN_PROGRESS
 
   local callback = function(resp)
-    assert(resp.jsonrpc == "2.0")
+    assert(resp.jsonrpc == jsonrpc.VERSION)
 
     if resp.result then
       -- succeeded
