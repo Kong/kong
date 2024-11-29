@@ -7,6 +7,7 @@ local client = require("resty.websocket.client")
 local socket = require("kong.clustering.rpc.socket")
 local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
+local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local callbacks = require("kong.clustering.rpc.callbacks")
 local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
@@ -154,7 +155,7 @@ function _M:_handle_meta_call(c)
   end
 
   local payload = cjson_decode(data)
-  assert(payload.jsonrpc == "2.0")
+  assert(payload.jsonrpc == jsonrpc.VERSION)
 
   if payload.method ~= RPC_MATA_V1 .. ".hello" then
     return nil, "wrong RPC meta call: " .. tostring(payload.method)
@@ -181,7 +182,7 @@ function _M:_handle_meta_call(c)
   assert(type(info.kong_conf) == "table")
 
   local payload = {
-    jsonrpc = "2.0",
+    jsonrpc = jsonrpc.VERSION,
     result = {
       rpc_capabilities = self.callbacks:get_capabilities_list(),
       -- now we only support snappy
@@ -232,7 +233,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   }
 
   local payload = {
-    jsonrpc = "2.0",
+    jsonrpc = jsonrpc.VERSION,
     method = meta_cap .. ".hello",
     params = { info },
     id = 1,
@@ -253,7 +254,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   end
 
   local payload = cjson_decode(data)
-  assert(payload.jsonrpc == "2.0")
+  assert(payload.jsonrpc == jsonrpc.VERSION)
 
   -- now we only support snappy
   if payload.result.rpc_frame_encoding ~= RPC_SNAPPY_FRAMED then
