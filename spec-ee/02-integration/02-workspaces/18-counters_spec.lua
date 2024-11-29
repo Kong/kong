@@ -49,37 +49,22 @@ for _, strategy in helpers.each_strategy() do
       it("filters counts by workspace id", function()
         local counts, err = counters.entity_counts(default_ws_id)
         assert.is_nil(err)
-        assert.same(
-          {
-            consumers = 1,
-            services  = 1,
-          },
-          counts
-        )
+        assert.equals(1, counts.consumers)
+        assert.equals(1, counts.services)
 
         counts, err = counters.entity_counts(other_ws_id)
         assert.is_nil(err)
-        assert.same(
-          {
-            consumers = 1,
-            services  = 1,
-            routes    = 1,
-          },
-          counts
-        )
+        assert.equals(1, counts.consumers)
+        assert.equals(1, counts.services)
+        assert.equals(1, counts.routes)
       end)
 
       it("returns all counts when no workspace id is passed", function()
         local counts, err = counters.entity_counts()
         assert.is_nil(err)
-        assert.same(
-          {
-            consumers = 2,
-            services  = 2,
-            routes    = 1,
-          },
-          counts
-        )
+        assert.equals(2, counts.consumers)
+        assert.equals(2, counts.services)
+        assert.equals(1, counts.routes)
       end)
 
       describe("delete a service concurrently", function()

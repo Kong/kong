@@ -10,6 +10,7 @@ local hooks      = require "kong.hooks"
 local constants  = require "kong.constants"
 local lmdb       = require "resty.lmdb"
 local unmarshall = require "kong.db.declarative.marshaller".unmarshall
+local EMPTY      = require "kong.tools.table".EMPTY
 
 local format      = string.format
 local ipairs      = ipairs
@@ -35,6 +36,7 @@ local function countable_schemas(daos)
   end
   return ipairs(schemas)
 end
+_M.countable_schemas = countable_schemas
 
 
 -- Entity count management
@@ -77,8 +79,7 @@ function _M.entity_counts(workspace_id, daos)
       if err then
         return nil, err
       end
-      local count = res[1].count
-      counts[entity] = count ~= 0 and count or nil
+      counts[entity] = res[1].count or 0
     end
 
   elseif strategy == "off" then
@@ -95,7 +96,11 @@ function _M.entity_counts(workspace_id, daos)
     if err then
       return nil, err
     end
-    counts = count_by_ws and count_by_ws[ws_id] or {}
+    local ws_counts = count_by_ws and count_by_ws[ws_id] or EMPTY
+
+    for _, entity in countable_schemas(daos) do
+      counts[entity] = ws_counts[entity] or 0 -- default to 0
+    end
 
   else
     return nil, "unsupported strategy: " .. strategy

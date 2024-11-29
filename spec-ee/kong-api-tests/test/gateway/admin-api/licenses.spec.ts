@@ -16,7 +16,6 @@ import {
   createConsumer,
   deleteConsumer,
   eventually,
-  clearAllKongResources,
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {
@@ -28,7 +27,7 @@ describe('Gateway /licenses API tests', function () {
   const licenseKey = 'ASDASDASDASDASDASDASDASDASD_a1VASASD';
   const validLicense = authDetails.license.valid;
   const inValidLicense = authDetails.license.invalid;
-  const expiredLicense = authDetails.license.expired; 
+  const expiredLicense = authDetails.license.expired;
   const validLicenseAws = '{vault://aws/gateway-secret-test/ee_license}';
   const jwtPluginPayload = {
     name: 'jwt-signer',
@@ -36,7 +35,7 @@ describe('Gateway /licenses API tests', function () {
   };
   const rbacUser = {
     name: 'user1',
-    user_token: 'rbac1'  
+    user_token: 'rbac1'
   }
 
   const url = `${getBasePath({
@@ -240,7 +239,7 @@ describe('Gateway /licenses API tests', function () {
     );
   });
 
-  
+
   it('should not enable key-auth-enc ee plugin without license', async function () {
     const pluginPayload = {
       ...basePayload,
@@ -256,7 +255,7 @@ describe('Gateway /licenses API tests', function () {
       'Should see correct error message for plugin creation'
     ).to.include(`'key-auth-enc' is an enterprise only plugin`);
   });
-  
+
 
   it('should POST a valid license', async function () {
     const resp = await postNegative(url, { payload: validLicense });
@@ -267,7 +266,7 @@ describe('Gateway /licenses API tests', function () {
     await waitForConfigRebuild();
   });
 
-  
+
   it('should enable key-auth-enc ee plugin with license', async function () {
     const pluginPayload = {
       ...basePayload,
@@ -284,7 +283,7 @@ describe('Gateway /licenses API tests', function () {
     expect(resp.status, 'Status should be 201').to.equal(201);
     eeKeyAuthEncPluginId = resp.data.id;
   });
-  
+
 
   it('should not POST a duplicate valid license', async function () {
     const resp = await postNegative(url, { payload: validLicense });
@@ -409,7 +408,7 @@ describe('Gateway /licenses API tests', function () {
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.workspaces_count, 'Should see workspaces_count in response').to.eq(1);
       expect(resp.data.services_count, 'Should see services_count in response').to.eq(1);
-      expect(resp.data.consumers_count, 'Should not see consumers_count if counter is 0').to.not.exist;
+      expect(resp.data.consumers_count, 'Should see consumers_count if counter is 0').to.eq(0);
       expect(resp.data.rbac_users, 'Should see rbac_users in response').to.eq(1);
       expect(resp.data.plugins_count.tiers.enterprise, 'should see plugins').to.deep.equal({'key-auth-enc': 1});
     });

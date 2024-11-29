@@ -113,14 +113,14 @@ for _, strategy in helpers.each_strategy() do
       local s = post("/services", { name = "s1", host="s1.test"})
       delete("/services/" .. s.id)
       local res = get("/default/workspaces/default/meta")
-      assert.equals(nil, res.counts.services)
+      assert.equals(0, res.counts.services)
     end)
 
     it("decrements with DELETE by name", function()
       local s = post("/services", { name = "s1", host="s1.test"})
       delete("/services/" .. s.name)
       local res = get("/default/workspaces/default/meta")
-      assert.equals(nil, res.counts.services)
+      assert.equals(0, res.counts.services)
     end)
 
     it("obeys PUT upsert", function()
@@ -157,6 +157,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local counts = get("/default/workspaces/default/meta").counts
+      -- explicitly excluded oauth2_tokens from the counts
       assert.is_nil(counts.oauth2_tokens)
 
       assert.equals(1, counts.consumers)

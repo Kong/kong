@@ -1,0 +1,3 @@
+message: "Fixed the issue where the entities' counter was not displayed in certain cases when they were empty."
+type: bugfix
+scope: Admin API

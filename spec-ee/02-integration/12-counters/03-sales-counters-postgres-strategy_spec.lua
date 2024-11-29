@@ -430,7 +430,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equals(1, report.services_count)
       assert.equals(4, report.routes_count)
       assert.equals(2, report.consumers_count)
-      assert.equals(nil, report.rbac_users)
+      assert.equals(0, report.rbac_users)
       assert.equals(1, report.plugins_count.unique_route_lambdas)
       assert.equals(1, report.plugins_count.unique_route_kafkas)
       assert.equals(4, report.plugins_count.tiers.enterprise["kafka-upstream"])

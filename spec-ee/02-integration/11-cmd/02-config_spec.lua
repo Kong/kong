@@ -78,9 +78,9 @@ describe("kong config", function()
     local res = client:get("/workspaces/default/meta")
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
-    assert.is_nil(json.counts.plugins)
-    assert.is_nil(json.counts.routes)
-    assert.is_nil(json.counts.services)
+    assert.equals(0, json.counts.plugins)
+    assert.equals(0, json.counts.routes)
+    assert.equals(0, json.counts.services)
 
     assert(helpers.kong_exec("config db_import " .. filename, {
       prefix = helpers.test_conf.prefix,
