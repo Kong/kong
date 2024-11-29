@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local signals = require "kong.cmd.utils.nginx_signals"
 local shell = require "resty.shell"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 
 local fmt = string.format
@@ -44,7 +45,7 @@ describe("kong prepare", function()
     }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-    local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+    local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
     local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
     local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
@@ -103,7 +104,7 @@ describe("kong prepare", function()
         }))
         assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
         local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
         local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
@@ -137,7 +138,7 @@ describe("kong prepare", function()
         }))
         assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets")
+        local process_secrets = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
         local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
         local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
 
@@ -153,6 +154,81 @@ describe("kong prepare", function()
 
         assert.matches("kong_tests_unknown", stderr)
         assert.falsy(ok)
+      end)
+
+      it("prepares a prefix and starts kong with http and stream submodule correctly [#" .. strategy .. "]", function ()
+        helpers.setenv("CERT", ssl_fixtures.cert)
+        helpers.setenv("KEY", ssl_fixtures.key)
+        helpers.setenv("CERT_ALT", ssl_fixtures.cert_alt)
+        helpers.setenv("KEY_ALT", ssl_fixtures.key_alt)
+        helpers.setenv("LOGLEVEL", "error")
+        finally(function()
+          helpers.unsetenv("CERT")
+          helpers.unsetenv("CERT_ALT")
+          helpers.unsetenv("KEY")
+          helpers.unsetenv("KEY_ALT")
+          helpers.unsetenv("LOGLEVEL")
+        end)
+        assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+          prefix = TEST_PREFIX,
+          database = strategy,
+          loglevel = "{vault://env/loglevel}",
+          lua_ssl_trusted_certificate = "{vault://env/cert}, system",
+          ssl_cert_key = "{vault://env/key}, {vault://env/key_alt}",
+          ssl_cert = "{vault://env/cert}, {vault://env/cert_alt}",
+          vaults = "env",
+          proxy_listen = "127.0.0.1:8000",
+          stream_listen = "127.0.0.1:9000",
+          admin_listen  = "127.0.0.1:8001",
+        }))
+        assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+        local process_secrets_http = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_http")
+        local process_secrets_stream = helpers.path.join(TEST_PREFIX, ".kong_process_secrets_stream")
+
+        local admin_access_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_access_log)
+        local admin_error_log_path = helpers.path.join(TEST_PREFIX, helpers.test_conf.admin_error_log)
+
+        assert.truthy(helpers.path.exists(process_secrets_http))
+        assert.truthy(helpers.path.exists(process_secrets_stream))
+        assert.truthy(helpers.path.exists(admin_access_log_path))
+        assert.truthy(helpers.path.exists(admin_error_log_path))
+
+        local nginx_bin, err = signals.find_nginx_bin()
+        assert.is_nil(err)
+
+        local cmd = fmt("%s -p %s -c %s", nginx_bin, TEST_PREFIX, "nginx.conf")
+        local ok, _, stderr = shell.run(cmd, nil, 0)
+
+        assert.equal("", stderr)
+        assert.truthy(ok)
+        local error_log_path = helpers.path.join(TEST_PREFIX, "logs/error.log")
+        assert.logfile(error_log_path).has.no.line("[error]", true, 0)
+        assert.logfile(error_log_path).has.no.line("[alert]", true, 0)
+        assert.logfile(error_log_path).has.no.line("[crit]",  true, 0)
+        assert.logfile(error_log_path).has.no.line("[emerg]", true, 0)
+        assert
+        .with_timeout(5)
+        .ignore_exceptions(true)
+        .eventually(function()
+          local client = helpers.admin_client(nil, 8001)
+          local res, err = client:send({ path = "/status", method = "GET" })
+
+          if res then res:read_body() end
+
+          client:close()
+
+          if not res then
+            return nil, err
+          end
+
+          if res.status ~= 200 then
+            return nil, res
+          end
+
+          return true
+        end)
+        .is_truthy("/status API did not return 200")
       end)
     end)
   end

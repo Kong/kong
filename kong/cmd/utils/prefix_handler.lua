@@ -28,6 +28,7 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
 local strip = require("kong.tools.string").strip
 local split = require("kong.tools.string").split
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local getmetatable = getmetatable
@@ -373,40 +374,62 @@ local function write_env_file(path, data)
   return true
 end
 
-local function write_process_secrets_file(path, data)
-  os.remove(path)
+local function write_process_secrets_file(kong_conf, data)
+  local path = kong_conf.kong_process_secrets
 
-  local flags = bit.bor(system_constants.O_RDONLY(),
-                        system_constants.O_CREAT())
+  local function write_single_secret_file(path, data)
+    os.remove(path)
 
-  local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
-                                      system_constants.S_IWUSR()))
+    local flags = bit.bor(system_constants.O_RDONLY(),
+                          system_constants.O_CREAT())
 
-  local fd = ffi.C.open(path, flags, mode)
-  if fd < 0 then
-    local errno = ffi.errno()
-    return nil, "unable to open process secrets path " .. path .. " (" ..
-                ffi.string(ffi.C.strerror(errno)) .. ")"
+    local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+                                        system_constants.S_IWUSR()))
+
+    local fd = ffi.C.open(path, flags, mode)
+    if fd < 0 then
+      local errno = ffi.errno()
+      return nil, "unable to open process secrets path " .. path .. " (" ..
+                  ffi.string(ffi.C.strerror(errno)) .. ")"
+    end
+
+    local ok = ffi.C.close(fd)
+    if ok ~= 0 then
+      local errno = ffi.errno()
+      return nil, "failed to close fd (" ..
+                  ffi.string(ffi.C.strerror(errno)) .. ")"
+    end
+
+    local file, err = io.open(path, "w+b")
+    if not file then
+      return nil, "unable to open process secrets path " .. path .. " (" .. err .. ")"
+    end
+
+    local ok, err = file:write(data)
+
+    file:close()
+
+    if not ok then
+      return nil, "unable to write process secrets path " .. path .. " (" .. err .. ")"
+    end
+
+    return true
+
   end
 
-  local ok = ffi.C.close(fd)
-  if ok ~= 0 then
-    local errno = ffi.errno()
-    return nil, "failed to close fd (" ..
-                ffi.string(ffi.C.strerror(errno)) .. ")"
+  if kong_conf.role == "control_plane" or #kong_conf.proxy_listeners > 0
+    or #kong_conf.admin_listeners > 0 or #kong_conf.status_listeners > 0 then
+    local ok, err = write_single_secret_file(path .. "_http", data)
+    if not ok then
+      return nil, err
+    end
   end
 
-  local file, err = io.open(path, "w+b")
-  if not file then
-    return nil, "unable to open process secrets path " .. path .. " (" .. err .. ")"
-  end
-
-  local ok, err = file:write(data)
-
-  file:close()
-
-  if not ok then
-    return nil, "unable to write process secrets path " .. path .. " (" .. err .. ")"
+  if #kong_conf.stream_listeners > 0 then
+    local ok, err = write_single_secret_file(path .. "_stream", data)
+    if not ok then
+      return nil, err
+    end
   end
 
   return true
@@ -829,21 +852,32 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     "",
   }
 
-  local refs = kong_config["$refs"]
-  local has_refs = refs and type(refs) == "table"
-
-  local secrets
-  if write_process_secrets and has_refs then
-    secrets = process_secrets.extract(kong_config)
-  end
-
   local function quote_hash(s)
     return s:gsub("#", "\\#")
   end
 
+  local refs = kong_config["$refs"]
+  local has_refs = refs and type(refs) == "table"
+  local secrets = process_secrets.extract(kong_config)
+
   for k, v in pairs(kong_config) do
+    -- do not output secrets in .kong_env
     if has_refs and refs[k] then
-      v = refs[k]
+      local ref = refs[k]
+      if type(ref) == "table" then
+        if type(v) ~= "table" then
+          v = { v }
+        else
+          v = shallow_copy(v)
+        end
+
+        for i, r in pairs(ref) do
+          v[i] = r
+        end
+
+      elseif ref then
+        v = ref
+      end
     end
 
     if type(v) == "table" then
@@ -869,13 +903,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     prepare_prefixed_interface_dir("/usr/local/kong", "gui", kong_config)
   end
 
-  if secrets then
+  if secrets and write_process_secrets then
     secrets, err = process_secrets.serialize(secrets, kong_config.kong_env)
     if not secrets then
       return nil, err
     end
 
-    ok, err = write_process_secrets_file(kong_config.kong_process_secrets, secrets)
+    ok, err = write_process_secrets_file(kong_config, secrets)
     if not ok then
       return nil, err
     end
