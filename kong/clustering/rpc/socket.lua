@@ -171,7 +171,7 @@ function _M:start()
         local res, err = kong.timer:named_at(string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
                                                            self.node_id, payload.id, payload.method),
                                                            0, _M._dispatch, self, dispatch_cb, payload)
-        if not res then
+        if not res and payload.id then
           local reso, erro = self.outgoing:push(new_error(payload.id, jsonrpc.INTERNAL_ERROR))
           if not reso then
             return nil, "unable to send \"INTERNAL_ERROR\" error back to client: " .. erro

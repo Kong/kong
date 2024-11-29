@@ -37,7 +37,7 @@ function _M:start()
 
   -- notification has no callback
   if self.is_notification then
-    self.sema:post()
+    self.state = STATE_SUCCEED
 
     return self.socket:call(self.node_id,
                             self.method,

@@ -276,7 +276,7 @@ end
 -- low level helper used internally by :call() and concentrator
 -- this one does not consider forwarding using concentrator
 -- when node does not exist
-function _M:_local_call(node_id, method, params)
+function _M:_local_call(node_id, method, params, is_notification)
   if not self.client_capabilities[node_id] then
     return nil, "node is not connected, node_id: " .. node_id
   end
@@ -289,8 +289,13 @@ function _M:_local_call(node_id, method, params)
 
   local s = next(self.clients[node_id]) -- TODO: better LB?
 
-  local fut = future.new(node_id, s, method, params)
+  local fut = future.new(node_id, s, method, params, is_notification)
   assert(fut:start())
+
+  -- notification need not to wait
+  if is_notification then
+    return true
+  end
 
   local ok, err = fut:wait(5)
   if err then
@@ -359,6 +364,45 @@ function _M:call(node_id, method, ...)
   ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", fut.error.message)
 
   return nil, fut.error.message
+end
+
+
+function _M:notify(node_id, method, ...)
+  local cap = utils.parse_method_name(method)
+
+  local res, err = self:_find_node_and_check_capability(node_id, cap)
+  if not res then
+    return nil, err
+  end
+
+  local params = {...}
+
+  ngx_log(ngx_DEBUG,
+    "[rpc] notifying ", method,
+    "(node_id: ", node_id, ")",
+    " via ", res == "local" and "local" or "concentrator"
+  )
+
+  if res == "local" then
+    res, err = self:_local_call(node_id, method, params, true)
+
+    if not res then
+      ngx_log(ngx_DEBUG, "[rpc] ", method, " failed, err: ", err)
+      return nil, err
+    end
+
+    ngx_log(ngx_DEBUG, "[rpc] ", method, " succeeded")
+
+    return res
+  end
+
+  assert(res == "concentrator")
+
+  -- try concentrator
+  local fut = future.new(node_id, self.concentrator, method, params, true)
+  assert(fut:start())
+
+  return true
 end
 
 
