@@ -389,7 +389,6 @@ end
 
 
 local sync_handler
-
 sync_handler = function(premature, try_counter)
   if premature then
     return
@@ -400,9 +399,12 @@ sync_handler = function(premature, try_counter)
     ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
   end
 
+  -- try_counter is not set, only run once
   if not try_counter then
     return
   end
+
+  assert(try_counter >= 1)
 
   local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   if not latest_notified_version then
@@ -415,24 +417,18 @@ sync_handler = function(premature, try_counter)
     return
   end
 
-  -- retry if the version is not updated
-
   if try_counter > MAX_RETRY then
     ngx_log(ngx_ERR, "sync_once try count exceeded. try_counter: ", try_counter)
     return
   end
 
-  local ok, err = ngx.timer.at(0, sync_handler, try_counter + 1)
-  if not ok then
-    return nil, err
-  end
-
-  return true
+  -- retry if the version is not updated
+  return ngx.timer.at(0, sync_handler, try_counter + 1)
 end
 
 
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_handler, 0)
+  return ngx.timer.at(delay or 0, sync_handler, 1)
 end
 
 
