@@ -404,6 +404,11 @@ sync_handler = function(premature, try_counter)
     return
   end
 
+  if try_counter <= 0 then
+    ngx_log(ngx_ERR, "sync_once try count exceeded.")
+    return
+  end
+
   assert(try_counter >= 1)
 
   local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
@@ -417,18 +422,13 @@ sync_handler = function(premature, try_counter)
     return
   end
 
-  if try_counter > MAX_RETRY then
-    ngx_log(ngx_ERR, "sync_once try count exceeded. try_counter: ", try_counter)
-    return
-  end
-
   -- retry if the version is not updated
-  return ngx.timer.at(0, sync_handler, try_counter + 1)
+  return ngx.timer.at(0, sync_handler, try_counter - 1)
 end
 
 
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_handler, 1)
+  return ngx.timer.at(delay or 0, sync_handler, MAX_RETRY)
 end
 
 
