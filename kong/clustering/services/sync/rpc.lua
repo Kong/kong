@@ -388,7 +388,9 @@ local function do_sync()
 end
 
 
-local function sync_handler(premature)
+local sync_handler
+
+sync_handler = function(premature, try_counter)
   if premature then
     return
   end
@@ -397,14 +399,30 @@ local function sync_handler(premature)
   if not res and err ~= "timeout" then
     ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
   end
-end
 
+  if not try_counter then
+    return
+  end
 
-local sync_once_impl
+  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
+  if not latest_notified_version then
+    ngx_log(ngx_DEBUG, "no version notified yet")
+    return
+  end
 
+  local current_version = tonumber(declarative.get_current_hash()) or 0
+  if current_version >= latest_notified_version then
+    return
+  end
 
-local function start_sync_once_timer(retry_count)
-  local ok, err = ngx.timer.at(0, sync_once_impl, retry_count or 0)
+  -- retry if the version is not updated
+
+  if try_counter > MAX_RETRY then
+    ngx_log(ngx_ERR, "sync_once try count exceeded. try_counter: ", try_counter)
+    return
+  end
+
+  local ok, err = ngx.timer.at(0, sync_handler, try_counter + 1)
   if not ok then
     return nil, err
   end
@@ -413,36 +431,8 @@ local function start_sync_once_timer(retry_count)
 end
 
 
-function sync_once_impl(premature, retry_count)
-  if premature then
-    return
-  end
-
-  sync_handler()  
-  
-  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
-  local current_version = tonumber(declarative.get_current_hash()) or 0
-
-  if not latest_notified_version then
-    ngx_log(ngx_DEBUG, "no version notified yet")
-    return
-  end
-
-  -- retry if the version is not updated
-  if current_version < latest_notified_version then
-    retry_count = retry_count or 0
-    if retry_count > MAX_RETRY then
-      ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
-      return
-    end
-
-    return start_sync_once_timer(retry_count + 1)
-  end
-end
-
-
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_once_impl, 0)
+  return ngx.timer.at(delay or 0, sync_handler, 0)
 end
 
 
