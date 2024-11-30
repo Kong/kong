@@ -17,7 +17,7 @@ local CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = constants.CLUSTERING_DATA_PLAN
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
-local MAX_RETRY = 5
+local SYNC_MAX_RETRY = 5
 
 
 local assert = assert
@@ -428,7 +428,7 @@ end
 
 
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_handler, MAX_RETRY)
+  return ngx.timer.at(delay or 0, sync_handler, SYNC_MAX_RETRY)
 end
 
 
