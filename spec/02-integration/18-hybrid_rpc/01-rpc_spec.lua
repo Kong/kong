@@ -80,8 +80,6 @@ for _, strategy in helpers.each_strategy() do
             end
           end
         end, 10)
-
-        --ngx.sleep(0.5)
       end)
     end)
   end)

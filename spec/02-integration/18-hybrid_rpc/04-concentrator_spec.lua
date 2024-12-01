@@ -85,9 +85,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     -- TODO: test with other rpc
-    describe("hell greeting over RPC", function()
-      it("can get the message", function()
-      end)
-    end)
+    --describe("XXX over RPC", function()
+    --end)
   end)
 end -- for _, strategy
