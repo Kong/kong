@@ -1,6 +1,24 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
+local function test_url(path, port, code, headers)
+  helpers.wait_until(function()
+    local proxy_client = helpers.http_client("127.0.0.1", port)
+
+    local res = proxy_client:send({
+      method  = "GET",
+      path    = path,
+      headers = headers,
+    })
+
+    local status = res and res.status
+    proxy_client:close()
+    if status == code then
+      return true
+    end
+  end, 10)
+end
+
 for _, strategy in helpers.each_strategy() do
 
 describe("Incremental Sync RPC #" .. strategy, function()
@@ -70,20 +88,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       local json = cjson.decode(body)
 
       route_id = json.id
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/001",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/001", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -115,20 +121,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       local json = cjson.decode(body)
 
       route_id = json.id
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/002-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/002-foo", 9002, 200)
 
       res = assert(admin_client:put("/services/service-002/routes/" .. route_id, {
         body = { paths = { "/002-bar" }, },
@@ -136,20 +130,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/002-bar",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/002-bar", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -177,20 +158,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       local json = cjson.decode(body)
 
       route_id = json.id
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/003-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/003-foo", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -201,20 +170,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       res = assert(admin_client:delete("/services/service-003/routes/" .. route_id))
       assert.res_status(204, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/003-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 404 then
-          return true
-        end
-      end, 10)
+      test_url("/003-foo", 9002, 404)
 
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
     end)
@@ -237,20 +193,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(201, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/004-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/004-foo", 9002, 200)
 
       res = assert(admin_client:put("/services/service-004/routes/route-004", {
         body = { paths = { "/004-bar" }, },
@@ -258,20 +201,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(200, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/004-bar",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/004-bar", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -297,20 +227,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(201, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/005-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/005-foo", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -321,20 +238,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       res = assert(admin_client:delete("/services/service-005/routes/route-005"))
       assert.res_status(204, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/005-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 404 then
-          return true
-        end
-      end, 10)
+      test_url("/005-foo", 9002, 404)
 
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
     end)
@@ -361,20 +265,8 @@ describe("Incremental Sync RPC #" .. strategy, function()
       local json = cjson.decode(body)
 
       route_id = json.id
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/006-foo",
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/006-foo", 9002, 200)
 
       assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
@@ -403,21 +295,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(201, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/006-foo",
-          headers = {["apikey"] = "my-key"},
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 200 then
-          return true
-        end
-      end, 10)
+      test_url("/006-foo", 9002, 200, {["apikey"] = "my-key"})
 
       assert.logfile().has.no.line("[kong.sync.v2] new delta due to cascade deleting", true)
       assert.logfile("servroot2/logs/error.log").has.no.line("[kong.sync.v2] delete entity", true)
@@ -427,21 +305,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       res = assert(admin_client:delete("/consumers/foo"))
       assert.res_status(204, res)
 
-      helpers.wait_until(function()
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-        res = proxy_client:send({
-          method  = "GET",
-          path    = "/006-foo",
-          headers = {["apikey"] = "my-key"},
-        })
-
-        local status = res and res.status
-        proxy_client:close()
-        if status == 401 then
-          return true
-        end
-      end, 10)
+      test_url("/006-foo", 9002, 401, {["apikey"] = "my-key"})
 
       assert.logfile().has.line("[kong.sync.v2] new delta due to cascade deleting", true)
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] delete entity", true)
