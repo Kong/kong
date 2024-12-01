@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
--- register a test rpc service in custom plugin rpc-framework-test
+-- register a test rpc service in custom plugin rpc-hello-test
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy, function()
 
@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        plugins = "bundled,rpc-framework-test",
+        plugins = "bundled,rpc-hello-test",
         cluster_incremental_sync = "off",
       }))
 
@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        plugins = "bundled,rpc-framework-test",
+        plugins = "bundled,rpc-hello-test",
         cluster_incremental_sync = "off",
       }))
     end)

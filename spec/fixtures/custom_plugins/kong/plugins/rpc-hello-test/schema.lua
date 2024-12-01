@@ -1,5 +1,5 @@
 return {
-  name = "rpc-framework-test",
+  name = "rpc-hello-test",
   fields = {
     {
       config = {
