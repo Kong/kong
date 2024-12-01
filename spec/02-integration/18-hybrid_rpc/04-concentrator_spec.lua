@@ -28,10 +28,9 @@ local function obtain_dp_node_id()  -- luacheck: ignore
 end
 
 
--- we need incremental sync to verify rpc
-for _, inc_sync in ipairs { "on" } do
+-- register a test rpc service in custom plugin rpc-framework-test
 for _, strategy in helpers.each_strategy() do
-  describe("Hybrid Mode RPC over DB concentrator #" .. strategy .. " inc_sync=" .. inc_sync, function()
+  describe("Hybrid Mode RPC over DB concentrator #" .. strategy, function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -47,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
         admin_listen = "127.0.0.1:" .. helpers.get_available_port(),
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        cluster_incremental_sync = inc_sync, -- incremental sync
+        cluster_incremental_sync = "off",
       }))
 
       assert(helpers.start_kong({
@@ -59,6 +58,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:" .. helpers.get_available_port(),
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
+        plugins = "bundled,rpc-framework-test",
         cluster_incremental_sync = inc_sync, -- incremental sync
       }))
 
@@ -72,7 +72,8 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        cluster_incremental_sync = inc_sync, -- incremental sync
+        plugins = "bundled,rpc-framework-test",
+        cluster_incremental_sync = "off",
       }))
     end)
 
@@ -87,4 +88,3 @@ for _, strategy in helpers.each_strategy() do
     --end)
   end)
 end -- for _, strategy
-end -- for inc_sync
