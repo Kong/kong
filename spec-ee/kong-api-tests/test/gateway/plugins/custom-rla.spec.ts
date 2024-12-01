@@ -13,14 +13,16 @@ import {
   isGateway,
   waitForConfigRebuild,
   randomString,
-  getControlPlaneDockerImage
+  getControlPlaneDockerImage,
+  getKongContainerName
 } from '@support';
 import axios from 'axios';
 
+const kongPackage = getKongContainerName();
 const currentDockerImage = getControlPlaneDockerImage();
 
 // skip tests for amazonlinux-2 distribution
-(currentDockerImage?.endsWith('amazonlinux-2') ? describe.skip : describe)('@smoke: Gateway Custom RLA Plugin Tests', function () {
+((currentDockerImage?.endsWith('amazonlinux-2') || kongPackage.endsWith('amazonlinux-2')) ? describe.skip : describe)('@smoke: Gateway Custom RLA Plugin Tests', function () {
   let basePayload: any;
   let pluginId: string;
   let serviceId: string;
