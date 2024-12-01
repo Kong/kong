@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
-local function start_cp(port)
+local function start_cp(strategy, port)
   assert(helpers.start_kong({
     role = "control_plane",
     cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -35,7 +35,7 @@ local function test_url(path, port, code)
   helpers.wait_until(function()
     local proxy_client = helpers.http_client("127.0.0.1", port)
 
-    res = proxy_client:send({
+    local res = proxy_client:send({
       method  = "GET",
       path    = path,
     })
@@ -57,7 +57,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       "clustering_data_planes",
     }) -- runs migrations
 
-    start_cp(9005)
+    start_cp(strategy, 9005)
     start_dp("servroot2", 9002)
     start_dp("servroot3", 9003)
   end)
@@ -107,9 +107,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       test_url("/001", 9002, 404)
       test_url("/001", 9003, 404)
     end)
-
   end)
-
 end)
 
 end -- for _, strategy
