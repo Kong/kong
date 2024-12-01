@@ -68,15 +68,9 @@ describe("Incremental Sync RPC #" .. strategy, function()
     helpers.stop_kong()
   end)
 
-  after_each(function()
-    helpers.clean_logfile("servroot2/logs/error.log")
-    helpers.clean_logfile("servroot3/logs/error.log")
-    helpers.clean_logfile()
-  end)
-
   describe("sync works with multiple DP nodes", function()
 
-    it("routes on CP", function()
+    it("adding/removing routes", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
         admin_client:close()
