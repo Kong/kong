@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require("cjson.safe")
 
 local function start_cp(port)
   assert(helpers.start_kong({
@@ -87,11 +88,16 @@ describe("Incremental Sync RPC #" .. strategy, function()
       }))
       assert.res_status(201, res)
 
+      -- add a route
+
       res = assert(admin_client:post("/services/service-001/routes", {
         body = { paths = { "/001" }, },
         headers = {["Content-Type"] = "application/json"}
       }))
       assert.res_status(201, res)
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+      local route_id = json.id
 
       test_url("/001", 9002, 200)
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
@@ -99,6 +105,13 @@ describe("Incremental Sync RPC #" .. strategy, function()
       test_url("/001", 9003, 200)
       assert.logfile("servroot3/logs/error.log").has.line("[kong.sync.v2] update entity", true)
 
+      -- remove a route
+
+      res = assert(admin_client:delete("/services/service-001/routes/" .. route_id))
+      assert.res_status(204, res)
+
+      test_url("/001", 9002, 404)
+      test_url("/001", 9003, 404)
     end)
 
   end)
