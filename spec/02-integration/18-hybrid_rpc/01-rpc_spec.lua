@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
         plugins = "bundled,rpc-framework-test",
-        cluster_incremental_sync = inc_sync, -- incremental sync
+        cluster_incremental_sync = "off",
       }))
     end)
 
