@@ -6,16 +6,17 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local new_tab = require("table.new")
-local deep_copy = require("kong.tools.table").deep_copy
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local _M = {
   NAME = "decorate-prompt",
   STAGE = "REQ_TRANSFORMATION",
-  }
+}
 
 local FILTER_OUTPUT_SCHEMA = {
   decorated = "boolean",
+  request_body_table = "table",
 }
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
@@ -24,7 +25,7 @@ local EMPTY = {}
 
 
 local function bad_request(msg)
-  kong.log.debug(msg)
+  kong.log.info(msg)
   return kong.response.exit(400, { error = { message = msg } })
 end
 
@@ -36,9 +37,6 @@ end
 local function execute(request, conf)
   local prepend = conf.prompts.prepend or EMPTY
   local append = conf.prompts.append or EMPTY
-
-  -- ensure we don't modify the original request
-  request = deep_copy(request)
 
   local old_messages = request.messages
   local new_messages = new_tab(#append + #prepend + #old_messages, 0)
@@ -81,9 +79,14 @@ function _M:run(conf)
     return bad_request("this LLM route only supports llm/chat type requests")
   end
 
-  kong.service.request.set_body(execute(request_body_table, conf), "application/json")
+  -- Deep copy to avoid modifying the immutable table.
+  -- Re-assign it to trigger GC of the old one and save memory.
+  request_body_table = execute(cycle_aware_deep_copy(request_body_table), conf)
+
+  kong.service.request.set_body(request_body_table, "application/json") -- legacy
 
   set_ctx("decorated", true)
+  set_ctx("request_body_table", request_body_table)
 
   return true
 end
