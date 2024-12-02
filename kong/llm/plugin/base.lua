@@ -113,6 +113,9 @@ function MetaPlugin:header_filter(sub_plugin, conf)
       -- for gzip response, don't set content-length at all to align with upstream
       kong.response.clear_header("Content-Length")
       kong.response.set_header("Content-Encoding", "gzip")
+
+    else
+      kong.response.clear_header("Content-Encoding")
     end
 
   else
