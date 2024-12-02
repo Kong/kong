@@ -106,14 +106,14 @@ end
 
 
 function NewRLHandler:configure(configs)
-  handler_helper.configure_helper(configs, ratelimiting, schema, PLUGIN_NAME, false)
+  handler_helper.configure_helper(configs, ratelimiting, schema, PLUGIN_NAME)
 end
 
 
 function NewRLHandler:access(conf)
   local key = get_key(conf)
 
-  handler_helper.access_helper(conf, key, ratelimiting, schema, PLUGIN_NAME, false)
+  handler_helper.access_helper(conf, key, ratelimiting, schema, PLUGIN_NAME)
 end
 
 return NewRLHandler

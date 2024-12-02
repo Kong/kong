@@ -30,13 +30,13 @@ end
 
 
 function SPHandler:configure(configs)
-  handler_helper.configure_helper(configs, ratelimiting, schema, PLUGIN_NAME, true)
+  handler_helper.configure_helper(configs, ratelimiting, schema, PLUGIN_NAME)
 end
 
 
 function SPHandler:access(conf)
   local key_id = kong.router.get_service() and kong.router.get_service().id
-  return handler_helper.access_helper(conf, key_id, ratelimiting, schema, PLUGIN_NAME, true)
+  return handler_helper.access_helper(conf, key_id, ratelimiting, schema, PLUGIN_NAME)
 end
 
 

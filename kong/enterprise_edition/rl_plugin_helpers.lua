@@ -116,7 +116,7 @@ local function create_timer(config, ratelimiting)
 end
 
 
-local function new_namespace(config, timer_id, merged_window_size, ratelimiting, schema, plugin_name, is_bare_window_size)
+local function new_namespace(config, timer_id, merged_window_size, ratelimiting, schema, plugin_name)
   if not config then
     kong.log.warn("[", plugin_name, "] no config was specified.",
                   " Skipping the namespace creation.")
@@ -173,7 +173,7 @@ local function new_namespace(config, timer_id, merged_window_size, ratelimiting,
       strategy_opts = strategy_opts,
       dict          = dict_name,
       lock_dict     = lock_dict_name,
-      window_sizes  = is_bare_window_size and config.window_size or merged_window_size,
+      window_sizes  = merged_window_size,
       db            = kong.db,
       timer_id      = timer_id,
     })
@@ -188,7 +188,7 @@ local function new_namespace(config, timer_id, merged_window_size, ratelimiting,
 end
 
 
-local function update_namespace(config, timer_id, merged_window_size, ratelimiting, schema, plugin_name, is_bare_window_size)
+local function update_namespace(config, timer_id, merged_window_size, ratelimiting, schema, plugin_name)
   if not config then
     kong.log.warn("[", plugin_name, "] no config was specified.",
                   " Skipping the namespace creation.")
@@ -245,7 +245,7 @@ local function update_namespace(config, timer_id, merged_window_size, ratelimiti
       strategy_opts = strategy_opts,
       dict          = dict_name,
       lock_dict     = lock_dict_name,
-      window_sizes  = is_bare_window_size and config.window_size or merged_window_size,
+      window_sizes  = merged_window_size,
       db            = kong.db,
       timer_id      = timer_id,
     })
@@ -278,7 +278,7 @@ local function are_same_config(conf1, conf2)
   return pl_tablex.deepcompare(conf1, conf2)
 end
 
-local function configure_helper(configs, ratelimiting, schema, plugin_name, is_bare_window_size)
+local function configure_helper(configs, ratelimiting, schema, plugin_name)
   local namespaces = {}
   local merged_window_sizes = {}
   if configs then
@@ -321,11 +321,11 @@ local function configure_helper(configs, ratelimiting, schema, plugin_name, is_b
               timer_id = ratelimiting.config[namespace].timer_id
             end
 
-            update_namespace(config, timer_id, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name, is_bare_window_size)
+            update_namespace(config, timer_id, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name)
 
           else
 
-            new_namespace(config, nil, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name, is_bare_window_size)
+            new_namespace(config, nil, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name)
           end
 
           return true
@@ -345,7 +345,7 @@ local function configure_helper(configs, ratelimiting, schema, plugin_name, is_b
           timer_id = ratelimiting.config[namespace].timer_id
         end
 
-        update_namespace(config, timer_id, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name, is_bare_window_size)
+        update_namespace(config, timer_id, merged_window_sizes[namespace].array, ratelimiting, schema, plugin_name)
       end
 
       -- recommendation have changed with FT-928
@@ -365,7 +365,7 @@ local function configure_helper(configs, ratelimiting, schema, plugin_name, is_b
 end
 
 
-local function access_helper(conf, key_id, ratelimiting, schema, plugin_name, is_bare_window_size)
+local function access_helper(conf, key_id, ratelimiting, schema, plugin_name)
   local namespace = conf.namespace
   local now = time()
   local key = key_id
@@ -391,7 +391,7 @@ local function access_helper(conf, key_id, ratelimiting, schema, plugin_name, is
         return true
       end
 
-      local ret = new_namespace(conf, nil, merge_window_size(conf).array, ratelimiting, schema, plugin_name, is_bare_window_size)
+      local ret = new_namespace(conf, nil, merge_window_size(conf).array, ratelimiting, schema, plugin_name)
       if not ret then
         return nil
       end
