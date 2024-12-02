@@ -17,10 +17,6 @@ for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
 
 for _, strategy in helpers.each_strategy() do
 
---- XXX FIXME: enable inc_sync = on
--- skips the rest of the tests. We will fix them in a follow-up PR
-local skip_inc_sync = inc_sync == "on" and pending or describe
-
 describe("CP/DP communication #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
   lazy_setup(function()
@@ -742,7 +738,7 @@ describe("CP/DP config sync #" .. strategy .. " inc_sync=" .. inc_sync, function
   end)
 end)
 
-skip_inc_sync("CP/DP labels #" .. strategy, function()
+describe("CP/DP labels #" .. strategy, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
@@ -797,8 +793,12 @@ skip_inc_sync("CP/DP labels #" .. strategy, function()
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-            assert.equal("mycloud", v.labels.deployment)
-            assert.equal("us-east-1", v.labels.region)
+            -- TODO: The API output does include labels and certs when the
+            --       incremental sync is enabled.
+            if inc_sync == "off" then
+              assert.equal("mycloud", v.labels.deployment)
+              assert.equal("us-east-1", v.labels.region)
+            end
             return true
           end
         end
@@ -807,7 +807,7 @@ skip_inc_sync("CP/DP labels #" .. strategy, function()
   end)
 end)
 
-skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
+describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -857,7 +857,11 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, functio
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            assert.equal(1888983905, v.cert_details.expiry_timestamp)
+            -- TODO: The API output does include labels and certs when the
+            --       incremental sync is enabled.
+            if inc_sync == "off" then
+              assert.equal(1888983905, v.cert_details.expiry_timestamp)
+            end
             return true
           end
         end
@@ -866,7 +870,7 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = shared) #" .. strategy, functio
   end)
 end)
 
-skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
+describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -922,7 +926,11 @@ skip_inc_sync("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            assert.equal(1897136778, v.cert_details.expiry_timestamp)
+            -- TODO: The API output does include labels and certs when the
+            --       incremental sync is enabled.
+            if inc_sync == "off" then
+              assert.equal(1897136778, v.cert_details.expiry_timestamp)
+            end
             return true
           end
         end
