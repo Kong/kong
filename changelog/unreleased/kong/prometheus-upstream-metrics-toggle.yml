@@ -1,3 +1,4 @@
-message: "**Prometheus**: Use the :configure() handler to toggle upstream_health_metrics"
-type: bugfix
+message: |
+  **Prometheus**: Added the capability to enable/disable export of Proxy-Wasm metrics.
+type: feature
 scope: Plugin

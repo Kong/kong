@@ -228,11 +228,15 @@ return {
       "queue.concurrency_limit",
     },
   },
+
   -- Any dataplane older than 3.10.0
   [3010000000] = {
     session = {
       "hash_subject",
       "store_metadata",
     },
-  }
+    prometheus = {
+      "wasm_metrics",
+    },
+  },
 }
