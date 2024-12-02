@@ -463,7 +463,7 @@ schema-change-noteworthy:
 - changed-files:
   - any-glob-to-any-file: [
       'kong/db/schema/**/*.lua', 'kong/**/schema.lua', 'kong/plugins/**/daos.lua', 'plugins-ee/**/daos.lua', 'plugins-ee/**/schema.lua', 'kong/db/dao/*.lua', 'kong/enterprise_edition/redis/init.lua',
-      'kong/llm/init.lua', 'kong/llm/schemas/*.lua', 'kong/enterprise_edition/tools/redis/v2/init.lua'
+      'kong/llm/schemas/*.lua', 'kong/enterprise_edition/tools/redis/v2/init.lua'
     ]
 
 e2e-api-testing:
