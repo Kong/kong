@@ -202,7 +202,7 @@ local function new(pdk, major_version)
     check_phase(header_body_log)
 
     local buffered_headers = ngx.ctx.buffered_headers
-
+    -- ngx.log(ngx.WARN, "buffered_headers: ", tostring(buffered_headers))
     if max_headers == nil then
       if buffered_headers then
         if not MAX_HEADERS_CONFIGURED then

@@ -148,28 +148,28 @@ return function(options)
 
       -- REQUEST HEADERS [
       local function get_req_headers_real(max_req_headers, ...)
+        -- use cache if it's fresh, return `nil` means cache stale
+        local cached_headers = header_cache.get_headers_cache(1)
+        if cached_headers then
+          return cached_headers
+        end
+
         local request_headers, err = get_req_headers(max_req_headers or MAX_REQ_HEADERS or DEFAULT_MAX_REQ_HEADERS, ...)
         if err == "truncated" then
           kong.log.notice("request headers truncated")
         end
-        return request_headers, err
+        header_cache.set_headers_cache(1, request_headers)
+        return header_cache.get_headers_cache(1), err
       end
 
       _G.ngx.req.get_headers = function(max_req_headers, ...)
         if not get_request() then
           error("no request found")
         end
-        -- use cache if it's fresh, return `nil` means cache stale
-        local cached_headers = header_cache.get_headers_cache(1)
-        if cached_headers then
-          return cached_headers
-        end
+
         MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
         _G.ngx.req.get_headers = get_req_headers_real
-        local headers = get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
-        -- refresh cache
-        header_cache.set_headers_cache(1, headers)
-        return header_cache.get_headers_cache(1)
+        return get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
       end
 
       -- use lazy load for headers cache, only set stale flag, not refresh cache immediately
@@ -191,28 +191,28 @@ return function(options)
 
       -- RESPONSE HEADERS [
       local function get_resp_headers_real(max_resp_headers, ...)
+        -- use cache if it's fresh, return `nil` means cache stale
+        local cached_headers = header_cache.get_headers_cache(2)
+        if cached_headers then
+          return cached_headers
+        end
         local response_headers, err = get_resp_headers(max_resp_headers or MAX_RESP_HEADERS or DEFAULT_MAX_RESP_HEADERS, ...)
         if err == "truncated" then
           kong.log.notice("response headers truncated")
         end
-        return response_headers, err
+        -- refresh cache
+        header_cache.set_headers_cache(2, response_headers)
+        return header_cache.get_headers_cache(2)
       end
 
       _G.ngx.resp.get_headers = function(max_resp_headers, ...)
         if not get_request() then
           error("no request found")
         end
-        -- use cache if it's fresh, return `nil` means cache stale
-        local cached_headers = header_cache.get_headers_cache(2)
-        if cached_headers then
-          return cached_headers
-        end
+
         MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
         _G.ngx.resp.get_headers = get_resp_headers_real
-        local headers = get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
-        -- refresh cache
-        header_cache.set_headers_cache(2, headers)
-        return header_cache.get_headers_cache(2)
+        return get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
       end
 
       _G.ngx.resp.add_header = function(header_name, header_value)
@@ -234,6 +234,9 @@ return function(options)
             -- refresh cache
             if v ~= nil then
               header_cache.set_single_header_cache(2, k, v)
+            else
+              -- ngx.log(ngx.WARN, "nil for resp header: "..k)
+              return v
             end
           end
           return value or header_cache.get_header_cache(2, k)

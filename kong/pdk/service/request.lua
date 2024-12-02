@@ -348,6 +348,7 @@ local function new(self)
   -- @usage
   -- kong.service.request.add_header("Cache-Control", "no-cache")
   -- kong.service.request.add_header("Cache-Control", "no-store")
+  -- Brian: can we just replace this by `ngx.req.add_header`?
   request.add_header = function(header, value)
     check_phase(access_and_rewrite)
 
