@@ -65,9 +65,6 @@ function _M:run(conf)
     total_tokens = ai_plugin_o11y.metrics_get("llm_total_tokens_count"),
     cost = ai_plugin_o11y.metrics_get("llm_usage_cost"),
   }
-
-  kong.log.inspect(usage)
-
   kong.log.set_serialize_value(string.format("ai.%s.usage", ai_plugin_o11y.NAMESPACE), usage)
 
 
