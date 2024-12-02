@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local new_tab = require("table.new")
+local deep_copy = require("kong.tools.table").deep_copy
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
 local _M = {
@@ -35,6 +36,9 @@ end
 local function execute(request, conf)
   local prepend = conf.prompts.prepend or EMPTY
   local append = conf.prompts.append or EMPTY
+
+  -- ensure we don't modify the original request
+  request = deep_copy(request)
 
   local old_messages = request.messages
   local new_messages = new_tab(#append + #prepend + #old_messages, 0)
