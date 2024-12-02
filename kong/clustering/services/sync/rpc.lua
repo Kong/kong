@@ -388,7 +388,8 @@ local function do_sync()
 end
 
 
-local function sync_handler(premature, try_counter)
+local sync_handler
+sync_handler = function(premature, try_counter)
   if premature then
     return
   end
