@@ -43,6 +43,7 @@ cluster_use_proxy = off
 cluster_dp_labels = NONE
 cluster_rpc = off
 cluster_incremental_sync = off
+cluster_full_sync_threshold = 512
 cluster_cjson = off
 
 lmdb_environment_path = dbless.lmdb
