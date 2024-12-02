@@ -111,6 +111,8 @@ function MetaPlugin:header_filter(sub_plugin, conf)
       -- and seems nginx doesn't support it
 
     elseif get_global_ctx("accept_gzip") then
+      -- for gzip response, don't set content-length at all to align with upstream
+      kong.response.clear_header("Content-Length")
       kong.response.set_header("Content-Encoding", "gzip")
     end
 

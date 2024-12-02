@@ -183,7 +183,7 @@ _M.operation_map = {
 }
 
 _M.clear_response_headers = {
-  shared = {
+  shared = { -- deprecared, not using
     "Content-Length",
   },
   openai = {

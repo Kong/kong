@@ -9,7 +9,6 @@ local cjson = require("cjson")
 
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_o11y = require("kong.llm.plugin.observability")
-local ai_shared = require("kong.llm.drivers.shared")
 
 local _M = {
   NAME = "normalize-json-response",
@@ -46,6 +45,8 @@ local function transform_body(conf)
   end
 
   set_global_ctx("response_body", response_body) -- to be sent out later or consumed by other plugins
+
+  return #response_body
 end
 
 function _M:run(conf)
@@ -70,8 +71,9 @@ function _M:run(conf)
   -- if not streaming, prepare the response body buffer
   -- this must be called before sending any response headers so that
   -- we can modify status code if needed
+  local body_length
   if not get_global_ctx("stream_mode") then
-    transform_body(conf)
+    body_length = transform_body(conf)
   end
 
   -- populate cost
@@ -83,11 +85,10 @@ function _M:run(conf)
     ai_plugin_o11y.metrics_set("llm_usage_cost", 0)
   end
 
-  -- clear shared restricted headers
-  for _, v in ipairs(ai_shared.clear_response_headers.shared) do
-    kong.response.clear_header(v)
+  if not get_global_ctx("accept_gzip") and not get_global_ctx("stream_mode") then
+    -- otherwise use our transformed body length
+    kong.response.set_header("Content-Length", body_length)
   end
-
 
   if ngx.var.http_kong_debug or conf.model_name_header then
     local model_t = ai_plugin_ctx.get_request_model_table_inuse()
