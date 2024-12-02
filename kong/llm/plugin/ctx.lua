@@ -139,6 +139,11 @@ local EMPTY_REQUEST_T = _M.immutable_table({})
 
 function _M.get_request_body_table_inuse()
   local request_body_table
+
+  if _M.has_namespace("decorate-prompt") then -- has ai-prompt-decorator and others in future
+    request_body_table = _M.get_namespaced_ctx("decorate-prompt", "request_body_table")
+  end
+
   if _M.has_namespace("normalize-request") then -- has ai-proxy/ai-proxy-advanced
     request_body_table = _M.get_namespaced_ctx("normalize-request", "request_body_table")
   end

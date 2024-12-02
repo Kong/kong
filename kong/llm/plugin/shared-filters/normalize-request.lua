@@ -76,7 +76,14 @@ local function validate_and_transform(conf)
   local model_t = conf_m.model
   local model_provider = conf.model.provider -- use the one from conf, not the merged one to avoid potential security risk
 
-  local request_table = ai_plugin_ctx.get_namespaced_ctx("parse-request", "request_body_table")
+  local request_table
+  if ai_plugin_ctx.has_namespace("decorate-prompt") and
+     ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "decorated") then
+    request_table = ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "request_body_table")
+  else
+    request_table = ai_plugin_ctx.get_namespaced_ctx("parse-request", "request_body_table")
+  end
+
   if not request_table then
     return bail(400, "content-type header does not match request body, or bad JSON formatting")
   end
