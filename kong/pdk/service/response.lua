@@ -265,12 +265,7 @@ local function new(pdk, major_version)
       error("name must be a string", 2)
     end
 
-    local header_value
-    if not ngx.ctx.buffered_headers then
-      header_value = ngx.header[name]
-    else
-      header_value = response.get_headers()[name]
-    end
+    local header_value = response.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
