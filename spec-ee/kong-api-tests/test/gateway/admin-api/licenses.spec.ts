@@ -15,7 +15,7 @@ import {
   waitForConfigRebuild,
   createConsumer,
   deleteConsumer,
-  eventually,
+  eventually
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {

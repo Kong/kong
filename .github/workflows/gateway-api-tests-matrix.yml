@@ -293,6 +293,7 @@ jobs:
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           ACME: true
           OTEL: true
+          GRAPHQL_SERVER: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -489,6 +490,7 @@ jobs:
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           ACME: true
           OTEL: true
+          GRAPHQL_SERVER: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -682,6 +684,7 @@ jobs:
           ACME: true
           CUSTOM_PLUGIN: ${{ endsWith(env.KONG_PACKAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           OTEL: true
+          GRAPHQL_SERVER: true
 
       - name: Logs from Gateway Start
         if: failure()

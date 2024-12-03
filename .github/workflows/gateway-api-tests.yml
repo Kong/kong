@@ -171,6 +171,7 @@ jobs:
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           ACME: true
           OTEL: true
+          GRAPHQL_SERVER: ${{ env.IS_KONG_OSS == 'false' && true || false }}
 
       - name: Logs from Gateway Start
         if: failure()

@@ -8,6 +8,7 @@ on:  # yamllint disable-line rule:truthy
     - '.github/workflows/release.yml'
     - 'changelog/**'
     - 'kong.conf.default'
+    - 'spec-ee/kong-api-tests/**'
   push:
     branches:
     - master
