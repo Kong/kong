@@ -474,6 +474,17 @@ function _M:connect(premature, node_id, host, path, cert, key)
 
   local c = assert(client:new(WS_OPTS))
 
+  if self.conf.cluster_use_proxy then
+    local proxy_opts = parse_proxy_url(self.conf.proxy_server)
+    opts.proxy_opts = {
+      wss_proxy = proxy_opts.proxy_url,
+      wss_proxy_authorization = proxy_opts.proxy_authorization,
+    }
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to connect control plane")
+  end
+
   local ok, err = c:connect(uri, opts)
   if not ok then
     ngx_log(ngx_ERR, "[rpc] unable to connect to peer: ", err)

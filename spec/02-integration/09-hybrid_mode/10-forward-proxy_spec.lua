@@ -71,11 +71,13 @@ local proxy_configs = {
 -- if existing lmdb data is set, the service/route exists and
 -- test run too fast before the proxy connection is established
 
--- XXX FIXME: enable inc_sync = on
-for _, inc_sync in ipairs { "off" } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, inc_sync = v[1], v[2]
 for _, strategy in helpers.each_strategy() do
   for proxy_desc, proxy_opts in pairs(proxy_configs) do
-    describe("CP/DP sync through proxy (" .. proxy_desc .. ") works with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
+    describe("CP/DP sync through proxy (" .. proxy_desc .. ") works with #"
+             .. strategy .. " rpc=" .. rpc .. " inc_sync=" .. inc_sync
+             .. " backend", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy) -- runs migrations
 
@@ -87,6 +89,7 @@ for _, strategy in helpers.each_strategy() do
           db_update_frequency = 0.1,
           cluster_listen = "127.0.0.1:9005",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          cluster_rpc = rpc,
           cluster_incremental_sync = inc_sync,
         }))
 
@@ -108,6 +111,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_server_ssl_verify = proxy_opts.proxy_server_ssl_verify,
           lua_ssl_trusted_certificate = proxy_opts.lua_ssl_trusted_certificate,
 
+          cluster_rpc = rpc,
           cluster_incremental_sync = inc_sync,
 
           -- this is unused, but required for the template to include a stream {} block
