@@ -68,18 +68,21 @@ function _M._dispatch(premature, self, cb, payload)
   if not res then
     ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
 
-    if payload.id then
-      res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
-                                              err))
-      if not res then
-        ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
-      end
+    -- notification has no response
+    if not payload.id then
+      return
+    end
+
+    res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
+                                            err))
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
     end
 
     return
   end
 
-  -- it is a notification
+  -- notification has no response
   if not payload.id then
     return
   end
