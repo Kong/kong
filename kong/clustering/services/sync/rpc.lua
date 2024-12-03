@@ -427,7 +427,7 @@ sync_handler = function(premature, try_counter)
   end
 
   -- retry if the version is not updated
-  return ngx.timer.at(0, sync_handler, try_counter - 1)
+  ngx.timer.at(0, sync_handler, try_counter - 1)
 end
 
 
