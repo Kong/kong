@@ -170,6 +170,15 @@ for _, strategy in helpers.each_strategy() do
           if auth_on then
             assert.matches("accepted basic proxy%-authorization", contents)
           end
+
+          -- check the debug log of the `cluster_use_proxy` option
+          path = pl_path.join("servroot2", "logs", "error.log")
+          contents = pl_file.read(path)
+          if rpc == "on" and inc_sync == "on" then
+            assert.matches("%[rpc%] using proxy", contents)
+          else
+            assert.matches("%[clustering%] using proxy", contents)
+          end
         end)
       end)
     end)

@@ -30,6 +30,7 @@ local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
+local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
 
 
 local RPC_MATA_V1 = "kong.meta.v1"
