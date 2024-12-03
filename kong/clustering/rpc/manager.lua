@@ -481,8 +481,8 @@ function _M:connect(premature, node_id, host, path, cert, key)
       wss_proxy_authorization = proxy_opts.proxy_authorization,
     }
 
-    ngx_log(ngx_DEBUG, _log_prefix,
-            "using proxy ", proxy_opts.proxy_url, " to connect control plane")
+    ngx_log(ngx_DEBUG, "[rpc] using proxy ", proxy_opts.proxy_url,
+                       " to connect control plane")
   end
 
   local ok, err = c:connect(uri, opts)
