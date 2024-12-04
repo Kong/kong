@@ -36,8 +36,8 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,rpc-notification-test",
         nginx_worker_processes = 4, -- multiple workers
-        cluster_rpc = "on",
-        cluster_incremental_sync = "off",
+        cluster_rpc = "on", -- enable rpc
+        cluster_incremental_sync = "off", -- disable incremetanl sync
       }))
 
       assert(helpers.start_kong({
@@ -51,8 +51,8 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,rpc-notification-test",
         nginx_worker_processes = 4, -- multiple workers
-        cluster_rpc = "on",
-        cluster_incremental_sync = "off",
+        cluster_rpc = "on", -- enable rpc
+        cluster_incremental_sync = "off", -- disable incremetanl sync
       }))
     end)
 
