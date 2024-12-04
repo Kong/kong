@@ -88,12 +88,14 @@ for _, strategy in helpers.each_strategy() do
         test_url("/001", 9002, 200)
 
         -- wait notification running
-        ngx.sleep(0.3)
+        ngx.sleep(0.5)
 
         -- cp logs
         assert.logfile().has.line("notification is hello", true)
 
         -- dp logs
+        assert.logfile("servroot2/logs/error.log").has.line(
+          "notification is world", true)
         assert.logfile("servroot2/logs/error.log").has.line(
           "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
 
