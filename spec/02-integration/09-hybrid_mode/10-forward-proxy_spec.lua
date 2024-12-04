@@ -172,13 +172,9 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- check the debug log of the `cluster_use_proxy` option
-          path = pl_path.join("servroot2", "logs", "error.log")
-          contents = pl_file.read(path)
-          if rpc == "on" and inc_sync == "on" then
-            assert.matches("%[rpc%] using proxy", contents)
-          else
-            assert.matches("%[clustering%] using proxy", contents)
-          end
+          local line = inc_sync == "on" and "[rpc] using proxy" or
+                                            "[clustering] using proxy"
+          assert.logfile("servroot2/logs/error.log").has.line(line, true)
         end)
       end)
     end)
