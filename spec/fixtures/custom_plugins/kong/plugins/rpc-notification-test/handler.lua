@@ -8,17 +8,17 @@ function RpcNotificationTestHandler:init_worker()
   kong.rpc.callbacks:register("kong.test.notification", function(node_id, msg)
     ngx.log(ngx.DEBUG, "notification is ", msg)
 
-    -- called by cp
-    if kong.configuration.role == "data_plane" then
-      return "data_plane"
-    end
+    local role = kong.configuration.role
 
     -- cp notify dp back
-    local res, err = kong.rpc:notify(node_id, "kong.test.notification", "world")
-    assert(res == true)
-    assert(err == nil)
+    if role == "control_plane" then
+      local res, err = kong.rpc:notify(node_id, "kong.test.notification", "world")
+      assert(res == true)
+      assert(err == nil)
+    end
 
-    return "control_plane"
+    -- perr should not get this by notification
+    return role
   end)
 end
 
