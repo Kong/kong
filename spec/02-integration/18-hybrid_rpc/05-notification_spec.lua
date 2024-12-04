@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
         ngx.sleep(0.2)
 
         -- cp logs
-        helpers.wait_until(function()
+        helpers.pwait_until(function()
           assert.logfile().has.line(
             "notification is hello", true)
           assert.logfile().has.line(
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
         end, 5)
 
         -- dp logs
-        helpers.wait_until(function()
+        helpers.pwait_until(function()
           assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
           assert.logfile("servroot2/logs/error.log").has.line(
