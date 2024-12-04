@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require("cjson.safe")
 
 local function test_url(path, port, code, headers)
   helpers.wait_until(function()
@@ -88,16 +87,22 @@ for _, strategy in helpers.each_strategy() do
         test_url("/001", 9002, 200)
 
         -- wait notification running
-        ngx.sleep(0.5)
+        ngx.sleep(0.2)
 
         -- cp logs
-        assert.logfile().has.line("notification is hello", true)
+        helpers.wait_until(function()
+          assert.logfile().has.line("notification is hello", true)
+          return true
+        end, 5)
 
         -- dp logs
-        assert.logfile("servroot2/logs/error.log").has.line(
-          "notification is world", true)
-        assert.logfile("servroot2/logs/error.log").has.line(
-          "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
+        helpers.wait_until(function()
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "notification is world", true)
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
+          return true
+        end, 5)
 
       end)
     end)
