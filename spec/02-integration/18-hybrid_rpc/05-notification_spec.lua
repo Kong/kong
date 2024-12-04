@@ -18,7 +18,7 @@ local function test_url(path, port, code, headers)
   end, 10)
 end
 
--- register a test rpc service in custom plugin rpc-hello-test
+-- register a test rpc service in custom plugin rpc-notification-test
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy, function()
 
@@ -35,6 +35,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,rpc-notification-test",
+        nginx_worker_processes = 4, -- multiple workers
         cluster_rpc = "on",
         cluster_incremental_sync = "off",
       }))
@@ -49,6 +50,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,rpc-notification-test",
+        nginx_worker_processes = 4, -- multiple workers
         cluster_rpc = "on",
         cluster_incremental_sync = "off",
       }))
@@ -60,7 +62,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("notification works", function()
-      it("routes", function()
+      it("in custom plugin", function()
         local admin_client = helpers.admin_client(10000)
         finally(function()
           admin_client:close()
