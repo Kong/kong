@@ -50,7 +50,6 @@ build-packages:
   bazel-args: --//:debug=true --//:fips=true
   check-manifest-suite: ubuntu-24.04-amd64-fips-debug
 
-
 # Debian
 - label: debian-11
   image: debian:11
@@ -136,12 +135,12 @@ build-images:
   artifact-from: ubuntu-24.04
   artifact-from-alt: ubuntu-24.04-arm64
   docker-platforms: linux/amd64, linux/arm64
-  check-manifest-suite: docker-image-ubuntu-24.04-debug
+  check-manifest-suite: docker-image-ubuntu-24.04
 - label: ubuntu-fips
   base-image: ubuntu:24.04
   package: deb
   artifact-from: ubuntu-24.04-fips
-  check-manifest-suite: docker-image-ubuntu-24.04-debug
+  check-manifest-suite: docker-image-ubuntu-24.04
 
 # Debian
 - label: debian
@@ -150,7 +149,7 @@ build-images:
   artifact-from: debian-12
   artifact-from-alt: debian-12-arm64
   docker-platforms: linux/amd64, linux/arm64
-  check-manifest-suite: docker-image-debug
+  check-manifest-suite: docker-image
 
 # RHEL
 - label: rhel
@@ -160,13 +159,13 @@ build-images:
   artifact-from: rhel-9
   artifact-from-alt: rhel-9-arm64
   docker-platforms: linux/amd64, linux/arm64
-  check-manifest-suite: docker-image-debug
+  check-manifest-suite: docker-image
 - label: rhel-fips
   base-image: registry.access.redhat.com/ubi9
   package: rpm
   package-distro: el9
   artifact-from: rhel-9-fips
-  check-manifest-suite: docker-image-debug
+  check-manifest-suite: docker-image
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -176,7 +175,7 @@ build-images:
   artifact-from: amazonlinux-2
   artifact-from-alt: amazonlinux-2-arm64
   docker-platforms: linux/amd64,linux/arm64
-  check-manifest-suite: docker-image-debug
+  check-manifest-suite: docker-image
 - label: amazonlinux-2023
   base-image: amazonlinux:2023
   package: rpm
@@ -184,7 +183,7 @@ build-images:
   artifact-from: amazonlinux-2023
   artifact-from-alt: amazonlinux-2023-arm64
   docker-platforms: linux/amd64,linux/arm64
-  check-manifest-suite: docker-image-debug
+  check-manifest-suite: docker-image
 
 release-packages:
 

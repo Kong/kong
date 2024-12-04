@@ -221,13 +221,22 @@ for target in list(targets.keys()):
         targets[target + "-fips"] = e
 
 for target in list(targets.keys()):
-    e = deepcopy(targets[target])
+    if 'docker-image' not in target:
+        e = deepcopy(targets[target])
 
-    # Ubuntu 24.04 (amd64) debug
-    e.name = e.name + " Debug"
-    e.tests[common_suites] = {
-        'skip_nginx_debug': True,
-    }
+        # Ubuntu 24.04 (amd64) debug
+        e.name = e.name + " Debug"
 
-    # ubuntu-24.04-debug
-    targets[target + "-debug"] = e
+        if common_suites in e.tests:
+            e.tests[common_suites]["skip_nginx_debug"] = False
+
+        # avoid manifest comparison since enabling debug in bazel causes the
+        # addition of libm.so on arm64 debian (not ubuntu) platforms
+        # invalidating the default manifest
+        #
+        # this solution is more desirable and maintainable vs. including a
+        # second (sure to be unmaintained) manifest for debian arm64 only
+        e.manifest = None
+
+        # ubuntu-24.04-debug
+        targets[target + "-debug"] = e
