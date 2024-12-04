@@ -9,6 +9,7 @@ local get_uri_args = kong.request.get_query
 local set_uri_args = kong.service.request.set_query
 local clear_header = kong.service.request.clear_header
 -- local get_header = kong.request.get_header
+local var = ngx.var
 local set_header = kong.service.request.set_header
 local get_headers = kong.request.get_headers
 local set_headers = kong.service.request.set_headers
@@ -424,7 +425,7 @@ end
 local function transform_body(conf, template_env)
   -- local content_type_value = get_header(CONTENT_TYPE)
   -- content-type is a builtin single value header, use var to fetch is faster.
-  local content_type_value = ngx.var.http_content_type
+  local content_type_value = var.http_content_type
   local content_type = get_content_type(content_type_value)
   if content_type == nil or #conf.rename.body < 1 and
      #conf.remove.body < 1 and #conf.replace.body < 1 and
@@ -460,7 +461,7 @@ local function transform_method(conf)
     if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
       -- local content_type_value = get_header(CONTENT_TYPE)
       -- content-type is a builtin single value header, use var to fetch is faster.
-      local content_type_value = ngx.var.http_content_type
+      local content_type_value = var.http_content_type
       local content_type = get_content_type(content_type_value)
       if content_type == ENCODED then
         -- Also put the body into querystring
