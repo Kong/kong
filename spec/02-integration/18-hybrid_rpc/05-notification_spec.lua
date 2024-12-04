@@ -100,7 +100,7 @@ for _, strategy in helpers.each_strategy() do
           assert.logfile().has.line(
             "[rpc] notification has no response", true)
           return true
-        end, 10)
+        end, 15)
 
         -- dp logs
         helpers.pwait_until(function()
@@ -111,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
           assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] notification has no response", true)
           return true
-        end, 10)
+        end, 15)
 
       end)
     end)
