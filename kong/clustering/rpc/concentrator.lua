@@ -158,6 +158,7 @@ function _M:_event_loop(lconn)
 
           -- notification has no callback or id
           if not payload.id then
+            ngx_log(ngx_DEBUG, "[rpc] notification has no response")
             goto continue
           end
 

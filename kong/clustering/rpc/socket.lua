@@ -84,6 +84,7 @@ function _M._dispatch(premature, self, cb, payload)
 
   -- notification has no response
   if not payload.id then
+    ngx_log(ngx_DEBUG, "[rpc] notification has no response")
     return
   end
 
