@@ -23,7 +23,7 @@ function RpcNotificationTestHandler:init_worker()
 end
 
 
-function RpcNotificationTestHandler:access()
+function RpcNotificationTestHandler:rewrite()
   -- dp notify cp
   local res, err = kong.rpc:notify("control_plane", "kong.test.notification", "hello")
 
