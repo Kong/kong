@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy() do
         test_url("/001", 9002, 200)
 
         -- wait notification running
-        ngx.sleep(0.2)
+        ngx.sleep(0.5)
 
         -- cp logs
         helpers.pwait_until(function()
