@@ -4,7 +4,7 @@ local RpcNotificationTestHandler = {
 }
 
 
-function RpcNotificationTestHandler:init_worker()
+function RpcNotificationTestHandler:init()
   kong.rpc.callbacks:register("kong.test.notification", function(node_id, msg)
     ngx.log(ngx.DEBUG, "notification is ", msg)
 
