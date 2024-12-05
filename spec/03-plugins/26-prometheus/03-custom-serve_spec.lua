@@ -4,7 +4,7 @@ describe("Plugin: prometheus (custom server)",function()
   local proxy_client
 
   describe("with custom nginx server block", function()
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils()
 
       local service = bp.services:insert {
@@ -39,7 +39,7 @@ describe("Plugin: prometheus (custom server)",function()
 
       proxy_client = helpers.proxy_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end

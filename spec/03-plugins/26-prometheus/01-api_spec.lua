@@ -5,7 +5,7 @@ describe("Plugin: prometheus (API)",function()
   local admin_client
 
   describe("with no 'prometheus_metrics' shm defined", function()
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         plugins = "bundled, prometheus",
@@ -13,7 +13,7 @@ describe("Plugin: prometheus (API)",function()
 
       admin_client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -41,7 +41,7 @@ describe("Plugin: prometheus (API)",function()
   end)
 
   describe("with 'prometheus_metrics' defined", function()
-    setup(function()
+    lazy_setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong({
         plugins = "bundled, prometheus",
@@ -49,7 +49,7 @@ describe("Plugin: prometheus (API)",function()
 
       admin_client = helpers.admin_client()
     end)
-    teardown(function()
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end

@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_ssl_client -- admin_ssl_client (lua-resty-http) does not support h2
     local proxy_ssl_client -- proxy_ssl_client (lua-resty-http) does not support h2
 
-    setup(function()
+    lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {"services", "routes", "plugins"})
 
       local mock_ssl_service = bp.services:insert{
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       if admin_ssl_client then
         admin_ssl_client:close()
       end
