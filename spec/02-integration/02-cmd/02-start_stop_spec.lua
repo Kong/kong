@@ -739,7 +739,7 @@ describe("kong start/stop #" .. strategy, function()
         local body = assert.response(res).has.jsonbody()
         assert.equal("no Route matched with those values", body.message)
 
-        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+        assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
           database = "off",
           vaults = "mocksocket",
           plugins = "session",
@@ -825,7 +825,7 @@ describe("kong start/stop #" .. strategy, function()
         local body = assert.response(res).has.jsonbody()
         assert.equal("no Route matched with those values", body.message)
 
-        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+        assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
           database = "off",
           vaults = "mocksocket",
           plugins = "session",
@@ -916,7 +916,7 @@ describe("kong start/stop #" .. strategy, function()
         local body = assert.response(res).has.jsonbody()
         assert.equal("no Route matched with those values", body.message)
 
-        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+        assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
           database = "off",
           vaults = "mocksocket",
           plugins = "session",
@@ -1005,7 +1005,7 @@ describe("kong start/stop #" .. strategy, function()
         local body = assert.response(res).has.jsonbody()
         assert.equal("no Route matched with those values", body.message)
 
-        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+        assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
           database = "off",
           vaults = "mocksocket",
           plugins = "session",
