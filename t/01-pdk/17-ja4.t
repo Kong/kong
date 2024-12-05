@@ -27,15 +27,14 @@ qq{
             local ja4 = require "kong.pdk.private.ja4"
             local ret = ja4.compute_client_ja4()
             assert(ret == true, "unexpected value: " .. tostring(ret))
-            ngx.ctx.connection = ngx.ctx
             ret = ja4.get_computed_client_ja4()
-            assert(ret ~= '', "unexpected value: " .. tostring(ret))
+            assert(ret ~= nil, "unexpected value: " .. tostring(ret))
         }
 
         ssl_certificate_by_lua_block {
             local ja4 = require "kong.pdk.private.ja4"
             local ret = ja4.get_computed_client_ja4()
-            assert(ret ~= '', "unexpected value: " .. tostring(ret))
+            assert(ret ~= nil, "unexpected value: " .. tostring(ret))
         }
 
 
@@ -46,31 +45,31 @@ qq{
             rewrite_by_lua_block {
                 local ja4 = require "kong.pdk.private.ja4"
                 local ret = ja4.get_computed_client_ja4()
-                assert(ret ~= '', "unexpected value: " .. tostring(ret))
+                assert(ret ~= nil, "unexpected value: " .. tostring(ret))
             }
 
             access_by_lua_block {
                 local ja4 = require "kong.pdk.private.ja4"
                 local ret = ja4.get_computed_client_ja4()
-                assert(ret ~= '', "unexpected value: " .. tostring(ret))
+                assert(ret ~= nil, "unexpected value: " .. tostring(ret))
             }
 
             header_filter_by_lua_block {
                 local ja4 = require "kong.pdk.private.ja4"
                 local ret = ja4.get_computed_client_ja4()
-                assert(ret ~= '', "unexpected value: " .. tostring(ret))
+                assert(ret ~= nil, "unexpected value: " .. tostring(ret))
             }
 
             body_filter_by_lua_block {
                 local ja4 = require "kong.pdk.private.ja4"
                 local ret = ja4.get_computed_client_ja4()
-                assert(ret ~= '', "unexpected value: " .. tostring(ret))
+                assert(ret ~= nil, "unexpected value: " .. tostring(ret))
             }
 
             log_by_lua_block {
                 local ja4 = require "kong.pdk.private.ja4"
                 local ret = ja4.get_computed_client_ja4()
-                assert(ret ~= '', "unexpected value: " .. tostring(ret))
+                assert(ret ~= nil, "unexpected value: " .. tostring(ret))
             }
 
             return 200;

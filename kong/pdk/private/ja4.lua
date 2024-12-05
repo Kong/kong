@@ -52,7 +52,13 @@ end
 function _M.get_computed_client_ja4()
   check_phase(CERTIFICATE_AND_LATER)
 
-  return ngx.ctx.connection.ja4_fingerprint or nil, "fingerprint not generated"
+  if ngx.ctx.ja4_fingerprint then
+    return ngx.ctx.ja4_fingerprint
+  elseif ngx.ctx.connection and ngx.ctx.connection.ja4_fingerprint then
+    return ngx.ctx.connection.ja4_fingerprint
+  else
+    return nil, "fingerprint not generated"
+  end
 end
 
 
