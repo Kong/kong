@@ -71,7 +71,10 @@ end
 
 
 function _M:wait(timeout)
-  assert(not self.is_notification)
+  if self.is_notification then
+    return nil, "the notification cannot be waited"
+  end
+
   assert(self.state == STATE_IN_PROGRESS)
 
   local res, err = self.sema:wait(timeout)
