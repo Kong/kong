@@ -25,6 +25,8 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
         "clustering_data_planes",
+        "services",
+        "routes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
