@@ -820,8 +820,7 @@ local function new(self)
   -- body.age  -- "42"
   function _REQUEST.get_body(mimetype, max_args, max_allowed_file_size)
     check_phase(before_content)
-
-    local content_type = mimetype or _REQUEST.get_header(CONTENT_TYPE)
+    local content_type = mimetype or ngx.var.http_content_type
     if not content_type then
       return nil, "missing content type"
     end
