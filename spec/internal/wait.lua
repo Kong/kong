@@ -589,7 +589,7 @@ do
 end
 
 
-local function wait_until_no_common_workers(workers, expected_total, strategy)
+local function wait_until_no_common_workers(workers, expected_total)
   wait_until(function()
     local pok, admin_client = pcall(client.admin_client)
     if not pok then
@@ -665,11 +665,11 @@ end
 
 
 --- Reload Kong and wait all workers are restarted.
-local function reload_kong(strategy, ...)
+local function reload_kong(...)
   local workers = get_kong_workers()
   local ok, err = shell.kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers, 1, strategy)
+    wait_until_no_common_workers(workers, 1)
   end
   return ok, err
 end
