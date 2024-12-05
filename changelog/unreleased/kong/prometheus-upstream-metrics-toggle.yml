@@ -1,3 +1,3 @@
 message: "**Prometheus**: Use the :configure() handler to toggle upstream_health_metrics"
-type: fix
+type: bugfix
 scope: Plugin
