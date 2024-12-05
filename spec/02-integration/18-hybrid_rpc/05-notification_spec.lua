@@ -99,6 +99,8 @@ for _, strategy in helpers.each_strategy() do
             "[rpc] notifying kong.test.notification(node_id:", true)
           assert.logfile().has.line(
             "[rpc] notification has no response", true)
+          assert.logfile().has.no.line(
+            "assert failed", true)
           return true
         end, 15)
 
@@ -110,6 +112,8 @@ for _, strategy in helpers.each_strategy() do
             "notification is world", true)
           assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] notification has no response", true)
+          assert.logfile("servroot2/logs/error.log").has.no.line(
+            "assert failed", true)
           return true
         end, 15)
 
