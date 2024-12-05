@@ -4,42 +4,52 @@ import { isCI } from '@support';
  * Wait for the `assertions` does not throw any exceptions.
  * @param assertions - The assertions to be executed.
  * @param timeout - The timeout in milliseconds.
- * @param interval - The interval in milliseconds.
+ * @param delay - initial delay between retries
  * @param verbose - Verbose logs in case of error
  * @returns {Promise<void>} - Asnyc void promise.
  */
-export const eventually = async (
-  assertions: () => Promise<void>,
+export const eventually = async <T = void>(
+  assertions: () => Promise<T>,
   timeout = 120000,
-  interval = 3000,
+  delay = 100,
   verbose = false,
-): Promise<void> => {
-  let errorMsg = '';
+): Promise<T> => {
   // enable verbose logs in GH Actions for debugability
-  verbose = isCI() ? true : verbose
+  verbose = isCI() ? true : verbose;
 
-  while (timeout >= 0) {
-    const start = Date.now();
+  let errorMsg = '';
+  let elapsed = 0;
+  let remaining = timeout;
+
+  const start = Date.now();
+
+  while (remaining >= 0) {
     try {
-      await assertions();
-      return;
+      return await assertions();
     } catch (error: any) {
+      errorMsg = error.message;
+      elapsed = Date.now() - start;
+      remaining = timeout - elapsed;
 
-      if (verbose) { // Inside CI environment, do exponential backoff
-        interval *= 2; // Double the delay for the next attempt
-        interval +=  Math.random() * 1000; // Add jitter
+      if (remaining > 0) {
+        const jitter = Math.random() * 10;
+        delay = Math.min(delay * 1.25 + jitter, remaining);
 
-        errorMsg = error.message;
-        console.log(errorMsg);
-        console.log(
-            `** Assertion(s) Failed -- Retrying in ${interval / 1000} seconds **`
-        );
+        if (verbose) {
+          console.log(errorMsg);
+          console.log(`** Assertion(s) Failed -- Retrying in ${delay / 1000} seconds **`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-      await new Promise((resolve) => setTimeout(resolve, interval));
-      const end = Date.now();
-      timeout -= interval + (end - start);
-      console.log(`remaining timeout: ${timeout}`);
     }
   }
+
+  errorMsg = `** Timed Out (after ${elapsed / 1000} seconds) -- Last error: '${errorMsg}' **`;
+
+  if (verbose) {
+    console.log(errorMsg);
+  }
+
   throw new Error(errorMsg);
 };

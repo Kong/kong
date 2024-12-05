@@ -83,7 +83,7 @@ describe('Gateway Websocket Tests', function () {
         url: 'https://websocket-echo-server:9443',
       });
 
-      await waitForConfigRebuild({ interval: 1000 });
+      await waitForConfigRebuild();
     });
 
     it('should not create http route when service is websocket service', async function () {
@@ -193,7 +193,7 @@ describe('Gateway Websocket Tests', function () {
         paths: ['/.httpswss'],
         protocols: ['https'],
       });
-      await waitForConfigRebuild({ interval: 1000 });
+      await waitForConfigRebuild();
     });
 
     it('should route ws traffic when service and route is http', async function () {
@@ -219,6 +219,6 @@ describe('Gateway Websocket Tests', function () {
     after(async function () {
       await clearAllKongResources()
     });
-  
+
   });
 });

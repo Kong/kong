@@ -2,8 +2,7 @@ import axios, { AxiosPromise, AxiosResponse } from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway, isKoko } from '../config/environment';
 import { logResponse } from './logging';
-import { randomString, wait } from './random';
-import { retryRequest } from './retry-axios';
+import { randomString } from './random';
 import { getNegative } from './negative-axios';
 import { isKongOSS, eventually } from '@support';
 
@@ -812,8 +811,8 @@ export const getRouterFlavor = async () => {
  * after getting 200, delete the service/route, send request again to the route until it is 404
  * This triggers router rebuild making sure all configuration updates have been propagated in kong
  * @param {object} options
- * @property {number} timeout - retryRequest timeout
- * @property {number} interval - retryRequest interval
+ * @property {number} timeout - retry timeout
+ * @property {number} delay - retry delay
  * @property {object} proxyReqHeader - custom proxy request header e.g. key-auth key
  */
 export const waitForConfigRebuild = async (options: any = {}) => {
@@ -849,22 +848,10 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   const pluginId = plugin.id;
 
   // send request to route until response is 401
-  const reqSuccess = () =>
-    getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
-  const assertionsSuccess = (resp) => {
-    expect(
-      resp.status,
-      'waitForConfigRebuild - route should return 401'
-    ).to.equal(401);
-  };
-
-  await retryRequest(
-    reqSuccess,
-    assertionsSuccess,
-    options?.timeout,
-    options?.interval,
-    options?.verbose,
-  );
+  await eventually(async () => {
+    const resp = await getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
+    expect(resp.status, 'waitForConfigRebuild - expecting new entities to be active').to.equal(401);
+  }, options?.timeout, options?.delay, options?.verbose);
 
   // removing the entities
   await deletePlugin(pluginId);
@@ -872,21 +859,10 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   await deleteGatewayService(serviceId);
 
   // send request to route until response is 404
-  const reqFail = () =>
-    getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
-  const assertionsFail = (resp) => {
-    expect(
-      resp.status,
-      'waitForConfigRebuild - route should return 404'
-    ).to.equal(404);
-  };
-
-  await retryRequest(
-    reqFail,
-    assertionsFail,
-    options?.timeout,
-    options?.interval
-  );
+  await eventually(async () => {
+    const resp = await getNegative(`${proxyUrl}${routePath}`, options?.proxyReqHeader);
+    expect(resp.status, 'waitForConfigRebuild - expecting 404 after deleting entities').to.equal(404);
+  }, options?.timeout, options?.delay, options?.verbose);
 
   return true
 };
@@ -977,32 +953,16 @@ export const clearKongResource = async (endpoint: string, workspaceNameorId?: st
   }
 };
 
-
 /**
- * Wait for /status/ready to return given status
- * @param {string} cacheKey - cache key to wait for
- * @param {number} timeout - timeout in ms
+ * Wait for /cache/${cacheKey} to return a 404
+ * @param cacheKey - cache key to wait for
+ * @param timeout - timeout in ms
  */
-export const waitForCacheInvalidation = async (
-  cacheKey,
-  timeout,
-) => {
-  let response;
-  let wantedTimeout
-  while (timeout > 0) {
-    const response = await getNegative(`${getUrl('cache')}/${cacheKey}`);
-    if (response.status === 404) {
-      // log final response
-      logResponse(response);
-      return true;
-    }
-    await wait(1000); // eslint-disable-line no-restricted-syntax
-    timeout -= 1000;
-  }
-  // log last response received
-  logResponse(response);
-
-  // throw
-  expect(false, `${wantedTimeout}ms exceeded waiting for "${cacheKey}" to invalidate from cache`).to.equal(true);
-  return false;
+export const waitForCacheInvalidation = async (cacheKey: string, timeout: number) => {
+  await eventually(async () => {
+      const res = await getNegative(`${getUrl('cache')}/${cacheKey}`);
+      expect(res.status, `cache API endpoint for ${cacheKey} should return 404 when item is invalidated`).to.equal(404);
+    },
+    timeout
+  );
 };

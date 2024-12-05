@@ -15,6 +15,7 @@ import {
     generateDpopProof,
     isGwNative,
     resetGatewayContainerEnvVariable,
+    eventually,
 } from '@support'
 import {
     authDetails,
@@ -143,10 +144,10 @@ describe('Gateway Plugins: OIDC with Okta', function () {
         expect(tokenResp.data, 'Access token should be present').to.have.property('access_token')
         expect(tokenResp.data.token_type, 'Token type should be DPOP').to.equal('DPoP')
         dpopToken = tokenResp.data.access_token
-        await waitForConfigRebuild()
     })
 
     it('should return 401 when accessing route without token but with dpop proof', async function() {
+      await eventually(async () => {
         const resp = await axios({
             method: 'GET',
             url: `${urls.proxy}${oktaPath}`,
@@ -159,9 +160,11 @@ describe('Gateway Plugins: OIDC with Okta', function () {
         expect(resp.status, 'Status should be 401').to.equal(401)
         expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
         expect(resp.headers['www-authenticate'], 'error message should reference invalid token').to.contain('error="invalid_token"')
+      });
     })
 
     it('should return 401 when accessing route with token but without token proof', async function() {
+      await eventually(async () => {
         const resp = await axios({
             method: 'GET',
             url: `${urls.proxy}${oktaPath}`,
@@ -174,58 +177,65 @@ describe('Gateway Plugins: OIDC with Okta', function () {
         expect(resp.status, 'Status should be 401').to.equal(401)
         expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
         expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
+      });
     })
 
     it('should return 401 when accessing route with downgraded dpop proof', async function() {
         const proofWithRoute  = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `${urls.proxy}${oktaPath}`})
-        const resp = await axios({
-            method: 'GET',
-            url: `${urls.proxy}${oktaPath}`,
-            validateStatus: null,
-            headers: {
-                'Authorization': `Bearer ${dpopToken}`,
-                'DPoP': proofWithRoute,
-            }
-        })
+        await eventually(async () => {
+          const resp = await axios({
+              method: 'GET',
+              url: `${urls.proxy}${oktaPath}`,
+              validateStatus: null,
+              headers: {
+                  'Authorization': `Bearer ${dpopToken}`,
+                  'DPoP': proofWithRoute,
+              }
+          })
 
-        logResponse(resp)
-        expect(resp.status, 'Status should be 401').to.equal(401)
-        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
-        expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
+          logResponse(resp)
+          expect(resp.status, 'Status should be 401').to.equal(401)
+          expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+          expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
+        });
     })
 
     it('should return 401 when accessing route with dpop proof with incorrect htu claim', async function() {
         const proofWithIncorrectHtu = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `http://localhost:8000/wrongpath`})
-        const resp = await axios({
-            method: 'GET',
-            url: `${urls.proxy}${oktaPath}`,
-            headers: {
-                'Authorization': `DPoP ${dpopToken}`,
-                'DPoP': proofWithIncorrectHtu,
-            },
-            validateStatus: null,
-        })
+        await eventually(async () => {
+          const resp = await axios({
+              method: 'GET',
+              url: `${urls.proxy}${oktaPath}`,
+              headers: {
+                  'Authorization': `DPoP ${dpopToken}`,
+                  'DPoP': proofWithIncorrectHtu,
+              },
+              validateStatus: null,
+          })
 
-        logResponse(resp)
-        expect(resp.status, 'Status should be 401').to.equal(401)
-        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
-        expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
+          logResponse(resp)
+          expect(resp.status, 'Status should be 401').to.equal(401)
+          expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+          expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
+        });
     })
 
     it('should return 200 when accessing route with token and dpop proof', async function() {
         const proofWithRoute  = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `${urls.proxy}${oktaPath}`})
 
-        const resp = await axios({
-            method: 'POST',
-            url: `${urls.proxy}${oktaPath}`,
-            headers: {
-                'Authorization': `DPoP ${dpopToken}`,
-                'DPoP': proofWithRoute,
-            },
-            validateStatus: null,
-        })
+        await eventually(async () => {
+          const resp = await axios({
+              method: 'POST',
+              url: `${urls.proxy}${oktaPath}`,
+              headers: {
+                  'Authorization': `DPoP ${dpopToken}`,
+                  'DPoP': proofWithRoute,
+              },
+              validateStatus: null,
+          })
 
-        expect(resp.status, 'Status should be 200').to.equal(200)
+          expect(resp.status, 'Status should be 200').to.equal(200)
+        });
     })
 
     it('should delete OIDC plugin', async function () {

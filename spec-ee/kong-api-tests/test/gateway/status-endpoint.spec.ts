@@ -37,13 +37,13 @@ const isPackageTest = isGwNative();
     await runDockerContainerCommand(databaseContainerName, 'stop');
     await runDockerContainerCommand(databaseContainerName, 'container wait');
 
-    expect(await waitForTargetStatus(503, 10000)).to.equal(true);
+    await waitForTargetStatus(503, 10000);
     await expectStatusReadyEndpoint503('failed to connect to database');
   });
 
   if (isHybrid) {
     it('should return 200 in DP status when connection to database is severed', async function () {
-      expect(await waitForTargetStatus(200, 10000, dpPortNumber)).to.equal(true);
+      await waitForTargetStatus(200, 10000, dpPortNumber);
     });
   }
 
@@ -57,6 +57,6 @@ const isPackageTest = isGwNative();
       expect(containerStatus[0]?.State?.Health?.Status).to.equal("healthy")
     }, 60000, 1000)
 
-    expect(await waitForTargetStatus(200, 10000)).to.equal(true);
+    await waitForTargetStatus(200, 10000);
   });
 });

@@ -54,7 +54,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
           },
         };
 
-        await waitForConfigRebuild({ interval: 1000, timeout: 120000 });
+        await waitForConfigRebuild();
       });
 
       it('should be able to add websocket size limit plugin', async function () {
@@ -73,7 +73,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
 
         expect(resp.status, 'Status should be 201').to.equal(201);
         pluginId = resp.data.id;
-        await waitForConfigRebuild({ interval: 1000 });
+        await waitForConfigRebuild();
       });
 
       it('should send message when the size is below the limit', async function () {
@@ -111,7 +111,7 @@ describe('Websocket Size Limit Plugin Tests', function () {
         });
         expect(checkResponse.data.config.client_max_payload).to.equal(client_max_payload);
 
-        await waitForConfigRebuild({ interval: 1000 });
+        await waitForConfigRebuild();
       });
 
       it('should not send data when size is limited', async function () {

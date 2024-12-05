@@ -21,7 +21,8 @@ import {
   logResponse,
   retryRequest,
   waitForCacheInvalidation,
-  isGateway
+  isGateway,
+  eventually
 } from '@support';
 
 const kvEngineVersions = ['v1', 'v2'];
@@ -250,15 +251,17 @@ kvEngineVersions.forEach((kvVersion) => {
     it('should not proxy a request after secrets have been deleted', async function () {
       await waitForCacheInvalidation(`vault-auth:${credentials.access_token}:${vaultEntityId}`, 8000)
 
-      const resp = await getNegative(
-        `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`
-      );
-      logResponse(resp);
+      await eventually(async () => {
+        const resp = await getNegative(
+          `${proxyUrl}${path}?access_token=${credentials.access_token}&secret_token=${credentials.secret_token}`
+        );
+        logResponse(resp);
 
-      expect(resp.status, 'Status should be 401').to.equal(401);
-      expect(resp.data.message, 'should have correct error message').to.eq(
-        'Unauthorized'
-      );
+        expect(resp.status, 'Status should be 401').to.equal(401);
+        expect(resp.data.message, 'should have correct error message').to.eq(
+          'Unauthorized'
+        );
+      });
     });
 
     it('should proxy a request with secrets created directly in HCV', async function () {

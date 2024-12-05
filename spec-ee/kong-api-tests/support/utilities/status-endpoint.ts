@@ -3,10 +3,10 @@ import https from 'https';
 import {
   logResponse,
   getGatewayHost,
-  wait,
   expect,
   getBasePath,
   Environment,
+  eventually,
 } from '@support';
 
 const defaultPort = 8100;
@@ -64,29 +64,20 @@ export const expectStatusReadyEndpoint503 = async (
 
 /**
  * Wait for /status/ready to return given status
- * @param {number} returnStatus - status to wait for
- * @param {number} timeout - timeout in ms
- * @param {number} port - port to use
+ * @param returnStatus - status to wait for
+ * @param timeout - timeout in ms
+ * @param port - port to use
  */
 export const waitForTargetStatus = async (
-  returnStatus,
-  timeout,
-  port = defaultPort
+  returnStatus: number,
+  timeout: number,
+  port: number = defaultPort
 ) => {
-  let response;
-  while (timeout > 0) {
-    response = await getStatusReadyEndpointResponse(port);
-    if (response.status === returnStatus) {
-      // log final response
-      logResponse(response);
-      return true;
-    }
-    await wait(1000); // eslint-disable-line no-restricted-syntax
-    timeout -= 1000;
-  }
-  // log last response received
-  logResponse(response);
-  return false;
+  await eventually(async () => {
+    const response = await getStatusReadyEndpointResponse(port);
+    logResponse(response);
+    expect(response.status).to.equal(returnStatus);
+  }, timeout);
 };
 
 export const getClusteringDataPlanes = async () => {
