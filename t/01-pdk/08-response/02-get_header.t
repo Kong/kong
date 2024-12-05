@@ -116,7 +116,7 @@ X-Missing: nil
 
 
 
-=== TEST 4: response.get_header() returns existing header will not limited by get_headers() default max_headers configuration
+=== TEST 4: response.get_header() returns existing header will not by limited by get_headers() default max_headers configuration
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
