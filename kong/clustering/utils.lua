@@ -17,7 +17,7 @@ local kong = kong
 
 local ngx = ngx
 local ngx_log = ngx.log
-local ngx_DEBUG = ngx.DEBUG
+local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_CLOSE = ngx.HTTP_CLOSE
@@ -90,7 +90,7 @@ function _M.connect_cp(dp, endpoint, protocols)
       wss_proxy_authorization = proxy_opts.proxy_authorization,
     }
 
-    ngx_log(ngx_DEBUG, _log_prefix,
+    ngx_log(ngx_INFO, _log_prefix,
             "using proxy ", proxy_opts.proxy_url, " to connect control plane")
   end
 

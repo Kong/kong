@@ -101,7 +101,7 @@ local function send_ping(c, log_suffix)
             "unable to send ping frame to control plane: ", err, log_suffix)
 
   else
-    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
+    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane with hash: ", hash, log_suffix)
   end
 end
 
