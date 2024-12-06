@@ -189,6 +189,7 @@ local EE_CONF_INFERENCES = {
   cluster_telemetry_listen = { typ = "array" },
   cluster_telemetry_server_name = { typ = "string" },
   cluster_telemetry_endpoint  = { typ = "string" },
+  cluster_cmek_endpoint = { typ = "string" },
 
   admin_gui_header_txt = { typ = "string" },
   admin_gui_header_bg_color = { typ = "string" },

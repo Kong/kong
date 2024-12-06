@@ -215,8 +215,11 @@ build = {
     ["kong.enterprise_edition.debug_session.instrumentation"] = "kong/enterprise_edition/debug_session/instrumentation/init.lua",
     ["kong.enterprise_edition.debug_session.instrumentation.socket"] = "kong/enterprise_edition/debug_session/instrumentation/socket.lua",
     ["kong.enterprise_edition.debug_session.instrumentation.redis"] = "kong/enterprise_edition/debug_session/instrumentation/redis.lua",
+    ["kong.enterprise_edition.debug_session.instrumentation.content_capture"] = "kong/enterprise_edition/debug_session/instrumentation/content_capture/init.lua",
+    ["kong.enterprise_edition.debug_session.instrumentation.content_capture.sanitizers.credit_card"] = "kong/enterprise_edition/debug_session/instrumentation/content_capture/sanitizers/credit_card.lua",
     ["kong.enterprise_edition.debug_session.instrumentation.attributes"] = "kong/enterprise_edition/debug_session/instrumentation/attributes.lua",
     ["kong.enterprise_edition.debug_session.utils"] = "kong/enterprise_edition/debug_session/utils.lua",
+    ["kong.enterprise_edition.debug_session.common"] = "kong/enterprise_edition/debug_session/common/init.lua",
 
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",

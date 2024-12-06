@@ -7,9 +7,14 @@
 
 local shm = require "kong.enterprise_edition.debug_session.shm"
 local utils = require "kong.enterprise_edition.debug_session.utils"
+local pl_stringx = require "pl.stringx"
 
 local log = utils.log
 local ngx_ERR = ngx.ERR
+local get_ctx_key = utils.get_ctx_key
+
+local CONTENT_CAPTURE_KEY = "capture_content"
+local CONTENT_CAPTURE_CTX_KEY = get_ctx_key(CONTENT_CAPTURE_KEY)
 
 local _M = {}
 _M.__index = _M
@@ -106,6 +111,7 @@ function _M:set_session(session)
   end
 
   for k, v in pairs(session) do
+    -- content capture is an array of enabled capture modes
     self.shm:set(k, v)
   end
   self:set_session_active()
@@ -118,6 +124,49 @@ end
 
 function _M:get_sampling_rule()
   return self.shm:get("sampling_rule") or ""
+end
+
+function _M:get_session_content_capture()
+  local content_capture = self.shm:get(CONTENT_CAPTURE_KEY)
+  if not content_capture then
+    return nil
+  end
+
+  if type(content_capture) ~= "string" then
+    log(ngx_ERR, "invalid " .. CONTENT_CAPTURE_KEY .. " value")
+    return nil
+  end
+
+  local enabled_captures = {}
+  local varr = pl_stringx.split(content_capture, ",")
+  for _, mode in ipairs(varr) do
+    enabled_captures[mode] = true
+  end
+  return enabled_captures
+end
+
+function _M:set_request_body(b)
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY] = ngx.ctx[CONTENT_CAPTURE_CTX_KEY] or {}
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY].request_body = b
+end
+
+function _M:set_response_body(b)
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY] = ngx.ctx[CONTENT_CAPTURE_CTX_KEY] or {}
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY].response_body = b
+end
+
+function _M:set_request_headers(h)
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY] = ngx.ctx[CONTENT_CAPTURE_CTX_KEY] or {}
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY].request_headers = h
+end
+
+function _M:set_response_headers(h)
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY] = ngx.ctx[CONTENT_CAPTURE_CTX_KEY] or {}
+  ngx.ctx[CONTENT_CAPTURE_CTX_KEY].response_headers = h
+end
+
+function _M:get_contents()
+  return ngx.ctx[CONTENT_CAPTURE_CTX_KEY]
 end
 
 function _M:flush()

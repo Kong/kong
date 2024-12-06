@@ -354,6 +354,7 @@ pluginserver_names = NONE
 cluster_telemetry_listen = 0.0.0.0:8006
 cluster_telemetry_endpoint = 127.0.0.1:8006
 cluster_telemetry_server_name = NONE
+cluster_cmek_endpoint = NONE
 
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =

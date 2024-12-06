@@ -1865,6 +1865,7 @@ function Kong.header_filter()
   end
 
   ctx.KONG_PHASE = PHASES.header_filter
+  debug_instrumentation.content_capture_response_headers()
 
   runloop.header_filter.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
@@ -1944,6 +1945,8 @@ function Kong.body_filter()
     arg[1] = ctx.response_body
     arg[2] = true
   end
+
+  debug_instrumentation.content_capture_response_body()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "body_filter", ctx)

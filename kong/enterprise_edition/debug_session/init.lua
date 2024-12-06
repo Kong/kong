@@ -72,6 +72,11 @@ local NOOP_DEBUG_SESSION = {
   handle_action = NOOP_FUN,
   process_updates = NOOP_FUN,
   update_sessions_from_cp = NOOP_FUN,
+  set_request_body = NOOP_FUN,
+  set_response_body = NOOP_FUN,
+  set_request_headers = NOOP_FUN,
+  set_response_headers = NOOP_FUN,
+  content_capture_enabled = function() return false end,
   _is_module_enabled = NOOP_FUN,
   _set_module_enabled = NOOP_FUN,
 }
@@ -230,6 +235,7 @@ function _M:report()
 
   local session_id = self.context:get_session_id()
   self.reporter:report_traces(session_id)
+  self.reporter:report_contents(self.context:get_contents())
 end
 
 function _M:init_session(session_id)
@@ -297,6 +303,27 @@ function _M:set_stop_session(cp_session)
   -- end session for all workers:
   self:broadcast_end_session(cp_session.id)
   return true
+end
+
+function _M:content_capture_enabled(mode)
+  local content_capture = self.context:get_session_content_capture() or {}
+  return content_capture[mode]
+end
+
+function _M:set_request_body(b)
+  self.context:set_request_body(b)
+end
+
+function _M:set_response_body(b)
+  self.context:set_response_body(b)
+end
+
+function _M:set_request_headers(headers)
+  self.context:set_request_headers(headers)
+end
+
+function _M:set_response_headers(headers)
+  self.context:set_response_headers(headers)
 end
 
 function _M:handle_action(cp_session)

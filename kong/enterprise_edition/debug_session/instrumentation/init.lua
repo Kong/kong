@@ -15,6 +15,7 @@ local bit = require "bit"
 local ngx_ssl = require("ngx.ssl")
 local socket_instrum = require "kong.enterprise_edition.debug_session.instrumentation.socket"
 local redis_instrum = require "kong.enterprise_edition.debug_session.instrumentation.redis"
+local content_capture = require "kong.enterprise_edition.debug_session.instrumentation.content_capture"
 local SPAN_ATTRIBUTES = require("kong.enterprise_edition.debug_session.instrumentation.attributes").SPAN_ATTRIBUTES
 local utils = require "kong.enterprise_edition.debug_session.utils"
 local request_id_get = require "kong.observability.tracing.request_id".get
@@ -657,6 +658,10 @@ function _M.access()
     return
   end
   subtracer.set_active_span(access_phase_span)
+
+  -- we are in access: we can capture request headers
+  content_capture.request_headers()
+
   return access_phase_span
 end
 
@@ -672,7 +677,17 @@ function _M.header_filter()
     return
   end
   subtracer.set_active_span(header_filter_phase_span)
+
   return header_filter_phase_span
+end
+
+
+function _M.content_capture_response_headers()
+  if should_skip_instrumentation(INSTRUMENTATIONS.request) then
+    return
+  end
+
+  content_capture.response_headers()
 end
 
 
@@ -695,6 +710,18 @@ function _M.body_filter_before()
   end
 
   return span
+end
+
+
+function _M.content_capture_response_body()
+  if should_skip_instrumentation(INSTRUMENTATIONS.request) then
+    return
+  end
+
+  local ok, err = content_capture.response_body()
+  if not ok and err then
+    log(ngx_ERR, "content_capture failed to read response body: ", err)
+  end
 end
 
 
@@ -900,15 +927,29 @@ function _M.patch_read_body()
 end
 
 
+-- ensures the body is read, so that we can represent
+-- the body read time in a span
 function _M.debug_read_body()
   if not kong.debug_session or not kong.debug_session:is_active() then
     return
   end
-  -- return here if the body was already read for this request
-  local body_read_ctx_key = get_ctx_key("body_read")
-  if ngx.ctx[body_read_ctx_key] then
+
+  local ok, err = content_capture.request_body()
+  if ok then
+    -- body was read as part of the content capture process: we can stop here
     return
   end
+
+  if err then
+    log(ngx_ERR, "content_capture failed to read request body: ", err)
+  end
+
+  -- the body was not read by body_capture; check if it
+  -- was read somewhere else:
+  if ngx.ctx[get_ctx_key("body_read")] then
+    return
+  end
+
   ngx.req.read_body()
 end
 
