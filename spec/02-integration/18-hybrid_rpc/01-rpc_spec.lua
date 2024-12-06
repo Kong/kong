@@ -9,10 +9,9 @@ local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
--- we need incremental sync to verify rpc
-for _, inc_sync in ipairs { "on" } do
+-- register a test rpc service in custom plugin rpc-hello-test
 for _, strategy in helpers.each_strategy() do
-  describe("Hybrid Mode RPC #" .. strategy .. " inc_sync=" .. inc_sync, function()
+  describe("Hybrid Mode RPC #" .. strategy, function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -27,7 +26,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        cluster_incremental_sync = inc_sync, -- incremental sync
+        plugins = "bundled,rpc-hello-test",
+        cluster_incremental_sync = "off",
       }))
 
       assert(helpers.start_kong({
@@ -40,7 +40,8 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        cluster_incremental_sync = inc_sync, -- incremental sync
+        plugins = "bundled,rpc-hello-test",
+        cluster_incremental_sync = "off",
       }))
     end)
 
@@ -76,9 +77,13 @@ for _, strategy in helpers.each_strategy() do
               assert(tonumber(m[2]) >= 9)
 
               -- check the available rpc service
-              table.sort(v.rpc_capabilities)
-              assert.same("kong.sync.v2", v.rpc_capabilities[1])
-              return true
+              for _, c in ipairs(v.rpc_capabilities) do
+                if c == "kong.test" then
+                  return true
+                end
+              end
+
+              return false
             end
           end
         end, 10)
@@ -86,4 +91,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end -- for _, strategy
-end -- for inc_sync
