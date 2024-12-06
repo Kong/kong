@@ -532,7 +532,6 @@ function _M.execute(conf)
       end
       -- set the result on the table to not load again
       local value = loader()
-      -- ngx.log(ngx.WARN,"rawset ", key, ": ", tostring(self) ,"\n")
       rawset(self, key, value)
       return value
     end,

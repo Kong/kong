@@ -235,7 +235,6 @@ return function(options)
             if v ~= nil then
               header_cache.set_single_header_cache(2, k, v)
             else
-              -- ngx.log(ngx.WARN, "nil for resp header: "..k)
               return v
             end
           end
