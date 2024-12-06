@@ -1,5 +1,7 @@
 return {
   default = {
-    lpath = "./?.lua;./?/init.lua;"
+    lpath = "./?.lua;./?/init.lua;",
+    -- make setup() and teardown() behave like their lazy_ variants
+    lazy = true,
   }
 }
