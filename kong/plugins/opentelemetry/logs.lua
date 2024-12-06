@@ -19,9 +19,13 @@ local encode_logs = otlp.encode_logs
 local prepare_logs = otlp.prepare_logs
 
 
-local function http_export_logs(conf, logs_batch)
+local function http_export_logs(params, logs_batch)
+  local conf = params.conf
+  local resource_attributes = params.options.compiled_resource_attributes
+                              or conf.resource_attributes
   local headers = get_headers(conf.headers)
-  local payload = encode_logs(logs_batch, conf.resource_attributes)
+
+  local payload = encode_logs(logs_batch, resource_attributes)
 
   local ok, err = http_export_request({
     connect_timeout = conf.connect_timeout,
@@ -42,7 +46,7 @@ local function http_export_logs(conf, logs_batch)
 end
 
 
-local function log(conf)
+local function log(conf, options)
   local worker_logs = o11y_logs.get_worker_logs()
   local request_logs = o11y_logs.get_request_logs()
 
@@ -59,6 +63,10 @@ local function log(conf)
   local flags = tracing_context.get_flags()
   local worker_logs_ready = prepare_logs(worker_logs)
   local request_logs_ready = prepare_logs(request_logs, raw_trace_id, flags)
+  local params = {
+    conf = conf,
+    options = options,
+  }
 
   local queue_conf = clone(Queue.get_plugin_params("opentelemetry", conf))
   queue_conf.name = queue_conf.name .. ":logs"
@@ -72,7 +80,7 @@ local function log(conf)
       Queue.enqueue(
         queue_conf,
         http_export_logs,
-        conf,
+        params,
         log
       )
     end
