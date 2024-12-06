@@ -148,11 +148,16 @@ return function(options)
 
       -- REQUEST HEADERS [
       local function get_req_headers_real(max_req_headers, ...)
+        local cached_headers = header_cache.get_headers_cache(1)
+        if cached_headers then
+          return cached_headers
+        end
         local request_headers, err = get_req_headers(max_req_headers or MAX_REQ_HEADERS or DEFAULT_MAX_REQ_HEADERS, ...)
         if err == "truncated" then
           kong.log.notice("request headers truncated")
         end
-        return request_headers, err
+        header_cache.set_headers_cache(1, request_headers)
+        return header_cache.get_headers_cache(1), err
       end
 
       _G.ngx.req.get_headers = function(max_req_headers, ...)
@@ -182,26 +187,25 @@ return function(options)
 
       -- RESPONSE HEADERS [
       local function get_resp_headers_real(max_resp_headers, ...)
+        local cached_headers = header_cache.get_headers_cache(2)
+        if cached_headers then
+          return cached_headers
+        end
         local response_headers, err = get_resp_headers(max_resp_headers or MAX_RESP_HEADERS or DEFAULT_MAX_RESP_HEADERS, ...)
         if err == "truncated" then
           kong.log.notice("response headers truncated")
         end
-        return response_headers, err
+        header_cache.set_headers_cache(2, response_headers)
+        return header_cache.get_headers_cache(2), err;
       end
 
       _G.ngx.resp.get_headers = function(max_resp_headers, ...)
         if not get_request() then
           error("no request found")
         end
-        local cached_headers = header_cache.get_headers_cache(2)
-        if cached_headers then
-          return cached_headers
-        end
         MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
         _G.ngx.resp.get_headers = get_resp_headers_real
-        local headers = get_resp_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
-        header_cache.set_headers_cache(2, headers)
-        return header_cache.get_headers_cache(2);
+        return get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
       end
 
       _G.ngx.resp.add_header = function(header_name, header_value)
