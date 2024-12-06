@@ -26,7 +26,7 @@
     "chai-like": "^1.1.3",
     "chai-string": "^1.5.0",
     "crypto": "^1.0.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.4.7",
     "expect": "^29.7.0",
     "influx": "^5.9.3",
     "jsonwebtoken": "^9.0.2",
