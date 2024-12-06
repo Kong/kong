@@ -50,7 +50,7 @@ jobs:
 
   integration-test-aws-ec2:
     name: Gateway AWS Integration test on EC2
-    runs-on: [ubuntu-22.04-arm64, ubuntu-22.04-arm64-ec2, self-hosted]
+    runs-on: [ubuntu-24.04-arm64, ubuntu-24.04-arm64-ec2, self-hosted]
     needs: build
     timeout-minutes: 30
     services:
