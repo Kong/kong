@@ -13,7 +13,7 @@ describe("Plugin: prometheus (access)", function()
   local proxy_client_grpc
   local proxy_client_grpcs
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -89,7 +89,7 @@ describe("Plugin: prometheus (access)", function()
     proxy_client_grpcs = helpers.proxy_client_grpcs()
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if proxy_client then
       proxy_client:close()
     end
@@ -316,7 +316,7 @@ end)
 describe("Plugin: prometheus (access) no stream listeners", function()
   local admin_client
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     bp.plugins:insert {
@@ -337,7 +337,7 @@ describe("Plugin: prometheus (access) no stream listeners", function()
     admin_client = helpers.admin_client()
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -376,7 +376,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
   local proxy_client
   local admin_client
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -428,7 +428,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
     admin_client = helpers.admin_client()
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if proxy_client then
       proxy_client:close()
     end
@@ -523,7 +523,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
 
   local success_scrape = ""
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -567,7 +567,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
     admin_client = helpers.admin_client()
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if proxy_client then
       proxy_client:close()
     end
@@ -619,7 +619,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
   local admin_client
   local prometheus_plugin
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local fixtures = {
@@ -630,27 +630,27 @@ describe("Plugin: prometheus (access) AI metrics", function()
       server {
           server_name openai;
           listen ]]..MOCK_PORT..[[;
-
+          
           default_type 'application/json';
-
-
+    
+  
           location = "/llm/v1/chat/good" {
             content_by_lua_block {
               local pl_file = require "pl.file"
               local json = require("cjson.safe")
-
+  
               ngx.req.read_body()
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
-
+  
               local token = ngx.req.get_headers()["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
-
+  
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-
+                
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -673,7 +673,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
       port = 8080, --MOCK_PORT,
       path = "/",
     })
-
+  
     -- 200 chat good with one option
     local chat_good = assert(bp.routes:insert {
       service = empty_service,
@@ -727,7 +727,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     admin_client = helpers.admin_client()
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if proxy_client then
       proxy_client:close()
     end
@@ -764,7 +764,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', body, nil, true)
-
+    
     assert.not_match('ai_llm_requests_total', body, nil, true)
     assert.not_match('ai_llm_cost_total', body, nil, true)
     assert.not_match('ai_llm_tokens_total', body, nil, true)
@@ -798,7 +798,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     ngx.sleep(2)
   end)
-
+  
   it("add the count for proxied AI requests", function()
     local res = assert(proxy_client:send {
       method  = "GET",
@@ -825,7 +825,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
-
+    
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 1', body, nil, true)
 
     assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00037', body, nil, true)
@@ -863,7 +863,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 3', body, nil, true)
-
+    
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
 
     assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)

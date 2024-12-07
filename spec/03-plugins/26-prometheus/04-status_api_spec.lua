@@ -24,7 +24,7 @@ describe("Plugin: prometheus (access via status API)", function()
     return assert.res_status(200, res)
   end
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local upstream_hc_off = bp.upstreams:insert({
@@ -184,7 +184,7 @@ describe("Plugin: prometheus (access via status API)", function()
     end
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     helpers.stop_kong()
   end)
 
@@ -438,7 +438,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
 
   local success_scrape = ""
 
-  lazy_setup(function()
+  setup(function()
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -483,7 +483,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
     status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     if proxy_client then
       proxy_client:close()
     end

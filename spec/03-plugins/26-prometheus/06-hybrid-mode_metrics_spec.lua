@@ -5,7 +5,7 @@ local tcp_status_port = helpers.get_available_port()
 describe("Plugin: prometheus (Hybrid Mode)", function()
   local status_client
 
-  lazy_setup(function()
+  setup(function()
     assert(helpers.start_kong {
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled",
@@ -28,7 +28,7 @@ describe("Plugin: prometheus (Hybrid Mode)", function()
     end
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     helpers.stop_kong()
   end)
 

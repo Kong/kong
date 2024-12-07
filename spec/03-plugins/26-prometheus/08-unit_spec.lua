@@ -6,7 +6,7 @@ describe("Plugin: prometheus (unit)", function()
   local orig_ngx_get_phase = ngx.get_phase
   local orig_ngx_timer     = ngx.timer
 
-  lazy_setup(function()
+  setup(function()
     ngx.shared = require("spec.fixtures.shm-stub")
     ngx.get_phase = function()  -- luacheck: ignore
       return "init_worker"
@@ -19,7 +19,7 @@ describe("Plugin: prometheus (unit)", function()
     prometheus = require("kong.plugins.prometheus.prometheus")
   end)
 
-  lazy_teardown(function()
+  teardown(function()
     ngx.shared    = orig_ngx_shared
     ngx.get_phase = orig_ngx_get_phase  -- luacheck: ignore
     ngx.timer     = orig_ngx_timer      -- luacheck: ignore
