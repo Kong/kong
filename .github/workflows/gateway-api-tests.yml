@@ -257,6 +257,6 @@ jobs:
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
-          name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}
+          name: gateway_api_${{ env.RUN_SPEC }}_test_results_${{ matrix.gateway_mode }}_${{ matrix.runs_on }}
           path: spec-ee/kong-api-tests/results/
           retention-days: 3

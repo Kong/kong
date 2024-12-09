@@ -6,6 +6,10 @@ on:  # yamllint disable-line rule:truthy
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
     - '**/*.md'
     - '.github/workflows/release.yml'
+    - '.github/workflows/gateway-api-tests.yml'
+    - '.github/workflows/gateway-api-tests-matrix.yml'
+    - '.github/workflows/gateway-konnect-api-tests.yml'
+    - '.github/workflows/gateway-cluster-api-tests.yml'
     - 'changelog/**'
     - 'kong.conf.default'
     - 'spec-ee/kong-api-tests/**'

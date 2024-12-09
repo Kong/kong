@@ -284,7 +284,7 @@ describe('@oss: Gateway Plugins: OpenTelemetry', function () {
       expect(isFound, 'Should find the target trace in jaeger').to.be.true;
     };
 
-    await retryRequest(req, assertions, 10000);
+    await retryRequest(req, assertions);
   });
 
   it('should not get 500 when traceparent -00 header is present in the request', async function () {

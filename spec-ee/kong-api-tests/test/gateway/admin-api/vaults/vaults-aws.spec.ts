@@ -6,6 +6,7 @@ import {
   Environment,
   logResponse,
   isGateway,
+  eventually,
 } from '@support';
 
 describe('@gke: Vaults: AWS', function () {
@@ -238,18 +239,19 @@ describe('@gke: Vaults: AWS', function () {
   });
 
   it('should list all aws vaults', async function () {
-    const resp = await axios(url);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(
-      resp.data.data,
-      'Should see all 3 items in the list'
-    ).to.have.lengthOf(3);
-    expect(
-      resp.data.data.map((vault) => vault.prefix),
-      'Should see all vault prefixes'
-    ).to.have.members(['newprefix', updatedPrefix, vaultPrefix2]);
+    await eventually(async () => {
+      const resp = await axios(url);
+  
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(
+        resp.data.data,
+        'Should see all 3 items in the list'
+      ).to.have.lengthOf(3);
+      expect(
+        resp.data.data.map((vault) => vault.prefix),
+        'Should see all vault prefixes'
+      ).to.have.members(['newprefix', updatedPrefix, vaultPrefix2]);
+    })
   });
 
   it('should delete aws vaults', async function () {

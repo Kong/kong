@@ -350,13 +350,18 @@ describe('Kong Plugins: RLA namespace Test', function () {
     it('should have key data periodic sync to Redis storage contains correct namespace with header value and entry count', async function () {
       //wait 1.5 seconds for counter sync
       await wait(1500);// eslint-disable-line no-restricted-syntax
-      await checkRedisDBSize(1);
+      
+      await eventually(async () => {
+        await checkRedisDBSize(1);
 
-      await checkRedisEntries({
-        expectedEntryCount: ['2'],
-        expectedHost: limitHeaderValueUpdate,
-        expectedNamespace: namespaceValueUpdate,
+        await checkRedisEntries({
+          expectedEntryCount: ['2'],
+          expectedHost: limitHeaderValueUpdate,
+          expectedNamespace: namespaceValueUpdate,
+        });
       });
+
+      
     });
 
     it('should limit proxy request and have entry count increased in Redis storage periodic sync mode', async function () {
@@ -447,12 +452,15 @@ describe('Kong Plugins: RLA namespace Test', function () {
     it('should have key data periodic sync to Redis storage', async function () {
       //wait 1.5 seconds for counter sync
       await wait(1500);// eslint-disable-line no-restricted-syntax
-      await checkRedisDBSize(1);
 
-      await checkRedisEntries({
-        expectedEntryCount: ['2'],
-        expectedHost: limitHeaderValue,
-        expectedNamespace: namespaceValue,
+      await eventually(async () => {
+        await checkRedisDBSize(1);
+
+        await checkRedisEntries({
+          expectedEntryCount: ['2'],
+          expectedHost: limitHeaderValue,
+          expectedNamespace: namespaceValue,
+        });
       });
     });
 

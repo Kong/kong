@@ -22,7 +22,8 @@ import {
   retryRequest,
   waitForCacheInvalidation,
   isGateway,
-  eventually
+  eventually,
+  waitForConfigRebuild
 } from '@support';
 
 const kvEngineVersions = ['v1', 'v2'];
@@ -230,7 +231,7 @@ kvEngineVersions.forEach((kvVersion) => {
 
       expect(resp.status, 'Status should be 204').to.equal(204);
 
-      await wait(islocalDB ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
+      await waitForConfigRebuild()
     });
 
     it('should not see access/secret credentials when they have been deleted', async function () {
@@ -249,7 +250,7 @@ kvEngineVersions.forEach((kvVersion) => {
     });
 
     it('should not proxy a request after secrets have been deleted', async function () {
-      await waitForCacheInvalidation(`vault-auth:${credentials.access_token}:${vaultEntityId}`, 8000)
+      await waitForCacheInvalidation(`vault-auth:${credentials.access_token}:${vaultEntityId}`)
 
       await eventually(async () => {
         const resp = await getNegative(

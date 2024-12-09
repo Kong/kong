@@ -510,8 +510,6 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
         });
         expect(resp.status, 'Status should be 201').to.equal(201);
 
-        await waitForConfigRebuild()
-
         await eventually(async () => {
           // validate route was created
           const respGet = await axios({
@@ -525,13 +523,17 @@ describe('@smoke @koko @gke @oss: Router Functionality Tests', function () {
       })
     
       it('should be able to send request to duplicate route', async function () {
-        const resp = await axios({
+        const req = () => axios({
           method: 'get',
           url: `${proxyUrl}${routePayload.paths[0]}`,
           headers: { testHeader: 'test' },
         });
-        logResponse(resp);
-        expect(resp.status, 'Status should be 200').to.equal(200);
+    
+        const assertions = (resp) => {
+          expect(resp.status, 'Status should be 200').to.equal(200);
+        };
+    
+        await retryRequest(req, assertions);
       })
     }
   }

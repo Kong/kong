@@ -10,8 +10,8 @@ import {
   logResponse,
   clearAllKongResources,
   isGateway,
-  waitForConfigRebuild,
-  patchRoute
+  patchRoute,
+  eventually
 } from '@support';
 
 describe('@smoke: Gateway Plugins: TLS Handshake Modifier', function () {
@@ -78,31 +78,31 @@ describe('@smoke: Gateway Plugins: TLS Handshake Modifier', function () {
     resp = await axios({ method: 'post', url, data: pluginPayload });
     logResponse(resp);
     expect(resp.status, 'Status should be 201').to.equal(201);
-
-    await waitForConfigRebuild();
   });
 
   proxyUrls.forEach(async (proxyUrl) => {
     it(`should proxy request with ${proxyUrl} when SNI has leftmost wildcard`, async function () {
-      // equivalent request in curl: curl -k --cert c.crt --key c.key --resolve fo.example.com:8443:127.0.0.1 https://fo.example.com:8443/tls
-      const resp = await axios({
-        url: `${proxyUrl}${path}`,
-        httpsAgent: new https.Agent({
-          rejectUnauthorized: false,
-          cert: authDetails.tls.cert,
-          key: authDetails.tls.key,
-        }),
-        proxy: {
-          host: resolvedIpAddress,
-          port: 8443
-        }
-      });
-      logResponse(resp);
-  
-      expect(resp.status, 'Status should be 200').to.equal(200);
-      expect(resp.data.headers['X-Client-Cert'], 'Should see X-Client-Cert header').to.contain(certChunk)
-      expect(resp.data.headers['X-Client-Cert-Subject-Dn'], 'Should see X-Client-Cert-Subject-Dn header').to.equal(certDn)
-      expect(resp.data.headers['X-Client-Cert-Issuer-Dn'], 'Should see X-Client-Cert-Issuer-Dn header').to.equal(certDn)
+      await eventually(async () => {
+        // equivalent request in curl: curl -k --cert c.crt --key c.key --resolve fo.example.com:8443:127.0.0.1 https://fo.example.com:8443/tls
+        const resp = await axios({
+          url: `${proxyUrl}${path}`,
+          httpsAgent: new https.Agent({
+            rejectUnauthorized: false,
+            cert: authDetails.tls.cert,
+            key: authDetails.tls.key,
+          }),
+          proxy: {
+            host: resolvedIpAddress,
+            port: 8443
+          }
+        });
+        logResponse(resp);
+    
+        expect(resp.status, 'Status should be 200').to.equal(200);
+        expect(resp.data.headers['X-Client-Cert'], 'Should see X-Client-Cert header').to.contain(certChunk)
+        expect(resp.data.headers['X-Client-Cert-Subject-Dn'], 'Should see X-Client-Cert-Subject-Dn header').to.equal(certDn)
+        expect(resp.data.headers['X-Client-Cert-Issuer-Dn'], 'Should see X-Client-Cert-Issuer-Dn header').to.equal(certDn)
+        })
     });
   })
 
@@ -156,29 +156,30 @@ describe('@smoke: Gateway Plugins: TLS Handshake Modifier', function () {
 
     expect(resp.status, 'Status should be 200').equal(200);
     expect(resp.data.snis[0], 'Should see updated SNI').to.equal('foo.example.*')
-    await waitForConfigRebuild();
   });
 
   proxyUrlsRightmost.forEach(async (proxyUrl) => {
     it(`should proxy request with ${proxyUrl} when SNI has rightmost wildcard`, async function () {
-      const resp = await axios({
-        url: `${proxyUrl}${path}`,
-        httpsAgent: new https.Agent({
-          rejectUnauthorized: false,
-          cert: authDetails.tls.cert,
-          key: authDetails.tls.key,
-        }),
-        proxy: {
-          host: resolvedIpAddress,
-          port: 8443
-        }
-      });
-      logResponse(resp);
-  
-      expect(resp.status, 'Status should be 200').to.equal(200);
-      expect(resp.data.headers['X-Client-Cert'], 'Should see X-Client-Cert header').to.contain(certChunk)
-      expect(resp.data.headers['X-Client-Cert-Subject-Dn'], 'Should see X-Client-Cert-Subject-Dn header').to.equal(certDn)
-      expect(resp.data.headers['X-Client-Cert-Issuer-Dn'], 'Should see X-Client-Cert-Issuer-Dn header').to.equal(certDn)
+      await eventually(async () => {
+        const resp = await axios({
+          url: `${proxyUrl}${path}`,
+          httpsAgent: new https.Agent({
+            rejectUnauthorized: false,
+            cert: authDetails.tls.cert,
+            key: authDetails.tls.key,
+          }),
+          proxy: {
+            host: resolvedIpAddress,
+            port: 8443
+          }
+        });
+        logResponse(resp);
+    
+        expect(resp.status, 'Status should be 200').to.equal(200);
+        expect(resp.data.headers['X-Client-Cert'], 'Should see X-Client-Cert header').to.contain(certChunk)
+        expect(resp.data.headers['X-Client-Cert-Subject-Dn'], 'Should see X-Client-Cert-Subject-Dn header').to.equal(certDn)
+        expect(resp.data.headers['X-Client-Cert-Issuer-Dn'], 'Should see X-Client-Cert-Issuer-Dn header').to.equal(certDn)
+      })
     });
   })
 

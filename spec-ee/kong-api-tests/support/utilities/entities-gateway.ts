@@ -819,7 +819,7 @@ export const waitForConfigRebuild = async (options: any = {}) => {
   // ensure admin API is ready before creating entities
   await eventually(async () => {
     const admin_url = getUrl("/")
-    const resp = await axios.get(`${admin_url}`)
+    const resp = await axios.get(admin_url)
 
     expect(resp.status, 'Kong Gateway Admin API timed out').to.equal(200)
   });
@@ -958,7 +958,7 @@ export const clearKongResource = async (endpoint: string, workspaceNameorId?: st
  * @param cacheKey - cache key to wait for
  * @param timeout - timeout in ms
  */
-export const waitForCacheInvalidation = async (cacheKey: string, timeout: number) => {
+export const waitForCacheInvalidation = async (cacheKey: string, timeout?: number) => {
   await eventually(async () => {
       const res = await getNegative(`${getUrl('cache')}/${cacheKey}`);
       expect(res.status, `cache API endpoint for ${cacheKey} should return 404 when item is invalidated`).to.equal(404);

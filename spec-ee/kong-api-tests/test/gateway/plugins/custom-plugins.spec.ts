@@ -14,7 +14,8 @@ import {
   isGateway,
   getGatewayHost,
   getControlPlaneDockerImage,
-  getKongContainerName
+  getKongContainerName,
+  eventually
 } from '@support';
 
 const kongPackage = getKongContainerName();
@@ -133,11 +134,14 @@ const currentDockerImage = getControlPlaneDockerImage();
         },
       };
 
-      const resp = await axios.post(url, payload);
-      expect(resp.status, 'should see 201 status').to.equal(201);
-      expect(resp.data.config.message, 'should see correct plugin configuration').to.equal(message);
-      expect(resp.data.name, 'should see correct plugin name').to.equal(customPlugin);
-      pluginsData[customPlugin].id = resp.data.id;
+      await eventually(async () => {
+        const resp = await axios.post(url, payload);
+        console.log(resp.data)
+        expect(resp.status, 'should see 201 status').to.equal(201);
+        expect(resp.data.config.message, 'should see correct plugin configuration').to.equal(message);
+        expect(resp.data.name, 'should see correct plugin name').to.equal(customPlugin);
+        pluginsData[customPlugin].id = resp.data.id;
+      });
 
       await waitForConfigRebuild()
     });
@@ -187,18 +191,21 @@ const currentDockerImage = getControlPlaneDockerImage();
 
     it(`should patch the ${customPlugin} custom plugin message field`, async function () {
       message = `new updated message for ${customPlugin}`;
-      const resp = await axios({
-        method: 'patch',
-        url: `${url}/${pluginsData[customPlugin].id}`,
-        data: {
-          config: {
-            message
-          }
-        }
-      });
 
-      expect(resp.status, 'Status should be 200').to.equal(200);
-      expect(resp.data.config.message, 'Should see the updated mesasge configuration field').to.equal(message)
+      await eventually(async () => {
+        const resp = await axios({
+          method: 'patch',
+          url: `${url}/${pluginsData[customPlugin].id}`,
+          data: {
+            config: {
+              message
+            }
+          }
+        });
+  
+        expect(resp.status, 'Status should be 200').to.equal(200);
+        expect(resp.data.config.message, 'Should see the updated mesasge configuration field').to.equal(message)
+      });
 
       await waitForConfigRebuild()
     });
@@ -206,23 +213,25 @@ const currentDockerImage = getControlPlaneDockerImage();
     it('should send request to upstream and see the custom plugin header with updated message', async function () {
       const headerName = `x-hello-from-${pluginsData[customPlugin].fullName.toLowerCase()}`;
 
-      const resp = await axios({
-        url: `${proxyUrl}${[pluginsData[customPlugin].path]}`,
+      await eventually(async () => {
+        const resp = await axios({
+          url: `${proxyUrl}${[pluginsData[customPlugin].path]}`,
+        });
+        logResponse(resp);
+  
+        expect(resp.status, 'Status should be 200').to.equal(200);
+  
+        if(customPlugin === 'js-hello') {
+          expect(resp.headers['x-javascript-pid']).to.be.a('string');
+          expect(resp.headers[headerName], `should see correct header for ${customPlugin}`).to.equal(
+            `${pluginsData[customPlugin].fullName} says ${message}`
+          );
+        } else {
+          expect(resp.headers[headerName], `should see correct header for ${customPlugin}`).to.contain(
+            `${pluginsData[customPlugin].fullName} says ${message} to ${host}`
+          );
+        }
       });
-      logResponse(resp);
-
-      expect(resp.status, 'Status should be 200').to.equal(200);
-
-      if(customPlugin === 'js-hello') {
-        expect(resp.headers['x-javascript-pid']).to.be.a('string');
-        expect(resp.headers[headerName], `should see correct header for ${customPlugin}`).to.equal(
-          `${pluginsData[customPlugin].fullName} says ${message}`
-        );
-      } else {
-        expect(resp.headers[headerName], `should see correct header for ${customPlugin}`).to.contain(
-          `${pluginsData[customPlugin].fullName} says ${message} to ${host}`
-        );
-      }
     });
 
     it(`should delete the ${customPlugin} custom plugin`, async function () {
