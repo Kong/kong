@@ -305,6 +305,11 @@ build = {
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
+    ["kong.db.resumable_chunker] = "kong/db/resumable_chunker/init.lua",
+    ["kong.db.resumable_chunker.chain] = "kong/db/resumable_chunker/chain.lua",
+    ["kong.db.resumable_chunker.strategy] = "kong/db/resumable_chunker/strategy.lua",
+    ["kong.db.resumable_chunker.utils] = "kong/db/resumable_chunker/utils.lua",
+
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
