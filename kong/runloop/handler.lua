@@ -986,8 +986,7 @@ return {
 
       -- start some rebuild timers for
       -- 1. traditional mode
-      -- 2. CP in hybrid mode
-      -- 3. DP with incremental sync on (dbless mode)
+      -- 2. DP with incremental sync on (dbless mode)
       if strategy ~= "off" or kong.sync then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
