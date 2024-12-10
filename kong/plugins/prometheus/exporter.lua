@@ -23,8 +23,9 @@ local role = kong.configuration.role
 local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000, 3000, 6000 }
 local UPSTREAM_LATENCY_BUCKETS = { 25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
 local AI_LLM_PROVIDER_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
-local IS_PROMETHEUS_ENABLED
 
+local IS_PROMETHEUS_ENABLED = false
+local export_upstream_health_metrics = false
 
 local metrics = {}
 -- prometheus.lua instance
@@ -206,7 +207,21 @@ end
 
 
 local function configure(configs)
-  IS_PROMETHEUS_ENABLED = configs ~= nil
+  -- everything disabled by default
+  IS_PROMETHEUS_ENABLED = false
+  export_upstream_health_metrics = false
+
+  if configs ~= nil then
+    IS_PROMETHEUS_ENABLED = true
+
+    for i = 1, #configs do
+      -- export upstream health metrics if any plugin has explicitly enabled them
+      if configs[i].upstream_health_metrics then
+        export_upstream_health_metrics = true
+        break
+      end
+    end
+  end
 end
 
 
@@ -402,16 +417,6 @@ local function log(message, serialized)
   end
 end
 
--- The upstream health metrics is turned on if at least one of
--- the plugin turns upstream_health_metrics on.
--- Due to the fact that during scrape time we don't want to
--- iterrate over all plugins to find out if upstream_health_metrics
--- is turned on or not, we will need a Kong reload if someone
--- turned on upstream_health_metrics on and off again, to actually
--- stop exporting upstream health metrics
-local should_export_upstream_health_metrics = false
-
-
 local function metric_data(write_fn)
   if not prometheus or not metrics then
     kong.log.err("prometheus: plugin is not initialized, please make sure ",
@@ -449,7 +454,7 @@ local function metric_data(write_fn)
   local phase = get_phase()
 
   -- only export upstream health metrics in traditional mode and data plane
-  if role ~= "control_plane" and should_export_upstream_health_metrics then
+  if role ~= "control_plane" and export_upstream_health_metrics then
     -- erase all target/upstream metrics, prevent exposing old metrics
     metrics.upstream_target_health:reset()
 
@@ -562,11 +567,6 @@ local function get_prometheus()
   return prometheus
 end
 
-local function set_export_upstream_health_metrics(set_or_not)
-  should_export_upstream_health_metrics = set_or_not
-end
-
-
 return {
   init        = init,
   init_worker = init_worker,
@@ -575,5 +575,4 @@ return {
   metric_data = metric_data,
   collect     = collect,
   get_prometheus = get_prometheus,
-  set_export_upstream_health_metrics = set_export_upstream_health_metrics,
 }
