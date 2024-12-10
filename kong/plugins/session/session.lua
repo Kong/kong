@@ -43,6 +43,7 @@ function _M.open_session(conf)
     remember_absolute_timeout = conf.remember_absolute_timeout,
     response_headers          = conf.response_headers,
     request_headers           = conf.request_headers,
+    store_metadata            = conf.store_metadata or false,
   })
 end
 
