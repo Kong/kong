@@ -34,6 +34,7 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local prev_hash
 
 local endswith = require("pl.stringx").endswith
 
@@ -100,8 +101,10 @@ local function send_ping(c, log_suffix)
     ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, _log_prefix,
             "unable to send ping frame to control plane: ", err, log_suffix)
 
-  else
-    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
+  -- only log a ping if the hash changed
+  elseif hash ~= prev_hash then
+    prev_hash = hash
+    ngx_log(ngx_INFO, _log_prefix, "sent ping frame to control plane with hash: ", hash, log_suffix)
   end
 end
 
