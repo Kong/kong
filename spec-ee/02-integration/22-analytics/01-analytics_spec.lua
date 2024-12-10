@@ -35,6 +35,57 @@ local analytics_mock = [[
   }
 ]]
 
+
+local analytics_mock_with_broken_server_start = [[
+  server {
+      server_name kong_cluster_telemetry_listener;
+> for _, entry in ipairs(cluster_telemetry_listeners) do
+      listen $(entry.listener) ssl;
+> end
+
+      access_log off;
+
+      ssl_verify_client   optional_no_ca;
+      ssl_certificate     ${{CLUSTER_CERT}};
+      ssl_certificate_key ${{CLUSTER_CERT_KEY}};
+      ssl_session_cache   shared:ClusterSSL:10m;
+
+      location = /v1/analytics/reqlog {
+          content_by_lua_block {
+              if _G.flag_is_analytics_server_down == nil then
+                _G.flag_is_analytics_server_down = true
+              end
+
+              if _G.flag_is_analytics_server_down then
+                ngx.exit(500)
+              end
+
+              ngx.log(ngx.INFO, "Got analytics connection from ", ngx.var.arg_node_id)
+              local pl_path = require "pl.path"
+              local conf_loader = require "kong.conf_loader"
+              local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
+              local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
+              kong.clustering = require("kong.clustering").new(config)
+              Kong.serve_cluster_telemetry_listener()
+          }
+      }
+  }
+
+  server {
+      server_name kong_cluster_telemetry_server;
+      listen 9191;
+      access_log off;
+
+      location = /debug-control-analytics-mock {
+          content_by_lua_block {
+              -- Reverse the flag
+              _G.flag_is_analytics_server_down = not(not not _G.flag_is_analytics_server_down)
+              ngx.exit(200)
+          }
+      }
+  }
+]]
+
 for _, mode in ipairs({"hybrid", "traditional"}) do
 
   describe("analytics [#" .. mode .. "] #off", function()
@@ -179,4 +230,64 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
+
+
+
+describe("analytics reconnect", function()
+  local node_id, proxy_client, debug_control_client
+  lazy_setup(function()
+    node_id = utils.uuid()
+    local fixtures = {
+      http_mock = {
+        analytics = analytics_mock_with_broken_server_start
+      }
+    }
+
+    -- the telemetry endpoint is used to validate analytics websocket connection can be established
+    -- kong is not supposed to process analytics payloads, so some errors are expected
+    assert(helpers.start_kong({
+      database = "off",
+      role = "data_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+      lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+      konnect_mode = true,
+      log_level = "debug",
+      vitals = true,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_telemetry_endpoint = "127.0.0.1:9006",
+      cluster_telemetry_listen = "127.0.0.1:9006",
+      cluster_telemetry_server_name = "kong_clustering",
+      node_id = node_id,
+    }, nil, nil,  fixtures))
+
+    proxy_client = helpers.proxy_client()
+    debug_control_client = helpers.proxy_client(nil, 9191)
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("analytics ws can send delayed payload after reconnect", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/get",
+    })
+    assert.res_status(404, res)
+
+    assert.logfile().has.line("websocket is not ready yet, waiting for next try", true, 10)
+    assert.logfile().has.line("handler could not process entries: no websocket connection", true, 10)
+
+    local res = assert(debug_control_client:send {
+      method  = "GET",
+      path    = "/debug-control-analytics-mock",
+    })
+
+    assert.res_status(200, res)
+
+    assert.logfile().has.line("sent payload to peer", true, 20)
+  end)
+end)
 
