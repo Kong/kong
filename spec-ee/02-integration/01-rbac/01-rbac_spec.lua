@@ -8,9 +8,9 @@
 local spec_helpers = require "spec.helpers"
 local utils       = require "kong.tools.utils"
 local bit = require "bit"
+local reload_module = require("spec.internal.module").reload
 
 
-local rbac
 local kong = kong
 local null = ngx.null
 
@@ -18,18 +18,11 @@ local null = ngx.null
 for _, strategy in spec_helpers.each_strategy() do
   describe("(#" .. strategy .. ")", function()
     local db, bp
-
-
-    setup(function()
-      package.loaded["kong.rbac"] = nil
-
-      bp, db = spec_helpers.get_db_utils()
-
-      rbac = require "kong.rbac"
-    end)
-
+    local rbac = reload_module("kong.rbac")
 
     lazy_setup(function ()
+      bp, db = spec_helpers.get_db_utils()
+
       local store = {}
       _G.kong.cache = {
         get = function(_, key, _, f, ...)
