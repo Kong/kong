@@ -960,7 +960,8 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    # TODO: When a new version of slsa-framework/slsa-github-generator is released, change this back.
+    uses: Water-Melon/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@93113bb8406e70d65182bb8acf889bdb4385d650
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['digest'][matrix.label] }}"
@@ -997,7 +998,8 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    # TODO: When a new version of slsa-framework/slsa-github-generator is released, change this back.
+    uses: Water-Melon/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@93113bb8406e70d65182bb8acf889bdb4385d650
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['digest'][matrix.label] }}"
