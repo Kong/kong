@@ -235,6 +235,7 @@ local constants = {
     GENERIC          = "generic or unknown error",
   },
   CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = "clustering_data_planes:latest_version",
+  CLUSTERING_DATA_PLANES_PAGED_FULL_SYNC_NEXT_TOKEN_KEY = "clustering_data_planes:paged_full_sync_next_token",
 
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
 
