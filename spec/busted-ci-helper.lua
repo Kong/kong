@@ -1,43 +1,49 @@
 -- busted-ci-helper.lua
-
-
--- needed before requiring 'socket.unix'
-require 'socket'
-
 local busted = require 'busted'
-local cjson = require 'cjson'
-local socket_unix = require 'socket.unix'
 
-local busted_event_path = os.getenv("BUSTED_EVENT_PATH")
+do
+  local shutdown_timers = require("kong.cmd.utils.timer").shutdown
+  assert(type(shutdown_timers) == "function")
 
--- Function to recursively copy a table, skipping keys associated with functions
-local function copyTable(original, copied, cache, max_depth, current_depth)
-  copied        = copied or {}
-  cache         = cache  or {}
-  max_depth     = max_depth or 5
-  current_depth = current_depth or 1
-
-  if cache[original] then return cache[original] end
-  cache[original] = copied
-
-  for key, value in pairs(original) do
-    if type(value) == "table" then
-      if current_depth < max_depth then
-        copied[key] = copyTable(value, {}, cache, max_depth, current_depth + 1)
-      end
-    elseif type(value) == "userdata" then
-      copied[key] = tostring(value)
-    elseif type(value) ~= "function" then
-      copied[key] = value
-    end
-  end
-
-  return copied
+  -- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
+  busted.subscribe({ 'exit' }, shutdown_timers)
 end
 
-if busted_event_path then
+local BUSTED_EVENT_PATH = os.getenv("BUSTED_EVENT_PATH")
+if BUSTED_EVENT_PATH then
+  -- needed before requiring 'socket.unix'
+  require 'socket'
+
+  local cjson = require 'cjson'
+  local socket_unix = require 'socket.unix'
+
+  -- Function to recursively copy a table, skipping keys associated with functions
+  local function copyTable(original, copied, cache, max_depth, current_depth)
+    copied        = copied or {}
+    cache         = cache  or {}
+    max_depth     = max_depth or 5
+    current_depth = current_depth or 1
+
+    if cache[original] then return cache[original] end
+    cache[original] = copied
+
+    for key, value in pairs(original) do
+      if type(value) == "table" then
+        if current_depth < max_depth then
+          copied[key] = copyTable(value, {}, cache, max_depth, current_depth + 1)
+        end
+      elseif type(value) == "userdata" then
+        copied[key] = tostring(value)
+      elseif type(value) ~= "function" then
+        copied[key] = value
+      end
+    end
+
+    return copied
+  end
+
   local sock = assert(socket_unix())
-  assert(sock:connect(busted_event_path))
+  assert(sock:connect(BUSTED_EVENT_PATH))
 
   local events = {{ 'suite', 'reset' },
                   { 'suite', 'start' },
@@ -51,6 +57,7 @@ if busted_event_path then
                   { 'error', 'it' },
                   { 'failure' },
                   { 'error' }}
+
   for _, event in ipairs(events) do
     busted.subscribe(event, function (...)
       local args = {}
@@ -69,6 +76,3 @@ if busted_event_path then
     end)
   end
 end
-
--- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
-busted.subscribe({ 'exit' }, require("kong.cmd.utils.timer").shutdown)
