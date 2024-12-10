@@ -3,6 +3,7 @@ local pl_keys = require("pl.tablex").keys
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
 local uuid = require("kong.tools.uuid")
+local split = require("kong.tools.string").split
 
 
 local type         = type
@@ -862,6 +863,9 @@ do
       --   }
       -- }
       --
+      if type(err_t[ref.field]) == "string" then
+        err_t[ref.field] = entity_type..":"..err_t[ref.field] ..":"..ref.field
+      end
       if ref.entity == entity_type then
         local field_name = ref.field
         local field_value = entity[field_name]
@@ -1029,7 +1033,14 @@ do
         goto next_section
       end
 
-      local entities = input[entity_type]
+      local entity_type_list = split(entity_type, "|")
+      local entitys_level = input
+      for i, entity_type_elem in ipairs(entity_type_list) do
+        local next_elem = tonumber(entity_type_elem) or entity_type_elem
+        entitys_level = entitys_level[next_elem]
+      end
+
+      local entities = entitys_level
 
       if type(entities) ~= "table" then
         -- put it back into the error table

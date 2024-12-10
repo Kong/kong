@@ -400,8 +400,12 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       if key and key ~= ngx.null then
         local ok = add_to_by_key(by_key, entity_schema, item, entity, key)
         if not ok then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
+          local errs_item_name = entity
+          if parent_entity and tostring(parent_idx) then
+            errs_item_name = parent_entity.."|"..tostring(parent_idx).."|"..entity
+          end
+          errs[errs_item_name] = errs[errs_item_name] or {}
+          errs[errs_item_name][i] = uniqueness_error_msg(entity, endpoint_key, key)
           failed = true
         end
       end
