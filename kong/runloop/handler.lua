@@ -359,10 +359,20 @@ local function new_router(version)
     end
   end
 
+  -- We need to force detecting router changes if there is some one modifying
+  -- the routers, like rebuild_router_timer.
+  --
+  -- 1. stratey off
+  --      incremental_sync on:
+  --             non init worker: true(kong.core_cache)
+  --                 init worker: false
+  --      incremental_sync off:   false
+  -- 2. strategy on:              true(kong.core_cache)
   local detect_changes = kong.core_cache and true
 
-  -- for dbless we will not check changes when initing
-  if db.strategy == "off" and get_phase() == "init_worker" then
+  if db.strategy == "off" and
+    ((kong.sync and get_phase() == "init_worker") or not kong.sync)
+  then
     detect_changes = false
   end
 
@@ -979,7 +989,11 @@ return {
         end
       end
 
-      do  -- start some rebuild timers
+      -- start some rebuild timers for
+      -- 1. traditional mode
+      -- 2. CP in hybrid mode
+      -- 3. DP with incremental sync on (dbless mode)
+      if strategy ~= "off" or kong.sync then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
         local router_async_opts = {
