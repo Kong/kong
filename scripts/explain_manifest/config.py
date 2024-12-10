@@ -99,6 +99,19 @@ targets = {
             },
         }
     ),
+    "ubuntu-20.04-amd64": ExpectSuite(
+        name="Ubuntu 20.04 (amd64)",
+        manifest="fixtures/ubuntu-20.04-amd64.txt",
+        tests={
+            common_suites: {},
+            libc_libcpp_suites: {
+                "libc_max_version": "2.30",
+                # gcc 9.3.0
+                "libcxx_max_version": "3.4.28",
+                "cxxabi_max_version": "1.3.12",
+            },
+        }
+    ),
     "ubuntu-22.04-amd64": ExpectSuite(
         name="Ubuntu 22.04 (amd64)",
         manifest="fixtures/ubuntu-22.04-amd64.txt",
