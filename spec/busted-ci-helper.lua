@@ -6,7 +6,13 @@ do
   assert(type(shutdown_timers) == "function")
 
   -- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
-  busted.subscribe({ 'exit' }, shutdown_timers)
+  busted.subscribe({ 'exit' }, function()
+    shutdown_timers()
+
+    -- second return value must be `true`, or else all other callbacks for this
+    -- event will be skipped
+    return nil, true
+  end)
 end
 
 local BUSTED_EVENT_PATH = os.getenv("BUSTED_EVENT_PATH")
