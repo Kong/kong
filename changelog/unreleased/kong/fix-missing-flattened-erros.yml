@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where flattened errors had missing info when fields were lost or conflicted in a nested entity.
+type: bugfix
+scope: Core
