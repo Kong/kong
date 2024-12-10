@@ -159,6 +159,12 @@ _M.operation_map = {
       path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
     },
   },
+  mistral = {
+    ["llm/v1/chat"] = {
+      path = "v1/chat/completions",
+      method = "POST",
+    },
+  },
   huggingface = {
     ["llm/v1/completions"] = {
       path = "/models/%s",
