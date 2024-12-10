@@ -69,3 +69,6 @@ if busted_event_path then
     end)
   end
 end
+
+-- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
+busted.subscribe({ 'exit' }, require("kong.cmd.utils.timer").shutdown)
