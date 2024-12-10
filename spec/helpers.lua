@@ -29,6 +29,10 @@ local client = reload_module("spec.internal.client")
 local wait = reload_module("spec.internal.wait")
 
 
+-- redo the patches to make kong PDK available to timerng timers
+reload_module("kong.globalpatches")({ cli = true, rbusted = true, })
+
+
 ----------------
 -- Variables/constants
 -- @section exported-fields
