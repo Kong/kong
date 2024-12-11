@@ -53,6 +53,8 @@ function _M:start()
     return true
   end
 
+  ngx.log(ngx.INFO, "xxx fut start: socket:call", self.node_id, self.method)
+
   return self.socket:call(self.node_id,
                           self.method,
                           self.params, callback)

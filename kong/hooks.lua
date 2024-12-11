@@ -78,6 +78,7 @@ end
 
 
 function _M.run_hook(name, a0, a1, a2, a3, a4, a5, ...)
+  -- ngx.log(ngx.INFO, "xxx run hooks:", name)
   if not hooks[name] then
     return a0 -- return only the first value
   end

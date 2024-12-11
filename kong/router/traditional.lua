@@ -1542,6 +1542,7 @@ function _M.new(routes, cache, cache_neg)
                             src_ip, src_port,
                             dst_ip, dst_port,
                             sni, req_headers)
+    ngx.log(ngx.INFO, "xxx find_route: ")
 
     check_select_params(req_method, req_uri, req_host, req_scheme,
                         src_ip, src_port,
@@ -1753,6 +1754,7 @@ function _M.new(routes, cache, cache_neg)
   local exec
   if is_http then
     exec = function(ctx)
+      ngx.log(ngx.INFO, "xxx exec")
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
       local req_host = get_header("host", ctx)
@@ -1780,6 +1782,7 @@ function _M.new(routes, cache, cache_neg)
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
+ngx.log(ngx.INFO, "xxx find route: ", tostring(match_t))
       if match_t then
         -- debug HTTP request header logic
         add_debug_headers(ctx, header, match_t)

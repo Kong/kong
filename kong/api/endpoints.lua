@@ -406,6 +406,7 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       self.args.post[foreign_field_name] = foreign_schema:extract_pk_values(foreign_entity)
     end
 
+    ngx.log(ngx.INFO, "xxx insert entity :", schema.name)
     local entity, _, err_t = insert_entity(self, db, schema, method)
     if err_t then
       return handle_error(err_t)

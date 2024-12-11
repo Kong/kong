@@ -31,7 +31,7 @@ local PING_WAIT = CLUSTERING_PING_INTERVAL * 1.5
 local PING_TYPE = "PING"
 local PONG_TYPE = "PONG"
 local ngx_WARN = ngx.WARN
-local ngx_DEBUG = ngx.DEBUG
+local ngx_DEBUG = ngx.INFO -- ngx.DEBUG
 
 
 -- create a new socket wrapper, wb is the WebSocket object to use
@@ -91,11 +91,14 @@ end
 
 -- start reader and writer thread and event loop
 function _M:start()
+  ngx.log(ngx.INFO, "xxx socket:start ", debug.traceback())
   self.read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
 
     while not exiting() do
       local data, typ, err = self.wb:recv_frame()
+
+      ngx.log(ngx.INFO, "xxx reading from websocket: ", data, " typ:", typ, " err:", err)
 
       if err then
         if not is_timeout(err) then
@@ -198,7 +201,11 @@ function _M:start()
   self.write_thread = ngx.thread.spawn(function()
     while not exiting() do
       local payload, err = self.outgoing:pop(5)
+
+      ngx.log(ngx.INFO, "xxx socket write_thread: outgoing:pop: ", payload and payload.method, " err:", err)
+
       if err then
+        ngx.log(ngx.ERR, "xxx socket write thread quit!!!!!!!!!!!!!!!!!! ", err)
         return nil, err
       end
 
@@ -274,6 +281,8 @@ function _M:call(node_id, method, params, callback)
   local id = self:_get_next_id()
 
   self.interest[id] = callback
+
+  ngx.log(ngx.INFO, "xxx socket call, self.outgoing:push:", method)
 
   return self.outgoing:push({
     jsonrpc = jsonrpc.VERSION,

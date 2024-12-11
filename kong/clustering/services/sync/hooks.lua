@@ -10,7 +10,7 @@ local ipairs = ipairs
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
-local ngx_DEBUG = ngx.DEBUG
+local ngx_DEBUG = ngx.INFO -- ngx.DEBUG
 
 
 local DEFAULT_PAGE_SIZE = 512
@@ -27,6 +27,7 @@ end
 
 local function get_all_nodes_with_sync_cap()
   local res, err = kong.db.clustering_data_planes:page(DEFAULT_PAGE_SIZE)
+  ngx.log(ngx.INFO, "xxx kong.db.clustering_data_planes:page ->", #res, " err:", err)
   if err then
     return nil, "unable to query DB " .. err
   end
@@ -52,6 +53,8 @@ local function get_all_nodes_with_sync_cap()
 end
 
 
+local notify_hash = 100001
+
 function _M:notify_all_nodes()
   local latest_version, err = self.strategy:get_latest_version()
   if not latest_version then
@@ -59,12 +62,16 @@ function _M:notify_all_nodes()
     return
   end
 
-  ngx_log(ngx_DEBUG, "[kong.sync.v2] notifying all nodes of new version: ", latest_version)
+  ngx_log(ngx_DEBUG, "xxx [kong.sync.v2] notifying all nodes of new version: ", latest_version, " notify hash:", notify_hash)
 
-  local msg = { default = { new_version = latest_version, }, }
+  local msg = { default = { new_version = latest_version, }, hash = notify_hash, }
+  notify_hash = notify_hash + 1
 
-  for _, node in ipairs(get_all_nodes_with_sync_cap()) do
+  local nodes, err = get_all_nodes_with_sync_cap()
+  ngx.log(ngx.INFO, "xxx nodes=", require("inspect")(nodes), " err=", err)
+  for _, node in ipairs(nodes) do
     local res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", msg)
+    ngx.log(ngx.INFO, "xxx notify ", node, " new_version = ", latest_version, " err:", err)
     if not res then
       if not err:find("requested capability does not exist", nil, true) then
         ngx_log(ngx_ERR, "unable to notify ", node, " new version: ", err)
@@ -95,6 +102,8 @@ end
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
   local d = gen_delta(entity, name, options, ws_id, is_delete)
   local deltas = { d, }
+
+  ngx.log(ngx.INFO, "xxx generate entity :", require("inspect")(entity))
 
   local res, err = self.strategy:insert_delta(deltas)
   if not res then

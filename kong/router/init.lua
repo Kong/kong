@@ -22,6 +22,7 @@ local FLAVOR_TO_MODULE = {
 
 
 function _M:exec(ctx)
+  ngx.log(ngx.INFO, "xxx exec")
   return self.trad.exec(ctx)
 end
 

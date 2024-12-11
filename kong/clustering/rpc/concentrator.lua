@@ -21,7 +21,7 @@ local is_timeout = rpc_utils.is_timeout
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_WARN = ngx.WARN
-local ngx_DEBUG = ngx.DEBUG
+local ngx_DEBUG = ngx.INFO -- ngx.DEBUG
 
 
 local RESP_CHANNEL_PREFIX = "rpc:resp:" -- format: rpc:resp:<worker_uuid>
@@ -83,6 +83,7 @@ local function enqueue_notifications(notifications, notifications_queue)
   assert(notifications_queue)
 
   if notifications then
+    ngx.log(ngx.INFO, "xxxx enqueue_notifications: ", require("inspect")(notifications))
     for _, n in ipairs(notifications) do
       assert(notifications_queue:push(n))
     end
@@ -118,6 +119,8 @@ function _M:_event_loop(lconn)
         local payload = cjson_decode(n.payload)
         assert(payload.jsonrpc == jsonrpc.VERSION)
 
+        ngx.log(ngx.INFO, "xxx concentrator event_loop resp:")
+
         -- response
         local cb = self.interest[payload.id]
         self.interest[payload.id] = nil -- edge trigger only once
@@ -134,6 +137,7 @@ function _M:_event_loop(lconn)
         end
 
       else
+        ngx.log(ngx.INFO, "xxx concentrator event_loop req:")
         -- other CP inside the cluster asked us to forward a call
         assert(n.channel:sub(1, #REQ_CHANNEL_PREFIX) == REQ_CHANNEL_PREFIX,
                "unexpected concentrator request channel name: " .. n.channel)
@@ -198,6 +202,8 @@ function _M:_event_loop(lconn)
 
         local _, notifications
         res, err, _, notifications = lconn:query(sql or "SELECT 1;") -- keepalive
+        ngx.log(ngx.INFO, "xxx concetrator lconn:query ", sql or "SELECT 1;", " -> ",
+               require("inspect")(res), " err:" , err, " notifications:", require("inspect")(notifications))
         if not res then
           return nil, "query to Postgres failed: " .. err
         end
@@ -256,6 +262,7 @@ function _M:_enqueue_rpc_request(node_id, payload)
                             5,
                             self.db.connector:escape_literal(cjson_encode(payload)),
                             self.db.connector:escape_literal(REQ_CHANNEL_PREFIX .. node_id))
+  ngx.log(ngx.INFO, "xxx concentrator _enqueue_rpc_request: ", sql)
   return self.db.connector:query(sql)
 end
 
@@ -290,6 +297,8 @@ function _M:call(node_id, method, params, callback)
   local id = self:_get_next_id()
 
   self.interest[id] = callback
+
+  ngx.log(ngx.INFO, "xxx concentrator:call _enqueue_rpc_request()", node_id, " ", method)
 
   return self:_enqueue_rpc_request(node_id, {
     jsonrpc = jsonrpc.VERSION,

@@ -27,7 +27,7 @@ local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
-local ngx_DEBUG = ngx.DEBUG
+local ngx_DEBUG = ngx.INFO -- ngx.DEBUG
 
 
 -- number of versions behind before a full sync is forced
@@ -44,7 +44,9 @@ end
 
 
 local function inc_sync_result(res)
-  return { default = { deltas = res, wipe = false, }, }
+  local r =  { default = { deltas = res, wipe = false, }, }
+  ngx.log(ngx.INFO, "xxx generated res = ", require("inspect")(r), ": ", debug.traceback("Backtrace:", level))
+  return r
 end
 
 
@@ -53,6 +55,7 @@ local function full_sync_result()
   if not deltas then
     return nil, err
   end
+  ngx.log(ngx.INFO, "xxx generated full sync res = ", require("inspect")(deltas))
 
   -- wipe dp lmdb, full sync
   return { default = { deltas = deltas, wipe = true, }, }
@@ -71,7 +74,7 @@ function _M:init_cp(manager)
   -- Params: versions: list of current versions of the database
   -- example: { default = { version = 1000, }, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-    ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client), current_version=", require("inspect")(current_versions), debug.traceback())
 
     local rpc_peers
     if kong.rpc then
@@ -98,6 +101,9 @@ function _M:init_cp(manager)
       config_hash = fmt("%032d", default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
+
+    ngx.log(ngx.INFO, "xxx kong.db.clustering_data_planes:upsert ", tostring(node_id), " ttl:", tostring(purge_delay), " -> ", tostring(ok), " err:", tostring(err))
+
     if not ok then
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
     end
@@ -106,6 +112,8 @@ function _M:init_cp(manager)
     if not latest_version then
       return nil, err
     end
+
+    ngx_log(ngx_DEBUG, "xxx dp v:", default_namespace_version, " cp v:", latest_version)
 
     -- is the node empty? If so, just do a full sync to bring it up to date faster
     if default_namespace_version == 0 or
@@ -160,6 +168,9 @@ function _M:init_dp(manager)
   -- Params: new_versions: list of namespaces and their new versions, like:
   -- { default = { new_version = 1000, }, }
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
+    ngx.log(ngx.INFO, "xxx DP: kong.sync.v2.notify_new_version notify received:",
+            node_id, " new_versions:", require("inspect")(new_versions), " :", debug.traceback())
+
     -- TODO: currently only default is supported, and anything else is ignored
     local default_new_version = new_versions.default
     if not default_new_version then
@@ -171,8 +182,11 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
+
     local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+    ngx.log(ngx.ERR, "xxx DP notify received version:", version, " lmdb_ver:", lmdb_ver)
     if lmdb_ver < version then
+      ngx.log(ngx.ERR, "xxx DP notify return self:sync_once()")
       -- set lastest version to shm
       kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
       return self:sync_once()
@@ -221,7 +235,12 @@ local function do_sync()
                  },
                }
 
+ngx.log(ngx.INFO, "xxx : call get_delta:", require("inspect")(msg))
+
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta", msg)
+
+ngx.log(ngx.INFO, "xxx : ns_deltas:", require("inspect")(ns_deltas))
+
   if not ns_deltas then
     ngx_log(ngx_ERR, "sync get_delta error: ", err)
     return true
@@ -273,6 +292,8 @@ local function do_sync()
   -- delta should look like:
   -- { type = ..., entity = { ... }, version = 1, ws_id = ..., }
   for _, delta in ipairs(deltas) do
+ngx.log(ngx.INFO, "xxx : ", delta.type)
+
     local delta_version = delta.version
     local delta_type = delta.type
     local delta_entity = delta.entity
@@ -392,12 +413,16 @@ local function do_sync()
 end
 
 
-local function sync_handler(premature)
+local function sync_handler(premature, t)
+  ngx.log(ngx.INFO, "xxx sync_handler:", t)
   if premature then
     return
   end
 
+  ngx.log(ngx.INFO, "xxx try mutex: do_sync")
   local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, do_sync)
+  ngx.log(ngx.INFO, "xxx try mutex: do_sync: ", res, " err:", err)
+
   if not res and err ~= "timeout" then
     ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
   end
@@ -418,12 +443,13 @@ end
 
 
 function sync_once_impl(premature, retry_count)
+  ngx.log(ngx.INFO, "xxx sync once")
   if premature then
     return
   end
 
-  sync_handler()  
-  
+  sync_handler()
+
   local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   local current_version = tonumber(declarative.get_current_hash()) or 0
 
@@ -451,7 +477,7 @@ end
 
 
 function _M:sync_every(delay)
-  return ngx.timer.every(delay, sync_handler)
+  return ngx.timer.every(delay, sync_handler, " timer.every ")
 end
 
 

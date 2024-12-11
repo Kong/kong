@@ -441,6 +441,7 @@ end
 
 
 function _M:exec(ctx)
+  ngx.log(ngx.INFO, "xxx exec")
   local fields = self.fields
 
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -459,9 +460,13 @@ function _M:exec(ctx)
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
 
+  ngx.log(ngx.INFO, "xxx CACHE_PARAMS:", require("inspect")(CACHE_PARAMS))
   local cache_key = fields:get_cache_key(CACHE_PARAMS)
 
   -- cache lookup
+  --
+
+  ngx.log(ngx.INFO, "xxx get cache_key:[", cache_key, "]")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
@@ -573,6 +578,7 @@ end
 
 
 function _M:exec(ctx)
+  ngx.log(ngx.INFO, "xxx exec ")
   local fields = self.fields
 
   -- cache key calculation
