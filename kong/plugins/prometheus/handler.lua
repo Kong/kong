@@ -65,12 +65,6 @@ function PrometheusHandler:log(conf)
     serialized.ai_metrics = message.ai
   end
 
-  if conf.upstream_health_metrics then
-    exporter.set_export_upstream_health_metrics(true)
-  else
-    exporter.set_export_upstream_health_metrics(false)
-  end
-
   exporter.log(message, serialized)
 end
 
