@@ -9,11 +9,14 @@ local log           = require "kong.plugins.saml.log"
 local hash          = require "kong.openid-connect.hash"
 local session       = require "resty.session"
 local map           = require "pl.tablex".map
+local redis_config_utils = require "kong.tools.redis.config_utils"
 
 
 local ngx_null = ngx.null
 local concat        = table.concat
 local encode_base64 = ngx.encode_base64
+local gen_poolname  = redis_config_utils.gen_poolname
+
 
 local function is_present(x)
   return x and ngx_null ~= x
@@ -122,6 +125,8 @@ local function new(conf, secret)
             server_name       = conf.redis["server_name"],
           }
         end
+
+        redis.pool = gen_poolname(redis)
       end
 
       initialized = true

@@ -1709,6 +1709,7 @@ for _, policy in ipairs({"memory", "redis"}) do
       end)
 
       describe("redis sentinel", function()
+        local redis_sentinel_strategy
         lazy_setup(function()
           local redis_sentinel_policy_config = {
             sentinel_nodes = REDIS_SENTINEL_NODES,
@@ -1716,7 +1717,7 @@ for _, policy in ipairs({"memory", "redis"}) do
             sentinel_master = "mymaster"
           }
 
-          local redis_sentinel_strategy = strategies({
+          redis_sentinel_strategy = strategies({
             strategy_name = policy,
             strategy_opts = redis_sentinel_policy_config,
           })
@@ -1761,7 +1762,16 @@ for _, policy in ipairs({"memory", "redis"}) do
           assert.matches("^[%w%d]+$", cache_key1)
           assert.equals(64, #cache_key1)
 
-          wait_until_key_in_cache(cache_key1)
+          assert
+          .with_timeout(TIMEOUT)
+          .with_max_tries(20)
+          .with_step(0.5)
+          .ignore_exceptions(true)
+          .eventually(function()
+            local resp_cache = assert(redis_sentinel_strategy:fetch(cache_key1))
+            assert.are_equal(200, resp_cache.status)
+          end)
+          .has_no_error("failed to sync with backend Redis")
 
           local res = client:send {
             method = "GET",

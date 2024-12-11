@@ -11,9 +11,13 @@
 local redis_connector    = require "kong.enterprise_edition.tools.redis.v2.clients.redis_connector"
 local redis_cluster      = require "kong.enterprise_edition.tools.redis.v2.clients.redis_cluster"
 local redis_ee_schema    = require "kong.enterprise_edition.tools.redis.v2.schema"
+local redis_config_utils = require "kong.tools.redis.config_utils"
 local reports            = require "kong.reports"
 
+
 local ngx_null = ngx.null
+local gen_poolname = redis_config_utils.gen_poolname
+
 
 local _M = {}
 
@@ -34,6 +38,7 @@ local function connect_to_redis(conf)
     server_name = conf.server_name,
     pool_size = conf.keepalive_pool_size,
     backlog = conf.keepalive_backlog,
+    pool = gen_poolname(conf),
   }
 
   if is_redis_cluster(conf) then

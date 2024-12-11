@@ -1,0 +1,7 @@
+message: |
+  Created connection pool for each `host`, `port`, `username`, `ssl` combination to fix the following issues:
+
+  1. Fixed an 401 error where multiple plugins (e.g. RLA and OIDC) were configured to use different Redis databases.
+  2. Prevented malicious clients from gaining access to shared authenticated connections, thus protecting Redis servers.
+  3. Restricted clients with limited ACL control to their granted scope.
+type: bugfix

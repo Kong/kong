@@ -16,6 +16,7 @@ local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 local encode_base64 = ngx.encode_base64
 local sub = string.sub
 local find = string.find
+local table_insert = table.insert
 
 
 local PLUGIN_NAME = "openid-connect"
@@ -115,6 +116,19 @@ local function extract_cookie(cookie)
   return user_session_header_table
 end
 
+local function get_clients(red)
+  if not red then
+    return nil, "expect a redis client"
+  end
+
+  local clients = {}
+  local res = assert(red:client("list"))
+  for line in res:gmatch("[^\r\n]+") do
+    table_insert(clients, line)
+  end
+
+  return clients
+end
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: #" .. strategy .. " ->", function()
@@ -147,7 +161,9 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     describe("authentication", function()
-      local custom_redis_db = 15
+      local PLUGIN_RLA = "rate-limiting-advanced"
+      local custom_redis_db14 = 14
+      local custom_redis_db15 = 15
       local proxy_client
       local jane
       local jack
@@ -157,7 +173,7 @@ for _, strategy in helpers.all_strategies() do
           "services",
           "plugins",
         }, {
-          PLUGIN_NAME
+          PLUGIN_NAME, PLUGIN_RLA
         })
 
         local service = bp.services:insert {
@@ -564,7 +580,70 @@ for _, strategy in helpers.all_strategies() do
             redis = {
               host = REDIS_HOST,
               port = REDIS_PORT,
-              database = custom_redis_db,
+              database = custom_redis_db15,
+            },
+          },
+        }
+
+        local route_redis_session_pool = bp.routes:insert {
+          service = service,
+          paths   = { "/redis-session-pool" },
+        }
+
+        bp.plugins:insert {
+          route   = route_redis_session_pool,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "client_credentials",
+              "session",
+            },
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            session_storage = "redis",
+            -- pool = "redis:6379::false:false:redis:::15"
+            redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+              database = custom_redis_db14,
+              server_name = REDIS_HOST,
+            },
+          },
+        }
+
+        bp.plugins:insert {
+          route = route_redis_session_pool,
+          name = PLUGIN_RLA,
+          config = {
+            namespace = "konghq",
+            window_type = "sliding",
+            window_size = {
+              60,
+            },
+            limit = {
+              5
+            },
+            identifier = "consumer",
+            sync_rate = 1,
+            strategy = "redis",
+            -- pool = "redis:6379::false:false::openid-connect-user:secret:1"
+            redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+              database = 1,
+              username = REDIS_USER_VALID,
+              password = REDIS_PASSWORD,
             },
           },
         }
@@ -786,7 +865,7 @@ for _, strategy in helpers.all_strategies() do
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          plugins    = "bundled," .. PLUGIN_NAME,
+          plugins    = "bundled," .. PLUGIN_NAME .. "," .. PLUGIN_RLA,
         }))
       end)
 
@@ -836,7 +915,7 @@ for _, strategy in helpers.all_strategies() do
           user_session = sub(cookie, 0, find(cookie, ";") -1)
           if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
             -- auth_session_id is dropped by the browser for non-https connections
-            table.insert(user_session_header_table, user_session)
+            table_insert(user_session_header_table, user_session)
           end
         end
         -- get the action_url from submit button and post username:password
@@ -1041,7 +1120,7 @@ for _, strategy in helpers.all_strategies() do
             user_session = sub(cookie, 0, find(cookie, ";") -1)
             if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
               -- auth_session_id is dropped by the browser for non-https connections
-              table.insert(user_session_header_table, user_session)
+              table_insert(user_session_header_table, user_session)
             end
           end
           -- get the action_url from submit button and post username:password
@@ -1106,7 +1185,7 @@ for _, strategy in helpers.all_strategies() do
             user_session = sub(cookie, 0, find(cookie, ";") -1)
             if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
               -- auth_session_id is dropped by the browser for non-https connections
-              table.insert(user_session_header_table, user_session)
+              table_insert(user_session_header_table, user_session)
             end
           end
           -- get the action_url from submit button and post username:password
@@ -2039,7 +2118,7 @@ for _, strategy in helpers.all_strategies() do
         it("store session data in specified Redis database", function()
           local ok, res, err
 
-          ok, err = red:select(custom_redis_db)
+          ok, err = red:select(custom_redis_db15)
           assert.is_nil(err)
           assert.is_truthy(ok)
           res, err = red:scan(0)
@@ -2077,6 +2156,29 @@ for _, strategy in helpers.all_strategies() do
           assert.is_table(res[2])
           assert.matches("session:%S+", res[2][1])
 
+          red:flushdb()
+        end)
+
+        it("use different Redis connection pools for different config parameters", function()
+          local lst1 = assert(get_clients(red))
+          assert.gt(0, #lst1)
+
+          local res = assert(proxy_client:get("/redis-session-pool", {
+            headers = {
+              Authorization = CLIENT_CREDENTIALS,
+            },
+          }))
+          assert.response(res).has.status(200)
+          assert.is_not_nil(res.headers["Set-Cookie"])
+          assert.are_equal(4, tonumber(res.headers["RateLimit-Remaining"]))
+
+          local lst2 = assert(get_clients(red))
+          -- two pools added
+          assert.are_equal(#lst1, #lst2 - 2)
+
+          local ok, err = red:select(custom_redis_db14)
+          assert.is_nil(err)
+          assert.is_truthy(ok)
           red:flushdb()
         end)
 

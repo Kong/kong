@@ -349,6 +349,7 @@ build = {
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
+    ["kong.tools.redis.config_utils"] = "kong/tools/redis/config_utils.lua",
     ["kong.tools.ssl"] = "kong/tools/ssl.lua",
     ["kong.tools.date"] = "kong/tools/date.lua",
 
