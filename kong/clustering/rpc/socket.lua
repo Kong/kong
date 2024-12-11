@@ -98,7 +98,7 @@ function _M:start()
     while not exiting() do
       local data, typ, err = self.wb:recv_frame()
 
-      ngx.log(ngx.INFO, "xxx reading from websocket: ", data, " typ:", typ, " err:", err)
+      --ngx.log(ngx.INFO, "xxx reading from websocket: ", data, " typ:", typ, " err:", err)
 
       if err then
         if not is_timeout(err) then
@@ -202,10 +202,10 @@ function _M:start()
     while not exiting() do
       local payload, err = self.outgoing:pop(5)
 
-      ngx.log(ngx.INFO, "xxx socket write_thread: outgoing:pop: ", payload and payload.method, " err:", err)
+      --ngx.log(ngx.INFO, "xxx socket write_thread: outgoing:pop: ", payload and payload.method, " err:", err)
 
       if err then
-        ngx.log(ngx.ERR, "xxx socket write thread quit!!!!!!!!!!!!!!!!!! ", err)
+        --ngx.log(ngx.ERR, "xxx socket write thread quit!!!!!!!!!!!!!!!!!! ", err)
         return nil, err
       end
 
