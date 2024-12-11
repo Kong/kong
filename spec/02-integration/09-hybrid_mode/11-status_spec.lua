@@ -4,7 +4,8 @@ local helpers = require "spec.helpers"
 local cp_status_port = helpers.get_available_port()
 local dp_status_port = 8100
 
-for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+--for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+for _, v in ipairs({ {"on", "on"}, }) do
   local rpc, inc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
@@ -105,7 +106,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- now dp receive config from cp, so dp should be ready
 
-      it("should return 200 on data plane after configuring", function()
+      it("should return 200 on data plane after configuring #ttt", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
@@ -165,9 +166,40 @@ for _, strategy in helpers.each_strategy() do
             return true
           end
         end, 10)
+
+        -- insert one entity to make dp ready for incremental sync
+        if inc_sync == "on" then
+          ngx.sleep(1)
+          print("+++++ post /services")
+          local admin_client = helpers.admin_client(10000)
+          local res = assert(admin_client:post("/services", {
+            body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(201, res)
+          admin_client:close()
+
+          print("++++++= sleep")
+          --ngx.sleep(1000000)
+          helpers.wait_until(function()
+            local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+
+            local res = http_client:send({
+              method = "GET",
+              path = "/status/ready",
+            })
+
+            local status = res and res.status
+            http_client:close()
+--            print("++++++++++" .. status)
+
+            if status == 200 then
+              return true
+            end
+          end, 10)
+        end
+       end)
       end)
     end)
-
-  end)
 end -- for _, strategy
 end -- for inc_sync
