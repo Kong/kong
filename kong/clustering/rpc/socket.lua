@@ -91,7 +91,7 @@ end
 
 -- start reader and writer thread and event loop
 function _M:start()
-  ngx.log(ngx.INFO, "xxx socket:start ", debug.traceback())
+  -- ngx.log(ngx.INFO, "xxx socket:start ", debug.traceback())
   self.read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
 
