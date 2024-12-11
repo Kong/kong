@@ -212,6 +212,14 @@ return {
               default = "session_logout"
             }
           },
+          {
+            store_metadata = {
+              description =
+              "Whether to also store metadata of sessions, such as collecting data of sessions for a specific audience belonging to a specific subject.",
+              type = "boolean",
+              default = false
+            }
+          },
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0
