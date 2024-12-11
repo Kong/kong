@@ -33,4 +33,16 @@ describe("Plugin: OpenTelemetry (schema)", function()
       }
     }, err)
   end)
+
+  it("accepts variable values", function()
+    local ok, err = validate_plugin_config_schema({
+      endpoint = "http://example.dev",
+      resource_attributes = {
+        foo = "$(headers.host)",
+      },
+    }, schema_def)
+
+    assert.truthy(ok)
+    assert.is_nil(err)
+  end)
 end)
