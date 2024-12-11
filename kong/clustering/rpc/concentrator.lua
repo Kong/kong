@@ -202,8 +202,10 @@ function _M:_event_loop(lconn)
 
         local _, notifications
         res, err, _, notifications = lconn:query(sql or "SELECT 1;") -- keepalive
-        ngx.log(ngx.INFO, "xxx concetrator lconn:query ", sql or "SELECT 1;", " -> ",
-               require("inspect")(res), " err:" , err, " notifications:", require("inspect")(notifications))
+if sql then
+  ngx.log(ngx.INFO, "xxx concetrator lconn:query ", sql or "SELECT 1;", " -> ",
+         require("inspect")(res), " err:" , err, " notifications:", require("inspect")(notifications))
+end
         if not res then
           return nil, "query to Postgres failed: " .. err
         end

@@ -174,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
 
 
           -- sleep > 10s , it will succeed
-          ngx.sleep(11)
+          ngx.sleep(1)
 
 
           print("+++++ post /services")
