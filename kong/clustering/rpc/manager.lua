@@ -199,6 +199,8 @@ function _M:_handle_meta_call(c)
   local capabilities_list = info.rpc_capabilities
   local node_id = info.kong_node_id
 
+ngx.log(ngx.INFO, "xxx meta call processing succeeds! assign  self.client_capabilities[", node_id,"]")
+
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
