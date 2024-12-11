@@ -27,6 +27,7 @@ for _, strategy in helpers.each_strategy() do
         status_listen = "127.0.0.1:" .. dp_status_port,
         cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
+        log_level = "info",
       })
     end
 
@@ -42,6 +43,7 @@ for _, strategy in helpers.each_strategy() do
         status_listen = "127.0.0.1:" .. cp_status_port,
         cluster_rpc = rpc,
         cluster_incremental_sync = inc_sync,
+        log_level = "info",
       })
     end
 
@@ -169,7 +171,12 @@ for _, strategy in helpers.each_strategy() do
 
         -- insert one entity to make dp ready for incremental sync
         if inc_sync == "on" then
-          ngx.sleep(1)
+
+
+          -- sleep > 10s , it will succeed
+          ngx.sleep(11)
+
+
           print("+++++ post /services")
           local admin_client = helpers.admin_client(10000)
           local res = assert(admin_client:post("/services", {
