@@ -127,6 +127,8 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
+        ngx.sleep(1)
+
         assert(helpers.stop_kong("serve_cp", nil, nil, "QUIT", false))
 
         -- DP should keep return 200 after CP is shut down
