@@ -155,6 +155,7 @@ build = {
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
     ["kong.cmd.utils.process_secrets"] = "kong/cmd/utils/process_secrets.lua",
     ["kong.cmd.utils.inject_confs"] = "kong/cmd/utils/inject_confs.lua",
+    ["kong.cmd.utils.timer"] = "kong/cmd/utils/timer.lua",
 
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
