@@ -12,14 +12,9 @@ local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local table_contains = require "kong.tools.utils".table_contains
 local oidcdefs = require "kong.plugins.openid-connect.typedefs"
-local cache = require "kong.plugins.openid-connect.cache"
-local arguments = require "kong.plugins.openid-connect.arguments"
 local ee_redis  = require "kong.enterprise_edition.tools.redis.v2"
 local redis_schema = ee_redis.config_schema
 local tablex = require "pl.tablex"
-
-
-local get_phase = ngx.get_phase
 
 
 local REDIS_OIDC_SCHEMA = tablex.deepcopy(redis_schema)
@@ -36,33 +31,6 @@ table.insert(REDIS_OIDC_SCHEMA.fields,
         type     = "string",
   } }
 )
-
-local function validate_issuer(conf)
-  local phase = get_phase()
-  if phase ~= "access" and phase ~= "content" then
-    return true
-  end
-
-  local args = arguments(conf)
-
-  local issuer_uri = args.get_conf_arg("issuer")
-  if not issuer_uri then
-    return true
-  end
-
-  local options = args.get_http_opts({
-    extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
-    headers = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-    using_pseudo_issuer = args.get_conf_arg("using_pseudo_issuer", false),
-  })
-
-  local keys = cache.issuers.rediscover(issuer_uri, options)
-  if not keys then
-    return false, "openid connect discovery failed"
-  end
-
-  return true
-end
 
 local function check_auth_method_for_pop(conf)
   if not conf.proof_of_possession_auth_methods_validation then
@@ -135,12 +103,7 @@ end
 
 
 local function validate(conf)
-  local ok, err = validate_issuer(conf)
-  if not ok then
-    return false, err
-  end
-
-  ok, err = validate_tls_client_auth_certs(conf)
+  local ok, err = validate_tls_client_auth_certs(conf)
   if not ok then
     return false, err
   end

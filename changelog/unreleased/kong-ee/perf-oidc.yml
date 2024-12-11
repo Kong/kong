@@ -1,0 +1,6 @@
+message: >-
+  **OpenID-Connect**: Removed issuer discovery from schema to improve performance
+  upon plugin initialization or updating. The issuer discovery will only be triggerd
+  by client requests.
+type: performance
+scope: Plugin
