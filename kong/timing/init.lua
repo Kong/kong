@@ -5,7 +5,7 @@ local constants           = require("kong.constants")
 
 local ngx                 = ngx
 local ngx_var             = ngx.var
-local ngx_req_set_header  = ngx.req.set_header
+local req_clear_header    = ngx.req.clear_header
 
 local assert              = assert
 local ipairs              = ipairs
@@ -79,15 +79,15 @@ function _M.auth()
   local http_x_kong_request_debug_log = get_header("x_kong_request_debug_log", ngx_ctx)
 
   if http_x_kong_request_debug then
-    ngx_req_set_header("X-Kong-Request-Debug", nil)
+    req_clear_header("X-Kong-Request-Debug")
   end
 
   if http_x_kong_request_debug_token then
-    ngx_req_set_header("X-Kong-Request-Debug-Token", nil)
+    req_clear_header("X-Kong-Request-Debug-Token")
   end
 
   if http_x_kong_request_debug_log then
-    ngx_req_set_header("X-Kong-Request-Debug-Log", nil)
+    req_clear_header("X-Kong-Request-Debug-Log")
   end
 
   if http_x_kong_request_debug == nil or
@@ -98,7 +98,6 @@ function _M.auth()
   end
 
   local loopback = is_loopback(ngx_var.binary_remote_addr)
-
   if not loopback then
     if http_x_kong_request_debug_token ~= kong.request_debug_token then
       return
