@@ -338,7 +338,7 @@ function _M.balancer_upstream_selection(ctx)
 
   -- The time it takes to read the response from the point we receive the first
   -- header to the end of the response (upstream_response_time_total - ttfb - connect_time)
-  local upstream_read_response_duration_ms = selected_upstream_total_response_time_ms - upstream_ttfb_ms - selected_upstream_connect_time_ms
+  local upstream_read_response_duration_ms = max(0, selected_upstream_total_response_time_ms - upstream_ttfb_ms - selected_upstream_connect_time_ms)
   local upstream_read_response_end_time_ns = upstream_read_response_start_time_ns + upstream_read_response_duration_ms * 1e6
   upstream_response_span:finish(upstream_read_response_end_time_ns)
 
