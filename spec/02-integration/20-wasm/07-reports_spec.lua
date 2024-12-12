@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
       local _, reports_data = assert(reports_server:join())
       reports_data = cjson.encode(reports_data)
 
-      assert.match("wasm_cnt=3", reports_data)
+      assert.match("wasm_cnt=2", reports_data)
     end)
 
     it("logs number of requests triggering a Wasm filter", function()
