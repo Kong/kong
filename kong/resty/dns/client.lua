@@ -27,6 +27,8 @@ end
 -- @license Apache 2.0
 
 local _
+local clone = require("table.clone")
+local isempty = require("table.isempty")
 local utils = require("kong.resty.dns.utils")
 local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
@@ -34,6 +36,12 @@ local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local req_dyn_hook = require("kong.dynamic_hook")
+
+
+local hostnameType = utils.hostnameType
+local parseHostname = utils.parseHostname
+
+
 local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
@@ -47,9 +55,19 @@ local DEBUG = ngx.DEBUG
 local PREFIX = "[dns-client] "
 local timer_at = ngx.timer.at
 
+
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local assert = assert
+local tostring = tostring
+local setmetatable = setmetatable
+
+
 local math_min = math.min
 local math_max = math.max
 local math_fmod = math.fmod
+local math_huge = math.huge
 local math_random = math.random
 local table_remove = table.remove
 local table_insert = table.insert
@@ -64,8 +82,6 @@ local DOT   = string_byte(".")
 local COLON = string_byte(":")
 local DEFAULT_TIMEOUT = 2000 -- 2000 is openresty default
 
-
-local EMPTY = require("kong.tools.table").EMPTY
 
 -- resolver options
 local config
@@ -147,8 +163,7 @@ local dnscache
 -- @return cached record or nil
 local cachelookup = function(qname, qtype)
   local now = time()
-  local key = qtype..":"..qname
-  local cached = dnscache:get(key)
+  local cached = dnscache:get(qtype .. ":" .. qname)
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
@@ -159,16 +174,7 @@ local cachelookup = function(qname, qtype)
     cached.touch = now
     if (cached.expire < now) then
       cached.expired = true
-      --[[
-      log(DEBUG, PREFIX, "cache get (stale): ", key, " ", frecord(cached))
-    else
-      log(DEBUG, PREFIX, "cache get: ", key, " ", frecord(cached))
-      --]]
     end
-    --[[
-  else
-    log(DEBUG, PREFIX, "cache get (miss): ", key)
-    --]]
   end
 
   return cached
@@ -191,7 +197,7 @@ local cacheinsert = function(entry, qname, qtype)
       -- an actual, non-empty, record
       key = (qtype or e1.type) .. ":" .. (qname or e1.name)
 
-      ttl = validTtl or math.huge
+      ttl = validTtl or math_huge
       for i = 1, #entry do
         local record = entry[i]
         if validTtl then
@@ -203,15 +209,16 @@ local cacheinsert = function(entry, qname, qtype)
         end
         -- update IPv6 address format to include square brackets
         if record.type == _M.TYPE_AAAA then
-          record.address = utils.parseHostname(record.address)
+          record.address = parseHostname(record.address)
         elseif record.type == _M.TYPE_SRV then -- SRV can also contain IPv6
-          record.target = utils.parseHostname(record.target)
+          record.target = parseHostname(record.target)
         end
       end
 
     elseif entry.errcode and entry.errcode ~= 3 then
       -- an error, but no 'name error' (3)
-      if (cachelookup(qname, qtype) or EMPTY)[1] then
+      local cached = cachelookup(qname, qtype)
+      if cached and cached[1] then
         -- we still have a stale record with data, so we're not replacing that
         --[[
         log(DEBUG, PREFIX, "cache set (skip on name error): ", key, " ", frecord(entry))
@@ -228,7 +235,8 @@ local cacheinsert = function(entry, qname, qtype)
 
     else
       -- empty record
-      if (cachelookup(qname, qtype) or EMPTY)[1] then
+      local cached = cachelookup(qname, qtype)
+      if cached and cached[1] then
         -- we still have a stale record with data, so we're not replacing that
         --[[
         log(DEBUG, PREFIX, "cache set (skip on empty): ", key, " ", frecord(entry))
@@ -591,7 +599,7 @@ _M.init = function(options)
     options.nameservers = {}
     -- some systems support port numbers in nameserver entries, so must parse those
     for _, address in ipairs(resolv.nameserver) do
-      local ip, port, t = utils.parseHostname(address)
+      local ip, port, t = parseHostname(address)
       if t == "ipv6" and not options.enable_ipv6 then
         -- should not add this one
         log(DEBUG, PREFIX, "skipping IPv6 nameserver ", port and (ip..":"..port) or ip)
@@ -709,7 +717,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
       table_remove(answers, i)
     end
   end
-  if next(others) then
+  if not isempty(others) then
     for _, lst in pairs(others) do
       cacheinsert(lst)
       -- set success-type, only if not set (this is only a 'by-product')
@@ -1078,46 +1086,46 @@ local function search_iter(qname, qtype)
   local type_done = {}
   local type_current
 
-  return  function()
-            while true do
-              -- advance the type-loop
-              -- we need a while loop to make sure we skip LAST if already done
-              while (not type_current) or type_done[type_current] do
-                i_type = i_type + 1        -- advance type-loop
-                if i_type > type_end then
-                  return                   -- we reached the end, done iterating
-                end
+  return function()
+    while true do
+      -- advance the type-loop
+      -- we need a while loop to make sure we skip LAST if already done
+      while (not type_current) or type_done[type_current] do
+        i_type = i_type + 1        -- advance type-loop
+        if i_type > type_end then
+          return                   -- we reached the end, done iterating
+        end
 
-                type_current = type_list[i_type]
-                if type_current == _M.TYPE_LAST then
-                  type_current = cachegetsuccess(qname)
-                end
+        type_current = type_list[i_type]
+        if type_current == _M.TYPE_LAST then
+          type_current = cachegetsuccess(qname)
+        end
 
-                if type_current then
-                  -- configure the search-loop
-                  if (dots < config.ndots) and (not defined_hosts[qname..":"..type_current]) then
-                    search_start = 0
-                    search_end = #search + 1  -- +1: bare qname at the end
-                  else
-                    search_start = -1         -- -1: bare qname as first entry
-                    search_end = #search
-                  end
-                  i_search = search_start    -- reset the search-loop
-                end
-              end
-
-              -- advance the search-loop
-              i_search = i_search + 1
-              if i_search <= search_end then
-                -- got the next one, return full search name and type
-                local domain = search[i_search]
-                return domain and qname.."."..domain or qname, type_current
-              end
-
-              -- finished the search-loop for this type, move to next type
-              type_done[type_current] = true   -- mark current type as done
-            end
+        if type_current then
+          -- configure the search-loop
+          if (dots < config.ndots) and (not defined_hosts[qname..":"..type_current]) then
+            search_start = 0
+            search_end = #search + 1  -- +1: bare qname at the end
+          else
+            search_start = -1         -- -1: bare qname as first entry
+            search_end = #search
           end
+          i_search = search_start    -- reset the search-loop
+        end
+      end
+
+      -- advance the search-loop
+      i_search = i_search + 1
+      if i_search <= search_end then
+        -- got the next one, return full search name and type
+        local domain = search[i_search]
+        return domain and qname.."."..domain or qname, type_current
+      end
+
+      -- finished the search-loop for this type, move to next type
+      type_done[type_current] = true   -- mark current type as done
+    end
+  end
 end
 
 --- Resolve a name.
@@ -1154,37 +1162,43 @@ end
 -- @param try_list (optional) list of tries to add to
 -- @param force_no_sync force noSynchronisation
 -- @return `list of records + nil + try_list`, or `nil + err + try_list`.
-local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
-  qname = string_lower(qname)
-  local qtype = (r_opts or EMPTY).qtype
-  local err, records
+local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync, recursing)
+  local opts
+  local qtype
+  if recursing then
+    opts = r_opts
 
-  local opts = {}
-  if r_opts then
-    for k,v in pairs(r_opts) do opts[k] = v end  -- copy the options table
-  end
-
-  -- default the ADDITIONAL SECTION to TRUE
-  if opts.additional_section == nil then
-    opts.additional_section = true
+  else
+    if r_opts then
+      qtype = r_opts.qtype
+      opts = clone(r_opts)
+      -- default the ADDITIONAL SECTION to TRUE
+      if opts.additional_section == nil then
+        opts.additional_section = true
+      end
+    else
+      opts = {
+        additional_section = true,
+      }
+    end
   end
 
   -- first check for shortname in the cache
   -- we do this only to prevent iterating over the SEARCH directive and
-  -- potentially requerying failed lookups in that process as the ttl for
+  -- potentially re-querying failed lookups in that process as the ttl for
   -- errors is relatively short (1 second default)
-  records = cacheShortLookup(qname, qtype)
+  qname = string_lower(qname)
+  local records = cacheShortLookup(qname, qtype)
   if records then
     if try_list then
       -- check for recursion
-      if try_list["(short)"..qname..":"..tostring(qtype)] then
-        err = "recursion detected"
-        add_status_to_try_list(try_list, err)
-        return nil, err, try_list
+      if try_list["(short)" .. qname .. ":" .. tostring(qtype)] then
+        add_status_to_try_list(try_list, "recursion detected")
+        return nil, "recursion detected", try_list
       end
     end
 
-    try_list = try_add(try_list, "(short)"..qname, qtype, "cache-hit")
+    try_list = try_add(try_list, "(short)" .. qname, qtype, "cache-hit")
     if records.expired then
       -- if the record is already stale/expired we have to traverse the
       -- iterator as that is required to start the async refresh queries
@@ -1193,21 +1207,22 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
     else
       -- a valid non-stale record
       -- check for CNAME records, and dereferencing the CNAME
-      if (records[1] or EMPTY).type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
+      if records[1] and records[1].type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
         opts.qtype = nil
         add_status_to_try_list(try_list, "dereferencing CNAME")
-        return resolve(records[1].cname, opts, dnsCacheOnly, try_list, force_no_sync)
+        return resolve(records[1].cname, opts, dnsCacheOnly, try_list, force_no_sync, true)
       end
 
       -- return the shortname cache hit
       return records, nil, try_list
     end
+
   else
-    try_list = try_add(try_list, "(short)"..qname, qtype, "cache-miss")
+    try_list = try_add(try_list, "(short)" .. qname, qtype, "cache-miss")
   end
 
   -- check for qname being an ip address
-  local name_type = utils.hostnameType(qname)
+  local name_type = hostnameType(qname)
   if name_type ~= "name" then
     if name_type == "ipv4" then
       -- if no qtype is given, we're supposed to search, so forcing TYPE_A is safe
@@ -1230,8 +1245,9 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
   end
 
   -- go try a sequence of record types
+  local err
   for try_name, try_type in search_iter(qname, qtype) do
-    if try_list and try_list[try_name..":"..try_type] then
+    if try_list and try_list[try_name .. ":" .. try_type] then
       -- recursion, been here before
       err = "recursion detected"
       break
@@ -1296,7 +1312,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
         if records[1].type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
           opts.qtype = nil
           add_status_to_try_list(try_list, "dereferencing CNAME")
-          return resolve(records[1].cname, opts, dnsCacheOnly, try_list, force_no_sync)
+          return resolve(records[1].cname, opts, dnsCacheOnly, try_list, force_no_sync, true)
         end
 
         return records, nil, try_list
@@ -1525,9 +1541,7 @@ local function execute_toip(qname, port, dnsCacheOnly, try_list, force_no_sync)
 end
 
 -- @see execute_toip
-local function toip(...)
-  return execute_toip(...)
-end
+local toip = execute_toip
 
 
 -- This function calls execute_toip() forcing it to always execute an individual
