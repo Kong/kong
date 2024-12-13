@@ -367,11 +367,13 @@ local function add_error(errs, parent_entity, parent_idx, entity, entity_idx, er
     errs[parent_entity][parent_idx]         = errs[parent_entity][parent_idx] or {}
     errs[parent_entity][parent_idx][entity] = errs[parent_entity][parent_idx][entity] or {}
 
-    -- e.g. errs["upstreams"][5]["targets"]
+    -- e.g. errs["upstreams"][5]["targets"][2]
     errs[parent_entity][parent_idx][entity][entity_idx] = err
 
   else
     errs[entity] = errs[entity] or {}
+
+    -- e.g. errs["consumers"][3]
     errs[entity][entity_idx] = err
   end
 end
