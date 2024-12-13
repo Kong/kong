@@ -191,7 +191,7 @@ function State.load(db)
 
   log.debug("loading subsystems migrations...")
 
-  local subsystems, err = load_subsystems(db, db.kong_config.loaded_plugins)
+  local subsystems, err = load_subsystems(db, db.loaded_plugins)
   if not subsystems then
     return nil, prefix_err(db, err)
   end

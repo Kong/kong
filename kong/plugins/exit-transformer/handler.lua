@@ -70,10 +70,8 @@ local function get_functions(conf)
   end
 
   local functions = {}
-  local sandbox_opts = { env = { kong = kong } }
-
   for i, fn_str in ipairs(conf.functions) do
-    local f, err = sandbox.validate_function(fn_str, sandbox_opts)
+    local f, err = sandbox.validate_function(fn_str)
     if err then
       f = no_op(err)
     end

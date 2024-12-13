@@ -27,8 +27,6 @@ local pdk_rl_store_response_header = pdk_private_rl.store_response_header
 local pdk_rl_get_stored_response_header = pdk_private_rl.get_stored_response_header
 local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
 
 local _M = {
   NAME = "ai-rate-limiting-advanced-limit-request",
@@ -100,7 +98,7 @@ function _M:run(conf)
     local request_prompt_count_function_cost
 
     if conf.request_prompt_count_function and provider == "requestPrompt" then
-      local success, request_prompt_cost = pcall(sandbox(conf.request_prompt_count_function, sandbox_opts))
+      local success, request_prompt_cost = pcall(sandbox(conf.request_prompt_count_function))
 
       if success then
         if type(request_prompt_cost) ~= "number" then

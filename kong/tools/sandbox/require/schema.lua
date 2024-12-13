@@ -6,6 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
--- this file was moved to sandbox directory, so this is
--- just left in place for backward compatibility reasons
-return require("kong.tools.sandbox.kong")
+return require("kong.tools.sandbox.require.lua") .. [[
+kong.db.schema.typedefs kong.tools.redis.schema
+
+kong.enterprise_edition.tools.redis.v2 kong.enterprise_edition.tools.redis.v2.schema
+]]

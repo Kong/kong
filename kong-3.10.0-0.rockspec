@@ -329,7 +329,6 @@ build = {
     ["kong.tools.queue"] = "kong/tools/queue.lua",
     ["kong.tools.queue_schema"] = "kong/tools/queue_schema.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
-    ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
@@ -355,6 +354,17 @@ build = {
     ["kong.tools.date"] = "kong/tools/date.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
+
+    ["kong.tools.sandbox"] = "kong/tools/sandbox/init.lua",
+    ["kong.tools.sandbox.kong"] = "kong/tools/sandbox/kong.lua",
+    ["kong.tools.sandbox.environment"] = "kong/tools/sandbox/environment/init.lua",
+    ["kong.tools.sandbox.environment.handler"] = "kong/tools/sandbox/environment/handler.lua",
+    ["kong.tools.sandbox.environment.lua"] = "kong/tools/sandbox/environment/lua.lua",
+    ["kong.tools.sandbox.environment.schema"] = "kong/tools/sandbox/environment/schema.lua",
+    ["kong.tools.sandbox.require"] = "kong/tools/sandbox/require/init.lua",
+    ["kong.tools.sandbox.require.handler"] = "kong/tools/sandbox/require/handler.lua",
+    ["kong.tools.sandbox.require.lua"] = "kong/tools/sandbox/require/lua.lua",
+    ["kong.tools.sandbox.require.schema"] = "kong/tools/sandbox/require/schema.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",

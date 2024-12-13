@@ -621,7 +621,7 @@ _M.handlers = {
   lambda = function(entity, config)
     local functions = {}
 
-    local opts = { chunk_name = "event_hooks:" .. entity.id }
+    local chunkname = "event_hooks:" .. entity.id
 
     local function err_fn(err)
       return function()
@@ -629,8 +629,8 @@ _M.handlers = {
       end
     end
 
-    for i, fn_str in ipairs(config.functions or {}) do
-      local fn, err = sandbox.validate_function(fn_str, opts)
+    for _, fn_str in ipairs(config.functions or {}) do
+      local fn, err = sandbox.validate_function(fn_str, chunkname)
       if err then fn = err_fn(err) end
 
       table.insert(functions, fn)

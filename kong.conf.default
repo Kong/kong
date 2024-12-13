@@ -2849,9 +2849,10 @@
                                  #              them. The sandboxed function has
                                  #              restricted access to the global
                                  #              environment and only has access
-                                 #              to standard Lua functions that
-                                 #              will generally not cause harm to
-                                 #              the Kong Gateway node.
+                                 #              to Kong PDK, OpenResty, and
+                                 #              standard Lua functions that will
+                                 #              generally not cause harm to the
+                                 #              Kong Gateway node.
                                  #
                                  # - `on`: Functions have unrestricted
                                  #         access to the global environment and
@@ -2874,9 +2875,6 @@
                                  #   `local foo = 1 + 1`. However, OS level
                                  #   functions are not allowed, like:
                                  #   `os.execute(`rm -rf /*`)`.
-                                 #
-                                 # For a full allowed/disallowed list, see:
-                                 # https://github.com/kikito/sandbox.lua/blob/master/sandbox.lua
                                  #
                                  # To customize the sandbox environment, use
                                  # the `untrusted_lua_sandbox_requires` and

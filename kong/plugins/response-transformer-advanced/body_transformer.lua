@@ -116,16 +116,14 @@ local function get_transform_functions(config)
                 kong.router.get_route().id or ""
   local chunk_name = "route:" .. route .. ":f#"
 
-  local opts = { chunk_name = chunk_name }
-
   local functions = transform_function_cache[config]
 
   if not functions then
 
     functions = {}
 
-    for i, fn_str in ipairs(config.transform.functions) do
-      insert(functions, assert(sandbox.validate_function(fn_str, opts)))
+    for _, fn_str in ipairs(config.transform.functions) do
+      insert(functions, assert(sandbox.validate_function(fn_str, chunk_name)))
     end
 
     transform_function_cache[config] = functions

@@ -120,7 +120,13 @@ function _M.new(conf)
   local self = {
     client    = client,
     templates = templates,
-    kong_conf = conf,
+    config = {
+      admin_gui_auth = conf.admin_gui_auth,
+      admin_gui_url = conf.admin_gui_url,
+      admin_emails_from = conf.admin_emails_from,
+      admin_emails_reply_to = conf.admin_emails_reply_to,
+      admin_invitation_expiry = conf.admin_invitation_expiry,
+    }
   }
 
   return setmetatable(self, mt)
@@ -129,7 +135,7 @@ end
 
 function _M:invite_template()
   -- 3rd party providers store credentials, so no need to register with kong
-  if self.kong_conf.admin_gui_auth == 'basic-auth' then
+  if self.config.admin_gui_auth == 'basic-auth' then
     return self.templates.invite_register
   end
 
@@ -138,7 +144,7 @@ end
 
 function _M:register_url(email, jwt, username)
   return fmt("%s/register?email=%s&username=%s",
-             ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url), ngx.escape_uri(email),
+             ee_utils.retrieve_admin_gui_url(self.config.admin_gui_url), ngx.escape_uri(email),
              ngx.escape_uri(username)) .. (jwt and fmt("&token=%s",
                                           ngx.escape_uri(jwt) or '') or '')
 end
@@ -148,8 +154,8 @@ function _M:invite(recipients, jwt)
     return nil, {code = 500, message = "recipients required"}
   end
 
-  local kong_conf = self.kong_conf
-  if not kong_conf.admin_gui_auth then
+  local config = self.config
+  if not config.admin_gui_auth then
     return nil, {code = 501, message = "admin_gui_auth is disabled"}
   end
 
@@ -160,8 +166,8 @@ function _M:invite(recipients, jwt)
   local template = self:invite_template()
 
   local options = {
-    from = kong_conf.admin_emails_from,
-    reply_to = kong_conf.admin_emails_reply_to,
+    from = config.admin_emails_from,
+    reply_to = config.admin_emails_reply_to,
     subject = fmt(template.subject),
   }
 
@@ -176,7 +182,7 @@ function _M:invite(recipients, jwt)
                        self:register_url(recipient.email,
                                          jwt, recipient.username),
                        recipient.username,
-                       kong_conf.admin_invitation_expiry / 60 / 60,
+                       config.admin_invitation_expiry / 60 / 60,
                        ADMIN_DOCS_URL)
 
     res = self.client:send({recipient.email}, options, res)
@@ -198,18 +204,18 @@ function _M:reset_password(email, jwt)
   local template = self.templates.password_reset
   local reset_url =
       fmt("%s/account/reset-password?email=%s&token=%s",
-        ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url),
+        ee_utils.retrieve_admin_gui_url(self.config.admin_gui_url),
         ngx.escape_uri(email),
         ngx.escape_uri(jwt)
       )
 
   local options = {
-    from = self.kong_conf.admin_emails_from,
-    reply_to = self.kong_conf.admin_emails_reply_to,
+    from = self.config.admin_emails_from,
+    reply_to = self.config.admin_emails_reply_to,
     subject = fmt(template.subject),
     html = fmt(template.html,
       reset_url, reset_url,
-      self.kong_conf.admin_invitation_expiry / 60 / 60),
+      self.config.admin_invitation_expiry / 60 / 60),
   }
 
   local res = self.client:send({ email }, options)
@@ -228,11 +234,11 @@ function _M:reset_password_success(email)
   end
 
   local template = self.templates.password_reset_success
-  local login_url = ee_utils.retrieve_admin_gui_url(self.kong_conf.admin_gui_url) .. "/login"
+  local login_url = ee_utils.retrieve_admin_gui_url(self.config.admin_gui_url) .. "/login"
 
   local options = {
-    from = self.kong_conf.admin_emails_from,
-    reply_to = self.kong_conf.admin_emails_reply_to,
+    from = self.config.admin_emails_from,
+    reply_to = self.config.admin_emails_reply_to,
     subject = fmt(template.subject),
     html = fmt(template.html, login_url, login_url),
   }

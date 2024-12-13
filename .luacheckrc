@@ -33,7 +33,7 @@ exclude_files = {
     "bazel-kong-ee",
 }
 
-files["kong/tools/kong-lua-sandbox.lua"] = {
+files["kong/tools/sandbox/kong.lua"] = {
      read_globals = {
         "_ENV",
         "table.pack",
