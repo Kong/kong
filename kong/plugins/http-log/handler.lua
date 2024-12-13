@@ -16,8 +16,6 @@ local pairs = pairs
 local max = math.max
 
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
 -- Create a function that concatenates multiple JSON objects into a JSON array.
 -- This saves us from rendering all entries into one large JSON string.
 -- Each invocation of the function returns the next bit of JSON, i.e. the opening
@@ -183,7 +181,7 @@ function HttpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression)())
     end
   end
 

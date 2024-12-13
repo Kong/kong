@@ -24,9 +24,6 @@ local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = ffi.new("int", bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH))
 
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
-
 local C = ffi.C
 
 
@@ -73,7 +70,7 @@ function FileLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression)())
     end
   end
 

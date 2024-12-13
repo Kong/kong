@@ -14,9 +14,6 @@ local concat = table.concat
 local insert = table.insert
 
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
-
 local HOSTNAME = get_host_name()
 local SENDER_NAME = "kong"
 local LOG_LEVELS = {
@@ -127,7 +124,7 @@ function LogglyLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression)())
     end
   end
 
