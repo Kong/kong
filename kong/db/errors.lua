@@ -3,6 +3,7 @@ local pl_keys = require("pl.tablex").keys
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
 local uuid = require("kong.tools.uuid")
+local json = require("kong.tools.cjson")
 
 
 local type         = type
@@ -21,6 +22,7 @@ local concat       = table.concat
 local sort         = table.sort
 local insert       = table.insert
 local remove       = table.remove
+local new_array    = json.new_array
 
 
 local sorted_keys = function(tbl)
@@ -720,7 +722,7 @@ do
   ---@param ns?        string
   ---@param flattened? table
   local function categorize_errors(errs, ns, flattened)
-    flattened = flattened or {}
+    flattened = flattened or new_array()
 
     for field, err in drain(errs) do
       local errtype = type(err)
@@ -1020,7 +1022,7 @@ do
   ---@param  input table
   ---@return table
   function flatten_errors(input, err_t)
-    local flattened = {}
+    local flattened = new_array()
 
     for entity_type, section_errors in drain(err_t) do
       if type(section_errors) ~= "table" then
