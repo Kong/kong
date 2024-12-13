@@ -127,11 +127,12 @@ end
 
 -- plugin assumes the request parameters being used for creating
 -- signature by client are not changed by core or any other plugin
-local function create_hash(request_uri, hmac_params, ctx)
+local function create_hash(request_uri, hmac_params)
   local signing_string = ""
   local hmac_headers = hmac_params.hmac_headers
 
   local count = #hmac_headers
+  local ctx = {}
   for i = 1, count do
     local header = hmac_headers[i]
     local header_value = kong.request.get_header(header, ctx)
@@ -166,8 +167,8 @@ local function create_hash(request_uri, hmac_params, ctx)
 end
 
 
-local function validate_signature(hmac_params, ctx)
-  local signature_1 = create_hash(kong_request.get_path_with_query(), hmac_params, ctx)
+local function validate_signature(hmac_params)
+  local signature_1 = create_hash(kong_request.get_path_with_query(), hmac_params)
   local signature_2 = decode_base64(hmac_params.signature)
   return signature_1 == signature_2
 end
@@ -330,9 +331,7 @@ local function do_authentication(conf)
 
   hmac_params.secret = credential.secret
 
-  -- since there are `clear_header` call before, we reset ctx, to get fresh headers
-  ctx = {}
-  if not validate_signature(hmac_params, ctx) then
+  if not validate_signature(hmac_params) then
     return false, unauthorized(SIGNATURE_NOT_SAME, www_auth_content)
   end
 

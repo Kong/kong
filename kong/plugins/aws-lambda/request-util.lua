@@ -294,7 +294,6 @@ local function build_request_payload(conf)
     end
 
     if conf.forward_request_body then
-      -- local content_type = kong.request.get_header("content-type")
       local content_type = ngx.var.http_content_type
       local body_raw = read_request_body(conf.skip_large_bodies)
       local body_args, err = kong.request.get_body()
