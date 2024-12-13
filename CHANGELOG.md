@@ -31,22 +31,18 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 - `node_id` in configuration has been deprecated.
  [#13687](https://github.com/Kong/kong/issues/13687)
- [FTI-6221](https://konghq.atlassian.net/browse/FTI-6221)
 
 #### Dependencies
 ##### Core
 
 - Bumped lua-kong-nginx-module from 0.11.0 to 0.11.1 to fix an issue where the upstream cert chain wasn't properly set.
  [#12752](https://github.com/Kong/kong/issues/12752)
- [KAG-4050](https://konghq.atlassian.net/browse/KAG-4050)
 
 - Bumped lua-resty-events to 0.3.1. Optimized the memory usage.
  [#13097](https://github.com/Kong/kong/issues/13097)
- [KAG-4480](https://konghq.atlassian.net/browse/KAG-4480) [KAG-4586](https://konghq.atlassian.net/browse/KAG-4586)
 
 - Bumped lua-resty-lmdb to 1.6.0. Allowing page_size to be 1.
  [#13908](https://github.com/Kong/kong/issues/13908)
- [KAG-5875](https://konghq.atlassian.net/browse/KAG-5875)
 
 - Bumped lua-resty-lmdb to 1.5.0. Added page_size parameter to allow overriding page size from caller side.
  [#12786](https://github.com/Kong/kong/issues/12786)
@@ -55,22 +51,15 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 - Kong Gateway now supports Ubuntu 24.04 (Noble Numbat) with both open-source and Enterprise packages.
  [#13626](https://github.com/Kong/kong/issues/13626)
- [KAG-4672](https://konghq.atlassian.net/browse/KAG-4672)
-
-- Bumped the bundled `datakit` Wasm filter to `0.3.1`
- [#13922](https://github.com/Kong/kong/issues/13922)
- [KAG-5850](https://konghq.atlassian.net/browse/KAG-5850)
 
 - Bumped rpm dockerfile default base UBI 8 -> 9
  [#13574](https://github.com/Kong/kong/issues/13574)
 
 - Bumped lua-resty-aws to 1.5.4 to fix a bug inside region prefix generation.
  [#12846](https://github.com/Kong/kong/issues/12846)
- [KAG-3424](https://konghq.atlassian.net/browse/KAG-3424) [FTI-5732](https://konghq.atlassian.net/browse/FTI-5732)
 
 - Bumped lua-resty-ljsonschema to 1.2.0, adding support for `null` as a valid option in `enum` types and properly calculation of utf8 string length instead of byte count
  [#13783](https://github.com/Kong/kong/issues/13783)
- [FTI-5870](https://konghq.atlassian.net/browse/FTI-5870) [FTI-6171](https://konghq.atlassian.net/browse/FTI-6171)
 
 - Bumped `ngx_wasm_module` to `9136e463a6f1d80755ce66c88c3ddecd0eb5e25d`
  [#12011](https://github.com/Kong/kong/issues/12011)
@@ -81,13 +70,14 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 - Bumped OpenSSL to 3.2.3 to fix unbounded memory growth with session handling in TLSv1.3 and other CVEs.
  [#13448](https://github.com/Kong/kong/issues/13448)
- [KAG-5075](https://konghq.atlassian.net/browse/KAG-5075)
+
+ - **Wasm**: Removed the experimental datakit Wasm filter
+ [#14012](https://github.com/Kong/kong/issues/14012)
 
 #### Features
 ##### CLI Command
 - Added the `kong drain` CLI command to make the `/status/ready` endpoint return a `503 Service Unavailable` response.
  [#13838](https://github.com/Kong/kong/issues/13838)
- [FTI-6276](https://konghq.atlassian.net/browse/FTI-6276)
 ##### Core
 
 - Added a new feature for Kong Manager that supports multiple domains, enabling dynamic cross-origin access for Admin API requests.
@@ -95,7 +85,6 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 - Added an ADA dependency: WHATWG-compliant and fast URL parser.
  [#13120](https://github.com/Kong/kong/issues/13120)
- [KAG-5106](https://konghq.atlassian.net/browse/KAG-5106)
 
 - Addded a new LLM driver for interfacing with the Hugging Face inference API.
 The driver supports both serverless and dedicated LLM instances hosted by
@@ -115,23 +104,18 @@ with other plugins especially custom auth plugins.
   - The resolution of field `total_time` is now in microseconds.
   - A new field, `total_time_without_upstream`,  shows the latency only introduced by Kong.
  [#13460](https://github.com/Kong/kong/issues/13460)
- [KAG-4733](https://konghq.atlassian.net/browse/KAG-4733) [FTI-5989](https://konghq.atlassian.net/browse/FTI-5989)
 - **proxy-wasm**: Added support for Wasm filters to be configured via the `/plugins` Admin API.
  [#13843](https://github.com/Kong/kong/issues/13843)
- [KAG-5616](https://konghq.atlassian.net/browse/KAG-5616)
 ##### PDK
 
 - Added `kong.service.request.clear_query_arg(name)` to PDK.
  [#13619](https://github.com/Kong/kong/issues/13619)
- [KAG-5238](https://konghq.atlassian.net/browse/KAG-5238)
 
 - Array and Map type span attributes are now supported by the tracing PDK
  [#13818](https://github.com/Kong/kong/issues/13818)
- [KAG-5162](https://konghq.atlassian.net/browse/KAG-5162)
 ##### Plugin
 - **Prometheus**: Increased the upper limit of `KONG_LATENCY_BUCKETS` to 6000 to enhance latency tracking precision.
  [#13588](https://github.com/Kong/kong/issues/13588)
- [FTI-5990](https://konghq.atlassian.net/browse/FTI-5990)
 
 - **ai-proxy**: Disabled HTTP/2 ALPN handshake for connections on routes configured with AI-proxy.
  [#13735](https://github.com/Kong/kong/issues/13735)
@@ -146,19 +130,16 @@ with other plugins especially custom auth plugins.
 ##### Admin API
 - **Admin API**: Added support for official YAML media-type (`application/yaml`) to the `/config` endpoint.
  [#13713](https://github.com/Kong/kong/issues/13713)
- [KAG-5474](https://konghq.atlassian.net/browse/KAG-5474)
 ##### Clustering
 
 - Added a remote procedure call (RPC) framework for Hybrid mode deployments.
  [#12320](https://github.com/Kong/kong/issues/12320)
- [KAG-623](https://konghq.atlassian.net/browse/KAG-623) [KAG-3751](https://konghq.atlassian.net/browse/KAG-3751)
 
 #### Fixes
 ##### Core
 
 - Fixed an issue where the `ngx.balancer.recreate_request` API did not refresh the body buffer when `ngx.req.set_body_data` is used in the balancer phase.
  [#13882](https://github.com/Kong/kong/issues/13882)
- [KAG-5821](https://konghq.atlassian.net/browse/KAG-5821)
 
 - Fix to always pass `ngx.ctx` to `log_init_worker_errors` as otherwise it may runtime crash.
  [#13731](https://github.com/Kong/kong/issues/13731)
@@ -168,37 +149,29 @@ with other plugins especially custom auth plugins.
 
 - Fixed an issue where the workspace id was not included in the plugin config in the plugins iterator.
  [#13872](https://github.com/Kong/kong/issues/13872)
- [FTI-6200](https://konghq.atlassian.net/browse/FTI-6200)
 
 - Fixed a 500 error triggered by unhandled nil fields during schema validation.
  [#13861](https://github.com/Kong/kong/issues/13861)
- [FTI-6336](https://konghq.atlassian.net/browse/FTI-6336)
 
 - **Vault**: Fixed an issue where array-like configuration fields cannot contain vault reference.
  [#13953](https://github.com/Kong/kong/issues/13953)
- [FTI-6163](https://konghq.atlassian.net/browse/FTI-6163)
 
 - **Vault**: Fixed an issue where updating a vault entity in a non-default workspace wouldn't take effect.
  [#13610](https://github.com/Kong/kong/issues/13610)
- [FTI-6152](https://konghq.atlassian.net/browse/FTI-6152)
 
 - **Vault**: Fixed an issue where vault reference in kong configuration cannot be dereferenced when both http and stream subsystems are enabled.
  [#13953](https://github.com/Kong/kong/issues/13953)
- [FTI-6163](https://konghq.atlassian.net/browse/FTI-6163)
 
 - **proxy-wasm:** Added a check that prevents Kong from starting when the
 database contains invalid Wasm filters.
  [#13764](https://github.com/Kong/kong/issues/13764)
- [KAG-2636](https://konghq.atlassian.net/browse/KAG-2636)
 
 - Fixed an issue where the `kong.request.enable_buffering` couldn't be used when the downstream used HTTP/2.
  [#13614](https://github.com/Kong/kong/issues/13614)
- [FTI-5725](https://konghq.atlassian.net/browse/FTI-5725)
 ##### PDK
 
 - Lined up the `kong.log.inspect` function to log at `notice` level as documented
  [#13642](https://github.com/Kong/kong/issues/13642)
- [FTI-6215](https://konghq.atlassian.net/browse/FTI-6215)
 
 - Fix error message for invalid retries variable
  [#13605](https://github.com/Kong/kong/issues/13605)
@@ -245,40 +218,33 @@ database contains invalid Wasm filters.
 
 - **AWS-Lambda**: Fixed an issue in proxy integration mode that caused an internal server error when the `multiValueHeaders` was null.
  [#13533](https://github.com/Kong/kong/issues/13533)
- [FTI-6168](https://konghq.atlassian.net/browse/FTI-6168)
 
 - **jwt**: ensure `rsa_public_key` isn't base64-decoded.
  [#13717](https://github.com/Kong/kong/issues/13717)
 
 - **key-auth**: Fixed an issue with the order of query arguments, ensuring that arguments retain order when hiding the credentials.
  [#13619](https://github.com/Kong/kong/issues/13619)
- [KAG-5238](https://konghq.atlassian.net/browse/KAG-5238)
 
 - **rate-limiting**: Fixed a bug where the returned values from `get_redis_connection()` were incorrect.
  [#13613](https://github.com/Kong/kong/issues/13613)
 
 - **rate-limiting**: Fixed an issue that caused an HTTP 500 error when `hide_client_headers` was set to `true` and the request exceeded the rate limit.
  [#13722](https://github.com/Kong/kong/issues/13722)
- [KAG-5492](https://konghq.atlassian.net/browse/KAG-5492)
 ##### Admin API
 
 - Fix for querying admin API entities with empty tags
  [#13723](https://github.com/Kong/kong/issues/13723)
- [KAG-5496](https://konghq.atlassian.net/browse/KAG-5496)
 
 - Fixed an issue where nested parameters couldn't be parsed correctly when using `form-urlencoded` requests.
  [#13668](https://github.com/Kong/kong/issues/13668)
- [FTI-6165](https://konghq.atlassian.net/browse/FTI-6165)
 ##### Clustering
 
 - **Clustering**: Adjusted error log levels for control plane connections.
  [#13863](https://github.com/Kong/kong/issues/13863)
- [FTI-6238](https://konghq.atlassian.net/browse/FTI-6238)
 ##### Default
 
 - **Loggly**: Fixed an issue where `/bin/hostname` missing caused an error warning on startup.
  [#13788](https://github.com/Kong/kong/issues/13788)
- [FTI-6046](https://konghq.atlassian.net/browse/FTI-6046)
 
 ### Kong-Manager
 
@@ -306,26 +272,22 @@ database contains invalid Wasm filters.
 
 - Bumped lua-kong-nginx-module from 0.11.0 to 0.11.1 to fix an issue where the upstream cert chain wasn't properly set.
  [#12752](https://github.com/Kong/kong/issues/12752)
- [KAG-4050](https://konghq.atlassian.net/browse/KAG-4050)
 ##### Default
 
 - Bumped lua-resty-aws to 1.5.4, to fix a bug inside region prefix generating
  [#12846](https://github.com/Kong/kong/issues/12846)
- [KAG-3424](https://konghq.atlassian.net/browse/KAG-3424) [FTI-5732](https://konghq.atlassian.net/browse/FTI-5732)
 
 #### Features
 ##### Plugin
 
 - **Prometheus**: Bumped KONG_LATENCY_BUCKETS bucket's maximal capacity to 6000
  [#13797](https://github.com/Kong/kong/issues/13797)
- [FTI-5990](https://konghq.atlassian.net/browse/FTI-5990)
 
 #### Fixes
 ##### Core
 
 - **Vault**: Fixed an issue where updating a vault entity in a non-default workspace will not take effect.
  [#13670](https://github.com/Kong/kong/issues/13670)
- [FTI-6152](https://konghq.atlassian.net/browse/FTI-6152)
 ##### Plugin
 
 - **ai-proxy**: Fixed an issue where AI Transformer plugins always returned a 404 error when using 'Google One' Gemini subscriptions.
@@ -343,12 +305,10 @@ database contains invalid Wasm filters.
 - **Rate-Limiting**: Fixed an issue that caused a 500 error when using the rate-limiting plugin. When the `hide_client_headers` option is set to true and a 429 error is triggered, 
 it should return a 429 error code instead of a 500 error code.
  [#13759](https://github.com/Kong/kong/issues/13759)
- [KAG-5492](https://konghq.atlassian.net/browse/KAG-5492)
 ##### Admin API
 
 - Fixed an issue where sending `tags= `(empty parameter) resulted in 500 error. Now, Kong returns a 400 error, as empty explicit tags are not allowed.
  [#13813](https://github.com/Kong/kong/issues/13813)
- [KAG-5496](https://konghq.atlassian.net/browse/KAG-5496)
 
 ## 3.8.0
 
