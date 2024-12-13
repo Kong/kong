@@ -61,8 +61,6 @@ local function new(self)
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
-  local CONTENT_TYPE           = "Content-Type"
-
   local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
