@@ -245,7 +245,6 @@ local function new(self, major_version)
     end
 
     local header_value = ngx.header[name]
-    -- local header_value = _RESPONSE.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
