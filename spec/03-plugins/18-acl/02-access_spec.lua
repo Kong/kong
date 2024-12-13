@@ -729,19 +729,15 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "acl14.test" }
       })
 
-      local acl_prefunction_code = "        local consumer_id = \"" .. tostring(consumer2.id) .. "\"\n" .. [[
-        local cache_key = kong.db.acls:cache_key(consumer_id)
-
-        -- we must use shadict to get the cache, because the `kong.cache` was hooked by `kong.plugins.pre-function` 
-        local raw_groups, err = ngx.shared.kong_db_cache:get("kong_db_cache"..cache_key)
-        if raw_groups then
+      local acl_prefunction_code = ([[
+        local ok, err = kong.cache:get(%q)
+        if ok then
           ngx.exit(200)
         else
           ngx.log(ngx.ERR, "failed to get cache: ", err)
           ngx.exit(500)
         end
-          
-      ]]
+      ]]):format(kong.db.acls:cache_key(tostring(consumer2.id)))
 
       bp.plugins:insert {
         route = { id = route14.id },

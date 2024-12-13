@@ -8,9 +8,6 @@ local ngx = ngx
 local timer_at = ngx.timer.at
 
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
-
 local function log(premature, conf, message)
   if premature then
     return
@@ -71,7 +68,7 @@ function TcpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression)())
     end
   end
 

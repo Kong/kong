@@ -56,9 +56,6 @@ local FACILITIES = {
   local7 = lsyslog.FACILITY_LOCAL7
 }
 
-local sandbox_opts = { env = { kong = kong, ngx = ngx } }
-
-
 local function send_to_syslog(log_level, severity, message, facility)
   if LOG_PRIORITIES[severity] <= LOG_PRIORITIES[log_level] then
     lsyslog.open(SENDER_NAME, FACILITIES[facility])
@@ -94,7 +91,7 @@ function SysLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression)())
     end
   end
 

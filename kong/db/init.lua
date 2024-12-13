@@ -102,7 +102,7 @@ function DB.new(kong_config, strategy)
     strategy   = strategy,
     errors     = errors,
     infos      = connector:infos(),
-    kong_config = kong_config,
+    loaded_plugins = kong_config.loaded_plugins, -- left for MigrationsState.load
   }
 
   do
@@ -444,8 +444,7 @@ do
       return nil, prefix_err(self, err)
     end
 
-    local ok, err = self.connector:schema_bootstrap(self.kong_config,
-                                                    DEFAULT_LOCKS_TTL)
+    local ok, err = self.connector:schema_bootstrap(DEFAULT_LOCKS_TTL)
 
     self.connector:close()
 
