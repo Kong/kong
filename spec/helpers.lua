@@ -28,6 +28,26 @@ local server = reload_module("spec.internal.server")
 local client = reload_module("spec.internal.client")
 local wait = reload_module("spec.internal.wait")
 
+-- redo the patches to apply the kong global patches
+local _timerng
+
+_timerng = require("resty.timerng").new({
+  min_threads = 16,
+  max_threads = 32,
+})
+
+_timerng:start()
+
+_G.timerng = _timerng
+
+_G.ngx.timer.at = function (delay, callback, ...)
+  return _timerng:at(delay, callback, ...)
+end
+
+_G.ngx.timer.every = function (interval, callback, ...)
+  return _timerng:every(interval, callback, ...)
+end
+
 
 ----------------
 -- Variables/constants
