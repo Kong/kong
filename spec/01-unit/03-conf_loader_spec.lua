@@ -2053,12 +2053,7 @@ describe("Configuration loader", function()
         }))
 
         assert(conf.wasm_bundled_filters_path)
-        bundled_filters = {
-          {
-            name = "datakit",
-            path = conf.wasm_bundled_filters_path .. "/datakit.wasm",
-          },
-        }
+        bundled_filters = {}
       end
 
       all_filters = {}
@@ -2155,7 +2150,8 @@ describe("Configuration loader", function()
       assert.same(bundled_filters, conf.wasm_modules_parsed)
     end)
 
-    it("prefers user filters to bundled filters when a conflict exists", function()
+    -- XXX: we don't have any bundled filters to use for this test
+    pending("prefers user filters to bundled filters when a conflict exists", function()
       local user_filter = temp_dir .. "/datakit.wasm"
       assert(helpers.file.write(user_filter, "I'm a happy little wasm filter"))
       finally(function()
