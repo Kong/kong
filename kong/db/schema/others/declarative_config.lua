@@ -401,7 +401,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
         local ok = add_to_by_key(by_key, entity_schema, item, entity, key)
         if not ok then
           local errs_item_name = entity
-          if parent_entity and tostring(parent_idx) then
+          if parent_entity and type(parent_idx) == "number" and tostring(parent_idx) then
             errs_item_name = parent_entity.."|"..tostring(parent_idx).."|"..entity
           end
           errs[errs_item_name] = errs[errs_item_name] or {}
