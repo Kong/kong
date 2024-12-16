@@ -675,7 +675,7 @@ local function load(path, custom_conf, opts)
         bundled_filter_path = alt_path
 
       else
-        log.warn("Bundled proxy-wasm filters path (%s) does not exist " ..
+        log.debug("Bundled proxy-wasm filters path (%s) does not exist " ..
                  "or is not a directory. Bundled filters may not be " ..
                  "available", bundled_filter_path)
       end
