@@ -432,6 +432,7 @@ function sync_once_impl(premature, retry_count)
 
   local current_version = tonumber(declarative.get_current_hash()) or 0
   if current_version >= latest_notified_version then
+    ngx_log(ngx_DEBUG, "version already updated")
     return
   end
 
