@@ -1178,6 +1178,7 @@ end
 
 
 function Kong.access()
+  ngx.log(ngx.INFO, "xxx access in")
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
 
@@ -1196,7 +1197,9 @@ function Kong.access()
 
   ctx.KONG_PHASE = PHASES.access
 
+  ngx.log(ngx.INFO, "xxx access before")
   runloop.access.before(ctx)
+  ngx.log(ngx.INFO, "xxx access before end")
 
   local plugins_iterator = runloop.get_plugins_iterator()
 
@@ -1231,6 +1234,7 @@ function Kong.access()
   end
 
   runloop.wasm_attach(ctx)
+  ngx.log(ngx.INFO, "xxx access after")
   runloop.access.after(ctx)
 
   ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
@@ -1239,6 +1243,7 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
+  ngx.log(ngx.INFO, "xxx access proxied")
 
   if ctx.buffered_proxying then
     local upgrade = var.upstream_upgrade or ""

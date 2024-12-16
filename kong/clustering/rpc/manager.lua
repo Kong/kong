@@ -20,7 +20,7 @@ local string_tools = require("kong.tools.string")
 local ipairs = ipairs
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
-local ngx_DEBUG = ngx.DEBUG
+local ngx_DEBUG = ngx.INFO -- ngx.DEBUG
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
@@ -198,6 +198,8 @@ function _M:_handle_meta_call(c)
 
   local capabilities_list = info.rpc_capabilities
   local node_id = info.kong_node_id
+
+ngx.log(ngx.INFO, "xxx meta call processing succeeds! assign  self.client_capabilities[", node_id,"]")
 
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),

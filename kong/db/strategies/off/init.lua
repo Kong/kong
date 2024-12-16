@@ -366,6 +366,7 @@ local function select_by_field(self, field, value, options)
                 workspace_id(schema, options)
 
   local key = unique_field_key(schema.name, ws_id, field, value)
+  ngx.log(ngx.INFO, "xxx select from lmdb:", key)
 
   return select_by_key(schema, key, true)
 end

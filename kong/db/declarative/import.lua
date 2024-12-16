@@ -286,6 +286,8 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
 
   local itm_key = item_key(entity_name, ws_id, pk)
 
+  ngx.log(ngx.INFO, "xxx pk:", tostring(pk), " itm_key:", tostring(itm_key))
+
   -- if we are deleting, item_value and idx_value should be nil
   local itm_value, idx_value
 
