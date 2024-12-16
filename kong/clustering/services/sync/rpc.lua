@@ -422,26 +422,28 @@ function sync_once_impl(premature, retry_count)
     return
   end
 
-  sync_handler()  
-  
-  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
-  local current_version = tonumber(declarative.get_current_hash()) or 0
+  sync_handler()
 
+  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   if not latest_notified_version then
     ngx_log(ngx_DEBUG, "no version notified yet")
     return
   end
 
-  -- retry if the version is not updated
-  if current_version < latest_notified_version then
-    retry_count = retry_count or 0
-    if retry_count > MAX_RETRY then
-      ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
-      return
-    end
-
-    return start_sync_once_timer(retry_count + 1)
+  local current_version = tonumber(declarative.get_current_hash()) or 0
+  if current_version >= latest_notified_version then
+    ngx_log(ngx_DEBUG, "version already updated")
+    return
   end
+
+  -- retry if the version is not updated
+  retry_count = retry_count or 0
+  if retry_count > MAX_RETRY then
+    ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
+    return
+  end
+
+  return start_sync_once_timer(retry_count + 1)
 end
 
 
