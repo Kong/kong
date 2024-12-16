@@ -160,18 +160,22 @@ local function calculate_config_hash(config_table)
   local plugins   = config_table.plugins
   local upstreams = config_table.upstreams
   local targets   = config_table.targets
+  local custom_plugins = config_table.custom_plugins
 
   local routes_hash = calculate_hash(routes, o)
   local services_hash = calculate_hash(services, o)
   local plugins_hash = calculate_hash(plugins, o)
   local upstreams_hash = calculate_hash(upstreams, o)
   local targets_hash = calculate_hash(targets, o)
+  local custom_plugins_hash = calculate_hash(custom_plugins, o)
 
   config_table.routes    = nil
   config_table.services  = nil
   config_table.plugins   = nil
   config_table.upstreams = nil
   config_table.targets   = nil
+  config_table.custom_plugins = nil
+
 
   local rest_hash = calculate_hash(config_table, o)
   local config_hash = ngx_md5(routes_hash    ..
@@ -179,6 +183,7 @@ local function calculate_config_hash(config_table)
                               plugins_hash   ..
                               upstreams_hash ..
                               targets_hash   ..
+                              custom_plugins_hash ..
                               rest_hash)
 
   config_table.routes    = routes
@@ -186,6 +191,7 @@ local function calculate_config_hash(config_table)
   config_table.plugins   = plugins
   config_table.upstreams = upstreams
   config_table.targets   = targets
+  config_table.custom_plugins = custom_plugins
 
   return config_hash, {
     config    = config_hash,
@@ -194,6 +200,7 @@ local function calculate_config_hash(config_table)
     plugins   = plugins_hash,
     upstreams = upstreams_hash,
     targets   = targets_hash,
+    custom_plugins = custom_plugins_hash,
   }
 end
 
@@ -204,6 +211,7 @@ local hash_fields = {
     "plugins",
     "upstreams",
     "targets",
+    "custom_plugins",
   }
 
 local function fill_empty_hashes(hashes)

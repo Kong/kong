@@ -1053,5 +1053,30 @@ MetaSchema.MetaSubSchema = Schema.new({
   end,
 })
 
+-- We don't want to provide for streamed custom plugins (for example) the full
+-- power of normal schema. Especially on places where there can be custom functions
+-- such as shorthand_fields, transformations, and the check function.
+--
+-- But at the same time it is really hard to make this fully declarative because
+-- then it gets harder to port plugins to streamed custom plugins, thus the
+-- compromise. We need more feedback before we can decide the direction.
+MetaSchema.RestrictedMetaSubSchema = Schema.new({
+  name = "restrictedmetasubschema",
+  fields = {
+    {
+      name = {
+        type = "string",
+        required = true,
+      },
+    },
+    {
+      fields = fields_array,
+    },
+    {
+      entity_checks = entity_checks_schema,
+    },
+  },
+})
+
 
 return MetaSchema

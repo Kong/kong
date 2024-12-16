@@ -417,4 +417,6 @@ request_debug_token =
 active_tracing = off
 
 healthz_ids = NONE
+
+custom_plugins_enabled = off
 ]]

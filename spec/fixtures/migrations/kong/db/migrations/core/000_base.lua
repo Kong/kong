@@ -78,6 +78,11 @@ return {
         "ws_id" UUID NULL
       );
 
+      CREATE TABLE IF NOT EXISTS "custom_plugins" (
+        "id"    UUID PRIMARY KEY,
+        "ws_id" UUID NULL
+      );
+
       INSERT INTO sm_vaults ("id", "ws_id")
         VALUES ('23111c66-8c80-4f8a-8f18-7d6c495bc36e', '23111c66-8c80-4f8a-8f18-7d6c495bc36e')
       ON CONFLICT DO NOTHING;  -- Hack, mock data

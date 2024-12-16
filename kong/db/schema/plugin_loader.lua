@@ -11,80 +11,127 @@ local plugin_servers = require "kong.runloop.plugin_servers"
 local wasm_plugins = require "kong.runloop.wasm.plugins"
 local is_array = require "kong.tools.table".is_array
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+local sandbox_schema = require("kong.tools.sandbox").sandbox_schema
 
 
 local fmt = string.format
+local type = type
+local pcall = pcall
 local tostring = tostring
+
+
+local function load_custom_plugin_subschema(plugin)
+  local name = plugin.name
+  local chunk = plugin.schema
+  if type(chunk) == "table" then
+    return chunk
+  end
+
+  local ok, compiled = pcall(sandbox_schema, chunk, name)
+  if not ok then
+    return nil, fmt("compiling custom '%s' plugin schema failed: %s", name, compiled)
+  end
+
+  local ok, schema = pcall(compiled)
+  if not ok then
+    return nil, fmt("loading custom '%s' plugin schema failed: %s", name, schema)
+  end
+
+  return schema
+end
 
 
 local plugin_loader = {}
 
 
-function plugin_loader.load_subschema(parent_schema, plugin, errors)
-  local plugin_schema = "kong.plugins." .. plugin .. ".schema"
-  local ok, schema = load_module_if_exists(plugin_schema)
+function plugin_loader.load_subschema(parent_schema, name, errors)
+  local plugin_schema = "kong.plugins." .. name .. ".schema"
+  local ok, definition = load_module_if_exists(plugin_schema)
   if not ok then
-    ok, schema = wasm_plugins.load_schema(plugin)
+    ok, definition = wasm_plugins.load_schema(name)
   end
   if not ok then
-    ok, schema = plugin_servers.load_schema(plugin)
-  end
-
-  if not ok then
-    return nil, "no configuration schema found for plugin: " .. plugin
+    ok, definition = plugin_servers.load_schema(name)
   end
 
-  local err_t
-  ok, err_t = MetaSchema.MetaSubSchema:validate(schema)
+  if not ok then
+    return nil, "no configuration schema found for plugin: " .. name
+  end
+
+  local ok, err_t = MetaSchema.MetaSubSchema:validate(definition)
   if not ok then
     return nil, tostring(errors:schema_violation(err_t))
   end
 
-  local err
-  ok, err = Entity.new_subschema(parent_schema, plugin, schema)
+  local subschema, err = Entity.new_subschema(parent_schema, name, definition)
   if not ok then
     return nil, "error initializing schema for plugin: " .. err
   end
 
-  return schema
+  return definition, nil, subschema
 end
 
 
-function plugin_loader.load_entity_schema(plugin, schema_def, errors)
-  local _, err_t = MetaSchema:validate(schema_def)
+function plugin_loader.load_custom_subschema(parent_schema, plugin, errors)
+  local definition, err = load_custom_plugin_subschema(plugin)
+  if not definition then
+    return nil, err
+  end
+
+  local ok, err_t = MetaSchema.RestrictedMetaSubSchema:validate(definition)
+  if not ok then
+    return nil, tostring(errors:schema_violation(err_t))
+  end
+
+  local subschema, err = Entity.load_and_validate_subschema(parent_schema, plugin.name, definition)
+  if not subschema then
+    return nil, err
+  end
+
+  return definition, nil, subschema
+end
+
+
+function plugin_loader.reset_custom_subschema(parent_schema, name, definition, subschema)
+  Entity.reset_subschema(parent_schema, name, definition, subschema)
+end
+
+
+function plugin_loader.load_entity_schema(name, definition, errors)
+  local _, err_t = MetaSchema:validate(definition)
   if err_t then
     return nil, fmt("schema of custom plugin entity '%s.%s' is invalid: %s",
-      plugin, schema_def.name, tostring(errors:schema_violation(err_t)))
+      name, definition.name, tostring(errors:schema_violation(err_t)))
   end
 
-  local schema, err = Entity.new(schema_def)
+  local schema, err = Entity.new(definition)
   if err then
     return nil, fmt("schema of custom plugin entity '%s.%s' is invalid: %s",
-                    plugin, schema_def.name, err)
+      name, definition.name, err)
   end
 
   return schema
 end
 
 
-function plugin_loader.load_entities(plugin, errors, loader_fn)
-  local has_daos, daos_schemas = load_module_if_exists("kong.plugins." .. plugin .. ".daos")
+function plugin_loader.load_entities(name, errors, loader_fn)
+  local has_daos, daos_schemas = load_module_if_exists("kong.plugins." .. name .. ".daos")
   if not has_daos then
     return {}
   end
   if not is_array(daos_schemas, "strict") then
-    return nil, fmt("custom plugin '%s' returned non-array daos definition table", plugin)
+    return nil, fmt("custom plugin '%s' returned non-array daos definition table", name)
   end
 
   local res = {}
-  local schema_def, ret, err
+  local definition, ret, err
   for i = 1, #daos_schemas do
-    schema_def = daos_schemas[i]
-    ret, err = loader_fn(plugin, schema_def, errors)
+    definition = daos_schemas[i]
+    ret, err = loader_fn(name, definition, errors)
     if err then
       return nil, err
     end
-    res[schema_def.name] = ret
+    res[definition.name] = ret
   end
 
   return res

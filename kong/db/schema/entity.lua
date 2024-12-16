@@ -117,10 +117,34 @@ local function find_encrypted_fields(schema, definition, prefix)
 end
 
 
+function Entity.load_and_validate_subschema(schema, key, definition)
+  make_records_required(definition)
+
+  definition.required = nil
+
+  local subschema, err = Schema.load_and_validate_subschema(schema, key, definition)
+  if not subschema then
+    return nil, err
+  end
+
+  return subschema
+end
+
+
+function Entity.reset_subschema(schema, key, definition, subschema)
+  Schema.reset_subschema(schema, key, subschema)
+
+  -- EE [[
+  find_encrypted_fields(schema.subschemas[key], definition, "")
+  -- EE ]]
+end
+
+
 function Entity.new_subschema(schema, key, definition)
   make_records_required(definition)
 
   definition.required = nil
+
   local ok, err = Schema.new_subschema(schema, key, definition)
   if not ok then
     return ok, err
@@ -135,7 +159,6 @@ end
 
 
 function Entity.new(definition)
-
   local self, err = Schema.new(definition)
   if not self then
     return nil, err
@@ -169,6 +192,7 @@ function Entity.new(definition)
   end
 
   self.new_subschema = Entity.new_subschema
+  self.unload_subschemas = Schema.unload_subschemas
 
   -- EE [[
   assert(hooks.run_hook("db:schema:entity:new", self, self.name))

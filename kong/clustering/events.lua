@@ -31,7 +31,22 @@ local worker_events
 
 
 -- Sends "clustering", "push_config" to all workers in the same node, including self
-local function post_push_config_event()
+local function post_push_config_event(data)
+  if kong.configuration.custom_plugins_enabled then
+    -- Load the possible custom plugins.
+    --
+    -- The control plane nodes don't listen to normal traditional
+    -- events, thus we load the custom plugins here to make control
+    -- plane admin apis aware of custom plugins.
+    if data:sub(1, 15) == "custom_plugins:" then
+      ngx_log(ngx_DEBUG, _log_prefix, "reloading custom plugin schemas")
+      local ok, err = kong.db.plugins:load_plugin_schemas()
+      if not ok then
+        ngx_log(ngx_ERR, _log_prefix, "reloading custom plugin schemas failed: ", err)
+      end
+    end
+  end
+
   local res, err = worker_events.post("clustering", "push_config")
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
@@ -42,17 +57,17 @@ end
 -- Handles "clustering:push_config" cluster event
 local function handle_clustering_push_config_event(data)
   ngx_log(ngx_DEBUG, _log_prefix, "received clustering:push_config event for ", data)
-  post_push_config_event()
+  post_push_config_event(data)
 end
 
 
-local function trigger_push_config_event(source)
-  cluster_events:broadcast("clustering:push_config", source)
+local function trigger_push_config_event(data)
+  cluster_events:broadcast("clustering:push_config", data)
 
   -- we have to re-broadcast event using `post` because the dao
   -- events were sent using `post_local` which means not all workers
   -- can receive it
-  post_push_config_event()
+  post_push_config_event(data)
 end
 
 
@@ -64,6 +79,7 @@ local function handle_dao_crud_event(data)
 
   trigger_push_config_event(data.schema.name .. ":" .. data.operation)
 end
+
 
 -- Handles "keyring" "recover" worker event and broadcasts "clustering:push_config" cluster event
 local function handle_keyring_recover_event()
@@ -102,6 +118,5 @@ end
 
 return {
   init = init,
-
   clustering_push_config = clustering_push_config,
 }

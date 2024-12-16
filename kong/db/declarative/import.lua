@@ -563,6 +563,7 @@ do
     local router_hash
     local plugins_hash
     local balancer_hash
+    local custom_plugins_hash
 
     if hashes then
       if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
@@ -582,6 +583,8 @@ do
       else
         balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
+
+      custom_plugins_hash = hashes.custom_plugins
     end
 
     local reconfigure_data = {
@@ -589,6 +592,7 @@ do
       router_hash,
       plugins_hash,
       balancer_hash,
+      custom_plugins_hash,
     }
 
     ok, err = events.declarative_reconfigure_notify(reconfigure_data)

@@ -767,6 +767,7 @@ do
   local CURRENT_ROUTER_HASH   = 0
   local CURRENT_PLUGINS_HASH  = 0
   local CURRENT_BALANCER_HASH = 0
+  local CURRENT_CUSTOM_PLUGINS_HASH = 0
 
   reconfigure_handler = function(data)
     local worker_id = ngx_worker_id() or -1
@@ -785,12 +786,14 @@ do
     local router_hash
     local plugins_hash
     local balancer_hash
+    local custom_plugins_hash
 
     if type(data) == "table" then
       default_ws    = data[1]
       router_hash   = data[2]
       plugins_hash  = data[3]
       balancer_hash = data[4]
+      custom_plugins_hash = data[5]
     end
 
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
@@ -821,6 +824,13 @@ do
 
         log(INFO, "building a new router took ",  get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
+      end
+
+      if kong.configuration.custom_plugins_enabled and custom_plugins_hash ~= CURRENT_CUSTOM_PLUGINS_HASH then
+        local ok, err = kong.db.plugins:load_plugin_schemas()
+        if not ok then
+          return nil, err
+        end
       end
 
       local plugins_iterator
@@ -862,6 +872,10 @@ do
         ROUTER_CACHE:flush_all()
         ROUTER_CACHE_NEG:flush_all()
         CURRENT_ROUTER_HASH = router_hash or 0
+      end
+
+      if kong.configuration.custom_plugins_enabled then
+        CURRENT_CUSTOM_PLUGINS_HASH = custom_plugins_hash or 0
       end
 
       if plugins_iterator then

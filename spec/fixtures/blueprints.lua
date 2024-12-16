@@ -38,6 +38,11 @@ function Blueprint:insert(overrides, options)
   if err then
     error(err, 2)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return entity
 end
 
@@ -50,6 +55,10 @@ function Blueprint:insert_ws(overrides, workspace)
   local entity = self:insert(overrides)
   ngx.ctx.workspace = old_workspace
 
+  if self.post_function then
+    self.post_function()
+  end
+
   return entity
 end
 
@@ -59,6 +68,11 @@ function Blueprint:remove(overrides, options)
   if err then
     error(err, 2)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return entity
 end
 
@@ -68,6 +82,11 @@ function Blueprint:update(id, overrides, options)
   if err then
     error(err, 2)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return entity
 end
 
@@ -77,6 +96,11 @@ function Blueprint:upsert(id, overrides, options)
   if err then
     error(err, 2)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return entity
 end
 
@@ -86,6 +110,11 @@ function Blueprint:insert_n(n, overrides, options)
   for i=1,n do
     res[i] = self:insert(overrides, options)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return res
 end
 
@@ -94,13 +123,19 @@ function Blueprint:truncate()
   if err then
     error(err, 2)
   end
+
+  if self.post_function then
+    self.post_function()
+  end
+
   return true
 end
 
-local function new_blueprint(dao, build_function)
+local function new_blueprint(dao, build_function, post_function)
   return setmetatable({
     dao = dao,
     build_function = build_function,
+    post_function = post_function,
   }, Blueprint)
 end
 
@@ -696,6 +731,26 @@ function _M.new(db)
       operation = overrides.operation or "create",
       dao_name = overrides.dao_name or "services"
     }
+  end)
+
+  res.custom_plugins = new_blueprint(db.custom_plugins, function(overrides)
+    return overrides or {}
+  end, function()
+    local custom_plugin_enabled = kong.configuration.custom_plugin_enabled
+    if not custom_plugin_enabled then
+      rawset(kong.configuration, "custom_plugins_enabled", true)
+    end
+    local is_cli = ngx.IS_CLI
+    if is_cli then
+      ngx.IS_CLI = false
+    end
+    pcall(db.plugins.load_plugin_schemas, db.plugins)
+    if not custom_plugin_enabled then
+      rawset(kong.configuration, "custom_plugins_enabled", false)
+    end
+    if is_cli then
+      ngx.IS_CLI = true
+    end
   end)
 
   return res

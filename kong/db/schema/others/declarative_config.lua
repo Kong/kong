@@ -283,12 +283,93 @@ local function build_fields(known_entities, include_foreign)
 end
 
 
-local function load_plugin_subschemas(fields, plugin_set, indent)
+local function _load_custom_plugin_subschemas(parent, custom_plugins, valid_custom_plugins)
+  if not parent then
+    return true
+  end
+
+  local fields = parent.fields
   if not fields then
     return true
   end
 
-  indent = indent or 0
+  for _, f in ipairs(fields) do
+    local fname, fdata = next(f)
+
+    -- Exclude cases where `plugins` are used expect from plugins entities.
+    -- This assumes other entities doesn't have `name` as its subschema_key.
+    if fname == "plugins" and fdata.elements and fdata.elements.subschema_key == "name" then
+      local field_schema = fdata.elements
+      if custom_plugins then
+        for _, plugin in ipairs(custom_plugins) do
+          local definition, err, subschema = plugin_loader.load_custom_subschema(field_schema, plugin, errors)
+          if err then
+            return nil, err
+          end
+          insert(valid_custom_plugins, { field_schema, plugin.name, definition, subschema })
+        end
+      end
+
+      valid_custom_plugins.schemas[field_schema] = true
+      valid_custom_plugins.fields[parent] = true
+
+    elseif fdata.type == "array" and fdata.elements.type == "record" then
+      local ok, err = _load_custom_plugin_subschemas(fdata.elements, custom_plugins, valid_custom_plugins)
+      if not ok then
+        return nil, err
+      end
+
+    elseif fdata.type == "record" then
+      local ok, err = _load_custom_plugin_subschemas(fdata, custom_plugins, valid_custom_plugins)
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
+  return true
+end
+
+
+local function load_custom_plugin_subschemas(self, custom_plugins, plugin_set)
+  local valid_custom_plugins = {
+    schemas = {},
+    fields = {},
+  }
+  local ok, err = _load_custom_plugin_subschemas(self, custom_plugins, valid_custom_plugins)
+  if not ok then
+    return nil, err
+  end
+
+  if #valid_custom_plugins > 0 then
+    plugin_set = kong_table.shallow_copy(plugin_set)
+    for _, custom_plugin in ipairs(valid_custom_plugins) do
+      local field_schema = custom_plugin[1]
+      local name = custom_plugin[2]
+      local definition = custom_plugin[3]
+      local subschema = custom_plugin[4]
+      plugin_loader.reset_custom_subschema(field_schema, name, definition, subschema)
+      plugin_set[name] = true
+    end
+  end
+
+  for field_schema in pairs(valid_custom_plugins.schemas) do
+    field_schema:unload_subschemas(plugin_set)
+    Schema.unload_field_schema(field_schema)
+  end
+
+  for field in pairs(valid_custom_plugins.fields) do
+    Schema.unload_field_schema(field)
+  end
+
+  return true
+end
+
+
+local function load_plugin_subschemas(fields, plugin_set)
+  if not fields then
+    return true
+  end
 
   for _, f in ipairs(fields) do
     local fname, fdata = next(f)
@@ -298,20 +379,19 @@ local function load_plugin_subschemas(fields, plugin_set, indent)
     if fname == "plugins" and fdata.elements and fdata.elements.subschema_key == "name" then
       for plugin in pairs(plugin_set) do
         local _, err = plugin_loader.load_subschema(fdata.elements, plugin, errors)
-
         if err then
           return nil, err
         end
       end
 
     elseif fdata.type == "array" and fdata.elements.type == "record" then
-      local ok, err = load_plugin_subschemas(fdata.elements.fields, plugin_set, indent + 1)
+      local ok, err = load_plugin_subschemas(fdata.elements.fields, plugin_set)
       if not ok then
         return nil, err
       end
 
     elseif fdata.type == "record" then
-      local ok, err = load_plugin_subschemas(fdata.fields, plugin_set, indent + 1)
+      local ok, err = load_plugin_subschemas(fdata.fields, plugin_set)
       if not ok then
         return nil, err
       end
@@ -805,6 +885,13 @@ local function flatten(self, input)
     input._transform = true
   end
 
+  local custom_plugins
+  if kong.configuration.custom_plugins_enabled then
+    custom_plugins = input.custom_plugins
+    self:load_custom_plugin_subschemas(custom_plugins, self.plugin_set)
+    yield()
+  end
+
   local ok, err = self:validate(input)
   if not ok then
     yield()
@@ -814,6 +901,12 @@ local function flatten(self, input)
     -- filled foreign keys
     if not self.full_schema then
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
+      yield()
+    end
+
+    if custom_plugins then
+      self.full_schema:load_custom_plugin_subschemas(custom_plugins, self.plugin_set)
+      yield()
     end
 
     local input_copy = kong_table.cycle_aware_deep_copy(input, true)
@@ -1004,6 +1097,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
 
   schema.known_entities = known_entities
   schema.flatten = flatten
+  schema.load_custom_plugin_subschemas = load_custom_plugin_subschemas
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set

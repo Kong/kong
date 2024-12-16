@@ -75,6 +75,8 @@ for i = 1, #dist_constants.plugins do
   ee_plugin_map[dist_constants.plugins[i]] = true
 end
 
+table.sort(plugins)
+
 local plugin_map = {}
 for i = 1, #plugins do
   plugin_map[plugins[i]] = true
@@ -144,6 +146,7 @@ end
 
 local constants = {
   CJSON_MAX_PRECISION = 16,
+  BUNDLED_PLUGINS_NAMES = plugins,
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = utils_table_concat(dist_constants.plugins, ee_constants.BUNDLED_EE_PLUGINS),
   EE_PLUGINS_MAP = ee_plugin_map,
@@ -189,6 +192,7 @@ local constants = {
     "snis",
     "upstreams",
     "targets",
+    "custom_plugins",
     "plugins",
     "tags",
     "ca_certificates",

@@ -208,13 +208,13 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
+        assert.equal("88f54953aeb10a1ca6ebb47bf843f4c4", hash)
       end
 
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
+        assert.equal("88f54953aeb10a1ca6ebb47bf843f4c4", hash)
       end
     end)
 
@@ -245,7 +245,7 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("675ff4b6b1c8cefa5198284110786ad0", hash)
+        assert.equal("cea33f80da546963fe35936b0cb00809", hash)
         assert.equal(h, hash)
       end
     end)
@@ -257,13 +257,14 @@ describe("kong.clustering", function()
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
+          assert.equal("88f54953aeb10a1ca6ebb47bf843f4c4", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "2da3c26e4dbd6dd6ea3ab60a3dd7fb3e",
+            config = "88f54953aeb10a1ca6ebb47bf843f4c4",
             routes = DECLARATIVE_EMPTY_CONFIG_HASH,
             services = DECLARATIVE_EMPTY_CONFIG_HASH,
             plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            custom_plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
             upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
             targets = DECLARATIVE_EMPTY_CONFIG_HASH,
           }, hashes)
@@ -280,13 +281,14 @@ describe("kong.clustering", function()
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("81aac97a81ad03c0cf0b36663806488e", hash)
+          assert.equal("385a31a3ae9740f680a49b217f3a1bba", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "81aac97a81ad03c0cf0b36663806488e",
+            config = "385a31a3ae9740f680a49b217f3a1bba",
             routes = "99914b932bd37a50b983c5e7c90ae93b",
             services = "99914b932bd37a50b983c5e7c90ae93b",
             plugins = "99914b932bd37a50b983c5e7c90ae93b",
+            custom_plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
             upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
             targets = DECLARATIVE_EMPTY_CONFIG_HASH,
           }, hashes)
@@ -300,13 +302,14 @@ describe("kong.clustering", function()
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("4d60dd9998ea4314039da5ca2f1db96f", hash)
+          assert.equal("99125c50d50878e3ee3dd48bed6f8008", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "4d60dd9998ea4314039da5ca2f1db96f",
+            config = "99125c50d50878e3ee3dd48bed6f8008",
             routes = DECLARATIVE_EMPTY_CONFIG_HASH,
             services = DECLARATIVE_EMPTY_CONFIG_HASH,
             plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            custom_plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
             upstreams = "99914b932bd37a50b983c5e7c90ae93b",
             targets = "99914b932bd37a50b983c5e7c90ae93b",
           }, hashes)

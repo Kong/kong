@@ -89,8 +89,7 @@ end
 
 
 local PLUGINS_NS = "plugins." .. subsystem
-local ENABLED_PLUGINS
-local LOADED_PLUGINS
+local INSTALLED_PLUGINS
 local CONFIGURABLE_PLUGINS
 
 
@@ -164,10 +163,24 @@ local function get_loaded_plugins()
 end
 
 
-local function get_configurable_plugins()
+local function get_installed_plugins()
+  return assert(kong.db.plugins:get_installed_handlers())
+end
+
+
+local function get_enabled_plugins(loaded_plugins)
+  local enabled_plugins = {}
+  for _, plugin in ipairs(loaded_plugins) do
+    enabled_plugins[plugin.name] = true
+  end
+  return enabled_plugins
+end
+
+
+local function get_configurable_plugins(loaded_plugins)
   local i = 0
   local plugins_with_configure_phase = {}
-  for _, plugin in ipairs(LOADED_PLUGINS) do
+  for _, plugin in ipairs(loaded_plugins) do
     if plugin.handler[CONFIGURE_PHASE] then
       i = i + 1
       local name = plugin.name
@@ -450,11 +463,11 @@ end
 
 
 local function get_init_worker_iterator(self)
-  if #self.loaded == 0 then
+  if #self.installed == 0 then
     return nil
   end
 
-  return get_next_init_worker, self.loaded
+  return get_next_init_worker, self.installed
 end
 
 
@@ -684,9 +697,12 @@ function PluginsIterator.new(version)
     end
   end
 
-  LOADED_PLUGINS = LOADED_PLUGINS or get_loaded_plugins()
-  CONFIGURABLE_PLUGINS = CONFIGURABLE_PLUGINS or get_configurable_plugins()
-  ENABLED_PLUGINS = ENABLED_PLUGINS or kong.configuration.loaded_plugins
+  local loaded_plugins = get_loaded_plugins() -- all plugins including dynamic custom-plugins
+
+  INSTALLED_PLUGINS = INSTALLED_PLUGINS or get_installed_plugins() -- all plugins excluding dynamic custom-plugins
+  CONFIGURABLE_PLUGINS = get_configurable_plugins(loaded_plugins) -- all plugins that implement configure handler
+
+  local enabled_plugins = get_enabled_plugins(loaded_plugins)
 
   local ws_id = workspaces.get_workspace_id() or kong.default_workspace
   local ws = {
@@ -712,7 +728,7 @@ function PluginsIterator.new(version)
     end
 
     local name = plugin.name
-    if not ENABLED_PLUGINS[name] then
+    if not enabled_plugins[name] then
       return nil, name .. " plugin is in use but not enabled"
     end
 
@@ -788,7 +804,7 @@ function PluginsIterator.new(version)
 
   if has_plugins then
     -- loaded_plugins contains all the plugins that we _may_ execute
-    for _, plugin in ipairs(LOADED_PLUGINS) do
+    for _, plugin in ipairs(loaded_plugins) do
       local name = plugin.name
       -- ws contains all the plugins that are associated to the request via route/service/global mappings
       for _, data in pairs(ws) do
@@ -819,7 +835,8 @@ function PluginsIterator.new(version)
   return {
     version = version,
     ws = ws,
-    loaded = LOADED_PLUGINS,
+    loaded = loaded_plugins,
+    installed = INSTALLED_PLUGINS,
     configure = create_configure(configurable),
     globals = globals,
     get_init_worker_iterator = get_init_worker_iterator,

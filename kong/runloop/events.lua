@@ -263,7 +263,19 @@ local function crud_services_handler(data)
 end
 
 
-local function crud_plugins_handler(data)
+local function crud_custom_plugins_handler()
+  if not kong.configuration.custom_plugins_enabled then
+    return
+  end
+  log(DEBUG, "[events] Reloading custom plugin schemas")
+  local ok, err = kong.db.plugins:load_plugin_schemas()
+  if not ok then
+    log(ERR, "[events] reloading custom plugin schemas failed: ", err)
+  end
+end
+
+
+local function crud_plugins_handler()
   log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
   core_cache:invalidate("plugins_iterator:version")
 end
@@ -429,6 +441,7 @@ local LOCAL_HANDLERS = {
   -- local events (same worker)
   { "crud"    , "routes"    , crud_routes_handler },
   { "crud"    , "services"  , crud_services_handler },
+  { "crud"    , "custom_plugins", crud_custom_plugins_handler },
   { "crud"    , "plugins"   , crud_plugins_handler },
 
   -- SSL certs / SNIs invalidations

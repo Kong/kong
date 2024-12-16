@@ -605,6 +605,18 @@ local function declarative_init_build()
   local default_ws = kong.db.workspaces:select_by_name("default")
   kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
 
+  if kong.configuration.custom_plugins_enabled then
+    -- Load the possible custom plugins.
+    --
+    -- This is needed with dbless nodes and data planes on a node
+    -- startup when KONG_DECLARATIVE_CONFIG or existing LMDB contains
+    -- custom plugins.
+    local ok, err = kong.db.plugins:load_plugin_schemas()
+    if not ok then
+      return nil, err
+    end
+  end
+
   local ok, err = runloop.build_plugins_iterator("init")
   if not ok then
     return nil, "error building initial plugins iterator: " .. err
@@ -1070,7 +1082,7 @@ function Kong.init_worker()
       -- if there is no declarative config set and a config is present in LMDB,
       -- just build the router and plugins iterator
       ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
-      local ok, err = declarative_init_build()
+      ok, err = declarative_init_build()
       if not ok then
         stash_init_worker_error("failed to initialize declarative config: " .. err)
         return
@@ -1114,6 +1126,16 @@ function Kong.init_worker()
 
   -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
+  if not ok and kong.configuration.custom_plugins_enabled then
+    -- Try to reload plugins. This is needed when worker crashes,
+    -- and there are custom plugins configured.
+    ngx_log(ngx_DEBUG, "loading custom plugin schemas")
+    if kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins) then
+      ngx_log(ngx_DEBUG, "updating plugins iterator")
+      ok, err = runloop.update_plugins_iterator()
+    end
+  end
+
   if not ok then
     stash_init_worker_error("failed to build the plugins iterator: " .. err)
     return
@@ -2246,9 +2268,13 @@ function Kong.serve_cluster_listener()
 end
 
 
-function Kong.serve_cluster_telemetry_listener(options)
-  log_init_worker_errors()
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+function Kong.serve_cluster_telemetry_listener()
+  local ctx = ngx.ctx
+
+  log_init_worker_errors(ctx)
+
+  ctx.KONG_PHASE = PHASES.cluster_listener
+
   return kong.clustering:handle_cp_telemetry_websocket()
 end
 

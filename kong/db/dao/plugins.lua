@@ -16,6 +16,8 @@ local wasm_plugins = require "kong.runloop.wasm.plugins"
 -- XXX EE
 local hooks = require "kong.hooks"
 
+
+local clone = require "table.clone"
 local version = require "version"
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
@@ -27,10 +29,17 @@ local fmt = string.format
 local type = type
 local null = ngx.null
 local pairs = pairs
+local ipairs = ipairs
+local concat = table.concat
+local insert = table.insert
 local tostring = tostring
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
+local ngx_get_phase = ngx.get_phase
+
+
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local function has_a_common_protocol_with_route(plugin, route)
@@ -192,79 +201,118 @@ local function implements(plugin, method)
 end
 
 
-local load_plugin_handler do
+local function validate_priority(prio)
+  if type(prio) ~= "number" or
+          prio ~= prio or  -- NaN
+          math.abs(prio) == math.huge or
+          math.floor(prio) ~= prio then
+    return false
+  end
+  return true
+end
 
-  local function valid_priority(prio)
-    if type(prio) ~= "number" or
-       prio ~= prio or  -- NaN
-       math.abs(prio) == math.huge or
-       math.floor(prio) ~= prio then
-      return false
+
+-- Returns the cleaned version string, only x.y.z part
+local function validate_version(v)
+  if type(v) ~= "string" then
+    return false
+  end
+  local vparsed = version(v)
+  if not vparsed or vparsed[4] ~= nil then
+    return false
+  end
+
+  return tostring(vparsed)
+end
+
+
+local load_plugin_handler, load_custom_plugin_handler do
+  local function validate_handler(name, handler, err_title)
+    if type(handler) == "table" then
+      if not validate_priority(handler.PRIORITY) then
+        return nil, fmt(
+          "%s %q cannot be loaded because its PRIORITY field is not " ..
+          "a valid integer number, got: %q.\n", err_title, name, tostring(handler.PRIORITY))
+      end
+
+      local v = validate_version(handler.VERSION)
+      if v then
+        handler.VERSION = v -- update to cleaned version string
+      else
+        return nil, fmt(
+          "%s %q cannot be loaded because its VERSION field does not " ..
+          "follow the \"x.y.z\" format, got: %q.\n", err_title, name, tostring(handler.VERSION))
+      end
     end
+
+    if implements(handler, "response") and (implements(handler, "header_filter") or
+                                            implements(handler, "body_filter"))
+    then
+      return nil, fmt(
+        "%s %q can't be loaded because it implements both `response` " ..
+        "and `header_filter` or `body_filter` methods.\n", err_title, name)
+    end
+
     return true
   end
 
-  -- Returns the cleaned version string, only x.y.z part
-  local function valid_version(v)
-    if type(v) ~= "string" then
-      return false
-    end
-    local vparsed = version(v)
-    if not vparsed or vparsed[4] ~= nil then
-      return false
-    end
-
-    return tostring(vparsed)
-  end
-
-
-  function load_plugin_handler(plugin)
+  function load_plugin_handler(name)
     -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
 
-    local plugin_handler = "kong.plugins." .. plugin .. ".handler"
+    local plugin_handler = "kong.plugins." .. name .. ".handler"
     local ok, handler = load_module_if_exists(plugin_handler)
     if not ok then
-      ok, handler = wasm_plugins.load_plugin(plugin)
+      ok, handler = wasm_plugins.load_plugin(name)
       if type(handler) == "table" then
         handler._wasm = true
       end
     end
 
     if not ok then
-      ok, handler = plugin_servers.load_plugin(plugin)
+      ok, handler = plugin_servers.load_plugin(name)
       if type(handler) == "table" then
         handler._go = true
       end
     end
 
     if not ok then
-      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
+      return nil, name .. " plugin is enabled but not installed;\n" .. handler
     end
 
-    if type(handler) == "table" then
-
-      if not valid_priority(handler.PRIORITY) then
-        return nil, fmt(
-          "Plugin %q cannot be loaded because its PRIORITY field is not " ..
-          "a valid integer number, got: %q.\n", plugin, tostring(handler.PRIORITY))
-      end
-
-      local v = valid_version(handler.VERSION)
-      if v then
-        handler.VERSION = v -- update to cleaned version string
-      else
-        return nil, fmt(
-          "Plugin %q cannot be loaded because its VERSION field does not " ..
-          "follow the \"x.y.z\" format, got: %q.\n", plugin, tostring(handler.VERSION))
-      end
+    local ok, err = validate_handler(name, handler, "Plugin")
+    if not ok then
+      return nil, err
     end
 
-    if implements(handler, "response") and
-        (implements(handler, "header_filter") or implements(handler, "body_filter"))
-    then
-      return nil, fmt(
-        "Plugin %q can't be loaded because it implements both `response` " ..
-        "and `header_filter` or `body_filter` methods.\n", plugin)
+    return handler
+  end
+
+  local sandbox = require("kong.tools.sandbox").sandbox_handler
+  local pcall = pcall
+  function load_custom_plugin_handler(plugin)
+    local name = plugin.name
+    local chunk = plugin.handler
+    if type(chunk) == "table" then
+      return chunk
+    end
+
+    local ok, compiled = pcall(sandbox, chunk, name)
+    if not ok then
+      return nil, fmt("compiling custom '%s' plugin handler failed: %s", name, compiled)
+    end
+
+    local ok, handler = pcall(compiled)
+    if not ok then
+      return nil, fmt("loading custom '%s' plugin handler failed: %s", name, handler)
+    end
+
+    local ok, err = validate_handler(name, handler, "Custom plugin")
+    if not ok then
+      return nil, err
+    end
+
+    if implements(handler, "init_worker") then
+      return nil, "Custom plugin %q can't be loaded because it implements `init_worker`."
     end
 
     return handler
@@ -272,20 +320,20 @@ local load_plugin_handler do
 end
 
 
-local function load_plugin_entity_strategy(schema, db, plugin)
-        local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
-            local strategy, err = Strategy.new(db.connector, schema, db.errors)
-            if not strategy then
-              return nil, err
-            end
+local function load_plugin_entity_strategy(schema, db, name)
+  local Strategy = require(fmt("kong.db.strategies.%s", db.strategy))
+  local strategy, err = Strategy.new(db.connector, schema, db.errors)
+  if not strategy then
+    return nil, err
+  end
 
   local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
-                           plugin, db.strategy, schema.name)
+                           name, db.strategy, schema.name)
   local exists, mod = load_module_if_exists(custom_strat)
   if exists and mod then
     local parent_mt = getmetatable(strategy)
     local mt = {
-      __index = function(t, k)
+      __index = function(_, k)
         -- explicit parent
         if k == "super" then
           return parent_mt
@@ -316,36 +364,20 @@ end
 
 
 local function plugin_entity_loader(db)
-  return function(plugin, schema_def)
-    ngx_log(ngx_DEBUG, fmt("Loading custom plugin entity: '%s.%s'", plugin, schema_def.name))
-    local schema, err = plugin_loader.load_entity_schema(plugin, schema_def, db.errors)
+  return function(name, definition)
+    ngx_log(ngx_DEBUG, fmt("Loading custom plugin entity: '%s.%s'", name, definition.name))
+    local schema, err = plugin_loader.load_entity_schema(name, definition, db.errors)
     if not schema then
       return nil, err
     end
 
-    load_plugin_entity_strategy(schema, db, plugin)
+    load_plugin_entity_strategy(schema, db, name)
   end
 end
 
 
-local function load_plugin(self, plugin)
-  local db = self.db
-
-  if constants.DEPRECATED_PLUGINS[plugin] then
-    ngx_log(ngx_WARN, "plugin '", plugin, "' has been deprecated")
-  end
-
-  local handler, err = load_plugin_handler(plugin)
-  if not handler then
-    return nil, err
-  end
-
-  local schema, err = plugin_loader.load_subschema(self.schema, plugin, db.errors)
-  if err then
-    return nil, err
-  end
-
-  for _, field in ipairs(schema.fields) do
+local function patch_handler(definition, handler)
+  for _, field in ipairs(definition.fields) do
     if field.consumer and field.consumer.eq == null then
       handler.no_consumer = true
     end
@@ -362,11 +394,36 @@ local function load_plugin(self, plugin)
       handler.no_service = true
     end
   end
+end
 
-  ngx_log(ngx_DEBUG, "Loading plugin: ", plugin)
+
+local function load_plugin(self, name)
+  if self.installed and self.installed[name] then
+    return self.installed[name]
+  end
+
+  local db = self.db
+
+  if constants.DEPRECATED_PLUGINS[name] then
+    ngx_log(ngx_WARN, "plugin '", name, "' has been deprecated")
+  end
+
+  local handler, err = load_plugin_handler(name)
+  if not handler then
+    return nil, err
+  end
+
+  local definition, err = plugin_loader.load_subschema(self.schema, name, db.errors)
+  if err then
+    return nil, err
+  end
+
+  patch_handler(definition, handler)
+
+  ngx_log(ngx_DEBUG, "Loading plugin: ", name)
 
   if db.strategy then -- skip during tests
-    local _, err = plugin_loader.load_entities(plugin, db.errors,
+    local _, err = plugin_loader.load_entities(name, db.errors,
                                                plugin_entity_loader(db))
     if err then
       return nil, err
@@ -377,45 +434,145 @@ local function load_plugin(self, plugin)
 end
 
 
+local function load_custom_plugin(self, plugin)
+  local db = self.db
+
+  local handler, err = load_custom_plugin_handler(plugin)
+  if not handler then
+    return nil, err
+  end
+
+  local definition, err, subschema = plugin_loader.load_custom_subschema(self.schema, plugin, db.errors)
+  if err then
+    return nil, err
+  end
+
+  patch_handler(definition, handler)
+
+  ngx_log(ngx_DEBUG, "Loading custom plugin: ", plugin.name)
+
+  return handler, nil, definition, subschema
+end
+
+
+local function should_reload_custom_plugins()
+  if ngx.IS_CLI then
+    return false -- no reload on CLI (as it potentially slows down the startup)
+  end
+
+  if not kong.configuration.custom_plugins_enabled then
+    return false -- no reload on when the feature is not enabled
+  end
+
+  if kong.configuration.database == "off" and ngx_get_phase() == "init" then
+    return false -- no reload on dbless in init as lmdb cannot be accessed
+  end
+
+  return true
+end
+
+
 --- Load subschemas for all configured plugins into the Plugins entity. It has two side effects:
 --  * It makes the Plugin sub-schemas available for the rest of the application
 --  * It initializes the Plugin.
 -- @param plugin_set a set of plugin names.
 -- @return true if success, or nil and an error message.
 function Plugins:load_plugin_schemas(plugin_set)
-  self.handlers = nil
+  local reload_custom_plugins = should_reload_custom_plugins()
+
+  -- Normal plugins (stored in fs) are reloaded by passing a `plugin_set`.
+  -- Custom plugins (stored in db) are reloaded without passing a `plugin_set`.
+  if not plugin_set and not reload_custom_plugins then
+    -- no `plugin_set` was provided and custom plugins are not to be reloaded, we can skip it.
+    return true
+  end
 
   local go_plugins_cnt = 0
-  local handlers = {}
+  local installed
+  local handlers
   local errs
 
-  -- load installed plugins
-  for plugin in pairs(plugin_set) do
-    local handler, err = load_plugin(self, plugin)
+  if plugin_set then
+    installed = {}
+    for name in pairs(plugin_set) do
+      local handler, err = load_plugin(self, name)
+      if handler then
+        if handler._go then
+          go_plugins_cnt = go_plugins_cnt + 1
+        end
+        installed[name] = handler
 
-    if handler then
-      if handler._go then
-        go_plugins_cnt = go_plugins_cnt + 1
+      else
+        errs = errs or {}
+        insert(errs, "on plugin '" .. name .. "': " .. tostring(err))
+      end
+    end
+
+    if errs then
+      return nil, "error loading plugin schemas: " .. concat(errs, "; ")
+    end
+
+  else
+    installed = self.installed or {}
+  end
+
+  if reload_custom_plugins then
+    local custom_plugins
+    local page_size = self.db.custom_plugins.pagination.max_page_size
+    for plugin, err in self.db.custom_plugins:each(page_size, GLOBAL_QUERY_OPTS) do
+      if err then
+        errs = errs or {}
+        insert(errs, "on custom plugins: " .. tostring(err))
+        break
       end
 
-      handlers[plugin] = handler
+      local name = plugin.name
+      if installed[name] then
+        errs = errs or {}
+        insert(errs, "on custom plugin '" .. name .. "': " .. "name conflicts with loaded plugins")
 
-    else
-      errs = errs or {}
-      table.insert(errs, "on plugin '" .. plugin .. "': " .. tostring(err))
+      else
+        local handler, err, definition, subschema = load_custom_plugin(self, plugin)
+        if handler then
+          custom_plugins = custom_plugins or {}
+          insert(custom_plugins, { name, handler, definition, subschema })
+
+        else
+          errs = errs or {}
+          insert(errs, "on custom plugin '" .. plugin.name .. "': " .. tostring(err))
+        end
+      end
     end
+
+    if errs then
+      return nil, "error loading custom plugin schemas: " .. concat(errs, "; ")
+    end
+
+    if custom_plugins then
+      handlers = clone(installed)
+      for _, custom_plugin in ipairs(custom_plugins) do
+        local name = custom_plugin[1]
+        local handler = custom_plugin[2]
+        local definition = custom_plugin[3]
+        local subschema = custom_plugin[4]
+
+        plugin_loader.reset_custom_subschema(self.schema, name, definition, subschema)
+        handlers[name] = handler
+      end
+    end
+
+    self.schema:unload_subschemas(handlers or installed)
   end
 
-  if errs then
-    return nil, "error loading plugin schemas: " .. table.concat(errs, "; ")
+  if not self.installed then
+    reports.add_immutable_value("go_plugins_cnt", go_plugins_cnt)
   end
-
-  reports.add_immutable_value("go_plugins_cnt", go_plugins_cnt)
 
   -- XXX EE
-  assert(hooks.run_hook("dao:plugins:load", handlers))
+  assert(hooks.run_hook("dao:plugins:load", handlers or installed))
 
-  self.handlers = handlers
+  self.installed = installed
+  self.handlers = handlers or installed
 
   return true
 end
@@ -438,6 +595,23 @@ local sort_by_handler_priority = function (a, b)
 end
 
 Plugins.sort_by_handler_priority = sort_by_handler_priority
+Plugins.implements = implements
+Plugins.validate_version = validate_version
+Plugins.validate_priority = validate_priority
+
+
+local function get_handlers_from(handlers)
+  local list = {}
+  local len = 0
+  for name, handler in pairs(handlers) do
+    len = len + 1
+    list[len] = { name = name, handler = handler }
+  end
+
+  table.sort(list, sort_by_handler_priority)
+
+  return list
+end
 
 
 -- Requires Plugins:load_plugin_schemas to be loaded first
@@ -447,17 +621,20 @@ function Plugins:get_handlers()
     return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_handlers"
   end
 
-  local list = {}
-  local len = 0
-  for name, handler in pairs(self.handlers) do
-    len = len + 1
-    list[len] = { name = name, handler = handler }
+  return get_handlers_from(self.handlers)
+end
+
+
+-- Requires Plugins:load_plugin_schemas to be loaded first
+-- @return an array where each element has the format { name = "keyauth", handler = function() .. end }. Or nil, error
+function Plugins:get_installed_handlers()
+  if not self.installed then
+    return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_installed_handlers"
   end
 
-  table.sort(list, sort_by_handler_priority)
-
-  return list
+  return get_handlers_from(self.installed)
 end
+
 
 -- @ca_id: the id of ca certificate to be searched
 -- @limit: the maximum number of entities to return (must >= 0)

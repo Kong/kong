@@ -120,7 +120,10 @@ end
 
 
 function _M:init_worker()
-  local plugins_list = assert(kong.db.plugins:get_handlers())
+  -- We don't want to send information about custom plugins
+  -- from data planes to control plane, nor do we want to validate
+  -- whether data plane has a custom plugin - because they are streamed.
+  local plugins_list = assert(kong.db.plugins:get_installed_handlers())
   sort(plugins_list, function(a, b)
     return a.name:lower() < b.name:lower()
   end)

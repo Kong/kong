@@ -829,19 +829,6 @@ Schema.entity_checkers = {
 }
 
 
-local function memoize(fn)
-  local cache = setmetatable({}, { __mode = "k" })
-  return function(k)
-    if cache[k] then
-      return cache[k]
-    end
-    local v = fn(k)
-    cache[k] = v
-    return v
-  end
-end
-
-
 local function validate_elements(self, field, value)
   field.elements.required = true
   local errs = {}
@@ -862,9 +849,26 @@ local function validate_elements(self, field, value)
 end
 
 
-local get_field_schema = memoize(function(field)
-  return Schema.new(field)
-end)
+local field_schemas = setmetatable({}, { __mode = "k" })
+
+
+local function get_field_schema(field)
+  if field_schemas[field] then
+    return field_schemas[field]
+  end
+  local field_schema = Schema.new(field)
+  field_schemas[field] = field_schema
+  return field_schema
+end
+
+
+local function unload_field_schema(field)
+  field_schemas[field] = nil
+end
+
+
+Schema.unload_field_schema = unload_field_schema
+Schema.get_field_schema = get_field_schema
 
 
 -- Forward declaration
@@ -2520,7 +2524,44 @@ function Schema:transform(input, original_input, context)
   return output or input
 end
 
---- Instatiate a new schema from a definition.
+
+function Schema.load_and_validate_subschema(self, key, definition)
+  if not self.subschema_key then
+    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(key, self.name)
+  end
+
+  local subschema, err = Schema.new(definition, true)
+  if not subschema then
+    return nil, err
+  end
+
+  local parent_by_name = {}
+  for i = 1, #self.fields do
+    local fname, fdata = next(self.fields[i])
+    parent_by_name[fname] = fdata
+  end
+
+  for fname, field in subschema:each_field() do
+    local parent_field = parent_by_name[fname]
+    if not parent_field then
+      return nil, validation_errors.SUBSCHEMA_BAD_FIELD:format(key, fname)
+    end
+    if not compatible_fields(parent_field, field) then
+      return nil, validation_errors.SUBSCHEMA_BAD_TYPE:format(key, fname)
+    end
+  end
+
+  for fname, field in pairs(parent_by_name) do
+    if field.abstract and field.required and not subschema.fields[fname] then
+      return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD:format(key, fname)
+    end
+  end
+
+  return subschema
+end
+
+
+--- Instantiate a new schema from a definition.
 -- @param definition A table with attributes describing
 -- fields and other information about a schema.
 -- @param is_subschema boolean, true if definition
@@ -2621,47 +2662,36 @@ function Schema.new(definition, is_subschema)
 end
 
 
-function Schema.new_subschema(self, key, definition)
-  assert(type(key) == "string", "key must be a string")
-  assert(type(definition) == "table", "definition must be a table")
-
-  if not self.subschema_key then
-    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(key, self.name)
-  end
-
-  local subschema, err = Schema.new(definition, true)
-  if not subschema then
-    return nil, err
-  end
-
-  local parent_by_name = {}
-  for i = 1, #self.fields do
-    local fname, fdata = next(self.fields[i])
-    parent_by_name[fname] = fdata
-  end
-
-  for fname, field in subschema:each_field() do
-    local parent_field = parent_by_name[fname]
-    if not parent_field then
-      return nil, validation_errors.SUBSCHEMA_BAD_FIELD:format(key, fname)
-    end
-    if not compatible_fields(parent_field, field) then
-      return nil, validation_errors.SUBSCHEMA_BAD_TYPE:format(key, fname)
-    end
-  end
-
-  for fname, field in pairs(parent_by_name) do
-    if field.abstract and field.required and not subschema.fields[fname] then
-      return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD:format(key, fname)
-    end
-  end
-
+function Schema.reset_subschema(self, key, subschema)
   if not self.subschemas then
     self.subschemas = {}
   end
   self.subschemas[key] = subschema
 
   return true
+end
+
+
+function Schema.new_subschema(self, key, definition)
+  local subschema, err = Schema.load_and_validate_subschema(self, key, definition)
+  if not subschema then
+    return nil, err
+  end
+
+  return Schema.reset_subschema(self, key, subschema)
+end
+
+
+function Schema.unload_subschemas(self, exclude)
+  if not self.subschemas then
+    return
+  end
+
+  for key in pairs(self.subschemas) do
+    if not exclude or exclude[key] == nil then
+      self.subschemas[key] = nil
+    end
+  end
 end
 
 

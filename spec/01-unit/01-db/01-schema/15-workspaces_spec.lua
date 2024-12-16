@@ -43,7 +43,7 @@ describe("workspaces schema", function()
           meta = {},
         })
         assert.falsy(ok)
-        assert.matches("must not be one of: workspaces, consumers, certificates, services, routes, snis, upstreams, targets, consumer_groups, plugins, tags, ca_certificates, clustering_data_planes, parameters", err.name)
+        assert.matches("must not be one of: workspaces, consumers, certificates, services, routes, snis, upstreams, targets, custom_plugins, consumer_groups, plugins, tags, ca_certificates, clustering_data_planes, parameters", err.name)
       end
     end)
 
