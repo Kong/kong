@@ -345,7 +345,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
         admin_client:close()
       end)
 
-      -- for #only: wait for dp's first pull finishing, then cp notify dp
+      -- for tag only: wait for dp's first pull finishing, then cp notify dp
       --ngx.sleep(0.5)
 
       local res = assert(admin_client:post("/services", {
