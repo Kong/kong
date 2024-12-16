@@ -31,7 +31,6 @@ local template_cache = setmetatable( {}, { __mode = "k" })
 
 local DEBUG = ngx.DEBUG
 local CONTENT_LENGTH = "content-length"
-local CONTENT_TYPE = "content-type"
 local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
 local EMPTY = require("kong.tools.table").EMPTY
