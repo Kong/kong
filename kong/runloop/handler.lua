@@ -1539,11 +1539,17 @@ return {
       -- to `grpc_pass`. After redirection, this function will return early
       if service and var.kong_proxy_mode == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           return exec("@grpc")
         end
 
         -- EE websockets [[
         if service.protocol == "ws" or service.protocol == "wss" then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
           -- Jump over to our WebSocket-specific location
           --
           -- From a technical standpoint, this isn't strictly necessary, and
@@ -1555,6 +1561,10 @@ return {
         -- ]]
 
         if route.request_buffering == false then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
+
           if route.response_buffering == false then
             return exec("@unbuffered")
           end
@@ -1563,6 +1573,10 @@ return {
         end
 
         if route.response_buffering == false then
+          if debug_access_phase_span then
+            debug_access_phase_span:finish()
+          end
+
           return exec("@unbuffered_response")
         end
       end
