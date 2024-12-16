@@ -69,11 +69,52 @@ describe("Incremental Sync RPC #" .. strategy, function()
   describe("sync works", function()
     local route_id
 
+    it("notify_new_version on CP", function()
+      local admin_client = helpers.admin_client(10000)
+      finally(function()
+        admin_client:close()
+      end)
+
+      -- wait for dp's first pull finishing, then cp notify dp
+      ngx.sleep(0.5)
+
+      local res = assert(admin_client:post("/services", {
+        body = { name = "service-000", url = "https://127.0.0.1:15556/request", },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.res_status(201, res)
+
+      res = assert(admin_client:post("/services/service-000/routes", {
+        body = { paths = { "/000" }, },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      route_id = json.id
+
+      test_url("/000", 9002, 200)
+
+      -- rpc notification
+      assert.logfile().has.line(
+        "[rpc] notifying kong.sync.v2.notify_new_version(node_id:", true)
+      assert.logfile("servroot2/logs/error.log").has.line(
+        "[rpc] notification has no response", true)
+
+      -- dp lua-resty-events should work without privileged_agent
+      -- this message only exists in the first test case (due to clean_logfile)
+      assert.logfile("servroot2/logs/error.log").has.line(
+        "lua-resty-events enable_privileged_agent is false", true)
+    end)
+
     it("create route on CP", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
         admin_client:close()
       end)
+
+      -- wait for dp's first pull
+      ngx.sleep(0.5)
 
       local res = assert(admin_client:post("/services", {
         body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
@@ -96,10 +137,6 @@ describe("Incremental Sync RPC #" .. strategy, function()
       assert.logfile().has.no.line("unable to update clustering data plane status", true)
 
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] update entity", true)
-
-      -- dp lua-resty-events should work without privileged_agent
-      assert.logfile("servroot2/logs/error.log").has.line(
-        "lua-resty-events enable_privileged_agent is false", true)
     end)
 
     it("update route on CP", function()
