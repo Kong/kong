@@ -2362,7 +2362,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     }, post_config(input))
   end)
 
-  it("flatten_errors when conflicting inputs", function()
+  it("flatten_errors1 when conflicting inputs", function()
     local conflicting_input = {
       _format_version = "3.0",
       consumers = {
@@ -2430,6 +2430,95 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         }
       },
     }, post_config(conflicting_input))
+  end)
+
+  it("flatten_errors2 when conflicting inputs", function()
+    local conflicting2_input =
+      {
+        _format_version = "3.0",
+        consumers = {
+          {
+            username = "consumer-01",
+            tags = {"k8s-name:consumers"},
+            basicauth_credentials = {
+              { username = "user-01", password = "pwd" , tags = {"k8s-name:user-0101"}},
+              { username = "user-11", password = "pwd" , tags = {"k8s-name:user-0111"}},
+              { username = "user-02", password = "pwd" },
+              { username = "user-11", password = "pwd" , tags = {"k8s-name:user-0111"}},
+            }
+          },
+          {
+            username = "consumer-02",
+            basicauth_credentials = {
+              { username = "user-99", password = "pwd" },
+            }
+          },
+          {
+            username = "consumer-03",
+            basicauth_credentials = {
+              { username = "user-01", password = "pwd" , tags = {"k8s-name:user-0301"}},
+              { username = "user-33", password = "pwd" , tags = {"k8s-name:user-0333"}},
+              { username = "user-02", password = "pwd" , tags = {"k8s-name:user-0302"}},
+              { username = "user-33", password = "pwd" , tags = {"k8s-name:user-0333"}},
+            }
+          }
+        }
+      }
+    validate({
+      {
+        entity = {
+          password = "pwd",
+          tags = { "k8s-name:user-0111" },
+          username = "user-11"
+        },
+        entity_tags = { "k8s-name:user-0111" },
+        entity_type = "consumers|1|basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-11' already declared",
+          type = "entity"
+        } }
+      },
+      {
+        entity = {
+          password = "pwd",
+          tags = { "k8s-name:user-0301" },
+          username = "user-01"
+        },
+        entity_tags = { "k8s-name:user-0301" },
+        entity_type = "consumers|3|basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-01' already declared",
+          type = "entity"
+        } }
+      },
+      {
+        entity = {
+          password = "pwd",
+          tags = { "k8s-name:user-0302" },
+          username = "user-02"
+        },
+        entity_tags = { "k8s-name:user-0302" },
+        entity_type = "consumers|3|basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-02' already declared",
+          type = "entity"
+        } }
+      },
+      {
+        entity = {
+          password = "pwd",
+          tags = { "k8s-name:user-0333" },
+          username = "user-33"
+        },
+        entity_tags = { "k8s-name:user-0333" },
+        entity_type = "consumers|3|basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-33' already declared",
+          type = "entity"
+        } }
+      },
+ 
+    }, post_config(conflicting2_input))
   end)
 
   it("preserves IDs from the input", function()
