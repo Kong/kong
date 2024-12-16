@@ -311,9 +311,7 @@ function _M:_local_call(node_id, method, params, is_notification)
 end
 
 
--- public interface, try call on node_id locally first,
--- if node is not connected, try concentrator next
-function _M:call(node_id, method, ...)
+function _M:_call_or_notify(is_notification, node_id, method, ...)
   local cap = utils.parse_method_name(method)
 
   local res, err = self:_find_node_and_check_capability(node_id, cap)
@@ -324,13 +322,15 @@ function _M:call(node_id, method, ...)
   local params = {...}
 
   ngx_log(ngx_DEBUG,
-    _log_prefix, "calling ", method,
+    _log_prefix,
+    is_notification and "notifying " or "calling ",
+    method,
     "(node_id: ", node_id, ")",
     " via ", res == "local" and "local" or "concentrator"
   )
 
   if res == "local" then
-    res, err = self:_local_call(node_id, method, params)
+    res, err = self:_local_call(node_id, method, params, is_notification)
 
     if not res then
       ngx_log(ngx_DEBUG, _log_prefix, method, " failed, err: ", err)
@@ -345,8 +345,12 @@ function _M:call(node_id, method, ...)
   assert(res == "concentrator")
 
   -- try concentrator
-  local fut = future.new(node_id, self.concentrator, method, params)
+  local fut = future.new(node_id, self.concentrator, method, params, is_notification)
   assert(fut:start())
+
+  if is_notification then
+    return true
+  end
 
   local ok, err = fut:wait(5)
 
@@ -368,42 +372,15 @@ function _M:call(node_id, method, ...)
 end
 
 
+-- public interface, try call on node_id locally first,
+-- if node is not connected, try concentrator next
+function _M:call(node_id, method, ...)
+  return self:_call_or_notify(false, node_id, method, ...)
+end
+
+
 function _M:notify(node_id, method, ...)
-  local cap = utils.parse_method_name(method)
-
-  local res, err = self:_find_node_and_check_capability(node_id, cap)
-  if not res then
-    return nil, err
-  end
-
-  local params = {...}
-
-  ngx_log(ngx_DEBUG,
-    _log_prefix, "notifying ", method,
-    "(node_id: ", node_id, ")",
-    " via ", res == "local" and "local" or "concentrator"
-  )
-
-  if res == "local" then
-    res, err = self:_local_call(node_id, method, params, true)
-
-    if not res then
-      ngx_log(ngx_DEBUG, _log_prefix, method, " failed, err: ", err)
-      return nil, err
-    end
-
-    ngx_log(ngx_DEBUG, _log_prefix, method, " succeeded")
-
-    return res
-  end
-
-  assert(res == "concentrator")
-
-  -- try concentrator
-  local fut = future.new(node_id, self.concentrator, method, params, true)
-  assert(fut:start())
-
-  return true
+  return self:_call_or_notify(true, node_id, method, ...)
 end
 
 

@@ -113,9 +113,6 @@ describe("Incremental Sync RPC #" .. strategy, function()
         admin_client:close()
       end)
 
-      -- wait for dp's first pull
-      ngx.sleep(0.5)
-
       local res = assert(admin_client:post("/services", {
         body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
         headers = {["Content-Type"] = "application/json"}
