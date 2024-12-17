@@ -64,7 +64,6 @@ function _M:notify_all_nodes()
   local msg = { default = { new_version = latest_version, }, }
 
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do
-    -- this call should be a notification
     local res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", msg)
     if not res then
       if not err:find("requested capability does not exist", nil, true) then
