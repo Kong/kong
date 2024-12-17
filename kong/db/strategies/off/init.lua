@@ -215,11 +215,11 @@ end
 -- ws_id here.
 local function page_for_tags(self, size, offset, options)
   -- /:entitiy?tags=:tags
-  -- search all key-values: <entity_name>|*|*|<pk_string> => actual item key
+  -- search all key-values: I|<entity_name>|*|<pk_string> => actual item key
   if self.schema.name ~= "tags" then
-    local prefix = item_key_prefix(self.schema.name, "*") -- "<entity_name>|*|*|"
+    local prefix = item_key_prefix(self.schema.name, "*") -- "I|<entity_name>|"
     local items, err, offset = page_for_prefix(self, prefix, size, offset,
-                                              options, true)
+                                               options)
     if not items then
       return nil, err
     end
@@ -273,7 +273,7 @@ local function page_for_tags(self, size, offset, options)
   local rows, err
 
   rows, err, offset_token = page_for_prefix(self, prefix, size, offset_token,
-                                            options, true, dao.schema)
+                                            options, false, dao.schema)
   if not rows then
     return nil, err
   end

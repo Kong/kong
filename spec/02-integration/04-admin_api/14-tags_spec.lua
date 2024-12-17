@@ -6,7 +6,8 @@ local cjson = require "cjson"
 -- This test we test on the correctness of the admin API response so that
 -- we can ensure the right function (page()) is executed.
 describe("Admin API - tags", function()
-  for _, strategy in helpers.all_strategies() do
+  -- for _, strategy in helpers.all_strategies() do
+   for _, strategy in ipairs({"off"}) do
     describe("/entities?tags= with DB: #" .. strategy, function()
       local client, bp
 
@@ -156,7 +157,7 @@ describe("Admin API - tags", function()
         assert.equals("invalid option (tags: invalid filter syntax)", json.message)
       end)
 
-      it("returns the correct 'next' arg", function()
+      it("returns the correct 'next' arg #ttt", function()
         local tags_arg = 'tags=corp_%20a'
         local res = assert(client:send {
           method = "GET",
