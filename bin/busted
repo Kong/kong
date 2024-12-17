@@ -19,6 +19,9 @@ local cert_path do
     busted_cert_content = busted_cert_content .. "\n" .. pl_file.read(system_cert_path)
   end
 
+  local cluster_cert_content = assert(pl_file.read("spec/fixtures/kong_clustering.crt"))
+  busted_cert_content = busted_cert_content .. "\n" .. cluster_cert_content
+
   pl_file.write(busted_cert_file, busted_cert_content)
   cert_path = busted_cert_file
 end
