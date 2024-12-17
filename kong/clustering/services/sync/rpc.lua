@@ -98,11 +98,12 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if default_namespace_version == latest_version then
-      return empty_sync_result()
+    if default_namespace_version == 0 or
+       default_namespace_version < latest_version then
+      return full_sync_result()
     end
 
-    return full_sync_result()
+    return empty_sync_result()
   end)
 end
 
