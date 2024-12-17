@@ -732,6 +732,8 @@ describe("CP/DP config sync #" .. strategy .. " rpc_sync=" .. rpc_sync, function
         end
       end, 5)
 
+      ngx.sleep(0.5)
+
       for i = 5, 2, -1 do
         res = proxy_client:get("/" .. i)
         assert.res_status(404, res)
