@@ -20,7 +20,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
         plugins = "bundled,rpc-hello-test",
-        cluster_incremental_sync = "off",
+        cluster_rpc_sync = "off",
       }))
 
       assert(helpers.start_kong({
@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
         plugins = "bundled,rpc-hello-test",
-        cluster_incremental_sync = "off",
+        cluster_rpc_sync = "off",
       }))
     end)
 

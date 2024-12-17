@@ -72,11 +72,11 @@ local proxy_configs = {
 -- test run too fast before the proxy connection is established
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 for _, strategy in helpers.each_strategy() do
   for proxy_desc, proxy_opts in pairs(proxy_configs) do
     describe("CP/DP sync through proxy (" .. proxy_desc .. ") works with #"
-             .. strategy .. " rpc=" .. rpc .. " inc_sync=" .. inc_sync
+             .. strategy .. " rpc=" .. rpc .. " rpc_sync=" .. rpc_sync
              .. " backend", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy) -- runs migrations
@@ -90,7 +90,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_listen = "127.0.0.1:9005",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_rpc = rpc,
-          cluster_incremental_sync = inc_sync,
+          cluster_rpc_sync = rpc_sync,
         }))
 
         assert(helpers.start_kong({
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
           lua_ssl_trusted_certificate = proxy_opts.lua_ssl_trusted_certificate,
 
           cluster_rpc = rpc,
-          cluster_incremental_sync = inc_sync,
+          cluster_rpc_sync = rpc_sync,
 
           -- this is unused, but required for the template to include a stream {} block
           stream_listen = "0.0.0.0:5555",
@@ -181,4 +181,4 @@ for _, strategy in helpers.each_strategy() do
 
   end -- proxy configs
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

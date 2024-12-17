@@ -21,7 +21,7 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
 
       cluster_rpc = "on",
-      cluster_incremental_sync = "on", -- ENABLE incremental sync
+      cluster_rpc_sync = "on", -- ENABLE rpc sync
     }))
 
     assert(helpers.start_kong({
@@ -36,7 +36,7 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       nginx_worker_processes = 2, -- multiple workers
 
       cluster_rpc = "off", -- DISABLE rpc
-      cluster_incremental_sync = "off", -- DISABLE incremental sync
+      cluster_rpc_sync = "off", -- DISABLE incremental sync
 
       dedicated_config_processing = dedicated, -- privileged agent
     }))

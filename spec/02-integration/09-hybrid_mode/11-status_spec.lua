@@ -5,11 +5,11 @@ local cp_status_port = helpers.get_available_port()
 local dp_status_port = 8100
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("Hybrid Mode - status ready #" .. strategy .. " inc_sync=" .. inc_sync, function()
+  describe("Hybrid Mode - status ready #" .. strategy .. " rpc_sync=" .. rpc_sync, function()
 
     helpers.get_db_utils(strategy, {})
 
@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_main_worker_processes = 8,
         status_listen = "127.0.0.1:" .. dp_status_port,
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       })
     end
 
@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         status_listen = "127.0.0.1:" .. cp_status_port,
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       })
     end
 
@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("dp status ready endpoint for no config", function()
       -- XXX FIXME
-      local skip_inc_sync = inc_sync == "on" and pending or it
+      local skip_rpc_sync = rpc_sync == "on" and pending or it
 
       lazy_setup(function()
         assert(start_kong_cp())
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- now dp receive config from cp, so dp should be ready
 
-      skip_inc_sync("should return 200 on data plane after configuring", function()
+      skip_rpc_sync("should return 200 on data plane after configuring", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
@@ -166,4 +166,4 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync
