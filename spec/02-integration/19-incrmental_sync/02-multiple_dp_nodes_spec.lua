@@ -10,7 +10,7 @@ local function start_cp(strategy, port)
     cluster_listen = "127.0.0.1:" .. port,
     nginx_conf = "spec/fixtures/custom_nginx.template",
     cluster_rpc = "on",
-    cluster_incremental_sync = "on", -- incremental sync
+    cluster_rpc_sync = "on", -- incremental sync
   }))
 end
 
@@ -26,7 +26,7 @@ local function start_dp(prefix, port)
     nginx_conf = "spec/fixtures/custom_nginx.template",
     nginx_worker_processes = 4, -- multiple workers
     cluster_rpc = "on",
-    cluster_incremental_sync = "on", -- incremental sync
+    cluster_rpc_sync = "on", -- incremental sync
     worker_state_update_frequency = 1,
   }))
 end

@@ -36,7 +36,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_rpc = "on",
-      cluster_incremental_sync = "on", -- incremental sync
+      cluster_rpc_sync = "on", -- incremental sync
     }))
 
     assert(helpers.start_kong({
@@ -50,7 +50,7 @@ describe("Incremental Sync RPC #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       nginx_worker_processes = 4, -- multiple workers
       cluster_rpc = "on",
-      cluster_incremental_sync = "on", -- incremental sync
+      cluster_rpc_sync = "on", -- incremental sync
       worker_state_update_frequency = 1,
     }))
   end)
