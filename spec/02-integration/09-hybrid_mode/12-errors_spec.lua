@@ -69,7 +69,7 @@ local function get_error_report(client, msg)
 end
 
 
--- XXX TODO: mock_cp does not support incremental sync rpc
+-- XXX TODO: mock_cp does not support rpc sync rpc
 for _, rpc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
   describe("CP/DP sync error-reporting with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()

@@ -885,8 +885,8 @@ function Kong.init_worker()
     local is_dp_sync_v1 = is_data_plane(kong.configuration) and not kong.sync
     local using_dedicated = kong.configuration.dedicated_config_processing
 
-    -- CP needs to support both full and incremental sync
-    -- full sync is only enabled for DP if incremental sync is disabled
+    -- CP needs to support both v1 and v2 sync
+    -- v1 sync is only enabled for DP if v2 sync is disabled
     if is_cp or is_dp_sync_v1 then
       kong.clustering:init_worker()
     end
@@ -992,7 +992,7 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  -- rpc and incremental sync
+  -- rpc and sync
   if is_http_module then
 
     -- init rpc connection
@@ -1000,7 +1000,7 @@ function Kong.init_worker()
       kong.rpc:init_worker()
     end
 
-    -- init incremental sync
+    -- init sync
     -- should run after rpc init successfully
     if kong.sync then
       kong.sync:init_worker()

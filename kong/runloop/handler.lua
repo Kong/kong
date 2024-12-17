@@ -363,10 +363,10 @@ local function new_router(version)
   -- like rebuild_router_timer. And it relies on core_cache to detect changes.
   --
   -- 1. stratey off (dbless)
-  --      incremental_sync on:
+  --      rpc_sync on:
   --             non init worker: true(kong.core_cache)
   --                 init worker: false
-  --      incremental_sync off:   false
+  --      rpc_sync off:   false
   -- 2. strategy on (non dbless): true(kong.core_cache)
   local detect_changes = kong.core_cache and
           (db.strategy ~= "off" or (kong.sync and get_phase() ~= "init_worker"))
@@ -986,7 +986,7 @@ return {
 
       -- start some rebuild timers for
       -- 1. traditional mode
-      -- 2. DP with incremental sync on (dbless mode)
+      -- 2. DP with rpc sync on (dbless mode)
       if strategy ~= "off" or kong.sync then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 

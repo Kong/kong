@@ -202,7 +202,7 @@ describe("#off preserve nulls", function()
 
     local id, item = next(entities.basicauth_credentials)
 
-    -- format changed after incremental sync
+    -- format changed after rpc sync
     local cache_key = concat({
       "basicauth_credentials|",
       item.ws_id,
@@ -225,7 +225,7 @@ describe("#off preserve nulls", function()
     for _, plugin in pairs(entities.plugins) do
       if plugin.name == PLUGIN_NAME then
 
-        -- format changed after incremental sync
+        -- format changed after rpc sync
         cache_key = concat({
           "plugins|",
           plugin.ws_id,

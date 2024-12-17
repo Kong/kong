@@ -76,7 +76,7 @@ local function get_sync_status(id)
 end
 
 
--- XXX TODO: helpers.clustering_client supports incremental sync
+-- XXX TODO: helpers.clustering_client supports rpc sync
 for _, rpc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
 
