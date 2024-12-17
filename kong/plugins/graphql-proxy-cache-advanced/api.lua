@@ -22,7 +22,8 @@ end
 
 
 local function each_by_name(entity, name)
-  local iter = entity:each()  -- like each(page_size)
+  -- it is similar with each(page_size), `nil` means default size (1000)
+  local iter = entity:each()
   local function iterator()
     local element, err = iter()
     if err then return nil, err end

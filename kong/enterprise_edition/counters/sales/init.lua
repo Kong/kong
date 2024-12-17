@@ -194,7 +194,7 @@ local function get_plugins_count()
     ["kafka-upstream"] = 0,
   }
 
-  -- like each(page_size,)
+  -- it is similar with each(page_size), `nil` means default size (1000)
   for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       kong.log.err("failed to list plugins: ", err)

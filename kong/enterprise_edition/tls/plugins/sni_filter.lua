@@ -244,7 +244,8 @@ local function each_enabled_plugin(entity, plugin_name)
     }
   }
 
-  local iter = entity:each(nil, options)  -- like each(page_size,)
+  -- it is similar with each(page_size), `nil` means default size (1000)
+  local iter = entity:each(nil, options)
   local function iterator()
     local element, err = iter()
     if err then return nil, err end

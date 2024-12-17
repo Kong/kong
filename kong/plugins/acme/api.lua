@@ -23,7 +23,8 @@ local ngx_timer_at = ngx.timer.at
 local ngx_re_match = ngx.re.match
 
 local function find_plugin()
-  for plugin, err in kong.db.plugins:each() do  -- like each(page_size)
+  -- it is similar with each(page_size), `nil` means default size (1000)
+  for plugin, err in kong.db.plugins:each() do
     if err then
       return nil, err
     end
