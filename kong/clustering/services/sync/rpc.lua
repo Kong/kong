@@ -43,8 +43,8 @@ function _M.new(strategy)
 end
 
 
-local function inc_sync_result(res)
-  return { default = { deltas = res, wipe = false, }, }
+local function empty_sync_result()
+  return { default = { deltas = {}, wipe = false, }, }
 end
 
 
@@ -107,46 +107,9 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    -- is the node empty? If so, just do a full sync to bring it up to date faster
-    if default_namespace_version == 0 or
-       latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
-    then
-      -- we need to full sync because holes are found
-
-      ngx_log(ngx_INFO,
-              "[kong.sync.v2] database is empty or too far behind for node_id: ", node_id,
-              ", current_version: ", default_namespace_version,
-              ", forcing a full sync")
-
-      return full_sync_result()
+    if default_namespace_version == latest_version then
+      return empty_sync_result()
     end
-
-    -- do we need an incremental sync?
-
-    local res, err = self.strategy:get_delta(default_namespace_version)
-    if not res then
-      return nil, err
-    end
-
-    if isempty(res) then
-      -- node is already up to date
-      return inc_sync_result(res)
-    end
-
-    -- some deltas are returned, are they contiguous?
-    if res[1].version == default_namespace_version + 1 then
-      -- doesn't wipe dp lmdb, incremental sync
-      return inc_sync_result(res)
-    end
-
-    -- we need to full sync because holes are found
-    -- in the delta, meaning the oldest version is no longer
-    -- available
-
-    ngx_log(ngx_INFO,
-            "[kong.sync.v2] delta for node_id no longer available: ", node_id,
-            ", current_version: ", default_namespace_version,
-            ", forcing a full sync")
 
     return full_sync_result()
   end)
