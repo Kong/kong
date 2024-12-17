@@ -26,12 +26,7 @@ local fmt = string.format
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
-local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
-
-
--- number of versions behind before a full sync is forced
-local DEFAULT_FULL_SYNC_THRESHOLD = 512
 
 
 function _M.new(strategy)
@@ -61,10 +56,6 @@ end
 
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
-
-  -- number of versions behind before a full sync is forced
-  local FULL_SYNC_THRESHOLD = manager.conf.cluster_full_sync_threshold or
-                              DEFAULT_FULL_SYNC_THRESHOLD
 
   -- CP
   -- Method: kong.sync.v2.get_delta
