@@ -458,6 +458,22 @@ local function uniqueness_error_msg(entity, key, value)
          "with " .. key .. " set to '" .. value .. "' already declared"
 end
 
+local function add_error(errs, parent_entity, parent_idx, entity, entity_idx, err)
+  if parent_entity and parent_idx then
+    errs[parent_entity]                     = errs[parent_entity] or {}
+    errs[parent_entity][parent_idx]         = errs[parent_entity][parent_idx] or {}
+    errs[parent_entity][parent_idx][entity] = errs[parent_entity][parent_idx][entity] or {}
+
+    -- e.g. errs["upstreams"][5]["targets"][2]
+    errs[parent_entity][parent_idx][entity][entity_idx] = err
+
+  else
+    errs[entity] = errs[entity] or {}
+
+    -- e.g. errs["consumers"][3]
+    errs[entity][entity_idx] = err
+  end
+end
 
 local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity, parent_idx)
   for _, entity in ipairs(known_entities) do
@@ -497,8 +513,8 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       if key and key ~= ngx.null then
         local ok = add_to_by_key(by_key, entity_schema, item, entity, key)
         if not ok then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, endpoint_key, key)
+          add_error(errs, parent_entity, parent_idx, entity, i,
+                    uniqueness_error_msg(entity, endpoint_key, key))
           failed = true
         end
       end
@@ -506,22 +522,8 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       if item_id then
         by_id[entity] = by_id[entity] or {}
         if (not failed) and by_id[entity][item_id] then
-          local err_t
-
-          if parent_entity and parent_idx then
-            errs[parent_entity]                     = errs[parent_entity] or {}
-            errs[parent_entity][parent_idx]         = errs[parent_entity][parent_idx] or {}
-            errs[parent_entity][parent_idx][entity] = errs[parent_entity][parent_idx][entity] or {}
-
-            -- e.g. errs["upstreams"][5]["targets"]
-            err_t = errs[parent_entity][parent_idx][entity]
-
-          else
-            errs[entity] = errs[entity] or {}
-            err_t = errs[entity]
-          end
-
-          err_t[i] = uniqueness_error_msg(entity, "primary key", item_id)
+          add_error(errs, parent_entity, parent_idx, entity, i,
+                    uniqueness_error_msg(entity, "primary key", item_id))
 
         else
           by_id[entity][item_id] = item

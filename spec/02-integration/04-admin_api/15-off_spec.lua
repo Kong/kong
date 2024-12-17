@@ -2372,6 +2372,162 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     }, post_config(input))
   end)
 
+  it("correctly handles nested entity errors", function()
+    local consumers = {
+      {
+        id = "cdac30ee-cd7e-465c-99b6-84f3e4e17015",
+        username = "consumer-01",
+        tags = { "consumer-01" },
+        basicauth_credentials = {
+          {
+            id = "089091f4-cb8b-48f5-8463-8319097be716",
+            username = "user-01", password = "pwd",
+            tags = { "consumer-01-credential-01" },
+          },
+          {
+            id = "b1443d61-ccd9-4359-b82a-f37515442295",
+            username = "user-11", password = "pwd",
+            tags = { "consumer-01-credential-02" },
+          },
+          {
+            id = "2603d010-edbe-4713-94ef-145e281cbf4c",
+            username = "user-02", password = "pwd",
+            tags = { "consumer-01-credential-03" },
+          },
+          {
+            id = "760cf441-613c-48a2-b377-36aebc9f9ed0",
+            -- unique violation!
+            username = "user-11", password = "pwd",
+            tags = { "consumer-01-credential-04" },
+          }
+        },
+      },
+      {
+        id = "c0c021f5-dae1-4031-bcf6-42e3c4d9ced9",
+        username = "consumer-02",
+        tags = { "consumer-02" },
+        basicauth_credentials = {
+          {
+            id = "d0cd1919-bb07-4c85-b407-f33feb74f6e2",
+            username = "user-99", password = "pwd",
+            tags = { "consumer-02-credential-01" },
+          }
+        },
+      },
+      {
+        id = "9acb0270-73aa-4968-b9e4-a4924e4aced5",
+        username = "consumer-03",
+        tags = { "consumer-03" },
+        basicauth_credentials = {
+          {
+            id = "7e8bcd10-cdcd-41f1-8c4d-9790d34aa67d",
+            -- unique violation!
+            username = "user-01", password = "pwd",
+            tags = { "consumer-03-credential-01" },
+          },
+          {
+            id = "7fe186bd-44e5-4b97-854d-85a24929889d",
+            username = "user-33", password = "pwd",
+            tags = { "consumer-03-credential-02" },
+          },
+          {
+            id = "6547c325-5332-41fc-a954-d4972926cdb5",
+            -- unique violation!
+            username = "user-02", password = "pwd",
+            tags = { "consumer-03-credential-03" },
+          },
+          {
+            id = "e091a955-9ee1-4403-8d0a-a7f1f8bafaca",
+            -- unique violation!
+            username = "user-33", password = "pwd",
+            tags = { "consumer-03-credential-04" },
+          }
+        },
+      }
+    }
+
+    local input = {
+      _format_version = "3.0",
+      consumers = consumers,
+    }
+
+    validate({
+      -- consumer 1 / credential 4
+      {
+        entity = {
+          consumer = { id = consumers[1].id },
+          id = consumers[1].basicauth_credentials[4].id,
+          tags = consumers[1].basicauth_credentials[4].tags,
+          password = "pwd",
+          username = "user-11"
+        },
+        entity_id = consumers[1].basicauth_credentials[4].id,
+        entity_tags = consumers[1].basicauth_credentials[4].tags,
+        entity_type = "basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-11' already declared",
+          type = "entity"
+        } }
+      },
+
+      -- consumer 3 / credential 1
+      {
+        entity = {
+          consumer = { id = consumers[3].id },
+          id = consumers[3].basicauth_credentials[1].id,
+          tags = consumers[3].basicauth_credentials[1].tags,
+          password = "pwd",
+          username = "user-01"
+        },
+        entity_id = consumers[3].basicauth_credentials[1].id,
+        entity_tags = consumers[3].basicauth_credentials[1].tags,
+        entity_type = "basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-01' already declared",
+          type = "entity"
+        } }
+      },
+
+      -- consumer 3 / credential 3
+      {
+        entity = {
+          consumer = { id = consumers[3].id },
+          id = consumers[3].basicauth_credentials[3].id,
+          tags = consumers[3].basicauth_credentials[3].tags,
+          password = "pwd",
+          username = "user-02"
+        },
+        entity_id = consumers[3].basicauth_credentials[3].id,
+        entity_tags = consumers[3].basicauth_credentials[3].tags,
+        entity_type = "basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-02' already declared",
+          type = "entity"
+        } }
+      },
+
+      -- consumer 3 / credential 4
+      {
+        entity = {
+          consumer = { id = consumers[3].id },
+          id = consumers[3].basicauth_credentials[4].id,
+          tags = consumers[3].basicauth_credentials[4].tags,
+          password = "pwd",
+          username = "user-33"
+        },
+        entity_id = consumers[3].basicauth_credentials[4].id,
+        entity_tags = consumers[3].basicauth_credentials[4].tags,
+        entity_type = "basicauth_credential",
+        errors = { {
+          message = "uniqueness violation: 'basicauth_credentials' entity with username set to 'user-33' already declared",
+          type = "entity"
+        } }
+      },
+
+
+    }, post_config(input))
+  end)
+
   it("preserves IDs from the input", function()
     local id = "0175e0e8-3de9-56b4-96f1-b12dcb4b6691"
     local service = {
