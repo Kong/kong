@@ -21,7 +21,6 @@ local item_key_prefix = declarative.item_key_prefix
 local workspace_id = declarative.workspace_id
 local foreign_field_key_prefix = declarative.foreign_field_key_prefix
 
-
 local PROCESS_AUTO_FIELDS_OPTS = {
   no_defaults = true,
   show_ws_id = true,
@@ -36,11 +35,6 @@ _mt.__index = _mt
 
 
 local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
-
-
-local function need_follow(ws_id)
-  return ws_id == "*"
-end
 
 
 local function get_default_workspace()
@@ -324,7 +318,7 @@ local function page(self, size, offset, options)
     return page_for_tags(self, size, offset, options)
   end
 
-  return page_for_prefix(self, prefix, size, offset, options, need_follow(ws_id))
+  return page_for_prefix(self, prefix, size, offset, options)
 end
 
 
@@ -333,8 +327,26 @@ local function select(self, pk, options)
   local schema = self.schema
   local ws_id = workspace_id(schema, options)
   local pk = pk_string(schema, pk)
+
+  -- if no specific ws_id is provided, we nedd to search all workspace ids
+  if ws_id == "*" then
+    for workspace, err in kong.db.workspaces:each() do
+      if err then
+        return nil, err
+      end
+
+      local key = item_key(schema.name, workspace.id, pk)
+      local entity = select_by_key(schema, key)
+      if entity then
+        return entity
+      end
+    end
+
+    return nil, "not found"
+  end
+
   local key = item_key(schema.name, ws_id, pk)
-  return select_by_key(schema, key, need_follow(ws_id))
+  return select_by_key(schema, key)
 end
 
 
