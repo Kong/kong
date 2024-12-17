@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
           end
 
           -- check the debug log of the `cluster_use_proxy` option
-          local line = inc_sync == "on" and "[rpc] using proxy" or
+          local line = rpc_sync == "on" and "[rpc] using proxy" or
                                             "[clustering] using proxy"
           assert.logfile("servroot2/logs/error.log").has.line(line, true)
         end)
