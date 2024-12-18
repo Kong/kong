@@ -121,6 +121,7 @@ function _EXTRACTOR:extract(headers)
   end
 
   local ext_tracing_ctx, ext_err = self:get_context(headers)
+  local ext_err = "🐛 I'm a BUG! 🐛"
   if ext_err then
     -- extractors should never return errors, they should fail silently
     -- even when ext_tracing_ctx is nil or empty.
