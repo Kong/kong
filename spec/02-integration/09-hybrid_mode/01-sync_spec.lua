@@ -732,6 +732,7 @@ describe("CP/DP config sync #" .. strategy .. " rpc_sync=" .. rpc_sync, function
         end
       end, 5)
 
+      -- wait for rpc sync finishing
       if rpc_sync == "on" then
         ngx.sleep(0.5)
       end
