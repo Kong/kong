@@ -115,6 +115,7 @@ local VALID_TRACING_PHASES = {
   body_filter = true,
   log = true,
   content = true,
+  balancer = true,
 }
 
 
@@ -171,7 +172,7 @@ end
 local function start_subspan(...)
   if not is_valid_phase() then
     -- not in a request: ignore
-    return
+    return nil, "invalid phase"
   end
 
   -- if a subspan is started while the session is starting, we skip it
@@ -927,30 +928,63 @@ function _M.patch_read_body()
 end
 
 
--- ensures the body is read, so that we can represent
--- the body read time in a span
-function _M.debug_read_body()
+-- TODO: update this so it also finishes the access phase span
+-- so we don't have to call both from the same places
+function _M.access_end()
   if not kong.debug_session or not kong.debug_session:is_active() then
     return
   end
 
   local ok, err = content_capture.request_body()
-  if ok then
-    -- body was read as part of the content capture process: we can stop here
-    return
-  end
-
-  if err then
+  if not ok and err then
     log(ngx_ERR, "content_capture failed to read request body: ", err)
   end
 
-  -- the body was not read by body_capture; check if it
-  -- was read somewhere else:
-  if ngx.ctx[get_ctx_key("body_read")] then
+  local access_ended_ctx_key = get_ctx_key("access_end")
+  ngx.ctx[access_ended_ctx_key] = time_ns()
+end
+
+
+function _M.balancer_start()
+  if not kong.debug_session or not kong.debug_session:is_active() then
     return
   end
 
-  ngx.req.read_body()
+  -- if the body was already read for this request return here 
+  local body_read_ctx_key = get_ctx_key("body_read")
+  if ngx.ctx[body_read_ctx_key] then
+    return
+  end
+
+  -- else: the body was not read, so we need to create the span
+  -- from the gap between access and balancer
+  local access_ended_ctx_key = get_ctx_key("access_end")
+  local access_ended_time = ngx.ctx[access_ended_ctx_key]
+  if not access_ended_time then
+    log(ngx_ERR, "access end time is missing")
+    return
+  end
+
+  -- === RUN ONCE ===
+  -- the balancer phase can execute multiple times
+  -- the code below is only executed the first time
+  local balancer_instrum_run_once = get_ctx_key("balancer_instrum_run_once")
+  if ngx.ctx[balancer_instrum_run_once] then
+    return
+  end
+  ngx.ctx[balancer_instrum_run_once] = true
+
+  -- create the "read client body" span
+  local span, err = subtracer.start_span(SPAN_NAMES.READ_BODY, {
+    span_kind = SPAN_KIND_SERVER,
+    start_time_ns = tonumber(access_ended_time),
+  })
+  if not span then
+    log(ngx_ERR, "failed to start span: ", err)
+    return
+  end
+
+  span:finish()
 end
 
 

@@ -1335,6 +1335,7 @@ return {
         if debug_access_phase_span then
           debug_access_phase_span:finish()
         end
+        debug_instrumentation.access_end()
 
         return kong.response.error(404, "no Route matched with those values")
       end
@@ -1426,6 +1427,7 @@ return {
           if debug_access_phase_span then
             debug_access_phase_span:finish()
           end
+          debug_instrumentation.access_end()
           return kong.response.error(426, "Please use HTTPS protocol", {
             ["Connection"] = "Upgrade",
             ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
@@ -1440,6 +1442,7 @@ return {
           if debug_access_phase_span then
             debug_access_phase_span:finish()
           end
+          debug_instrumentation.access_end()
           header["Location"] = "https://" .. forwarded_host .. ctx.request_uri
           return kong.response.exit(redirect_status_code)
         end
@@ -1455,6 +1458,7 @@ return {
             if debug_access_phase_span then
               debug_access_phase_span:finish()
             end
+            debug_instrumentation.access_end()
             -- mismatch: non-http/2 request matched grpc route
             return kong.response.error(426, "Please use HTTP2 protocol", {
               ["connection"] = "Upgrade",
@@ -1466,6 +1470,7 @@ return {
           if debug_access_phase_span then
             debug_access_phase_span:finish()
           end
+          debug_instrumentation.access_end()
           -- mismatch: non-grpc request matched grpc route
           return kong.response.error(415, "Non-gRPC request matched gRPC route")
         end
@@ -1474,6 +1479,7 @@ return {
           if debug_access_phase_span then
             debug_access_phase_span:finish()
           end
+          debug_instrumentation.access_end()
           -- mismatch: grpc request matched grpcs route
           return kong.response.exit(200, nil, {
             ["content-type"] = "application/grpc",

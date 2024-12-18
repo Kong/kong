@@ -448,6 +448,7 @@ local VALID_TRACING_PHASES = {
   body_filter = true,
   log = true,
   content = true,
+  balancer = true,
 }
 
 --- New Tracer

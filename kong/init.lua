@@ -1401,6 +1401,7 @@ function Kong.access()
     if debug_access_phase_span then
       debug_access_phase_span:finish()
     end
+    debug_instrumentation.access_end()
     return flush_delayed_response(ctx)
   end
 
@@ -1423,6 +1424,7 @@ function Kong.access()
       debug_access_phase_span:set_status(2)
       debug_access_phase_span:finish()
     end
+    debug_instrumentation.access_end()
     return kong.response.error(503, err)
   end
 
@@ -1445,6 +1447,7 @@ function Kong.access()
       if debug_access_phase_span then
         debug_access_phase_span:finish()
       end
+      debug_instrumentation.access_end()
       return Kong.response()
     end
 
@@ -1459,13 +1462,15 @@ function Kong.access()
   if debug_access_phase_span then
     debug_access_phase_span:finish()
   end
-  debug_instrumentation.debug_read_body()
+  debug_instrumentation.access_end()
 end
 
 
 function Kong.balancer()
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
+
+  debug_instrumentation.balancer_start()
 
   if has_timing then
     req_dyn_hook_run_hook("timing", "before:balancer")
