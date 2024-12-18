@@ -1,0 +1,3 @@
+message: Kong Manager will now show a more friendly error message when failing to delete a service.
+type: feature
+githubs: [3541]
