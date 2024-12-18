@@ -8,7 +8,6 @@ local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local inspect = require("inspect")
-local process_type = require("ngx.process").type
 
 local assert = assert
 local setmetatable = setmetatable
@@ -87,8 +86,8 @@ function _M:init_worker(basic_info)
     end))
   end
 
-  -- privileged agent does not care rpc sync
-  if not kong.sync or process_type() == "privileged agent" then
+  -- does not config rpc sync
+  if not kong.sync then
     start_communicate()
     return
   end
