@@ -88,7 +88,7 @@ function _M:init_worker(basic_info)
   end
 
   -- privileged agent does not care rpc sync
-  if process_type() == "privileged agent" then
+  if not kong.sync or process_type() == "privileged agent" then
     start_communicate()
     return
   end
