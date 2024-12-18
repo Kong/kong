@@ -501,6 +501,10 @@ describe("validation utils spec", function ()
 
       local value = normalize("false", { type = "boolean" })
       assert.equal(false, value)
+
+      -- `kong.request.get_query()` may also return `true` for query strings like `?foo`
+      local value = normalize(true, { type = "boolean" })
+      assert.equal(true, value)
     end)
 
     it("object", function()
@@ -581,19 +585,6 @@ describe("validation utils spec", function ()
         }
       }
       assert.same(expected, output)
-    end)
-
-    it("negative cases", function()
-      -- function `normalize()` should only accept `string` and `table` as the first parameter.
-
-      -- should not accept `number`
-      assert.has_error(function() normalize(1.0, { type = "number" }) end, "assertion failed!")
-      -- should not accept `boolean`
-      assert.has_error(function() normalize(true, { type = "boolean" }) end, "assertion failed!")
-      -- should not accept `nil`
-      assert.has_error(function() normalize(nil, { type = "number" }) end, "assertion failed!")
-      -- should not accept `userdata`
-      assert.has_error(function() normalize(cjson.null, { type = "number" }) end, "assertion failed!")
     end)
   end)
 

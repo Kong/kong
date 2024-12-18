@@ -1,0 +1,3 @@
+message: "**oas-validation**: Fixed an issue where query params without values caused an assertion failure."
+type: bugfix
+scope: Plugin

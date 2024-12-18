@@ -130,8 +130,6 @@ end
 -- it's necessary to convert back to its original type from literal(string) value
 function _M.normalize(value, schema)
   local value_type = type(value)
-  assert(value_type == "table" or value_type == "string")
-
   if value_type == "string" then
     return normalize_value(value, schema.type)
   end

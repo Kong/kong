@@ -267,6 +267,17 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
       end)
 
+      it("accepts boolean params without value", function ()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/parameter/query?integer=1&boolean&string=str&number=1.23",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+      end)
+
       it("invalid type", function()
         local res = assert(client:send {
           method = "GET",
@@ -279,6 +290,21 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.equal(
           [[query 'integer' validation failed with error: 'failed to parse '1s' from string to integer']],
+          body.message)
+      end)
+
+      it("rejects boolean params with empty string value", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/parameter/query?integer=1&boolean=&string=str&number=1.23",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal(
+          [[query 'boolean' validation failed with error: 'failed to parse '' from string to boolean']],
           body.message)
       end)
     end)
