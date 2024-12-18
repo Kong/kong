@@ -270,6 +270,15 @@ function _M:_meta_call(c, meta_cap, node_id)
     list = capabilities_list,
   }
 
+  -- tell outside that rpc is ready
+  local worker_events = assert(kong.worker_events)
+
+  local ok, err = worker_events.post_local("clustering:jsonrpc", "connected",
+                                      capabilities_list)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connected event: ", err)
+  end
+
   return true
 end
 
