@@ -21,6 +21,7 @@ local item_key_prefix = declarative.item_key_prefix
 local workspace_id = declarative.workspace_id
 local foreign_field_key_prefix = declarative.foreign_field_key_prefix
 
+
 local PROCESS_AUTO_FIELDS_OPTS = {
   no_defaults = true,
   show_ws_id = true,
