@@ -20,7 +20,6 @@ local item_key = declarative.item_key
 local item_key_prefix = declarative.item_key_prefix
 local workspace_id = declarative.workspace_id
 local foreign_field_key_prefix = declarative.foreign_field_key_prefix
-local GLOBAL_WORKSPACE_TAG = declarative.GLOBAL_WORKSPACE_TAG
 
 
 local PROCESS_AUTO_FIELDS_OPTS = {
@@ -331,7 +330,7 @@ local function select(self, pk, options)
   local pk = pk_string(schema, pk)
 
   -- if no specific ws_id is provided, we need to search all workspace ids
-  if ws_id == GLOBAL_WORKSPACE_TAG then
+  if ws_id == "*" then
     for workspace, err in kong.db.workspaces:each() do
       if err then
         return nil, err

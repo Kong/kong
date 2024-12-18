@@ -616,6 +616,4 @@ return {
   load_into_cache_with_events = load_into_cache_with_events,
   insert_entity_for_txn = insert_entity_for_txn,
   delete_entity_for_txn = delete_entity_for_txn,
-
-  GLOBAL_WORKSPACE_TAG = GLOBAL_WORKSPACE_TAG,
 }
