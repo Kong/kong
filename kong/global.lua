@@ -193,7 +193,7 @@ function _GLOBAL.init_worker_events(kong_config)
   local enable_privileged_agent = false
   if kong_config.dedicated_config_processing and
      kong_config.role == "data_plane" and
-     not kong.sync  -- for incremental sync there is no privileged_agent
+     not kong.sync  -- for rpc sync there is no privileged_agent
   then
     enable_privileged_agent = true
   end

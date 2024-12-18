@@ -15,11 +15,11 @@ end
 
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
 
-describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, function()
+describe("cluster_ocsp = on works #" .. strategy .. " rpc_sync=" .. rpc_sync, function()
   describe("DP certificate good", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -44,7 +44,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("good")
@@ -63,7 +63,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -118,7 +118,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("revoked")
@@ -137,7 +137,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -190,7 +190,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("error")
@@ -209,7 +209,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -240,7 +240,7 @@ describe("cluster_ocsp = on works #" .. strategy .. " inc_sync=" .. inc_sync, fu
   end)
 end)
 
-describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
+describe("cluster_ocsp = off works with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()
   describe("DP certificate revoked, not checking for OCSP", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -265,7 +265,7 @@ describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sy
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("revoked")
@@ -284,7 +284,7 @@ describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sy
         cluster_server_name = "kong_clustering",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -316,7 +316,7 @@ describe("cluster_ocsp = off works with #" .. strategy .. " inc_sync=" .. inc_sy
   end)
 end)
 
-describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
+describe("cluster_ocsp = optional works with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()
   describe("DP certificate revoked", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -341,7 +341,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("revoked")
@@ -360,7 +360,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -413,7 +413,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_mtls = "pki",
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       set_ocsp_status("error")
@@ -432,7 +432,7 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
         cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -468,4 +468,4 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " inc_sync=" .. i
 end)
 
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

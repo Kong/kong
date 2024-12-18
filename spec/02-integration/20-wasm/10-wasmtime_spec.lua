@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local fmt = string.format
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, role in ipairs({"traditional", "control_plane", "data_plane"}) do
 
@@ -22,11 +22,11 @@ describe("#wasm wasmtime (role: " .. role .. ") (#postgres, #db)", function()
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
-      conf.cluster_incremental_sync = inc_sync == "on"
+      conf.cluster_rpc_sync = rpc_sync == "on"
     end)
 
     lazy_teardown(function()
@@ -98,11 +98,11 @@ describe("#wasm wasmtime (role: " .. role .. ") (#postgres, #db)", function()
         nginx_main_worker_processes = 2,
 
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       conf = assert(helpers.get_running_conf(prefix))
-      conf.cluster_incremental_sync = inc_sync == "on"
+      conf.cluster_rpc_sync = rpc_sync == "on"
 
       -- we need to briefly spin up a control plane, or else we will get
       -- error.log entries when our data plane tries to connect
@@ -121,7 +121,7 @@ describe("#wasm wasmtime (role: " .. role .. ") (#postgres, #db)", function()
           status_listen = "off",
           nginx_main_worker_processes = 2,
           cluster_rpc = rpc,
-          cluster_incremental_sync = inc_sync,
+          cluster_rpc_sync = rpc_sync,
         }))
       end
     end)
@@ -179,4 +179,4 @@ describe("#wasm wasmtime (role: " .. role .. ") (#postgres, #db)", function()
 
 end) -- wasmtime
 end -- each role
-end -- for inc_sync
+end -- for rpc_sync
