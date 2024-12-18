@@ -732,6 +732,12 @@ describe("CP/DP config sync #" .. strategy .. " rpc_sync=" .. rpc_sync, function
         end
       end, 5)
 
+      -- TODO: it may cause flakiness
+      -- wait for rpc sync finishing
+      if rpc_sync == "on" then
+        ngx.sleep(0.5)
+      end
+
       for i = 5, 2, -1 do
         res = proxy_client:get("/" .. i)
         assert.res_status(404, res)
