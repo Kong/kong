@@ -329,7 +329,7 @@ local function select(self, pk, options)
   local ws_id = workspace_id(schema, options)
   local pk = pk_string(schema, pk)
 
-  -- if no specific ws_id is provided, we nedd to search all workspace ids
+  -- if no specific ws_id is provided, we need to search all workspace ids
   if ws_id == "*" then
     for workspace, err in kong.db.workspaces:each() do
       if err then
