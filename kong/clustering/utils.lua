@@ -106,6 +106,7 @@ function _M.connect_cp(dp, endpoint, protocols)
 
   local ok, err = c:connect(uri, opts)
   if not ok then
+    c:close()
     return nil, uri, err
   end
 
