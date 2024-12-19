@@ -69,7 +69,7 @@ function _M:init_worker()
 
     -- cp does not support kong.sync.v2
     if not has_sync_v2 then
-      ngx_log(ngx_WARN, "rpc sync is disabled in CP.")
+      ngx.log(ngx.WARN, "rpc sync is disabled in CP.")
       return
     end
 
