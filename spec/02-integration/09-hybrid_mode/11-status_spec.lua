@@ -164,50 +164,59 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("dp status ready when rpc_sync == on", function()
-      lazy_setup(function()
-        assert(start_kong_cp())
-        assert(start_kong_dp())
-      end)
+    if rpc == "on" and rpc_sync == "on" then
+      describe("dp status ready when rpc_sync == on", function()
+        lazy_setup(function()
+          assert(start_kong_cp())
+          assert(start_kong_dp())
+        end)
 
-      lazy_teardown(function()
-          assert(helpers.stop_kong("serve_cp"))
-          assert(helpers.stop_kong("serve_dp"))
-      end)
+        lazy_teardown(function()
+            assert(helpers.stop_kong("serve_cp"))
+            assert(helpers.stop_kong("serve_dp"))
+        end)
 
-      it("should return 200 on data plane after configuring when rpc_sync == on ", function()
-        -- insert one entity to make dp ready for incremental sync
-        if rpc == "on" and rpc_sync == "on" then
+        it("should return 200 on data plane after configuring when rpc_sync == on ", function()
+          -- insert one entity to make dp ready for incremental sync
 
-          print("+++++ post /services")
-          local admin_client = helpers.admin_client(10000)
-          local res = assert(admin_client:post("/services", {
-            body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
-            headers = {["Content-Type"] = "application/json"}
-          }))
-          assert.res_status(201, res)
-
-          admin_client:close()
-
-          helpers.wait_until(function()
             local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
             local res = http_client:send({
               method = "GET",
               path = "/status/ready",
             })
-
-            local status = res and res.status
             http_client:close()
 
-            if status == 200 then
-              return true
-            end
-          end, 10)
-        end
-       end)
-      end)
 
+
+
+            local admin_client = helpers.admin_client(10000)
+            local res = assert(admin_client:post("/services", {
+              body = { name = "service-001", url = "https://127.0.0.1:15556/request", },
+              headers = {["Content-Type"] = "application/json"}
+            }))
+            assert.res_status(201, res)
+
+            admin_client:close()
+
+            helpers.wait_until(function()
+              local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+
+              local res = http_client:send({
+                method = "GET",
+                path = "/status/ready",
+              })
+
+              local status = res and res.status
+              http_client:close()
+
+              if status == 200 then
+                return true
+              end
+            end, 10)
+        end)
+      end)
+    end
   end)
 end -- for _, strategy
 end -- for rpc_sync
