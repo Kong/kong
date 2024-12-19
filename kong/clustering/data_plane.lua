@@ -101,8 +101,6 @@ function _M:init_worker(basic_info)
       return
     end
 
-    self.inited = true
-
     local has_sync_v2
 
     -- check cp's capabilities
@@ -117,6 +115,8 @@ function _M:init_worker(basic_info)
     if has_sync_v2 then
       return
     end
+
+    self.inited = true
 
     -- only run in process which worker_id() == 0
     start_communicate()

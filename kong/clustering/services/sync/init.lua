@@ -62,8 +62,6 @@ function _M:init_worker()
       return
     end
 
-    self.inited = true
-
     local has_sync_v2
 
     -- check cp's capabilities
@@ -79,6 +77,8 @@ function _M:init_worker()
       ngx.log(ngx.WARN, "rpc sync is disabled in CP.")
       return
     end
+
+    self.inited = true
 
     -- sync to CP ASAP
     assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
