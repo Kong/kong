@@ -11,11 +11,13 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 ---
 
-[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds]
+[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds] | [Cloud Hosted Kong](https://konghq.com/kong-konnect/)
 
 ---
 
 ## Getting Started
+
+If you prefer to use a cloud-hosted Kong, you can [sign up for a free trial of Kong Konnect](https://konghq.com/products/kong-konnect/register?utm_medium=Referral&utm_source=Github&utm_campaign=kong-gateway&utm_content=konnect-promo-in-gateway&utm_term=get-started) and get started in minutes. If not, you can follow the instructions below to get started with Kong on your own infrastructure.
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
