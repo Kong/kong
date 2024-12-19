@@ -57,6 +57,13 @@ function _M:init_worker()
 
   -- if rpc is ready we will start to sync
   worker_events.register(function(capabilities_list)
+    -- we only check once
+    if self.inited then
+      return
+    end
+
+    self.inited = true
+
     local has_sync_v2
 
     -- check cp's capabilities
