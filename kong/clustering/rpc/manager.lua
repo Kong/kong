@@ -273,7 +273,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   -- tell outside that rpc is ready
   local worker_events = assert(kong.worker_events)
 
-  -- notify all workers (worker 0 or privileged agent)
+  -- notify this worker
   local ok, err = worker_events.post_local("clustering:jsonrpc", "connected",
                                            capabilities_list)
   if not ok then
