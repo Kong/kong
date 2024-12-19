@@ -27,6 +27,7 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
 
+      cluster_rpc = "on",
       cluster_incremental_sync = "on", -- ENABLE incremental sync
     }))
 

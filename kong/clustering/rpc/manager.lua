@@ -37,6 +37,7 @@ local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
+local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
 
 
 local _log_prefix = "[rpc] "
@@ -502,6 +503,17 @@ function _M:connect(premature, node_id, host, path, cert, key)
   local reconnection_delay = math.random(5, 10)
 
   local c = assert(client:new(WS_OPTS))
+
+  if self.conf.cluster_use_proxy then
+    local proxy_opts = parse_proxy_url(self.conf.proxy_server)
+    opts.proxy_opts = {
+      wss_proxy = proxy_opts.proxy_url,
+      wss_proxy_authorization = proxy_opts.proxy_authorization,
+    }
+
+    ngx_log(ngx_DEBUG, "[rpc] using proxy ", proxy_opts.proxy_url,
+                       " to connect control plane")
+  end
 
   local ok, err = c:connect(uri, opts)
   if not ok then
