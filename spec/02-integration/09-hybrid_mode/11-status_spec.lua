@@ -108,60 +108,61 @@ for _, strategy in helpers.each_strategy() do
 
       -- now dp receive config from cp, so dp should be ready
 
-      skip_rpc_sync("should return 200 on data plane after configuring", function()
-        helpers.wait_until(function()
-          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+      if rpc_sync == "off" then
+        it("should return 200 on data plane after configuring", function()
+          helpers.wait_until(function()
+            local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-          local res = http_client:send({
-            method = "GET",
-            path = "/status/ready",
-          })
+            local res = http_client:send({
+              method = "GET",
+              path = "/status/ready",
+            })
 
-          local status = res and res.status
-          http_client:close()
-          if status == 200 then
-            return true
-          end
-        end, 10)
+            local status = res and res.status
+            http_client:close()
+            if status == 200 then
+              return true
+            end
+          end, 10)
 
-        assert(helpers.stop_kong("serve_cp", nil, nil, "QUIT", false))
+          assert(helpers.stop_kong("serve_cp", nil, nil, "QUIT", false))
 
-        -- DP should keep return 200 after CP is shut down
-        helpers.wait_until(function()
+          -- DP should keep return 200 after CP is shut down
+          helpers.wait_until(function()
 
-          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+            local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-          local res = http_client:send({
-            method = "GET",
-            path = "/status/ready",
-          })
+            local res = http_client:send({
+              method = "GET",
+              path = "/status/ready",
+            })
 
-          local status = res and res.status
-          http_client:close()
-          if status == 200 then
-            return true
-          end
-        end, 10)
+            local status = res and res.status
+            http_client:close()
+            if status == 200 then
+              return true
+            end
+          end, 10)
 
-        -- recovery state between tests
-        assert(start_kong_cp())
+          -- recovery state between tests
+          assert(start_kong_cp())
 
-        helpers.wait_until(function()
-          local http_client = helpers.http_client('127.0.0.1', dp_status_port)
+          helpers.wait_until(function()
+            local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
-          local res = http_client:send({
-            method = "GET",
-            path = "/status/ready",
-          })
+            local res = http_client:send({
+              method = "GET",
+              path = "/status/ready",
+            })
 
-          local status = res and res.status
-          http_client:close()
-          if status == 200 then
-            return true
-          end
-        end, 10)
-
-      end)
+            local status = res and res.status
+            http_client:close()
+            if status == 200 then
+              return true
+            end
+          end, 10)
+        end)
+      end
     end)
 
     if rpc == "on" and rpc_sync == "on" then
