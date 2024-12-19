@@ -1778,6 +1778,7 @@ do
     execute_collected_plugins_iterator(plugins_iterator, "response", ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
+    ctx.KONG_RESPONSE_ENDED_AT_NS = time_ns()
     ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
 
     -- buffered response

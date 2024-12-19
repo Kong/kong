@@ -247,18 +247,48 @@ local ATTRIBUTES = {
     name = fmt("%s.latency.upstream.response_duration", KONG_PREFIX),
     type = "Int",
   },
+  KONG_LATENCY_UPSTREAM_MS = {
+    name = fmt("%s.latency.upstream", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
+  KONG_LATENCY_CLIENT_MS = {
+    name = fmt("%s.latency.client", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
+  KONG_LATENCY_INTERNAL_MS = {
+    name = fmt("%s.latency.internal", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
   KONG_LATENCY_TOTAL_MS = {
     name = fmt("%s.latency.total", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_TOTAL_IO_REDIS_MS = {
-    name = fmt("%s.latency.redis.total_io", KONG_PREFIX),
+    name = fmt("%s.latency.3p.redis.total_io", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },
   KONG_TOTAL_IO_TCPSOCKET_MS = {
-    name = fmt("%s.latency.tcpsock.total_io", KONG_PREFIX),
+    name = fmt("%s.latency.3p.tcpsock.total_io", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
+  KONG_TOTAL_IO_HTTP_CLIENT_MS = {
+    name = fmt("%s.latency.3p.http_client.total_io", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
+  KONG_TOTAL_IO_DNS_MS = {
+    name = fmt("%s.latency.3p.dns.total_io", KONG_PREFIX),
+    type = "Int",
+    use_for_sampling = true,
+  },
+  KONG_TOTAL_IO_MS = {
+    name = fmt("%s.latency.3p.total_io", KONG_PREFIX),
     type = "Int",
     use_for_sampling = true,
   },

@@ -51,9 +51,15 @@ local function SPAN_ATTRIBUTES(entities, opts)
       ["network.protocol.version"] = { assertion = "equals", expected_val = "1.1"},
       ["proxy.kong.latency.upstream.read_response_duration"] = { assertion = "matches", expected_val = number_pattern},
       ["url.scheme"] = { assertion = "matches", expected_val = "http[s]?"},
+      ["proxy.kong.latency.upstream"] = { assertion = "matches", expected_val = number_pattern},
       ["proxy.kong.latency.total"] = { assertion = "matches", expected_val = number_pattern},
-      ["proxy.kong.latency.redis.total_io"] = { assertion = "matches", expected_val = number_pattern},
-      ["proxy.kong.latency.tcpsock.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.3p.redis.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.3p.tcpsock.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.3p.http_client.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.3p.dns.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.3p.total_io"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.client"] = { assertion = "matches", expected_val = number_pattern},
+      ["proxy.kong.latency.internal"] = { assertion = "matches", expected_val = number_pattern},
       ["url.full"] = { assertion = "matches", expected_val = "http[s]?://localhost" .. path},
       ["http.request.header.host"] = { assertion = "equals", expected_val = "localhost"},
       ["http.response.status_code"] = { assertion = "equals", expected_val = 200},
@@ -143,6 +149,7 @@ local function SPAN_ATTRIBUTES(entities, opts)
     ["kong.io.socket.send"] = {},
     ["kong.io.socket.receive"] = {},
     ["kong.io.redis"] = {},
+    ["kong.wait_for_client_read"] = {},
   }
 end
 
@@ -729,6 +736,52 @@ describe("Active Tracing Instrumentation", function()
       local root_span = assert_get_spans("kong", spans, 1)
       local access_phase_span = assert_get_spans("kong.phase.access", spans, 1)
       assert_parent_child_relationship(root_span, access_phase_span)
+    end)
+  end)
+
+  describe("#unbuffered request and response make balancer run multiple times", function()
+    local proxy_client
+
+    lazy_setup(function()
+      setup_kong()
+      proxy_client = helpers.proxy_client(10000, 9002)
+    end)
+
+    after_each(function()
+      teardown_analytics_sink(TCP_PORT)
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      teardown_kong()
+    end)
+
+    before_each(start_session)
+    after_each(stop_session)
+
+    it("produces correct spans", function()
+      local trace = assert_produces_trace(function()
+        return assert(proxy_client:send {
+          headers = {
+            ["host"] = "localhost",
+          },
+          method = "POST",
+          path = "/unbuffered",
+          body = "hello world",
+        })
+      end, TCP_PORT)
+
+      assert_valid_trace(trace)
+
+      local spans = trace.resource_spans[1].scope_spans[1].spans
+      assert.True(spans and #spans > 0)
+
+      assert_get_spans("kong.upstream.selection", spans, 1)
+      local root_span = assert_get_spans("kong", spans, 1)
+      local read_body_span = assert_get_spans("kong.read_client_http_body", spans, 1)
+      assert_parent_child_relationship(root_span, read_body_span)
     end)
   end)
 end)

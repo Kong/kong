@@ -18,6 +18,7 @@ local redis_instrum = require "kong.enterprise_edition.debug_session.instrumenta
 local content_capture = require "kong.enterprise_edition.debug_session.instrumentation.content_capture"
 local SPAN_ATTRIBUTES = require("kong.enterprise_edition.debug_session.instrumentation.attributes").SPAN_ATTRIBUTES
 local utils = require "kong.enterprise_edition.debug_session.utils"
+local latency_metrics = require "kong.enterprise_edition.debug_session.latency_metrics"
 local request_id_get = require "kong.observability.tracing.request_id".get
 local time_ns = require("kong.tools.time").time_ns
 
@@ -105,6 +106,7 @@ local SPAN_NAMES = {
   PLUGIN_RESPONSE = "kong.response.plugin",
   READ_BODY = "kong.read_client_http_body",
   CLIENT_HEADERS = "kong.read_client_http_headers",
+  FLUSH_TO_DOWNSTREAM = "kong.wait_for_client_read",
 }
 
 local VALID_TRACING_PHASES = {
@@ -172,7 +174,7 @@ end
 local function start_subspan(...)
   if not is_valid_phase() then
     -- not in a request: ignore
-    return nil, "invalid phase"
+    return
   end
 
   -- if a subspan is started while the session is starting, we skip it
@@ -194,7 +196,9 @@ function _M.router()
 
   local span, err = subtracer.start_span(SPAN_NAMES.ROUTER)
   if not span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(span)
@@ -232,7 +236,9 @@ function _M.balancer_upstream_selection(ctx)
 
   local upstream_selection_span, err = subtracer.start_span(SPAN_NAMES.BALANCER_UPSTREAM_SELECTION, upstream_selection_span_options)
   if not upstream_selection_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(upstream_selection_span)
@@ -253,6 +259,8 @@ function _M.balancer_upstream_selection(ctx)
   local selected_upstream_ip
   local selected_upstream_target_id
 
+  local first_upstream_start_connect_time
+
   -- unsuccessful tries
   for i = 1, try_count do
     local try = balancer_tries[i]
@@ -271,7 +279,9 @@ function _M.balancer_upstream_selection(ctx)
 
     local span, err = subtracer.start_span(SPAN_NAMES.BALANCER_UPSTREAM_TRY_SELECT, span_options)
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return
     end
 
@@ -298,6 +308,12 @@ function _M.balancer_upstream_selection(ctx)
       try_upstream_response_time_ms = 0
     end
 
+    if i == 1 then
+      -- store the first upstream connect time
+      -- used later to generate the metric that records the total upstream time
+      first_upstream_start_connect_time = try.balancer_start_ns / 1e6
+    end
+
     local try_upstream_time = max(try_upstream_connect_time_ms, try_upstream_response_time_ms)
     upstream_selection_finish_time_ns = (try.balancer_start_ns + (try.balancer_latency_ns or 0) + try_upstream_time * 1e6)
 
@@ -319,7 +335,9 @@ function _M.balancer_upstream_selection(ctx)
     start_time_ns = upstream_ttfb_start_time_ns,
   })
   if not upstream_ttfb_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   local upstream_ttfb_ms = selected_upstream_header_time_ms - (selected_upstream_connect_time_ms or 0)
@@ -333,7 +351,9 @@ function _M.balancer_upstream_selection(ctx)
     start_time_ns = upstream_read_response_start_time_ns,
   })
   if not upstream_response_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
 
@@ -342,6 +362,12 @@ function _M.balancer_upstream_selection(ctx)
   local upstream_read_response_duration_ms = max(0, selected_upstream_total_response_time_ms - upstream_ttfb_ms - selected_upstream_connect_time_ms)
   local upstream_read_response_end_time_ns = upstream_read_response_start_time_ns + upstream_read_response_duration_ms * 1e6
   upstream_response_span:finish(upstream_read_response_end_time_ns)
+
+  -- generate the metric that records the total upstream time
+  local ok, err = latency_metrics.set("upstream_latency", (upstream_read_response_end_time_ns / 1e6) - first_upstream_start_connect_time)
+  if not ok then
+    log(ngx_ERR, "failed to set upstream latency metric: ", err)
+  end
 
   local root_span = tracer.get_root_span()
   if root_span then
@@ -356,6 +382,55 @@ function _M.balancer_upstream_selection(ctx)
     root_span:set_attribute(SPAN_ATTRIBUTES.NETWORK_PEER_ADDRESS, selected_upstream_ip)
   end
 end
+
+
+function _M.get_upstream_latency()
+  local latency, err = latency_metrics.get("upstream_latency")
+  if not latency then
+    log(ngx_ERR, "failed to get upstream latency metric: ", err)
+    return
+  end
+  return latency
+end
+
+
+function _M.wait_for_client_read(ctx)
+  if should_skip_instrumentation(INSTRUMENTATIONS.request) then
+    return
+  end
+
+  local start_time = ctx.KONG_RESPONSE_ENDED_AT_NS
+                     or ctx.KONG_RESPONSE_ENDED_AT and ctx.KONG_RESPONSE_ENDED_AT * 1e6
+                     or ctx.KONG_BODY_FILTER_ENDED_AT_NS
+  local end_time = ctx.KONG_LOG_START_NS or time_ns()
+
+  local span, err = subtracer.start_span(SPAN_NAMES.FLUSH_TO_DOWNSTREAM, {
+    span_kind = SPAN_KIND_SERVER,
+    start_time_ns = start_time,
+  })
+  if not span then
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
+    return
+  end
+  span:finish(end_time)
+  local ok, err = latency_metrics.add("client_latency", (end_time - start_time) / 1e6)
+  if not ok then
+    log(ngx_ERR, "failed to add client latency metric: ", err)
+  end
+end
+
+
+function _M.get_client_latency()
+  local latency, err = latency_metrics.get("client_latency")
+  if not latency then
+    log(ngx_ERR, "failed to get client latency metric: ", err)
+    return
+  end
+  return latency
+end
+
 
 -- Generator for different plugin phases
 local function plugin_callback(phase)
@@ -379,7 +454,9 @@ local function plugin_callback(phase)
       }
     })
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return
     end
     subtracer.set_active_span(span)
@@ -414,7 +491,9 @@ _M.plugin_body_filter_before = function(plugin, conf)
       }
     })
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return
     end
     subtracer.set_active_span(span)
@@ -482,47 +561,77 @@ end
 function _M.http_client()
   local http = require "resty.http"
   local request_uri = http.request_uri
+  local request = http.request
 
-  local function wrap(self, uri, params)
-    if should_skip_instrumentation(INSTRUMENTATIONS.http_client) then
-      return request_uri(self, uri, params)
+  local function get_wrapper(f)
+    -- can be either:
+    -- httpc:request(params)
+    -- httpc:request_uri(uri, params)
+    return function(self, arg1, arg2)
+      if should_skip_instrumentation(INSTRUMENTATIONS.http_client) then
+        return f(self, arg1, arg2)
+      end
+
+      local params = arg2 or arg1
+      local uri = arg2 and arg1 or params.path
+
+      local method = params and params.method or "GET"
+      local attributes = new_tab(0, 5)
+      -- passing full URI to http.url attribute
+      attributes["http.url"] = uri
+      attributes["http.method"] = method
+      attributes["http.flavor"] = params and params.version or "1.1"
+      attributes["http.user_agent"] = params and params.headers and params.headers["User-Agent"]
+          or http._USER_AGENT
+
+      local http_proxy = self.proxy_opts and (self.proxy_opts.https_proxy or self.proxy_opts.http_proxy)
+      if http_proxy then
+        attributes["http.proxy"] = http_proxy
+      end
+
+      local start_time = time_ns()
+      local span, err = subtracer.start_span(SPAN_NAMES.HTTP_CLIENT, {
+        span_kind = SPAN_KIND_CLIENT,
+        attributes = attributes,
+        start_time_ns = start_time,
+      })
+      if not span then
+        if err then
+          log(ngx_ERR, "failed to start span: ", err)
+        end
+        return f(self, arg1, arg2)
+      end
+
+      local res, err = f(self, arg1, arg2)
+      if res then
+        attributes["http.status_code"] = res.status -- number
+      else
+        span:record_error(err)
+      end
+      span:finish()
+
+      -- Record total time spent doing HTTP client IO
+      local ok, m_err = latency_metrics.add("http_client_total_time", (time_ns() - start_time) / 1e6)
+      if not ok then
+        log(ngx_ERR, "failed to add http client total time metric: ", m_err)
+      end
+
+      return res, err
     end
-
-    local method = params and params.method or "GET"
-    local attributes = new_tab(0, 5)
-    -- passing full URI to http.url attribute
-    attributes["http.url"] = uri
-    attributes["http.method"] = method
-    attributes["http.flavor"] = params and params.version or "1.1"
-    attributes["http.user_agent"] = params and params.headers and params.headers["User-Agent"]
-        or http._USER_AGENT
-
-    local http_proxy = self.proxy_opts and (self.proxy_opts.https_proxy or self.proxy_opts.http_proxy)
-    if http_proxy then
-      attributes["http.proxy"] = http_proxy
-    end
-
-    local span, err = subtracer.start_span(SPAN_NAMES.HTTP_CLIENT, {
-      span_kind = SPAN_KIND_CLIENT,
-      attributes = attributes,
-    })
-    if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
-      return request_uri(self, uri, params)
-    end
-
-    local res, err = request_uri(self, uri, params)
-    if res then
-      attributes["http.status_code"] = res.status -- number
-    else
-      span:record_error(err)
-    end
-    span:finish()
-
-    return res, err
   end
 
-  http.request_uri = wrap
+  http.request_uri = get_wrapper(request_uri)
+  http.request = get_wrapper(request)
+end
+
+
+function _M.get_total_http_client_time()
+  local latency, err = latency_metrics.get("http_client_total_time")
+  if not latency then
+    log(ngx_ERR, "failed to get http client total time metric: ", err)
+    return
+  end
+  return latency
 end
 
 
@@ -546,7 +655,9 @@ function _M.certificate()
     }
   })
   if not span_phase_cert then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(span_phase_cert)
@@ -614,17 +725,24 @@ local function client_headers()
     }
   })
   if not span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    log(ngx_ERR, "failed to start span: ", err)
     return
   end
-  span:finish()
+  local end_time = time_ns()
+  span:finish(end_time)
+  local ok, err = latency_metrics.add("client_latency", (end_time - start_time) / 1e6)
+  if not ok then
+    log(ngx_ERR, "failed to add client latency metric: ", err)
+  end
 end
 
 
 local function rewrite_phase()
   local rewrite_phase_span, err = subtracer.start_span(SPAN_NAMES.PHASE_REWRITE)
   if not rewrite_phase_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(rewrite_phase_span)
@@ -655,7 +773,9 @@ function _M.access()
 
   local access_phase_span, err = subtracer.start_span(SPAN_NAMES.PHASE_ACCESS)
   if not access_phase_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(access_phase_span)
@@ -674,7 +794,9 @@ function _M.header_filter()
 
   local header_filter_phase_span, err = subtracer.start_span(SPAN_NAMES.PHASE_HEADER_FILTER)
   if not header_filter_phase_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(header_filter_phase_span)
@@ -703,7 +825,9 @@ function _M.body_filter_before()
     local err
     span, err = subtracer.start_span(SPAN_NAMES.PHASE_BODY_FILTER)
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return
     end
     subtracer.set_active_span(span)
@@ -746,7 +870,9 @@ function _M.response()
 
   local response_phase_span, err = subtracer.start_span(SPAN_NAMES.PHASE_RESPONSE)
   if not response_phase_span then
-    log(ngx_DEBUG, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
   subtracer.set_active_span(response_phase_span)
@@ -762,16 +888,25 @@ do
       return raw_func(host, port, ...)
     end
 
+    local start_time = time_ns()
     local span, err = subtracer.start_span(SPAN_NAMES.DNS, {
       span_kind = SPAN_KIND_CLIENT,
+      start_time_ns = start_time,
     })
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return raw_func(host, port, ...)
     end
 
     local ip_addr, res_port, try_list = raw_func(host, port, ...)
     if span then
+      local ok, m_err = latency_metrics.add("dns_total_time", (time_ns() - start_time) / 1e6)
+      if not ok then
+        log(ngx_ERR, "failed to add dns total time metric: ", m_err)
+      end
+
       span:set_attribute(SPAN_ATTRIBUTES.KONG_DNS_RECORD_DOMAIN, host)
       span:set_attribute(SPAN_ATTRIBUTES.KONG_DNS_RECORD_PORT, port)
       if try_list and #try_list > 0 then
@@ -808,6 +943,16 @@ do
 end
 
 
+function _M.get_total_dns_time()
+  local ok, err = latency_metrics.get("dns_total_time")
+  if not ok then
+    log(ngx_ERR, "failed to get dns total time metric: ", err)
+    return
+  end
+  return ok
+end
+
+
 -- runloop
 function _M.runloop_before_header_filter()
   local root_span = tracer.get_root_span()
@@ -829,6 +974,9 @@ function _M.runloop_log_before(ctx)
 
   -- add balancer selection time
   _M.balancer_upstream_selection(ctx)
+
+  -- add wait_for_client_read span
+  _M.wait_for_client_read(ctx)
 
   -- finish root span
   local root_span = tracer.get_root_span()
@@ -906,11 +1054,15 @@ function _M.patch_read_body()
       return raw_func()
     end
 
+    local start_time = time_ns()
     local span, err = subtracer.start_span(SPAN_NAMES.READ_BODY, {
       span_kind = SPAN_KIND_SERVER,
+      start_time_ns = start_time,
     })
     if not span then
-      log(ngx_DEBUG, "failed to start span: ", err)
+      if err then
+        log(ngx_ERR, "failed to start span: ", err)
+      end
       return raw_func()
     end
     subtracer.set_active_span(span)
@@ -921,7 +1073,12 @@ function _M.patch_read_body()
 
     raw_func()
 
-    span:finish()
+    local end_time = time_ns()
+    span:finish(end_time)
+    local ok, err = latency_metrics.add("client_latency", (end_time - start_time) / 1e6)
+    if not ok then
+      log(ngx_ERR, "failed to add client latency metric: ", err)
+    end
   end
   -- luacheck: globals ngx.req.read_body
   ngx.req.read_body = wrap
@@ -975,16 +1132,24 @@ function _M.balancer_start()
   ngx.ctx[balancer_instrum_run_once] = true
 
   -- create the "read client body" span
+  local start_time = tonumber(access_ended_time)
   local span, err = subtracer.start_span(SPAN_NAMES.READ_BODY, {
     span_kind = SPAN_KIND_SERVER,
-    start_time_ns = tonumber(access_ended_time),
+    start_time_ns = start_time,
   })
   if not span then
-    log(ngx_ERR, "failed to start span: ", err)
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
     return
   end
 
-  span:finish()
+  local end_time = time_ns()
+  span:finish(end_time)
+  local ok, err = latency_metrics.add("client_latency", (end_time - start_time) / 1e6)
+  if not ok then
+    log(ngx_ERR, "failed to add client latency metric: ", err)
+  end
 end
 
 

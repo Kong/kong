@@ -5,19 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.enterprise_edition.debug_session.utils"
 local kong_table = require "kong.tools.table"
+local latency_metrics = require "kong.enterprise_edition.debug_session.latency_metrics"
 
-local get_ctx_key = utils.get_ctx_key
 local pack = kong_table.pack
 local unpack = kong_table.unpack
 
-local TOTAL_TIME_CTX_KEY = get_ctx_key("redis_total_time")
 
 local _M = {}
 local time_ns = require "kong.tools.time".time_ns
-
-local ngx = ngx
 
 local tracer
 local instrum
@@ -59,7 +55,10 @@ function _M.instrument()
       -- Calculate the time spent in this Redis operation
       local elapsed = time_ns() - redis_timing_init
       -- set accumulated time or initialize
-      ngx.ctx[TOTAL_TIME_CTX_KEY] = (ngx.ctx[TOTAL_TIME_CTX_KEY] or 0) + elapsed
+      local ok, err = latency_metrics.add("redis_total_time", elapsed / 1e6)
+      if not ok then
+        ngx.log(ngx.ERR, "failed to add redis total time metric: ", err)
+      end
       redis_io_span:finish()
       return unpack(res)
     end
@@ -75,7 +74,12 @@ end
 
 -- retrieve the total accumulated Redis time in ms
 function _M.get_total_time()
-  return ngx.ctx[TOTAL_TIME_CTX_KEY] and ngx.ctx[TOTAL_TIME_CTX_KEY] / 1e6 or 0
+  local latency, err = latency_metrics.get("redis_total_time")
+  if not latency then
+    ngx.log(ngx.ERR, "failed to get redis total time metric: ", err)
+    return
+  end
+  return latency
 end
 
 

@@ -128,11 +128,11 @@ describe("Active Tracing Sampling in/out", function()
       end)
 
       it("#proxy.kong.tcpsock.total_io", function()
-        assert(test_sampling_rule('proxy.kong.latency.tcpsock.total_io <= 10000'))
+        assert(test_sampling_rule('proxy.kong.latency.3p.tcpsock.total_io <= 10000'))
       end)
 
       it("#proxy.kong.redis.total_io", function()
-        assert(test_sampling_rule('proxy.kong.latency.redis.total_io <= 10000'))
+        assert(test_sampling_rule('proxy.kong.latency.3p.redis.total_io <= 10000'))
       end)
 
       it("#network.peer.address", function ()

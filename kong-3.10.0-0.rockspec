@@ -220,6 +220,7 @@ build = {
     ["kong.enterprise_edition.debug_session.instrumentation.attributes"] = "kong/enterprise_edition/debug_session/instrumentation/attributes.lua",
     ["kong.enterprise_edition.debug_session.utils"] = "kong/enterprise_edition/debug_session/utils.lua",
     ["kong.enterprise_edition.debug_session.common"] = "kong/enterprise_edition/debug_session/common/init.lua",
+    ["kong.enterprise_edition.debug_session.latency_metrics"] = "kong/enterprise_edition/debug_session/latency_metrics/init.lua",
 
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",

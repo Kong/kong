@@ -5,11 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.enterprise_edition.debug_session.utils"
+local latency_metrics = require "kong.enterprise_edition.debug_session.latency_metrics"
 local time_ns = require "kong.tools.time".time_ns
 
 local fmt = string.format
-local get_ctx_key = utils.get_ctx_key
 
 local SPAN_NAME = "kong.io.socket"
 local CONNECT_SPAN_NAME = fmt("%s.connect", SPAN_NAME)
@@ -17,7 +16,6 @@ local SSLHANDSHAKE_SPAN_NAME = fmt("%s.sslhandshake", SPAN_NAME)
 local SEND_SPAN_NAME = fmt("%s.send", SPAN_NAME)
 local RECEIVE_SPAN_NAME = fmt("%s.receive", SPAN_NAME)
 local SPAN_KIND_CLIENT = 3
-local SOCKET_TOTAL_TIME_CTX_KEY = get_ctx_key("socket_total_time")
 
 local _M = {}
 
@@ -55,7 +53,10 @@ local function patched_connect(self, ...)
   local ok, err = old_tcp_connect(self, ...)
   local end_time = time_ns()
   span:finish()
-  ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] = (ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] or 0) + (end_time - start_time)
+  local m_ok, m_err = latency_metrics.add("socket_total_time", (end_time - start_time) / 1e6)
+  if not m_ok then
+    ngx.log(ngx.ERR, "failed to add socket total time metric: ", m_err)
+  end
   return ok, err
 end
 
@@ -83,7 +84,10 @@ local function patched_sslhandshake(self, ...)
   local ok, err = old_tcp_sslhandshake(self, ...)
   local end_time = time_ns()
   span:finish()
-  ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] = (ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] or 0) + (end_time - start_time)
+  local m_ok, m_err = latency_metrics.add("socket_total_time", (end_time - start_time) / 1e6)
+  if not m_ok then
+    ngx.log(ngx.ERR, "failed to add socket total time metric: ", m_err)
+  end
   return ok, err
 end
 
@@ -110,7 +114,12 @@ local function patched_send(self, ...)
   local bytes, err = old_tcp_send(self, ...)
   local end_time = time_ns()
   span:finish()
-  ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] = (ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] or 0) + (end_time - start_time)
+
+  local m_ok, m_err = latency_metrics.add("socket_total_time", (end_time - start_time) / 1e6)
+  if not m_ok then
+    ngx.log(ngx.ERR, "failed to add socket total time metric: ", m_err)
+  end
+
   return bytes, err
 end
 
@@ -137,7 +146,12 @@ local function patch_receive(self, ...)
   local data, err, partial = old_tcp_receive(self, ...)
   local end_time = time_ns()
   span:finish()
-  ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] = (ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] or 0) + (end_time - start_time)
+
+  local m_ok, m_err = latency_metrics.add("socket_total_time", (end_time - start_time) / 1e6)
+  if not m_ok then
+    ngx.log(ngx.ERR, "failed to add socket total time metric: ", m_err)
+  end
+
   return data, err, partial
 end
 
@@ -183,7 +197,12 @@ end
 
 -- in ms
 function _M.get_total_time()
-  return ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] and ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] / 1e6 or 0
+  local latency, err = latency_metrics.get("socket_total_time")
+  if not latency then
+    ngx.log(ngx.ERR, "failed to get socket total time metric: ", err)
+    return
+  end
+  return latency
 end
 
 return _M

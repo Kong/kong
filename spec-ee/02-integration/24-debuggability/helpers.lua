@@ -50,6 +50,13 @@ local function setup_kong(cp_config, dp_config, db_setup)
     service = { id = service.id },
   })
 
+  bp.routes:insert({
+    name = "unbuffered",
+    protocols = { "http" },
+    paths = { "/unbuffered" },
+    service = { id = service.id },
+  })
+
   local upstream = bp.upstreams:insert({
     name = "mock-upstream",
   })

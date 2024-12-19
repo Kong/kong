@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local utils = require "kong.enterprise_edition.debug_session.utils"
 local helpers = require "spec.helpers"
+local latency_metrics = require "kong.enterprise_edition.debug_session.latency_metrics"
 
 describe("Debug Session IO Instrumentation", function()
   local instrum, tracer
@@ -22,13 +22,14 @@ describe("Debug Session IO Instrumentation", function()
 
     spy.on(tracer, "start_span")
     spy.on(instrum, "is_valid_phase")
+    spy.on(latency_metrics, "is_valid_phase")
+    stub(latency_metrics, "is_valid_phase").returns(true)
     stub(instrum, "INSTRUMENTATIONS")
     stub(instrum, "should_skip_instrumentation").returns(false)
   end)
 
   describe("Redis", function()
     local redis, redis_instrum_mod
-    local REDIS_TOTAL_TIME_CTX_KEY = utils.get_ctx_key("redis_total_time")
 
     lazy_setup(function()
       redis = require "kong.enterprise_edition.tools.redis.v2"
@@ -41,10 +42,11 @@ describe("Debug Session IO Instrumentation", function()
       tracer.start_span:clear()
       instrum.should_skip_instrumentation:clear()
       instrum.is_valid_phase:clear()
+      latency_metrics.is_valid_phase:clear()
     end)
 
     it("get_total_time", function()
-      ngx.ctx[REDIS_TOTAL_TIME_CTX_KEY] = 1000000
+      latency_metrics.set("redis_total_time", 1)
       assert.equals(1, redis_instrum_mod.get_total_time())
     end)
 
@@ -63,7 +65,6 @@ describe("Debug Session IO Instrumentation", function()
 
   describe("Socket", function()
     local socket_instrum_mod, dynamic_hook
-    local SOCKET_TOTAL_TIME_CTX_KEY = utils.get_ctx_key("socket_total_time")
 
     lazy_setup(function()
       dynamic_hook = require "kong.dynamic_hook"
@@ -86,7 +87,7 @@ describe("Debug Session IO Instrumentation", function()
     end)
 
     it("get_total_time", function()
-      ngx.ctx[SOCKET_TOTAL_TIME_CTX_KEY] = 2000000
+      latency_metrics.set("socket_total_time", 2)
       assert.equals(2, socket_instrum_mod.get_total_time())
     end)
 

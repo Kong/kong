@@ -164,6 +164,18 @@ function _M:sample()
   end
 end
 
+local function get_internal_latency(total_latency, upstream_latency, io_latency, client_latency)
+  if total_latency == nil or upstream_latency == nil or io_latency == nil or client_latency == nil then
+    log(ngx_ERR, "failed to get latency metrics")
+    return
+  end
+
+  local external_latency = upstream_latency
+                         + io_latency
+                         + client_latency
+  return total_latency - external_latency
+end
+
 function _M:enrich_root_span()
   if not is_module_enabled() then
     return
@@ -195,9 +207,31 @@ function _M:enrich_root_span()
   -- seconds to ms -> * 1e3
   local latency_total_ms = ngx.var.request_time * 1e3
   root_span:set_attribute(SPAN_ATTRIBUTES.KONG_LATENCY_TOTAL_MS, latency_total_ms)
-  -- Record total time spent doing Redis IO, Socket IO
-  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_REDIS_MS, redis_instrum.get_total_time())
-  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_TCPSOCKET_MS, socket_instrum.get_total_time())
+  -- Record total time spent doing Redis IO, Socket IO, HTTP Client IO, DNS IO
+  local total_io_redis = redis_instrum.get_total_time()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_REDIS_MS, total_io_redis)
+  local total_io_socket = socket_instrum.get_total_time()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_TCPSOCKET_MS, total_io_socket)
+  local total_io_http_client = instrum.get_total_http_client_time()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_HTTP_CLIENT_MS, total_io_http_client)
+  local total_io_dns = instrum.get_total_dns_time()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_DNS_MS, total_io_dns)
+  local total_io
+  if total_io_redis == nil or total_io_socket == nil or total_io_http_client == nil or total_io_dns == nil then
+    log(ngx_ERR, "failed to get total io time metrics")
+  else
+    total_io = total_io_redis + total_io_socket + total_io_http_client + total_io_dns
+    root_span:set_attribute(SPAN_ATTRIBUTES.KONG_TOTAL_IO_MS, total_io)
+  end
+  -- Record total upstream latency
+  local latency_upstream_ms = instrum.get_upstream_latency()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_LATENCY_UPSTREAM_MS, latency_upstream_ms)
+  -- Record total client latency
+  local latency_client = instrum.get_client_latency()
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_LATENCY_CLIENT_MS, latency_client)
+  -- Record internal latency
+  local latency_internal = get_internal_latency(latency_total_ms, latency_upstream_ms, total_io, latency_client)
+  root_span:set_attribute(SPAN_ATTRIBUTES.KONG_LATENCY_INTERNAL_MS, latency_internal)
 end
 
 -- report everything that was collected
