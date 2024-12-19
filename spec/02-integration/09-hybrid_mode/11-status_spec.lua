@@ -186,9 +186,7 @@ for _, strategy in helpers.each_strategy() do
               path = "/status/ready",
             })
             http_client:close()
-
-
-
+            assert.equal(503, res.status)
 
             local admin_client = helpers.admin_client(10000)
             local res = assert(admin_client:post("/services", {
