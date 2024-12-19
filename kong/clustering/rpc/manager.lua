@@ -182,7 +182,7 @@ function _M:_handle_meta_call(c)
   assert(type(info.kong_node_id) == "string")
   assert(type(info.kong_hostname) == "string")
   assert(type(info.kong_conf) == "table")
-
+print("ojbk ", info.kong_node_id)
   local payload = {
     jsonrpc = jsonrpc.VERSION,
     result = {
