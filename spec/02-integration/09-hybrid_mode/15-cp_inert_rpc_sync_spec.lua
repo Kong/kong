@@ -66,7 +66,6 @@ describe("CP diabled Sync RPC #" .. strategy, function()
           if v.ip == "127.0.0.1" then
             assert.near(14 * 86400, v.ttl, 3)
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
-            --print(v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             return true
           end
