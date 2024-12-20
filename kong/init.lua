@@ -763,6 +763,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
+  -- NOTE: privileged_agent is disabled when rpc sync is on
   if config.dedicated_config_processing and is_data_plane(config) and not kong.sync then
     -- TODO: figure out if there is better value than 4096
     -- 4096 is for the cocurrency of the lua-resty-timer-ng
