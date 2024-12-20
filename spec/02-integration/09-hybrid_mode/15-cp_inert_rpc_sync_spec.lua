@@ -79,6 +79,8 @@ describe("CP diabled Sync RPC #" .. strategy, function()
       -- dp will not run rpc too
       assert.logfile("servroot2/logs/error.log").has.line(
         "rpc sync is disabled in CP")
+      assert.logfile("servroot2/logs/error.log").has.line(
+        "sync v1 is enabled due to rpc sync can not work.")
     end)
   end)
 

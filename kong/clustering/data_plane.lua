@@ -116,6 +116,8 @@ function _M:init_worker(basic_info)
       return
     end
 
+    ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
+
     self.inited = true
 
     -- only run in process which worker_id() == 0
