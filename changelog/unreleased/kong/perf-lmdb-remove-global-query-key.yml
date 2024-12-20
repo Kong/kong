@@ -1,0 +1,3 @@
+message: "remove the key with the global workspace ID `*` from lmdb."
+type: performance
+scope: Core
