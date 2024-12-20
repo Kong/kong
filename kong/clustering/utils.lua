@@ -161,6 +161,7 @@ end
 
 function _M.is_dp_worker_process()
   if kong.configuration.role == "data_plane"
+      and not kong.sync -- privileged agent is only enabled when rpc sync is off
       and kong.configuration.dedicated_config_processing == true then
     return process_type() == "privileged agent"
   end

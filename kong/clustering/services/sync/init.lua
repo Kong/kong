@@ -53,10 +53,39 @@ function _M:init_worker()
     return
   end
 
-  -- sync to CP ASAP
-  assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
+  local worker_events = assert(kong.worker_events)
 
-  assert(self.rpc:sync_every(EACH_SYNC_DELAY))
+  -- if rpc is ready we will start to sync
+  worker_events.register(function(capabilities_list)
+    -- we only check once
+    if self.inited then
+      return
+    end
+
+    local has_sync_v2
+
+    -- check cp's capabilities
+    for _, v in ipairs(capabilities_list) do
+      if v == "kong.sync.v2" then
+        has_sync_v2 = true
+        break
+      end
+    end
+
+    -- cp does not support kong.sync.v2
+    if not has_sync_v2 then
+      ngx.log(ngx.WARN, "rpc sync is disabled in CP.")
+      return
+    end
+
+    self.inited = true
+
+    -- sync to CP ASAP
+    assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
+
+    assert(self.rpc:sync_every(EACH_SYNC_DELAY))
+
+  end, "clustering:jsonrpc", "connected")
 end
 
 
