@@ -56,7 +56,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { identifier = { description = "The type of identifier used to generate the rate limit key. Defines the scope used to increment the rate limiting counters. Can be `ip`, `credential`, `consumer`, `service`, `header`, `path` or `consumer-group`.", type = "string",
+          { identifier = { description = "The type of identifier used to generate the rate limit key. Defines the scope used to increment the rate limiting counters. Can be `ip`, `credential`, `consumer`, `service`, `header`, `path` or `consumer-group`. Note if `identifier` is `consumer-group`, the plugin must be applied on a consumer group entity. Because a consumer may belong to multiple consumer groups, the plugin needs to know explicitly which consumer group to limit the rate.", type = "string",
             one_of = identifier_items,
             default = "consumer",
             required = true,
