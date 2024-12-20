@@ -104,8 +104,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       -- now dp receive config from cp, so dp should be ready
-      local it_no_rpc_sync = rpc_sync == "off" and it or pending
-      it_no_rpc_sync("should return 200 on data plane after configuring", function()
+      local it_rpc_sync_off= rpc_sync == "off" and it or pending
+      it_rpc_sync_off("should return 200 on data plane after configuring", function()
         helpers.wait_until(function()
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
 
