@@ -160,7 +160,8 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("dp status ready when rpc_sync == on", function()
+    local describe_rpc_sync_on = rpc == "on" and rpc_sync == "on" and describe or pending
+    describe_rpc_sync_on("dp status ready when rpc_sync == on", function()
       lazy_setup(function()
         assert(start_kong_cp())
         assert(start_kong_dp())
@@ -171,8 +172,7 @@ for _, strategy in helpers.each_strategy() do
           assert(helpers.stop_kong("serve_dp"))
       end)
 
-      local it_rpc_sync_on = rpc == "on" and rpc_sync == "on" and it or pending
-      it_rpc_sync_on("should return 200 on data plane after configuring when rpc_sync == on", function()
+      it("should return 200 on data plane after configuring when rpc_sync == on", function()
         -- insert one entity to make dp ready for incremental sync
 
           local http_client = helpers.http_client('127.0.0.1', dp_status_port)
