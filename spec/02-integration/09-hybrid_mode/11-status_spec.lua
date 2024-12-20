@@ -173,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
             assert(helpers.stop_kong("serve_dp"))
         end)
 
-        it("should return 200 on data plane after configuring when rpc_sync == on ", function()
+        it("should return 200 on data plane after configuring when rpc_sync == on", function()
           -- insert one entity to make dp ready for incremental sync
 
             local http_client = helpers.http_client('127.0.0.1', dp_status_port)
