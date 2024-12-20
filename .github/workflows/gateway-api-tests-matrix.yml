@@ -96,6 +96,7 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
   GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
+  
   NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
 
 jobs:
@@ -327,6 +328,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
 
       - name: Retry Failed E2E API Tests
         if: steps.execute_tests.outcome == 'failure'
@@ -340,6 +343,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
           TEST_APP: gateway
 
       - name: Get Gateway Details
@@ -524,6 +529,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
 
       - name: Retry Failed E2E API Tests
         if: steps.execute_tests.outcome == 'failure'
@@ -537,6 +544,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
           TEST_APP: gateway
 
       - name: Get Gateway Details
@@ -718,6 +727,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
           FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
 
       - name: Retry Failed E2E Package API Tests
@@ -732,6 +743,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
           TEST_APP: gateway
           FIPS_MODE: ${{ endsWith( matrix.package_name, 'fips' ) && 'on' || 'off' }}
 

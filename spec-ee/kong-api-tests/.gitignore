@@ -16,3 +16,6 @@ public.pem
 
 # ignore test failures file
 failed-tests.txt
+
+# ignore ai-proxy log
+ai-proxy.log

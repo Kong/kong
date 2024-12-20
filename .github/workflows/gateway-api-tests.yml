@@ -207,7 +207,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
-
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
 
       - uses: datadog/junit-upload-github-action@c4b57b587ae0e3ed618a1f0e7a7d260cfde53032 # v1.4.0
         continue-on-error: true
@@ -238,6 +239,8 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.TESTS_API_OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.TESTS_API_MISTRAL_API_KEY }}
           TEST_APP: gateway
 
       - name: Send test results to Slack

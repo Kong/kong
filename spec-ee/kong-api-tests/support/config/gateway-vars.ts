@@ -12,6 +12,10 @@ export const vars = {
   app_dynamics: {
     APPD_PASSWORD: process.env.APPD_PASSWORD,
   },
+  ai_providers: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    MISTRAL_API_KEY: process.env.MISTRAL_API_KEY
+  }
 };
 /**
  * Check that all necessary environment variables are defined before test execution

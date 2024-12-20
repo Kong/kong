@@ -79,6 +79,10 @@ There are tests which rely on specific gateway environment variables, make sure 
 
   [GCP_SERVICE_ACCOUNT](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=w2gvxcep5ffevmiykbfq4ffb64&h=team-kong.1password.com)`="<gcp_service_account_key>"`
 
+  [OPENAI_API_KEY](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=fd4xnv2bicwnmyrcsqb2zgt3we&h=team-kong.1password.com) `="<openai_api_key>"`
+
+  [MISTRAL_API_KEY](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=mdudxendyicvmcz5qgca4jhqoa&h=team-kong.1password.com) `="<mistral_api_key>"`
+
 ## Test specific 3rd party service requirements for Gateway
 
 There are specific tests which rely on particular 3rd party services to run alongside the gateway.\
