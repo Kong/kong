@@ -569,6 +569,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   if not exiting() then
+    c:close()
     self:try_connect(reconnection_delay)
   end
 end
