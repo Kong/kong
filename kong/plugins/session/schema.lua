@@ -212,6 +212,20 @@ return {
               default = "session_logout"
             }
           },
+          {
+            hash_subject = {
+              description = "Whether to hash or not the subject when store_metadata is enabled.",
+              type = "boolean",
+              default = false
+            }
+          },
+          {
+            store_metadata = {
+              description = "Enables or disables to store metadata of sessions.",
+              type = "boolean",
+              default = false
+            }
+          },
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0
