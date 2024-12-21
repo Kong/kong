@@ -70,6 +70,7 @@ local function workspace_id(schema, options)
     return get_workspace_id()
   end
 
+  -- global query, like routes:each(page_size, GLOBAL_QUERY_OPTS)
   if options.workspace == null then
     return GLOBAL_WORKSPACE_TAG
   end
@@ -243,26 +244,39 @@ local function find_ws(entities, name)
 end
 
 
+-- unique key
 local function unique_field_key(schema_name, ws_id, field, value)
-  return string_format("%s|%s|%s|%s", schema_name, ws_id, field, sha256_hex(value))
+  return string_format("U|%s|%s|%s|%s", schema_name, field, ws_id, sha256_hex(value))
 end
 
 
+-- foreign key
 local function foreign_field_key_prefix(schema_name, ws_id, field, foreign_id)
-  return string_format("%s|%s|%s|%s|", schema_name, ws_id, field, foreign_id)
+  if ws_id == GLOBAL_WORKSPACE_TAG then
+    return string_format("F|%s|%s|%s|", schema_name, field, foreign_id)
+  end
+
+  return string_format("F|%s|%s|%s|%s|", schema_name, field, foreign_id, ws_id)
 end
 
 
 local function foreign_field_key(schema_name, ws_id, field, foreign_id, pk)
+  assert(ws_id ~= GLOBAL_WORKSPACE_TAG)
   return foreign_field_key_prefix(schema_name, ws_id, field, foreign_id) .. pk
 end
 
+-- item key
 local function item_key_prefix(schema_name, ws_id)
-  return string_format("%s|%s|*|", schema_name, ws_id)
+  if ws_id == GLOBAL_WORKSPACE_TAG then
+    return string_format("I|%s|", schema_name)
+  end
+
+  return string_format("I|%s|%s|", schema_name, ws_id)
 end
 
 
 local function item_key(schema_name, ws_id, pk_str)
+  assert(ws_id ~= GLOBAL_WORKSPACE_TAG)
   return item_key_prefix(schema_name, ws_id) .. pk_str
 end
 
@@ -307,10 +321,6 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
   -- store serialized entity into lmdb
   t:set(itm_key, itm_value)
 
-  -- for global query
-  local global_key = item_key(entity_name, GLOBAL_WORKSPACE_TAG, pk)
-  t:set(global_key, idx_value)
-
   -- select_by_cache_key
   if schema.cache_key then
     local cache_key = dao:cache_key(item)
@@ -347,12 +357,9 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
         value_str = pk_string(kong.db[fdata_reference].schema, value)
       end
 
-      for _, wid in ipairs {field_ws_id, GLOBAL_WORKSPACE_TAG} do
-        local key = unique_field_key(entity_name, wid, fname, value_str or value)
-
-        -- store item_key or nil into lmdb
-        t:set(key, idx_value)
-      end
+      local key = unique_field_key(entity_name, field_ws_id, fname, value_str or value)
+      -- store item_key or nil into lmdb
+      t:set(key, idx_value)
     end
 
     if is_foreign then
@@ -361,12 +368,9 @@ local function _set_entity_for_txn(t, entity_name, item, options, is_delete)
 
       value_str = pk_string(kong.db[fdata_reference].schema, value)
 
-      for _, wid in ipairs {field_ws_id, GLOBAL_WORKSPACE_TAG} do
-        local key = foreign_field_key(entity_name, wid, fname, value_str, pk)
-
-        -- store item_key or nil into lmdb
-        t:set(key, idx_value)
-      end
+      local key = foreign_field_key(entity_name, field_ws_id, fname, value_str, pk)
+      -- store item_key or nil into lmdb
+      t:set(key, idx_value)
     end
 
     ::continue::
@@ -380,18 +384,22 @@ end
 -- the provided LMDB txn object, this operation is only safe
 -- is the entity does not already exist inside the LMDB database
 --
--- The actual item key is: <entity_name>|<ws_id>|*|<pk_string>
+-- The actual item key is: I|<entity_name>|<ws_id>|<pk_string>
 --
--- This function sets the following:
+-- This function sets the following key-value pairs:
 --
--- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
--- * <entity_name>|*|*|<pk_string> => actual item key
+-- key:   I|<entity_name>|<ws_id>|<pk_string>
+-- value: serialized item
 --
--- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => actual item key
--- * <entity_name>|*|<unique_field_name>|sha256(field_value) => actual item key
+-- key:   U|<entity_name>|<unique_field_name>|<ws_id>|sha256(field_value)
+-- value: actual item key
 --
--- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> => actual item key
--- * <entity_name>|*|<foreign_field_name>|<foreign_key>|<pk_string> => actual item key
+-- key:   F|<entity_name>|<foreign_field_name>|<foreign_key>|<ws_id>|<pk_string>
+-- value: actual item key
+--
+-- The format of the key string follows the sequence of the construction order:
+-- `item type > entity name > specific item info > workspace id > item uuid`
+-- This order makes it easier to query all entities using API lmdb_prefix.page().
 --
 -- DO NOT touch `item`, or else the entity will be changed
 local function insert_entity_for_txn(t, entity_name, item, options)
@@ -608,4 +616,6 @@ return {
   load_into_cache_with_events = load_into_cache_with_events,
   insert_entity_for_txn = insert_entity_for_txn,
   delete_entity_for_txn = delete_entity_for_txn,
+
+  GLOBAL_WORKSPACE_TAG = GLOBAL_WORKSPACE_TAG,
 }
