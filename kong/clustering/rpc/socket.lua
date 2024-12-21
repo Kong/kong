@@ -60,6 +60,21 @@ function _M:_get_next_id()
 end
 
 
+function _M:push_request(msg)
+  return self.outgoing:push(msg)
+end
+
+
+function _M:push_result(msg, err_prefix)
+  local res, err = self.outgoing:push(msg)
+  if not res then
+    return nil, err_prefix .. err
+  end
+
+  return true
+end
+
+
 function _M._dispatch(premature, self, cb, payload)
   if premature then
     return
@@ -98,16 +113,6 @@ function _M._dispatch(premature, self, cb, payload)
   if not res then
     ngx_log(ngx_WARN, err)
   end
-end
-
-
-function _M:push_result(msg, err_prefix)
-  local res, err = self.outgoing:push(msg)
-  if not res then
-    return nil, err_prefix .. err
-  end
-
-  return true
 end
 
 
@@ -310,7 +315,7 @@ function _M:call(node_id, method, params, callback)
     self.interest[id] = callback
   end
 
-  return self.outgoing:push({
+  return self:push_request({
     jsonrpc = jsonrpc.VERSION,
     method = method,
     params = params,
