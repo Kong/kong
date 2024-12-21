@@ -238,6 +238,8 @@ function _M:start()
       if not ok then
         return nil, err
       end
+
+      ::continue::
     end
   end)
 
