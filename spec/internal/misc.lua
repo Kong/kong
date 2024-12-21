@@ -19,6 +19,8 @@ local shell = require("spec.internal.shell")
 local CONSTANTS = require("spec.internal.constants")
 local sys = require("spec.internal.sys")
 
+local private_node = require "kong.pdk.private.node"
+
 
 local pack = function(...) return { n = select("#", ...), ... } end
 local unpack = function(t) return unpack(t, 1, t.n) end
@@ -306,4 +308,6 @@ return {
   with_current_ws = with_current_ws,
   make_temp_dir = make_temp_dir,
   use_old_plugin = use_old_plugin,
+
+  get_node_id = private_node.load_node_id
 }
