@@ -177,6 +177,7 @@ end
 function _M:start()
   self.read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
+    local payload_array = {}
 
     while not exiting() do
       local data, typ, err = self.wb:recv_frame()
@@ -226,17 +227,24 @@ function _M:start()
 
       assert(typ == "binary")
 
+      local payloads
       local payload = decompress_payload(data)
 
-      -- rpc batching
-      --if isarray(payload) then
-      --  for _, v in ipairs(payload) do
-      --  end
-      --end -- isarray
+      if isarray(payload) then
+        -- rpc batching
+        payloads = payload
 
-      local ok, err = self:process_rpc_msg(payload)
-      if not ok then
-        return nil, err
+      else
+        -- only one rpc msg
+        payload_array[1] = payload
+        payloads = payload_array
+      end -- isarray
+
+      for _, v in ipairs(payloads) do
+        local ok, err = self:process_rpc_msg(payload)
+        if not ok then
+          return nil, err
+        end
       end
 
       ::continue::
