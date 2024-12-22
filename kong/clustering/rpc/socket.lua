@@ -128,13 +128,14 @@ function _M:process_rpc_msg(payload, results)
   assert(payload.jsonrpc == jsonrpc.VERSION)
 
   local payload_id = payload.id
+  local payload_method = payload.method
 
-  if payload.method then
+  if payload_method then
     -- invoke
 
-    ngx_log(ngx_DEBUG, "[rpc] got RPC call: ", payload.method, " (id: ", payload_id, ")")
+    ngx_log(ngx_DEBUG, "[rpc] got RPC call: ", payload_method, " (id: ", payload_id, ")")
 
-    local dispatch_cb = self.manager.callbacks.callbacks[payload.method]
+    local dispatch_cb = self.manager.callbacks.callbacks[payload_method]
     if not dispatch_cb and payload_id then
       local res, err = self:push_result(new_error(payload_id, jsonrpc.METHOD_NOT_FOUND),
                                         "unable to send \"METHOD_NOT_FOUND\" error back to client: ",
@@ -148,7 +149,7 @@ function _M:process_rpc_msg(payload, results)
 
     -- call dispatch
     local res, err = kong.timer:named_at(string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
-                                                       self.node_id, payload_id or 0, payload.method),
+                                                       self.node_id, payload_id or 0, payload_method),
                                          0, _M._dispatch, self, dispatch_cb, payload, results)
     if not res and payload_id then
       local reso, erro = self:push_result(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
