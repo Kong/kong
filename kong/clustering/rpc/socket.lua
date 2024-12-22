@@ -12,6 +12,7 @@ local queue = require("kong.clustering.rpc.queue")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local constants = require("kong.constants")
 local isarray = require("table.isarray")
+local isempty = require("table.isempty")
 
 
 local assert = assert
@@ -256,7 +257,7 @@ function _M:start()
         end
       end
 
-      if #results == 0 then
+      if isempty(results) then
         goto continue
       end
 
