@@ -228,7 +228,7 @@ function _M:start()
       assert(typ == "binary")
 
       local payloads
-      local results = {}
+      --local results = {}
 
       local payload = decompress_payload(data)
 
