@@ -238,7 +238,7 @@ function _M:start()
       local payload = decompress_payload(data)
 
       if not isarray(payload) then
-        local ok, err = self:process_rpc_msg(v)
+        local ok, err = self:process_rpc_msg(payload)
         if not ok then
           return nil, err
         end
