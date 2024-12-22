@@ -7,14 +7,14 @@ import (
 	"net"
 	"time"
 
-	pb "target/targetservice"
+	pb "grpc/targetservice"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
-	port = ":15010"
+	port = "localhost:15010"
 )
 
 type server struct {
