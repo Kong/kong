@@ -186,7 +186,6 @@ end
 function _M:start()
   self.read_thread = ngx.thread.spawn(function()
     local last_seen = ngx_time()
-    local payload_array = {}
 
     while not exiting() do
       local data, typ, err = self.wb:recv_frame()
