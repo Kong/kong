@@ -228,6 +228,8 @@ function _M:start()
       assert(typ == "binary")
 
       local payloads
+      local results = {}
+
       local payload = decompress_payload(data)
 
       if isarray(payload) then
@@ -241,7 +243,7 @@ function _M:start()
       end -- isarray
 
       for _, v in ipairs(payloads) do
-        local ok, err = self:process_rpc_msg(payload)
+        local ok, err = self:process_rpc_msg(v)
         if not ok then
           return nil, err
         end
