@@ -6,11 +6,15 @@ import (
 	"log"
 	"net"
 	"time"
+	"strings"
 
 	pb "grpc/targetservice"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -51,6 +55,22 @@ func (s *server) GrowTail(ctx context.Context, in *pb.Body) (*pb.Body, error) {
 
 func (s *server) Echo(ctx context.Context, in *pb.EchoMsg) (*pb.EchoMsg, error) {
 	return in, nil
+}
+
+func (s *server) EchoHeaders(ctx context.Context, in *pb.Void) (*pb.Headers, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.DataLoss, "UnaryEcho: failed to get metadata")
+	}
+	headers := &pb.Headers{}
+	for k, v := range md {
+		header := &pb.Header{
+			Key: k,
+			Value: strings.Join(v, ", "),
+		}
+		headers.Headers = append(headers.Headers, header)
+	}
+	return headers, nil
 }
 
 func main() {

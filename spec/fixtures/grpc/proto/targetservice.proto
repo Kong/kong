@@ -100,4 +100,13 @@ message EchoMsg {
   string nullable = 2;
 }
 
+message Header {
+  string key = 1;
+  string value = 2;
+}
+
+message Headers {
+  repeated Header headers = 1;
+}
+
 message Void {}
