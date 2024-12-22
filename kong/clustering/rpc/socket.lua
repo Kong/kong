@@ -262,9 +262,10 @@ function _M:start()
         goto continue
       end
 
-      local res, err = self.outgoing:push(results)
+      local res, err = self:push_result(results,
+                                        "[rpc] unable to push RPC call result: ")
       if not res then
-        return nil, "[rpc] unable to push RPC call result: " .. err
+        return nil, err
       end
 
       ::continue::
