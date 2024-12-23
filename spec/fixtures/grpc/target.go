@@ -63,13 +63,11 @@ func (s *server) EchoHeaders(ctx context.Context, in *pb.Void) (*pb.Headers, err
 		return nil, status.Errorf(codes.DataLoss, "UnaryEcho: failed to get metadata")
 	}
 	headers := &pb.Headers{}
+	var headersMap = make(map[string]string, len(md))
 	for k, v := range md {
-		header := &pb.Header{
-			Key: k,
-			Value: strings.Join(v, ", "),
-		}
-		headers.Headers = append(headers.Headers, header)
+		headersMap[k] = strings.Join(v, ", ")
 	}
+	headers.Headers = headersMap
 	return headers, nil
 }
 
