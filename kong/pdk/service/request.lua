@@ -722,10 +722,12 @@ local function new(self)
     end
   else
     request.disable_tls = function()
+      check_phase(preread_and_balancer)
       return balancer.set_upstream_tls(false)
     end
 
     request.enable_tls = function()
+      check_phase(preread_and_balancer)
       return balancer.set_upstream_tls(true)
     end
   end
