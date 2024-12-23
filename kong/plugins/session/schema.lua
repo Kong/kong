@@ -221,7 +221,8 @@ return {
           },
           {
             store_metadata = {
-              description = "Enables or disables to store metadata of sessions.",
+              description =
+              "Whether to also store metadata of sessions, such as collecting data of sessions for a specific audience belonging to a specific subject.",
               type = "boolean",
               default = false
             }
