@@ -82,6 +82,7 @@ function _M:notify_all_nodes()
 end
 
 
+-- XXX EE [[
 local function gen_delta(entity, name, options, ws_id, is_delete)
   -- composite key, like { id = ... }
   local schema = kong.db[name].schema
@@ -98,11 +99,14 @@ local function gen_delta(entity, name, options, ws_id, is_delete)
 
   return delta
 end
+-- XXX EE ]]
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+  -- XXX EE [[
   local d = gen_delta(entity, name, options, ws_id, is_delete)
   local deltas = { d, }
+  -- XXX EE ]]
 
   local res, err = self.strategy:insert_delta(deltas)
   if not res then
@@ -172,6 +176,8 @@ function _M:register_dao_hooks()
 
     ngx_log(ngx_DEBUG, "[kong.sync.v2] new delta due to deleting ", name)
 
+    -- XXX EE [[
+
     -- set lmdb value to ngx_null then return entity
 
     local d = gen_delta(entity, name, options, ws_id, true)
@@ -205,6 +211,7 @@ function _M:register_dao_hooks()
     self:notify_all_nodes()
 
     return entity -- for other hooks
+    -- XXX EE ]]
   end
 
   local dao_hooks = {

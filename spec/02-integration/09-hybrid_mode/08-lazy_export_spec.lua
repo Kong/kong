@@ -100,7 +100,9 @@ describe("lazy_export with #".. strategy .. " inc_sync=" .. inc_sync, function()
       touch_config()
       if inc_sync == "on" then
         assert.logfile().has.line("[kong.sync.v2] config push (connected client)", true)
+        -- XXX EE [[
         assert.logfile().has.line("[kong.sync.v2] database is empty or too far behind for node_id", true)
+        -- XXX EE ]]
 
       else
         assert.logfile().has.line("[clustering] exporting config", true)

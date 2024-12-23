@@ -41,8 +41,10 @@ local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
 
 
+-- XXX EE [[
 -- number of versions behind before a full sync is forced
 local DEFAULT_FULL_SYNC_THRESHOLD = 512
+-- XXX EE ]]
 
 
 function _M.new(strategy)
@@ -54,9 +56,11 @@ function _M.new(strategy)
 end
 
 
+-- XXX EE [[
 local function inc_sync_result(res)
   return { default = { deltas = res, wipe = false, }, }
 end
+-- XXX EE ]]
 
 
 local function full_sync_result()
@@ -73,9 +77,11 @@ end
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
+  -- XXX EE [[
   -- number of versions behind before a full sync is forced
   local FULL_SYNC_THRESHOLD = manager.conf.cluster_full_sync_threshold or
                               DEFAULT_FULL_SYNC_THRESHOLD
+  -- XXX EE ]]
 
   -- CP
   -- Method: kong.sync.v2.get_delta
@@ -118,6 +124,7 @@ function _M:init_cp(manager)
       return nil, err
     end
 
+    -- XXX EE [[
     -- is the node empty? If so, just do a full sync to bring it up to date faster
     if default_namespace_version == 0 or
        latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
@@ -160,6 +167,7 @@ function _M:init_cp(manager)
             ", forcing a full sync")
 
     return full_sync_result()
+    -- XXX EE ]]
   end)
 end
 

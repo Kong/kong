@@ -13,6 +13,7 @@ describe("database migration", function()
     assert.table_has_column("clustering_sync_version", "version", "integer")
   end)
 
+  -- XXX EE [[
   uh.old_after_up("has created the \"clustering_sync_delta\" table", function()
     assert.database_has_relation("clustering_sync_delta")
     assert.table_has_column("clustering_sync_delta", "version", "integer")
@@ -21,4 +22,5 @@ describe("database migration", function()
     assert.table_has_column("clustering_sync_delta", "ws_id", "uuid")
     assert.table_has_column("clustering_sync_delta", "entity", "json")
   end)
+  -- XXX EE ]]
 end)

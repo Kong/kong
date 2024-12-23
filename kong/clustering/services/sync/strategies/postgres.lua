@@ -20,8 +20,10 @@ local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 
 
+-- XXX EE [[
 local KEEP_VERSION_COUNT = 100
 local CLEANUP_TIME_DELAY = 3600  -- 1 hour
+-- XXX EE ]]
 
 
 function _M.new(db)
@@ -33,6 +35,7 @@ function _M.new(db)
 end
 
 
+-- XXX EE [[
 local PURGE_QUERY = [[
   DELETE FROM clustering_sync_version
   WHERE "version" < (
@@ -100,6 +103,7 @@ function _M:insert_delta(deltas)
 
   return self.connector:query(sql)
 end
+-- XXX EE ]]
 
 
 function _M:get_latest_version()
@@ -119,12 +123,14 @@ function _M:get_latest_version()
 end
 
 
+-- XXX EE [[
 function _M:get_delta(version)
   local sql = "SELECT * FROM clustering_sync_delta" ..
               " WHERE version > " ..  self.connector:escape_literal(version) ..
               " ORDER BY version ASC"
   return self.connector:query(sql)
 end
+-- XXX EE ]]
 
 
 function _M:begin_txn()
