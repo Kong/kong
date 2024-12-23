@@ -66,7 +66,7 @@ function _M:push_request(msg)
 end
 
 
-function _M:push_result(msg, err_prefix, results)
+function _M:push_response(msg, err_prefix, results)
   -- may be a batch
   if results then
     table.insert(results, msg)
@@ -96,9 +96,9 @@ function _M._dispatch(premature, self, cb, payload, results)
       return
     end
 
-    res, err = self:push_result(new_error(payload.id, jsonrpc.SERVER_ERROR, err),
-                                "[rpc] unable to push RPC call error: ",
-                                results)
+    res, err = self:push_response(new_error(payload.id, jsonrpc.SERVER_ERROR, err),
+                                  "[rpc] unable to push RPC call error: ",
+                                  results)
     if not res then
       ngx_log(ngx_WARN, err)
     end
@@ -113,7 +113,7 @@ function _M._dispatch(premature, self, cb, payload, results)
   end
 
   -- success
-  res, err = self:push_result({
+  res, err = self:push_response({
     jsonrpc = jsonrpc.VERSION,
     id = payload.id,
     result = res,
@@ -137,9 +137,9 @@ function _M:process_rpc_msg(payload, results)
 
     local dispatch_cb = self.manager.callbacks.callbacks[payload_method]
     if not dispatch_cb and payload_id then
-      local res, err = self:push_result(new_error(payload_id, jsonrpc.METHOD_NOT_FOUND),
-                                        "unable to send \"METHOD_NOT_FOUND\" error back to client: ",
-                                        results)
+      local res, err = self:push_response(new_error(payload_id, jsonrpc.METHOD_NOT_FOUND),
+                                          "unable to send \"METHOD_NOT_FOUND\" error back to client: ",
+                                          results)
       if not res then
         return nil, err
       end
@@ -152,9 +152,9 @@ function _M:process_rpc_msg(payload, results)
                                                        self.node_id, payload_id or 0, payload_method),
                                          0, _M._dispatch, self, dispatch_cb, payload, results)
     if not res and payload_id then
-      local reso, erro = self:push_result(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
-                                          "unable to send \"INTERNAL_ERROR\" error back to client: ",
-                                          results)
+      local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
+                                            "unable to send \"INTERNAL_ERROR\" error back to client: ",
+                                            results)
       if not reso then
         return nil, erro
       end
@@ -204,7 +204,7 @@ function _M:start()
         end
 
         if waited > CLUSTERING_PING_INTERVAL then
-          local res, err = self:push_result(PING_TYPE, "unable to send ping: ")
+          local res, err = self:push_response(PING_TYPE, "unable to send ping: ")
           if not res then
             return nil, err
           end
@@ -217,7 +217,7 @@ function _M:start()
       last_seen = ngx_time()
 
       if typ == "ping" then
-        local res, err = self:push_result(PONG_TYPE, "unable to handle ping: ")
+        local res, err = self:push_response(PONG_TYPE, "unable to handle ping: ")
         if not res then
           return nil, err
         end
@@ -262,8 +262,8 @@ function _M:start()
         goto continue
       end
 
-      local res, err = self:push_result(results,
-                                        "[rpc] unable to push RPC call result: ")
+      local res, err = self:push_response(results,
+                                          "[rpc] unable to push RPC call result: ")
       if not res then
         return nil, err
       end
