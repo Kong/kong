@@ -92,9 +92,50 @@ function _M:init_worker(basic_info)
   self.filters = basic_info.filters
 
   -- only run in process which worker_id() == 0 or privileged agent when that is turned on
-  assert(ngx.timer.at(0, function(premature)
-    self:communicate(premature)
-  end))
+  local function start_communicate()
+    assert(ngx.timer.at(0, function(premature)
+      self:communicate(premature)
+    end))
+  end
+
+  -- does not config rpc sync
+  if not kong.sync then
+    start_communicate()
+    return
+  end
+
+  local worker_events = assert(kong.worker_events)
+
+  -- if rpc is ready we will check then decide how to sync
+  worker_events.register(function(capabilities_list)
+    -- we only check once
+    if self.inited then
+      return
+    end
+
+    local has_sync_v2
+
+    -- check cp's capabilities
+    for _, v in ipairs(capabilities_list) do
+      if v == "kong.sync.v2" then
+        has_sync_v2 = true
+        break
+      end
+    end
+
+    -- cp supports kong.sync.v2
+    if has_sync_v2 then
+      return
+    end
+
+    ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
+
+    self.inited = true
+
+    -- only run in process which worker_id() == 0
+    start_communicate()
+
+  end, "clustering:jsonrpc", "connected")
 end
 
 
