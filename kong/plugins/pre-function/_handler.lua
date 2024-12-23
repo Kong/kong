@@ -1,23 +1,12 @@
-local resty_mlcache = require "kong.resty.mlcache"
 local sandbox = require "kong.tools.sandbox"
 local kong_meta = require "kong.meta"
+
 
 -- handler file for both the pre-function and post-function plugin
 
 
 local config_cache do
-
   local no_op = function() end
-
-  local shm_name = "kong_db_cache"
-  local cache_name = "serverless_" .. shm_name
-  local cache = resty_mlcache.new(cache_name, shm_name, { lru_size = 1e4 })
-  local sandbox_kong = setmetatable({
-    cache = cache,
-    configuration = kong.configuration.remove_sensitive()
-  }, { __index = kong })
-
-  local sandbox_opts = { env = { kong = sandbox_kong, ngx = ngx } }
 
   -- compiles the array for a phase into a single function
   local function compile_phase_array(phase_funcs)
@@ -28,7 +17,7 @@ local config_cache do
       -- compile the functions we got
       local compiled = {}
       for i, func_string in ipairs(phase_funcs) do
-        local func = assert(sandbox.sandbox(func_string, sandbox_opts))
+        local func = assert(sandbox.sandbox(func_string))
 
         local first_run_complete = false
         compiled[i] = function()
@@ -73,10 +62,8 @@ local config_cache do
     end
   end
 
-
   local phases = { "certificate", "rewrite", "access",
                    "header_filter", "body_filter", "log" }
-
 
   config_cache = setmetatable({}, {
     __mode = "k",
@@ -96,9 +83,7 @@ local config_cache do
 end
 
 
-
 return function(priority)
-
   local ServerlessFunction = {
     PRIORITY = priority,
     VERSION = kong_meta.version,

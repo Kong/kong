@@ -675,7 +675,7 @@ local function load(path, custom_conf, opts)
         bundled_filter_path = alt_path
 
       else
-        log.warn("Bundled proxy-wasm filters path (%s) does not exist " ..
+        log.debug("Bundled proxy-wasm filters path (%s) does not exist " ..
                  "or is not a directory. Bundled filters may not be " ..
                  "available", bundled_filter_path)
       end
@@ -1034,10 +1034,10 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  if conf.cluster_incremental_sync and not conf.cluster_rpc then
-    log.warn("Cluster incremental sync has been forcibly disabled, " ..
+  if conf.cluster_rpc_sync and not conf.cluster_rpc then
+    log.warn("Cluster rpc sync has been forcibly disabled, " ..
              "please enable cluster RPC.")
-    conf.cluster_incremental_sync = false
+    conf.cluster_rpc_sync = false
   end
 
   -- parse and validate pluginserver directives

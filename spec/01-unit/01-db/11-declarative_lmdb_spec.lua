@@ -202,11 +202,13 @@ describe("#off preserve nulls", function()
 
     local id, item = next(entities.basicauth_credentials)
 
-    -- format changed after incremental sync
+    -- format changed after rpc sync
+    -- item key
     local cache_key = concat({
+      "I|",
       "basicauth_credentials|",
       item.ws_id,
-      "|*|",
+      "|",
       id
     })
 
@@ -225,14 +227,17 @@ describe("#off preserve nulls", function()
     for _, plugin in pairs(entities.plugins) do
       if plugin.name == PLUGIN_NAME then
 
-        -- format changed after incremental sync
+        -- format changed after rpc sync
+        -- foreign key:
         cache_key = concat({
+          "F|",
           "plugins|",
-          plugin.ws_id,
-          "|route|",
+          "route|",
           plugin.route.id,
           "|",
-          plugin.id
+          plugin.ws_id,
+          "|",
+          plugin.id,
         })
         value, err, hit_lvl = lmdb.get(cache_key)
         assert.is_nil(err)

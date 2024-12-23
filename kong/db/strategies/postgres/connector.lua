@@ -775,7 +775,7 @@ function _mt:schema_migrations()
 end
 
 
-function _mt:schema_bootstrap(kong_config, default_locks_ttl)
+function _mt:schema_bootstrap(default_locks_ttl)
   local conn = self:get_stored_connection()
   if not conn then
     error("no connection")

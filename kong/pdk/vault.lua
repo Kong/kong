@@ -1444,7 +1444,7 @@ local function new(self)
 
     local not_dbless = conf.database ~= "off"  -- postgres
     local dp_with_inc_sync = conf.role == "data_plane" and
-                             conf.cluster_incremental_sync
+                             conf.cluster_rpc_sync
 
     return not_dbless or dp_with_inc_sync
   end

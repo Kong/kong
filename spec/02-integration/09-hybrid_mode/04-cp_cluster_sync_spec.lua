@@ -21,10 +21,10 @@ end
 
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
-  describe("CP/CP sync works with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
+  describe("CP/CP sync works with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, { "routes", "services" })
 
@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       assert(helpers.start_kong({
@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
     end)
@@ -86,4 +86,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

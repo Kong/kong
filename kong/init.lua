@@ -695,7 +695,7 @@ function Kong.init()
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
 
-      if config.cluster_incremental_sync then
+      if config.cluster_rpc_sync then
         kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
         kong.sync:init(kong.rpc)
       end
@@ -763,6 +763,7 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
+  -- NOTE: privileged_agent is disabled when rpc sync is on
   if config.dedicated_config_processing and is_data_plane(config) and not kong.sync then
     -- TODO: figure out if there is better value than 4096
     -- 4096 is for the cocurrency of the lua-resty-timer-ng
@@ -881,19 +882,14 @@ function Kong.init_worker()
   end
 
   if kong.clustering then
-    local is_cp = is_control_plane(kong.configuration)
-    local is_dp_sync_v1 = is_data_plane(kong.configuration) and not kong.sync
     local using_dedicated = kong.configuration.dedicated_config_processing
 
-    -- CP needs to support both full and incremental sync
-    -- full sync is only enabled for DP if incremental sync is disabled
-    if is_cp or is_dp_sync_v1 then
-      kong.clustering:init_worker()
-    end
+    -- CP needs to support both v1 and v2 sync
+    -- v1 sync is only enabled for DP if v2 sync is unavailble
+    kong.clustering:init_worker()
 
     -- see is_dp_worker_process() in clustering/utils.lua
     if using_dedicated and process.type() == "privileged agent" then
-      assert(not is_cp)
       return
     end
   end
@@ -992,7 +988,7 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  -- rpc and incremental sync
+  -- rpc and sync
   if is_http_module then
 
     -- init rpc connection
@@ -1000,7 +996,7 @@ function Kong.init_worker()
       kong.rpc:init_worker()
     end
 
-    -- init incremental sync
+    -- init sync
     -- should run after rpc init successfully
     if kong.sync then
       kong.sync:init_worker()

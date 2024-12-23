@@ -84,10 +84,10 @@ end
 
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
-  describe("node id persistence " .. " inc_sync=" .. inc_sync, function()
+  describe("node id persistence " .. " rpc_sync=" .. rpc_sync, function()
 
     local control_plane_config = {
       role = "control_plane",
@@ -97,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_rpc = rpc,
-      cluster_incremental_sync = inc_sync,
+      cluster_rpc_sync = rpc_sync,
     }
 
     local data_plane_config = {
@@ -113,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
       untrusted_lua = "on",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       cluster_rpc = rpc,
-      cluster_incremental_sync = inc_sync,
+      cluster_rpc_sync = rpc_sync,
       worker_state_update_frequency = 1,
     }
 
@@ -331,4 +331,4 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

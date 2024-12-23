@@ -41,10 +41,10 @@ fixtures_cp.http_mock.my_server_block = [[
 ]]
 
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
-  local rpc, inc_sync = v[1], v[2]
+  local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
-  describe("PDK: kong.cluster for #" .. strategy .. " inc_sync=" .. inc_sync, function()
+  describe("PDK: kong.cluster for #" .. strategy .. " rpc_sync=" .. rpc_sync, function()
     local proxy_client
 
     lazy_setup(function()
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }, nil, nil, fixtures_cp))
 
       assert(helpers.start_kong({
@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = rpc,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }, nil, nil, fixtures_dp))
     end)
 
@@ -116,4 +116,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

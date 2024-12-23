@@ -1462,7 +1462,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     end)
   end)
 
-  describe("append ", function()
+  describe("append", function()
     it("new header if header does not exists", function()
       local r = assert(client:send {
         method = "GET",
@@ -1638,7 +1638,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     end)
   end)
 
-  describe("remove, replace, add and append ", function()
+  describe("remove, replace, add and append", function()
     it("removes a header", function()
       local r = assert(client:send {
         method = "GET",
@@ -2657,7 +2657,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lu
       name = "request-transformer",
       config = {
         add = {
-          headers = {"x-added:$(require('inspect')('somestring'))"},
+          headers = {"x-added:$(require('ngx.process')('somestring'))"},
         }
       }
     }
@@ -2722,7 +2722,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "] untrusted_lu
     end)
 
     it("should fail when template tries to require non whitelisted module from sandbox", function()
-      local pattern = [[require 'inspect' not allowed within sandbox]]
+      local pattern = [[require 'ngx.process' not allowed within sandbox]]
       local start_count = count_log_lines(pattern)
 
       local r = assert(client:send {

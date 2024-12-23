@@ -5,7 +5,7 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 for _, dedicated in ipairs { "on", "off" } do
 for _, strategy in helpers.each_strategy() do
 
-describe("DP diabled Incremental Sync RPC #" .. strategy, function()
+describe("DP diabled Sync RPC #" .. strategy, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
@@ -20,7 +20,8 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       cluster_listen = "127.0.0.1:9005",
       nginx_conf = "spec/fixtures/custom_nginx.template",
 
-      cluster_incremental_sync = "on", -- ENABLE incremental sync
+      cluster_rpc = "on",
+      cluster_rpc_sync = "on", -- ENABLE rpc sync
     }))
 
     assert(helpers.start_kong({
@@ -35,7 +36,7 @@ describe("DP diabled Incremental Sync RPC #" .. strategy, function()
       nginx_worker_processes = 2, -- multiple workers
 
       cluster_rpc = "off", -- DISABLE rpc
-      cluster_incremental_sync = "off", -- DISABLE incremental sync
+      cluster_rpc_sync = "off", -- DISABLE rpc sync
 
       dedicated_config_processing = dedicated, -- privileged agent
     }))

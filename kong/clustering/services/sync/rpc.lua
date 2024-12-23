@@ -26,12 +26,7 @@ local fmt = string.format
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
-local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
-
-
--- number of versions behind before a full sync is forced
-local DEFAULT_FULL_SYNC_THRESHOLD = 512
 
 
 function _M.new(strategy)
@@ -43,8 +38,8 @@ function _M.new(strategy)
 end
 
 
-local function inc_sync_result(res)
-  return { default = { deltas = res, wipe = false, }, }
+local function empty_sync_result()
+  return { default = { deltas = {}, wipe = false, }, }
 end
 
 
@@ -61,10 +56,6 @@ end
 
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
-
-  -- number of versions behind before a full sync is forced
-  local FULL_SYNC_THRESHOLD = manager.conf.cluster_full_sync_threshold or
-                              DEFAULT_FULL_SYNC_THRESHOLD
 
   -- CP
   -- Method: kong.sync.v2.get_delta
@@ -107,48 +98,12 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    -- is the node empty? If so, just do a full sync to bring it up to date faster
     if default_namespace_version == 0 or
-       latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
-    then
-      -- we need to full sync because holes are found
-
-      ngx_log(ngx_INFO,
-              "[kong.sync.v2] database is empty or too far behind for node_id: ", node_id,
-              ", current_version: ", default_namespace_version,
-              ", forcing a full sync")
-
+       default_namespace_version < latest_version then
       return full_sync_result()
     end
 
-    -- do we need an incremental sync?
-
-    local res, err = self.strategy:get_delta(default_namespace_version)
-    if not res then
-      return nil, err
-    end
-
-    if isempty(res) then
-      -- node is already up to date
-      return inc_sync_result(res)
-    end
-
-    -- some deltas are returned, are they contiguous?
-    if res[1].version == default_namespace_version + 1 then
-      -- doesn't wipe dp lmdb, incremental sync
-      return inc_sync_result(res)
-    end
-
-    -- we need to full sync because holes are found
-    -- in the delta, meaning the oldest version is no longer
-    -- available
-
-    ngx_log(ngx_INFO,
-            "[kong.sync.v2] delta for node_id no longer available: ", node_id,
-            ", current_version: ", default_namespace_version,
-            ", forcing a full sync")
-
-    return full_sync_result()
+    return empty_sync_result()
   end)
 end
 
@@ -422,26 +377,28 @@ function sync_once_impl(premature, retry_count)
     return
   end
 
-  sync_handler()  
-  
-  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
-  local current_version = tonumber(declarative.get_current_hash()) or 0
+  sync_handler()
 
+  local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   if not latest_notified_version then
     ngx_log(ngx_DEBUG, "no version notified yet")
     return
   end
 
-  -- retry if the version is not updated
-  if current_version < latest_notified_version then
-    retry_count = retry_count or 0
-    if retry_count > MAX_RETRY then
-      ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
-      return
-    end
-
-    return start_sync_once_timer(retry_count + 1)
+  local current_version = tonumber(declarative.get_current_hash()) or 0
+  if current_version >= latest_notified_version then
+    ngx_log(ngx_DEBUG, "version already updated")
+    return
   end
+
+  -- retry if the version is not updated
+  retry_count = retry_count or 0
+  if retry_count > MAX_RETRY then
+    ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
+    return
+  end
+
+  return start_sync_once_timer(retry_count + 1)
 end
 
 

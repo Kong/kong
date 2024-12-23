@@ -154,7 +154,14 @@ function _M:_event_loop(lconn)
                                   "unknown requester for RPC")
 
           local res, err = self.manager:_local_call(target_id, payload.method,
-                                                    payload.params)
+                                                    payload.params, not payload.id)
+
+          -- notification has no callback or id
+          if not payload.id then
+            ngx_log(ngx_DEBUG, "[rpc] notification has no response")
+            goto continue
+          end
+
           if res then
             -- call success
             res, err = self:_enqueue_rpc_response(reply_to, {
@@ -180,6 +187,8 @@ function _M:_event_loop(lconn)
               ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
             end
           end
+
+          ::continue::
         end
       end
     end
@@ -287,9 +296,13 @@ end
 -- This way the manager code wouldn't tell the difference
 -- between calls made over WebSocket or concentrator
 function _M:call(node_id, method, params, callback)
-  local id = self:_get_next_id()
+  local id
 
-  self.interest[id] = callback
+  -- notification has no callback or id
+  if callback then
+    id = self:_get_next_id()
+    self.interest[id] = callback
+  end
 
   return self:_enqueue_rpc_request(node_id, {
     jsonrpc = jsonrpc.VERSION,

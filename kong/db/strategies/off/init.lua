@@ -20,6 +20,7 @@ local item_key = declarative.item_key
 local item_key_prefix = declarative.item_key_prefix
 local workspace_id = declarative.workspace_id
 local foreign_field_key_prefix = declarative.foreign_field_key_prefix
+local GLOBAL_WORKSPACE_TAG = declarative.GLOBAL_WORKSPACE_TAG
 
 
 local PROCESS_AUTO_FIELDS_OPTS = {
@@ -36,11 +37,6 @@ _mt.__index = _mt
 
 
 local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
-
-
-local function need_follow(ws_id)
-  return ws_id == "*"
-end
 
 
 local function get_default_workspace()
@@ -221,11 +217,11 @@ end
 -- ws_id here.
 local function page_for_tags(self, size, offset, options)
   -- /:entitiy?tags=:tags
-  -- search all key-values: <entity_name>|*|*|<pk_string> => actual item key
+  -- search all key-values: I|<entity_name>|*|<pk_string> => actual item key
   if self.schema.name ~= "tags" then
-    local prefix = item_key_prefix(self.schema.name, "*") -- "<entity_name>|*|*|"
+    local prefix = item_key_prefix(self.schema.name, "*") -- "I|<entity_name>|"
     local items, err, offset = page_for_prefix(self, prefix, size, offset,
-                                              options, true)
+                                               options)
     if not items then
       return nil, err
     end
@@ -279,7 +275,7 @@ local function page_for_tags(self, size, offset, options)
   local rows, err
 
   rows, err, offset_token = page_for_prefix(self, prefix, size, offset_token,
-                                            options, true, dao.schema)
+                                            options, false, dao.schema)
   if not rows then
     return nil, err
   end
@@ -324,7 +320,7 @@ local function page(self, size, offset, options)
     return page_for_tags(self, size, offset, options)
   end
 
-  return page_for_prefix(self, prefix, size, offset, options, need_follow(ws_id))
+  return page_for_prefix(self, prefix, size, offset, options)
 end
 
 
@@ -333,8 +329,26 @@ local function select(self, pk, options)
   local schema = self.schema
   local ws_id = workspace_id(schema, options)
   local pk = pk_string(schema, pk)
+
+  -- if no specific ws_id is provided, we need to search all workspace ids
+  if ws_id == GLOBAL_WORKSPACE_TAG then
+    for workspace, err in kong.db.workspaces:each() do
+      if err then
+        return nil, err
+      end
+
+      local key = item_key(schema.name, workspace.id, pk)
+      local entity = select_by_key(schema, key)
+      if entity then
+        return entity
+      end
+    end
+
+    return nil, "not found"
+  end
+
   local key = item_key(schema.name, ws_id, pk)
-  return select_by_key(schema, key, need_follow(ws_id))
+  return select_by_key(schema, key)
 end
 
 

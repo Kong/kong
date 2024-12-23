@@ -171,6 +171,15 @@ def _copyright_header(ctx):
                 # while writing utf-8 content read by |ctx.read|, let's disable it
                 ctx.file(path, copyright_content_html + content, legacy_utf8 = False)
 
+_GITHUB_RELEASE_SINGLE_FILE_BUILD = """\
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "file",
+    srcs = ["{}"],
+)
+"""
+
 def _github_release_impl(ctx):
     ctx.file("WORKSPACE", "workspace(name = \"%s\")\n" % ctx.name)
 
@@ -195,20 +204,25 @@ def _github_release_impl(ctx):
         fail("Unsupported OS %s" % os_name)
 
     gh_bin = "%s" % ctx.path(Label("@gh_%s_%s//:bin/gh" % (os_name, os_arch)))
-    args = [gh_bin, "release", "download", ctx.attr.tag, "-R", ctx.attr.repo]
+    args = [gh_bin, "release", "download", ctx.attr.tag, "--repo", ctx.attr.repo]
     downloaded_file = None
     if ctx.attr.pattern:
         if "/" in ctx.attr.pattern or ".." in ctx.attr.pattern:
             fail("/ and .. are not allowed in pattern")
         downloaded_file = ctx.attr.pattern.replace("*", "_")
-        args += ["-p", ctx.attr.pattern]
+        args += ["--pattern", ctx.attr.pattern]
     elif ctx.attr.archive:
         args.append("--archive=" + ctx.attr.archive)
         downloaded_file = "gh-release." + ctx.attr.archive.split(".")[-1]
     else:
         fail("at least one of pattern or archive must be set")
 
-    args += ["-O", downloaded_file]
+    downloaded_file_path = downloaded_file
+    if not ctx.attr.extract:
+        ctx.file("file/BUILD", _GITHUB_RELEASE_SINGLE_FILE_BUILD.format(downloaded_file))
+        downloaded_file_path = "file/" + downloaded_file
+
+    args += ["--output", downloaded_file_path]
 
     ret = ctx.execute(args)
 
@@ -218,10 +232,23 @@ def _github_release_impl(ctx):
             gh_token_set = "GITHUB_TOKEN is not set, is this a private repo?"
         fail("Failed to download release (%s): %s, exit: %d" % (gh_token_set, ret.stderr, ret.return_code))
 
-    ctx.extract(downloaded_file, stripPrefix = ctx.attr.strip_prefix)
+    if ctx.attr.sha256:
+        if os_name == "macOS":
+            sha256_cmd = ["shasum", "-a", "256", downloaded_file_path]
+        else:
+            sha256_cmd = ["sha256sum", downloaded_file_path]
+        ret = ctx.execute(sha256_cmd)
+        checksum = ret.stdout.split(" ")[0]
+        if checksum != ctx.attr.sha256:
+            fail("Checksum mismatch: expected %s, got %s" % (ctx.attr.sha256, checksum))
+
+    if ctx.attr.extract:
+        ctx.extract(downloaded_file_path, stripPrefix = ctx.attr.strip_prefix)
 
     # only used in EE: always skip here in CE
     if not ctx.attr.skip_add_copyright_header and False:
+        if not ctx.attr.extract:
+            fail("Writing copyright header is only supported for extracted archives")
         _copyright_header(ctx)
 
 github_release = repository_rule(
@@ -231,11 +258,13 @@ github_release = repository_rule(
         "tag": attr.string(mandatory = True),
         "pattern": attr.string(mandatory = False),
         "archive": attr.string(mandatory = False, values = ["zip", "tar.gz"]),
+        "extract": attr.bool(default = True, doc = "Whether to extract the downloaded archive"),
         "strip_prefix": attr.string(default = "", doc = "Strip prefix from downloaded files"),
         "repo": attr.string(mandatory = True),
         "build_file": attr.label(allow_single_file = True),
         "build_file_content": attr.string(),
         "skip_add_copyright_header": attr.bool(default = False, doc = "Whether to inject COPYRIGHT-HEADER into downloaded files, only required for webuis"),
+        "sha256": attr.string(mandatory = False),
     },
 )
 

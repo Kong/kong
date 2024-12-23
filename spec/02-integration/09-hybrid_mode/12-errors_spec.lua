@@ -69,10 +69,10 @@ local function get_error_report(client, msg)
 end
 
 
--- XXX TODO: mock_cp does not support incremental sync rpc
-for _, inc_sync in ipairs { "off"  } do
+-- XXX TODO: mock_cp does not support rpc sync rpc
+for _, rpc_sync in ipairs { "off"  } do
 for _, strategy in helpers.each_strategy() do
-  describe("CP/DP sync error-reporting with #" .. strategy .. " inc_sync=" .. inc_sync .. " backend", function()
+  describe("CP/DP sync error-reporting with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()
     local client
     local cluster_port
     local cluster_ssl_port
@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
         -- use a small map size so that it's easy for us to max it out
         lmdb_map_size               = "1m",
         plugins                     = "bundled,cluster-error-reporting",
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }, nil, nil, fixtures))
     end)
 
@@ -260,4 +260,4 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end -- for _, strategy
-end -- for inc_sync
+end -- for rpc_sync

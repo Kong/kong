@@ -72,9 +72,9 @@ local function new_wasm_filter_directory()
 end
 
 
--- XXX TODO: enable inc_sync = "on"
-for _, inc_sync in ipairs { "off"  } do
-describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
+-- XXX TODO: enable rpc_sync = "on"
+for _, rpc_sync in ipairs { "off"  } do
+describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
   local cp_prefix = "cp"
   local cp_errlog = cp_prefix .. "/logs/error.log"
   local cp_filter_path
@@ -115,7 +115,7 @@ describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
       wasm_filters        = "user", -- don't enable bundled filters for this test
       wasm_filters_path   = cp_filter_path,
       nginx_main_worker_processes = 2,
-      cluster_incremental_sync = inc_sync,
+      cluster_rpc_sync = rpc_sync,
     }))
 
     assert.logfile(cp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
@@ -155,7 +155,7 @@ describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
         wasm_filters_path     = dp_filter_path,
         node_id               = node_id,
         nginx_main_worker_processes = 2,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
 
       assert.logfile(dp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
@@ -311,7 +311,7 @@ describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = "off",
         node_id               = node_id,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -351,7 +351,7 @@ describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
         wasm_filters          = "user", -- don't enable bundled filters for this test
         wasm_filters_path     = tmp_dir,
         node_id               = node_id,
-        cluster_incremental_sync = inc_sync,
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
@@ -370,4 +370,4 @@ describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
     end)
   end)
 end)
-end -- for inc_sync
+end -- for rpc_sync
