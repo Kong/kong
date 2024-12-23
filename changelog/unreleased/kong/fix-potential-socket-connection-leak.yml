@@ -1,0 +1,3 @@
+message: "Fix potential socket connection leak when websocket client connection fails"
+type: bugfix
+scope: Core
