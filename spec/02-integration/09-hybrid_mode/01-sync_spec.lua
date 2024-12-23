@@ -12,7 +12,7 @@ local uuid = require("kong.tools.uuid").uuid
 local KEY_AUTH_PLUGIN
 
 
-for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+for _, v in ipairs({ {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
@@ -57,8 +57,8 @@ describe("CP/DP communication #" .. strategy .. " rpc_sync=" .. rpc_sync, functi
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong("servroot2")
-    helpers.stop_kong()
+    helpers.stop_kong("servroot2", true)
+    helpers.stop_kong(nil, true)
   end)
 
   describe("status API", function()

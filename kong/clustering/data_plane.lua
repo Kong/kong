@@ -95,24 +95,14 @@ function _M:init_worker(basic_info)
   local worker_events = assert(kong.worker_events)
 
   -- if rpc is ready we will check then decide how to sync
-  worker_events.register(function(capabilities_list)
+  worker_events.register(function(payload)
     -- we only check once
     if self.inited then
       return
     end
 
-    local has_sync_v2
-
-    -- check cp's capabilities
-    for _, v in ipairs(capabilities_list) do
-      if v == "kong.sync.v2" then
-        has_sync_v2 = true
-        break
-      end
-    end
-
     -- cp supports kong.sync.v2
-    if has_sync_v2 then
+    if payload.capabilities["kong.sync.v2"] then
       return
     end
 
