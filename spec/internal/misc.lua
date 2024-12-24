@@ -289,31 +289,60 @@ local function use_old_plugin(name)
 end
 
 
-local function repatch_timer()
-  local _timerng
+-- Timer repatching
+-- this makes `kong` introduced by `spec.internal.db` visible to the timer
+-- however it breaks some other tests, so you need to undo it after the test
+local repatch_timer, unrepatch_timer do
+  local original_at = ngx.timer.at
+  local original_every = ngx.timer.every
+  local original_timer = kong and kong.timer
+  local repatched = false
 
-  _timerng = require("resty.timerng").new({
-    min_threads = 16,
-    max_threads = 32,
-  })
+  function repatch_timer()
+    local _timerng
 
-  _timerng:start()
+    _timerng = require("resty.timerng").new({
+      min_threads = 16,
+      max_threads = 32,
+    })
 
-  _G.timerng = _timerng
+    _timerng:start()
 
-  _G.ngx.timer.at = function (delay, callback, ...)
-    return _timerng:at(delay, callback, ...)
+    _G.timerng = _timerng
+
+    _G.ngx.timer.at = function (delay, callback, ...)
+      return _timerng:at(delay, callback, ...)
+    end
+
+    _G.ngx.timer.every = function (interval, callback, ...)
+      return _timerng:every(interval, callback, ...)
+    end
+
+    if kong then
+      kong.timer = _timerng
+    end
+
+    repatched = true
   end
 
-  _G.ngx.timer.every = function (interval, callback, ...)
-    return _timerng:every(interval, callback, ...)
-  end
+  function unrepatch_timer()
+    if not repatched then
+      return
+    end
 
-  if kong then
-    kong.timer = _timerng
+    _G.ngx.timer.at = original_at
+    _G.ngx.timer.every = original_every
+
+    if kong then
+      kong.timer = original_timer
+    end
+
+    _G.timerng:stop()
+    _G.timerng = nil
+
+    repatched = false
   end
 end
-
 
 local function patch_worker_events()
   if not kong then
@@ -355,5 +384,6 @@ return {
   get_node_id = private_node.load_node_id,
 
   repatch_timer = repatch_timer,
+  unrepatch_timer = unrepatch_timer,
   patch_worker_events = patch_worker_events,
 }

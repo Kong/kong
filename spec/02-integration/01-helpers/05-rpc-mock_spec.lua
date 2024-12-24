@@ -21,6 +21,7 @@ end
 describe("rpc mock/hook", function()
   local recover
   lazy_setup(function()
+    helpers.repatch_timer()
     if not kong.worker_events then
       helpers.patch_worker_events()
       recover = true
@@ -28,6 +29,7 @@ describe("rpc mock/hook", function()
   end)
 
   lazy_teardown(function()
+    helpers.unrepatch_timer()
     if recover then
       kong.worker_events = nil
     end
