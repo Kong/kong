@@ -1,0 +1,4 @@
+message: |
+  **session**: Added two configurations `hash_subject` and `store_metadata` to store session's metadata.
+type: feature
+scope: "Plugin"
