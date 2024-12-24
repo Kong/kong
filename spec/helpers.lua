@@ -226,4 +226,10 @@ local wait = reload_module("spec.internal.wait")
   make_temp_dir = misc.make_temp_dir,
 
   build_go_plugins = cmd.build_go_plugins,
+
+  get_node_id = misc.get_node_id,
+
+  repatch_timer = misc.repatch_timer,
+  unrepatch_timer = misc.unrepatch_timer,
+  patch_worker_events = misc.patch_worker_events,
 }
