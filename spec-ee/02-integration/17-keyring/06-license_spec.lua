@@ -9,6 +9,8 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local sha256_hex = require("kong.tools.sha256").sha256_hex
 local uuid = require("kong.tools.uuid").uuid
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local setup_distribution = require("spec-ee.helpers").setup_distribution
 
 local UNLICENSED = "UNLICENSED"
 
@@ -114,36 +116,6 @@ local function recover_keyring(client, private_key)
     assert.same("successfully recovered 1 keys", res.message)
 end
 
-local function setup_distribution()
-  local kld = os.getenv("KONG_LICENSE_DATA")
-  helpers.unsetenv("KONG_LICENSE_DATA")
-
-  local klp = os.getenv("KONG_LICENSE_PATH")
-  helpers.unsetenv("KONG_LICENSE_PATH")
-
-  local tmp_filename = "/tmp/distributions_constants.lua"
-  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua",
-                           tmp_filename, true))
-  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua",
-                           "kong/enterprise_edition/distributions_constants.lua", true))
-
-  return function()
-    if kld then
-      helpers.setenv("KONG_LICENSE_DATA", kld)
-    end
-
-    if klp then
-      helpers.setenv("KONG_LICENSE_PATH", klp)
-    end
-
-    if helpers.path.exists(tmp_filename) then
-      -- restore and delete backup
-      assert(helpers.file.copy(tmp_filename,
-                               "kong/enterprise_edition/distributions_constants.lua", true))
-      assert(helpers.file.delete(tmp_filename))
-    end
-  end
-end
 
 local function assert_get_licenses(client, license_id, msg)
   -- get by collection
@@ -204,6 +176,7 @@ end
 
 describe("Keyring license encryption #postgres", function()
   local reset_distribution
+  local reset_license_data
   local license, license_key, private_key
 
   lazy_setup(function()
@@ -218,6 +191,7 @@ describe("Keyring license encryption #postgres", function()
     local db
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
     end)
 
@@ -274,7 +248,9 @@ describe("Keyring license encryption #postgres", function()
 
     lazy_teardown(function()
       assert(db:truncate())
+
       reset_distribution()
+      reset_license_data()
     end)
 
     it("does not prevent license activation at startup", function()
@@ -360,6 +336,7 @@ describe("Keyring license encryption #postgres", function()
     local db
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
       local _
@@ -384,7 +361,9 @@ describe("Keyring license encryption #postgres", function()
 
       helpers.stop_kong(node.prefix)
       assert(db:truncate())
+
       reset_distribution()
+      reset_license_data()
     end)
 
     local unique_err
@@ -473,6 +452,7 @@ describe("Keyring license encryption #postgres", function()
     local db
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
       -- run migrations, reset tables
@@ -541,6 +521,7 @@ describe("Keyring license encryption #postgres", function()
       assert(db:truncate())
 
       reset_distribution()
+      reset_license_data()
     end)
 
     it("recovery", function()
@@ -660,6 +641,7 @@ describe("Keyring license encryption #postgres", function()
     local plugin
 
     lazy_setup(function()
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
       -- run migrations, reset tables
@@ -734,6 +716,7 @@ describe("Keyring license encryption #postgres", function()
       assert(db:truncate())
 
       reset_distribution()
+      reset_license_data()
     end)
 
     it("recovery", function()

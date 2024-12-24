@@ -8,39 +8,10 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local clear_license_env = require("spec-ee.helpers").clear_license_env
+local setup_distribution = require("spec-ee.helpers").setup_distribution
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
--- unsets kong license env vars and returns a function to restore their values
--- on test teardown
---
--- replace distributions_constants.lua to mock a GA release distribution
-local function setup_distribution()
-  local kld = os.getenv("KONG_LICENSE_DATA")
-  helpers.unsetenv("KONG_LICENSE_DATA")
-
-  local klp = os.getenv("KONG_LICENSE_PATH")
-  helpers.unsetenv("KONG_LICENSE_PATH")
-
-  local tmp_filename = "/tmp/distributions_constants.lua"
-  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
-  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
-
-  return function()
-    if kld then
-      helpers.setenv("KONG_LICENSE_DATA", kld)
-    end
-
-    if klp then
-      helpers.setenv("KONG_LICENSE_PATH", klp)
-    end
-
-    if helpers.path.exists(tmp_filename) then
-      -- restore and delete backup
-      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
-      assert(helpers.file.delete(tmp_filename))
-    end
-  end
-end
 
 describe("Admin API - Kong routes", function()
   local valid_license, expired_license, grace_period_license
@@ -401,14 +372,15 @@ describe("Admin API - Kong routes", function()
   end)
 
   describe("with an expired license is configured and the grace period is exceeded", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
       helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         license_data = expired_license,
       }))
@@ -420,7 +392,9 @@ describe("Admin API - Kong routes", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
@@ -512,14 +486,15 @@ describe("Admin API - Kong routes", function()
   end)
 
   describe("with an expired license is configured but within the grace period", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
       helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         license_data = grace_period_license,
       }))
@@ -531,7 +506,9 @@ describe("Admin API - Kong routes", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
@@ -614,14 +591,15 @@ describe("Admin API - Kong routes", function()
   end)
 
   describe("with no license is configured", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
       helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong())
       client = helpers.admin_client()
     end)
@@ -631,7 +609,9 @@ describe("Admin API - Kong routes", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
@@ -844,13 +824,15 @@ describe("Admin API #off", function()
   end)
 
   describe("with an expired license is configured and the grace period is exceeded", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
+      helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         database = "off",
         mem_cache_size = "15m",
@@ -865,7 +847,9 @@ describe("Admin API #off", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
@@ -902,13 +886,15 @@ describe("Admin API #off", function()
   end)
 
   describe("with an expired license is configured but within the grace period", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
+      helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         database = "off",
         mem_cache_size = "15m",
@@ -923,7 +909,9 @@ describe("Admin API #off", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua
@@ -957,13 +945,15 @@ describe("Admin API #off", function()
   end)
 
   describe("with no license is configured", function()
-    local client, reset_distribution
+    local client
+    local reset_distribution
+    local reset_license_data
 
     lazy_setup(function()
+      helpers.get_db_utils(nil, {"licenses"})
+      reset_license_data = clear_license_env()
       reset_distribution = setup_distribution()
 
-      helpers.unsetenv("KONG_LICENSE_DATA")
-      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         database = "off",
         mem_cache_size = "15m",
@@ -977,7 +967,9 @@ describe("Admin API #off", function()
         client:close()
       end
       helpers.stop_kong()
+
       reset_distribution()
+      reset_license_data()
     end)
 
     -- We already recognize correlation-id as an EE plugin in distributions_constants.lua

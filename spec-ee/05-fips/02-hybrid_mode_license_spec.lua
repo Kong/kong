@@ -8,21 +8,7 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local clear_license_env = require("spec-ee.helpers").clear_license_env
-
--- replace distributions_constants.lua to mock a GA release distribution
-local function setup_distribution()
-  local tmp_filename = "/tmp/distributions_constants.lua"
-  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
-  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
-
-  return function()
-    if helpers.path.exists(tmp_filename) then
-      -- restore and delete backup
-      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
-      assert(helpers.file.delete(tmp_filename))
-    end
-  end
-end
+local setup_distribution = require("spec-ee.helpers").setup_distribution
 
 local function find_in_file(filepath, pat)
   local f = assert(io.open(filepath, "r"))

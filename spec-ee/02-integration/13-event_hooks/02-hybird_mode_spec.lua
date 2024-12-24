@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local pl_file = require("pl.file")
 local clear_license_env = require("spec-ee.helpers").clear_license_env
+local setup_distribution = require("spec-ee.helpers").setup_distribution
 
 local function client_send(req)
   local client = helpers.http_client("127.0.0.1", 10001, 20000)
@@ -15,21 +16,6 @@ local function client_send(req)
   local status, body = res.status, res:read_body()
   client:close()
   return status, body
-end
-
--- replace distributions_constants.lua to mock a GA release distribution
-local function setup_distribution()
-  local tmp_filename = "/tmp/distributions_constants.lua"
-  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
-  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
-
-  return function()
-    if helpers.path.exists(tmp_filename) then
-      -- restore and delete backup
-      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
-      assert(helpers.file.delete(tmp_filename))
-    end
-  end
 end
 
 local function count_log_lines(log_file_path, pattern)
@@ -480,10 +466,11 @@ for _, strategy in helpers.each_strategy() do
   describe("DP event_hooks.emit() should work after receiving license from CP, #" .. strategy, function()
 
     local reset_distribution
+    local reset_license_data
     local valid_license
 
     lazy_setup(function()
-      clear_license_env()
+      reset_license_data = clear_license_env()
       local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
       valid_license = f:read("*a")
       f:close()
@@ -540,9 +527,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      reset_distribution()
       helpers.stop_kong("servroot-dp")
       helpers.stop_kong("servroot")
+
+      reset_distribution()
+      reset_license_data()
     end)
 
     local admin_client, proxy_client

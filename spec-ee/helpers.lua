@@ -1200,6 +1200,23 @@ function _M.clear_license_env()
   end
 end
 
+-- This function replace distributions_constants.lua to mock a GA release distribution.
+-- It returns a function to restore the distributions_constants.lua back.
+function _M.setup_distribution()
+  local tmp_filename = "/tmp/distributions_constants.lua"
+  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
+  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua",
+                           "kong/enterprise_edition/distributions_constants.lua", true))
+
+  return function()
+    if helpers.path.exists(tmp_filename) then
+      -- restore and delete backup
+      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
+      assert(helpers.file.delete(tmp_filename))
+    end
+  end
+end
+
 
 function _M.get_portal_and_vitals_key()
   local key, err = pl_file.read("spec-ee/fixtures/mock_portal_and_vitals_key.txt")

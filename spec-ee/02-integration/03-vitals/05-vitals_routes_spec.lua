@@ -10,6 +10,7 @@ local utils       = require "kong.tools.utils"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
 local clear_license_env = require("spec-ee.helpers").clear_license_env
+local setup_distribution = require("spec-ee.helpers").setup_distribution
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 local time        = ngx.time
 local fmt         = string.format
@@ -17,21 +18,6 @@ local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local compare_no_order = require "pl.tablex".compare_no_order
 
--- replace distributions_constants.lua to mock a GA release distribution and
--- returns a function to restore their values on test teardown
-local function setup_distribution()
-  local tmp_filename = "/tmp/distributions_constants.lua"
-  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
-  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
-
-  return function()
-    if helpers.path.exists(tmp_filename) then
-      -- restore and delete backup
-      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
-      assert(helpers.file.delete(tmp_filename))
-    end
-  end
-end
 
 for _, db_strategy in helpers.each_strategy() do
   describe("Admin API Vitals with #" .. db_strategy, function()
