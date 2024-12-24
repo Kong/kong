@@ -801,12 +801,8 @@ describe("CP/DP labels #" .. strategy, function()
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal("mycloud", v.labels.deployment)
-              assert.equal("us-east-1", v.labels.region)
-            end
+            assert.equal("mycloud", v.labels.deployment)
+            assert.equal("us-east-1", v.labels.region)
             return true
           end
         end
