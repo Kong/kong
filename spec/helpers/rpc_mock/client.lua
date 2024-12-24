@@ -13,7 +13,7 @@ local default_dp_conf = {
   cluster_control_plane = "localhost:8005",
 }
 
-setmetatable(default_dp_conf, { __index = default_cert })
+setmetatable(default_dp_conf, { __index = default_cert, })
 local default_meta = { __index = default_dp_conf, }
 
 
