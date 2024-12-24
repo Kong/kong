@@ -861,11 +861,7 @@ describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal(1888983905, v.cert_details.expiry_timestamp)
-            end
+            assert.equal(1888983905, v.cert_details.expiry_timestamp)
             return true
           end
         end
@@ -930,11 +926,7 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal(1897136778, v.cert_details.expiry_timestamp)
-            end
+            assert.equal(1897136778, v.cert_details.expiry_timestamp)
             return true
           end
         end
