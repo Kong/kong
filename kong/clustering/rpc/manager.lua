@@ -146,7 +146,7 @@ end
 
 
 -- CP => DP
-function _M:_handle_meta_call(c)
+function _M:_handle_meta_call(c, cert)
   local data, typ, err = c:recv_frame()
   if err then
     return nil, err
@@ -226,11 +226,17 @@ function _M:_handle_meta_call(c)
     end
   end
 
+  -- values in cert_details must be strings
+  local cert_details = {
+    expiry_timestamp = cert:get_not_after(),
+  }
+
   -- store DP's ip addr
   self.client_info[node_id] = {
     ip = ngx_var.remote_addr,
     version = info.kong_version,
     labels = labels,
+    cert_details = cert_details,
   }
 
   return node_id
@@ -450,7 +456,7 @@ function _M:handle_websocket()
   end
 
   -- if timeout (default is 5s) we will close the connection
-  local node_id, err = self:_handle_meta_call(wb)
+  local node_id, err = self:_handle_meta_call(wb, cert)
   if not node_id then
     ngx_log(ngx_ERR, _log_prefix, "unable to handshake with client: ", err)
     return ngx_exit(ngx.HTTP_CLOSE)
