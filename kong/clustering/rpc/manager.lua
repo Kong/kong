@@ -201,6 +201,11 @@ function _M:_handle_meta_call(c)
   local capabilities_list = info.rpc_capabilities
   local node_id = info.kong_node_id
 
+  -- we already set this dp node
+  if self.client_capabilities[node_id] then
+    return node_id
+  end
+
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
