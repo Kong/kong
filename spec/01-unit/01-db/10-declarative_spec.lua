@@ -73,14 +73,14 @@ consumer_groups:
     it("utilizes the schema name, workspace id, field name, and checksum of the field value", function()
       local key = unique_field_key("services", "123", "fieldname", "test", false)
       assert.is_string(key)
-      assert.equals("services|123|fieldname|" .. sha256_hex("test"), key)
+      assert.equals("U|services|fieldname|123|" .. sha256_hex("test"), key)
     end)
 
     -- since incremental sync the param `unique_across_ws` is useless
     -- this test case is just for compatibility
     it("does not omits the workspace id when 'unique_across_ws' is 'true'", function()
       local key = unique_field_key("services", "123", "fieldname", "test", true)
-      assert.equals("services|123|fieldname|" .. sha256_hex("test"), key)
+      assert.equals("U|services|fieldname|123|" .. sha256_hex("test"), key)
     end)
   end)
 end)
