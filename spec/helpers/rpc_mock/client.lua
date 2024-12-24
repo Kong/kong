@@ -2,7 +2,7 @@
 local helpers = require "spec.helpers"
 local rpc_mgr = require("kong.clustering.rpc.manager")
 local default_cert = require("spec.helpers.rpc_mock.default").default_cert
-local uuid = require "kong.tools.uuid"
+local uuid = require("kong.tools.uuid")
 
 
 local _M = {}
