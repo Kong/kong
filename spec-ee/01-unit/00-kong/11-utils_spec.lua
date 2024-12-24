@@ -372,4 +372,45 @@ describe("validate_reset_jwt", function()
     assert.is_nil(err)
     assert.equal(jwt, res)
   end)
+
+  it("the value should be included if the value type is [number, string, boolean]", function()
+    local test_data = {
+      status = 3,
+      id = "ba05a349-c565-46ef-9a55-df9dc180b842",
+    }
+    local res = ee_utils.normalize_table(test_data)
+    assert.is_not_nil(res)
+    assert.equal("id:ba05a349-c565-46ef-9a55-df9dc180b842:status:3", res)
+
+    test_data = {
+      status = 3,
+      id = "ba05a349-c565-46ef-9a55-df9dc180b842",
+      bln = false
+    }
+    local res = ee_utils.normalize_table(test_data)
+    assert.is_not_nil(res)
+    assert.equal("bln:false:id:ba05a349-c565-46ef-9a55-df9dc180b842:status:3", res)
+  end)
+
+  it("the value shouldn't be included if the value type is [userdata, function]", function()
+    local test_data = {
+      status = 3,
+      id = "ba05a349-c565-46ef-9a55-df9dc180b842",
+      empty = ngx.null
+    }
+
+    local res = ee_utils.normalize_table(test_data)
+    assert.is_not_nil(res)
+    assert.equal("empty:id:ba05a349-c565-46ef-9a55-df9dc180b842:status:3", res)
+
+    test_data = {
+      status = 3,
+      id = "ba05a349-c565-46ef-9a55-df9dc180b842",
+      fun = function()
+      end
+    }
+    local res = ee_utils.normalize_table(test_data)
+    assert.is_not_nil(res)
+    assert.equal("fun:id:ba05a349-c565-46ef-9a55-df9dc180b842:status:3", res)
+  end)
 end)

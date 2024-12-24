@@ -236,7 +236,10 @@ local function normalize_table(data)
     if type(v) == "table" then
       v = normalize_table(v)
     end
-    if v and type(v) == "string" then
+    if (type(v) == "string"
+          or type(v) == "boolean"
+          or type(v) == "number") then
+      v = tostring(v)
       hash = hash and (hash .. ":" .. k .. ":" .. v) or (k .. ":" .. v)
     else
       hash = hash and (hash .. ":" .. k) or k
