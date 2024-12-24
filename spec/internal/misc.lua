@@ -324,7 +324,7 @@ local function patch_worker_events()
     return
   end
 
-  kong.worker_events = require "resty.events.compat"
+  kong.worker_events = require("resty.events.compat")
   kong.worker_events.configure({
     listening = "unix:",
     testing = true,
