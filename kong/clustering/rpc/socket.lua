@@ -13,6 +13,7 @@ local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local constants = require("kong.constants")
 local isarray = require("table.isarray")
 local isempty = require("table.isempty")
+local tb_insert = table.insert
 
 
 local assert = assert
@@ -66,10 +67,10 @@ function _M:push_request(msg)
 end
 
 
-function _M:push_response(msg, err_prefix, results)
+function _M:push_response(msg, err_prefix, collection)
   -- may be a batch
-  if results then
-    table.insert(results, msg)
+  if collection then
+    tb_insert(collection, msg)
     return true
   end
 
@@ -82,7 +83,7 @@ function _M:push_response(msg, err_prefix, results)
 end
 
 
-function _M._dispatch(premature, self, cb, payload, results)
+function _M._dispatch(premature, self, cb, payload, collection)
   if premature then
     return
   end
@@ -98,7 +99,7 @@ function _M._dispatch(premature, self, cb, payload, results)
 
     res, err = self:push_response(new_error(payload.id, jsonrpc.SERVER_ERROR, err),
                                   "[rpc] unable to push RPC call error: ",
-                                  results)
+                                  collection)
     if not res then
       ngx_log(ngx_WARN, err)
     end
@@ -117,14 +118,14 @@ function _M._dispatch(premature, self, cb, payload, results)
     jsonrpc = jsonrpc.VERSION,
     id = payload.id,
     result = res,
-  }, "[rpc] unable to push RPC call result: ", results)
+  }, "[rpc] unable to push RPC call result: ", collection)
   if not res then
     ngx_log(ngx_WARN, err)
   end
 end
 
 
-function _M:process_rpc_msg(payload, results)
+function _M:process_rpc_msg(payload, collection)
   assert(payload.jsonrpc == jsonrpc.VERSION)
 
   local payload_id = payload.id
@@ -139,7 +140,7 @@ function _M:process_rpc_msg(payload, results)
     if not dispatch_cb and payload_id then
       local res, err = self:push_response(new_error(payload_id, jsonrpc.METHOD_NOT_FOUND),
                                           "unable to send \"METHOD_NOT_FOUND\" error back to client: ",
-                                          results)
+                                          collection)
       if not res then
         return nil, err
       end
@@ -150,11 +151,11 @@ function _M:process_rpc_msg(payload, results)
     -- call dispatch
     local res, err = kong.timer:named_at(string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
                                                        self.node_id, payload_id or 0, payload_method),
-                                         0, _M._dispatch, self, dispatch_cb, payload, results)
+                                         0, _M._dispatch, self, dispatch_cb, payload, collection)
     if not res and payload_id then
       local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
                                             "unable to send \"INTERNAL_ERROR\" error back to client: ",
-                                            results)
+                                            collection)
       if not reso then
         return nil, erro
       end
@@ -239,6 +240,7 @@ function _M:start()
 
       local payload = decompress_payload(data)
 
+      -- single rpc call
       if not isarray(payload) then
         local ok, err = self:process_rpc_msg(payload)
         if not ok then
@@ -248,21 +250,24 @@ function _M:start()
         goto continue
       end
 
-      -- rpc batching
-      local results = {}
+      -- batch rpc call
+      local collection = {}
 
       for _, v in ipairs(payload) do
-        local ok, err = self:process_rpc_msg(v, results)
+        local ok, err = self:process_rpc_msg(v, collection)
         if not ok then
           return nil, err
         end
       end
 
-      if isempty(results) then
+      -- may be all notifications
+      if isempty(collection) then
         goto continue
       end
 
-      local res, err = self:push_response(results,
+      assert(isarray(collection))
+
+      local res, err = self:push_response(collection,
                                           "[rpc] unable to push RPC call result: ")
       if not res then
         return nil, err
