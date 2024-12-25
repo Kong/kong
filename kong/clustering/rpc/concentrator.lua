@@ -7,6 +7,8 @@ local queue = require("kong.clustering.rpc.queue")
 local cjson = require("cjson")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local rpc_utils = require("kong.clustering.rpc.utils")
+--local isarray = require("table.isarray")
+--local isempty = require("table.isempty")
 
 
 local setmetatable = setmetatable
@@ -190,8 +192,8 @@ function _M:_event_loop(lconn)
 
           ::continue::
         end
-      end
-    end
+      end -- if n.channel == rpc_resp_channel_name
+    end -- while true
 
     local res, err = lconn:wait_for_notification()
     if not res then
@@ -217,7 +219,7 @@ function _M:_event_loop(lconn)
     else
       notifications_queue:push(res)
     end
-  end
+  end -- get from rpc call
 end
 
 
