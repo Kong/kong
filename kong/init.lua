@@ -1209,6 +1209,7 @@ function Kong.ssl_certificate()
   if debug_ssl_cert_phase_span then
     debug_ssl_cert_phase_span:finish()
   end
+  ctx.KONG_CERTIFICATE_ENDED_AT_NS = time_ns()
 
   ngx.ctx = {
     __index = {

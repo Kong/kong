@@ -45,7 +45,7 @@ local function setup_kong(cp_config, dp_config, db_setup)
 
   local route = bp.routes:insert({
     name = "sampled",
-    protocols = { "http" },
+    protocols = { "http", "https" },
     paths = { "/sampled" },
     service = { id = service.id },
   })
@@ -127,7 +127,7 @@ local function setup_kong(cp_config, dp_config, db_setup)
     request_debug = "off",
     cluster_rpc = "on",
     log_level = "debug",
-    proxy_listen = "0.0.0.0:9002, 0.0.0.0:9443 ssl",
+    proxy_listen = "0.0.0.0:9002, 0.0.0.0:9443 http2 ssl",
     nginx_conf = "spec/fixtures/custom_nginx.template",
     untrusted_lua = "on",
     konnect_mode = true,
@@ -184,10 +184,16 @@ local function teardown_analytics_sink(sink_port)
   pcall(helpers.kill_tcp_server, sink_port)
 end
 
-local function assert_produces_trace(request_func, sink_port, status)
+local function assert_produces_trace(request_func, sink_port, status, http2)
   local thread = helpers.tcp_server(sink_port)
   local res = request_func()
-  assert.response(res).has.status(status or 200)
+  local expected_status = status or 200
+
+  if http2 then
+    assert.equal(tostring(expected_status), res:get(":status"))
+  else
+    assert.response(res).has.status(expected_status)
+  end
 
   local ok, s_res = thread:join()
   pcall(helpers.kill_tcp_server, sink_port)

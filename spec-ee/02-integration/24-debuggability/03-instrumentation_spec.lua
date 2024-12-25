@@ -44,11 +44,12 @@ local function SPAN_ATTRIBUTES(entities, opts)
 
   local path = opts and opts.path or "/sampled"
   local method = opts and opts.method or "GET"
+  local http_version = opts and opts.http_version or "1.1"
 
   return {
     ["kong"] = {
       ["proxy.kong.request.id"] = { assertion = "matches", expected_val = hex_128_pattern},
-      ["network.protocol.version"] = { assertion = "equals", expected_val = "1.1"},
+      ["network.protocol.version"] = { assertion = "equals", expected_val = http_version},
       ["proxy.kong.latency.upstream.read_response_duration"] = { assertion = "matches", expected_val = number_pattern},
       ["url.scheme"] = { assertion = "matches", expected_val = "http[s]?"},
       ["proxy.kong.latency.upstream"] = { assertion = "matches", expected_val = number_pattern},
@@ -132,6 +133,7 @@ local function SPAN_ATTRIBUTES(entities, opts)
       ["proxy.kong.sampling_rule"] = { assertion = "equals", expected_val = "http.route == \"/sampled\""},
     },
     ["kong.phase.certificate"] = {},
+    ["kong.tls_handshake"] = {},
     ["kong.phase.rewrite"] = {},
     ["kong.phase.access"] = {},
     ["kong.phase.header_filter"] = {},
@@ -241,6 +243,8 @@ local function assert_has_default_spans(spans, ssl, buffering, plugin_name)
   if ssl then
     local phase_certificate_span = assert_get_spans("kong.phase.certificate", spans, 1)
     assert_parent_child_relationship(root_span, phase_certificate_span)
+    local tls_handshake_span = assert_get_spans("kong.tls_handshake", spans, 1)
+    assert_parent_child_relationship(root_span, tls_handshake_span)
 
     if plugin_name then
       local plugin_certificate_span = assert_get_spans("kong.certificate.plugin." .. plugin_name, spans, 1)
@@ -375,6 +379,54 @@ describe("Active Tracing Instrumentation", function()
       local opts = {
         path = "/sampled",
         method = "GET",
+      }
+      assert_spans_have_valid_attributes(spans, entities, opts)
+    end)
+  end)
+
+  describe("#http2", function()
+    local http2_client, entities
+
+    lazy_setup(function()
+      entities = setup_kong()
+    end)
+
+    after_each(function()
+      teardown_analytics_sink(TCP_PORT)
+    end)
+
+    lazy_teardown(function()
+      teardown_kong()
+    end)
+
+    before_each(start_session)
+    after_each(stop_session)
+
+    it("produces the expected spans and attributes", function()
+      local trace = assert_produces_trace(function()
+        http2_client = helpers.http2_client("0.0.0.0", 9443, true)
+        local _, headers = http2_client {
+          headers = {
+            [":path"] = "/sampled",
+            [":method"] = "GET",
+            [":scheme"] = "https",
+            [":authority"] = "localhost",
+          },
+        }
+        return headers
+      end, TCP_PORT, "200", true)
+
+      assert_valid_trace(trace)
+
+      local spans = trace.resource_spans[1].scope_spans[1].spans
+      assert.True(spans and #spans > 0)
+      assert_has_default_spans(spans)
+
+      -- spans contain expected attributes
+      local opts = {
+        path = "/sampled",
+        method = "GET",
+        http_version = "2.0",
       }
       assert_spans_have_valid_attributes(spans, entities, opts)
     end)

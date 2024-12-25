@@ -29,6 +29,7 @@ local get_ctx_key = utils.get_ctx_key
 local log = utils.log
 local cjson_encode = cjson.encode
 local new_tab = base.new_tab
+local concat = table.concat
 local split = ngx_re.split
 local band = bit.band
 local max = math.max
@@ -107,6 +108,7 @@ local SPAN_NAMES = {
   READ_BODY = "kong.read_client_http_body",
   CLIENT_HEADERS = "kong.read_client_http_headers",
   FLUSH_TO_DOWNSTREAM = "kong.wait_for_client_read",
+  TLS_HANDSHAKE = "kong.tls_handshake",
 }
 
 local VALID_TRACING_PHASES = {
@@ -703,17 +705,51 @@ local function initialize_trace(ctx)
 end
 
 
+-- this is an approximation of the tls handshake time, which occurs
+-- between the end of the certificate phase and the start of the request
+-- It includes the time the client waited, after connecting, before
+-- sending the request
+local function tls_handshake(ctx)
+  local start_time = ctx.connection and
+                     ctx.connection.KONG_CERTIFICATE_ENDED_AT_NS
+  if not start_time then
+    return
+  end
+
+  local span, err = subtracer.start_span(SPAN_NAMES.TLS_HANDSHAKE, {
+    span_kind = SPAN_KIND_SERVER,
+    start_time_ns = start_time,
+  })
+  if not span then
+    if err then
+      log(ngx_ERR, "failed to start span: ", err)
+    end
+    return
+  end
+
+  ngx.update_time()
+  local end_time = ngx.req.start_time() * 1e9
+  span:finish(end_time)
+end
+
+
 local function client_headers()
   ngx.update_time()
   local start_time = ngx.req.start_time() * 1e9
 
-  local ok, raw_header = pcall(ngx.req.raw_header, true)
-  if not ok then
-    log(ngx_DEBUG, "failed to get raw header: ", raw_header)
+  local headers_bytes = 0
+  local headers_num = 0
+  -- 1000 is the maximum num of headers we can get
+  local headers, err = kong.request.get_headers(1000)
+  if not headers then
+    log(ngx_ERR, "failed to get request headers: ", err)
     return
   end
-  local headers_bytes = raw_header and #raw_header or 0
-  local _, headers_num = raw_header:gsub("\n", "\n")
+  for k, v in pairs(headers) do
+    local val = type(v) == "table" and concat(v, "") or v
+    headers_bytes = headers_bytes + #k + #(val or "")
+    headers_num = headers_num + 1
+  end
 
   local span, err = subtracer.start_span(SPAN_NAMES.CLIENT_HEADERS, {
     span_kind = SPAN_KIND_SERVER,
@@ -760,6 +796,7 @@ function _M.rewrite(ctx)
   end
 
   initialize_trace(ctx)
+  tls_handshake(ctx)
   client_headers()
 
   return rewrite_phase()
