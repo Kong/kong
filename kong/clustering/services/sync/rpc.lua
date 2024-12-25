@@ -111,6 +111,7 @@ function _M:init_cp(manager)
       hostname = node_id,
       ip = node_info.ip,   -- get the correct ip
       version = node_info.version,    -- get from rpc call
+      labels = node_info.labels,    -- get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = fmt("%032d", default_namespace_version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},

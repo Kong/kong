@@ -208,6 +208,11 @@ function _M:_handle_meta_call(c)
   local capabilities_list = info.rpc_capabilities
   local node_id = info.kong_node_id
 
+  -- we already set this dp node
+  if self.client_capabilities[node_id] then
+    return node_id
+  end
+
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
@@ -217,10 +222,22 @@ function _M:_handle_meta_call(c)
   assert(self.concentrator)
   assert(self.client_info)
 
+  -- see communicate() in data_plane.lua
+  local labels do
+    if info.kong_conf.cluster_dp_labels then
+      labels = {}
+      for _, lab in ipairs(info.kong_conf.cluster_dp_labels) do
+        local del = lab:find(":", 1, true)
+        labels[lab:sub(1, del - 1)] = lab:sub(del + 1)
+      end
+    end
+  end
+
   -- store DP's ip addr
   self.client_info[node_id] = {
     ip = ngx_var.remote_addr,
     version = info.kong_version,
+    labels = labels,
   }
 
   return node_id
