@@ -129,12 +129,13 @@ function Jq:body_filter(conf)
                            conf.response_if_status_code) then
 
     local response_body = kong.response.get_raw_body()
-    if response_body and kong.ctx.shared.proxy_cache_hit and kong.ctx.shared.proxy_cache_hit.res.body then
-      kong.response.set_raw_body(response_body)
-      return
-    end
 
     if response_body then
+      if kong.ctx.shared.proxy_cache_hit and kong.ctx.shared.proxy_cache_hit.res.body then
+        kong.response.set_raw_body(response_body)
+        return
+      end
+
       if kong.ctx.plugin.should_inflate_gzip then
         response_body = inflate_gzip(response_body)
       end
