@@ -19,6 +19,8 @@ local shell = require("spec.internal.shell")
 local CONSTANTS = require("spec.internal.constants")
 local sys = require("spec.internal.sys")
 
+local private_node = require "kong.pdk.private.node"
+
 
 local pack = function(...) return { n = select("#", ...), ... } end
 local unpack = function(t) return unpack(t, 1, t.n) end
@@ -287,6 +289,78 @@ local function use_old_plugin(name)
 end
 
 
+-- Timer repatching
+-- this makes `kong` introduced by `spec.internal.db` visible to the timer
+-- however it breaks some other tests, so you need to undo it after the test
+local repatch_timer, unrepatch_timer do
+  local original_at = ngx.timer.at
+  local original_every = ngx.timer.every
+  local original_timer = kong and kong.timer
+  local repatched = false
+
+  function repatch_timer()
+    local _timerng
+
+    _timerng = require("resty.timerng").new({
+      min_threads = 16,
+      max_threads = 32,
+    })
+
+    _timerng:start()
+
+    _G.timerng = _timerng
+
+    _G.ngx.timer.at = function (delay, callback, ...)
+      return _timerng:at(delay, callback, ...)
+    end
+
+    _G.ngx.timer.every = function (interval, callback, ...)
+      return _timerng:every(interval, callback, ...)
+    end
+
+    if kong then
+      kong.timer = _timerng
+    end
+
+    repatched = true
+  end
+
+  function unrepatch_timer()
+    if not repatched then
+      return
+    end
+
+    _G.ngx.timer.at = original_at
+    _G.ngx.timer.every = original_every
+
+    if kong then
+      kong.timer = original_timer
+    end
+
+    _G.timerng:destroy()
+    _G.timerng = nil
+
+    repatched = false
+  end
+end
+
+local function patch_worker_events()
+  if not kong then
+    return
+  end
+  
+  if kong.worker_events then
+    return
+  end
+
+  kong.worker_events = require("resty.events.compat")
+  kong.worker_events.configure({
+    listening = "unix:",
+    testing = true,
+  })
+end
+
+
 return {
   pack = pack,
   unpack = unpack,
@@ -306,4 +380,10 @@ return {
   with_current_ws = with_current_ws,
   make_temp_dir = make_temp_dir,
   use_old_plugin = use_old_plugin,
+
+  get_node_id = private_node.load_node_id,
+
+  repatch_timer = repatch_timer,
+  unrepatch_timer = unrepatch_timer,
+  patch_worker_events = patch_worker_events,
 }
