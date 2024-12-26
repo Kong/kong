@@ -7,7 +7,7 @@ local queue = require("kong.clustering.rpc.queue")
 local cjson = require("cjson")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local rpc_utils = require("kong.clustering.rpc.utils")
---local isarray = require("table.isarray")
+local isarray = require("table.isarray")
 --local isempty = require("table.isempty")
 
 
@@ -92,6 +92,27 @@ local function enqueue_notifications(notifications, notifications_queue)
 end
 
 
+function _M:process_one_response(payload)
+  assert(payload.jsonrpc == jsonrpc.VERSION)
+  local payload_id = payload.id
+
+  -- response
+  local cb = self.interest[payload_id]
+  self.interest[payload_id] = nil -- edge trigger only once
+
+  if cb then
+    local res, err = cb(payload)
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
+              payload_id, ", err: ", err)
+    end
+
+  else
+    ngx_log(ngx_WARN, "[rpc] no interest for concentrator response id: ", payload_id, ", dropping it")
+  end
+end
+
+
 function _M:_event_loop(lconn)
   local notifications_queue = queue.new(4096)
   local rpc_resp_channel_name = RESP_CHANNEL_PREFIX .. self.worker_id
@@ -118,21 +139,14 @@ function _M:_event_loop(lconn)
       if n.channel == rpc_resp_channel_name then
         -- an response for a previous RPC call we asked for
         local payload = cjson_decode(n.payload)
-        assert(payload.jsonrpc == jsonrpc.VERSION)
 
-        -- response
-        local cb = self.interest[payload.id]
-        self.interest[payload.id] = nil -- edge trigger only once
-
-        if cb then
-          local res, err = cb(payload)
-          if not res then
-            ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
-                    payload.id, ", err: ", err)
-          end
+        if not isarray(payload) then
+          process_one_response(payload)
 
         else
-          ngx_log(ngx_WARN, "[rpc] no interest for concentrator response id: ", payload.id, ", dropping it")
+          for _, v in ipairs(payload) do
+            process_one_response(v)
+          end
         end
 
       else
@@ -191,7 +205,7 @@ function _M:_event_loop(lconn)
           end
 
           ::continue::
-        end
+        end -- for _, call
       end -- if n.channel == rpc_resp_channel_name
     end -- while true
 
