@@ -113,6 +113,46 @@ function _M:process_one_response(payload)
 end
 
 
+function _M:process_one_request(payload, collection)
+  local payload_id = payload.id
+
+  local res, err = self.manager:_local_call(target_id, payload.method,
+                                            payload.params, not payload_id)
+
+  -- notification has no callback or id
+  if not payload_id then
+    ngx_log(ngx_DEBUG, "[rpc] notification has no response")
+    return
+  end
+
+  if res then
+    -- call success
+    res, err = self:_enqueue_rpc_response(reply_to, {
+      jsonrpc = jsonrpc.VERSION,
+      id = payload_id,
+      result = res,
+    }, collection)
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
+    end
+
+  else
+    -- call failure
+    res, err = self:_enqueue_rpc_response(reply_to, {
+      jsonrpc = jsonrpc.VERSION,
+      id = payload_id,
+      error = {
+        code = jsonrpc.SERVER_ERROR,
+        message = tostring(err),
+      }
+    }, collection)
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
+    end
+  end
+end
+
+
 function _M:_event_loop(lconn)
   local notifications_queue = queue.new(4096)
   local rpc_resp_channel_name = RESP_CHANNEL_PREFIX .. self.worker_id
@@ -144,8 +184,9 @@ function _M:_event_loop(lconn)
           self:process_one_response(payload)
 
         else
+          local collection = {}
           for _, v in ipairs(payload) do
-            self:process_one_response(v)
+            self:process_one_response(v, collection)
           end
         end
 
@@ -169,42 +210,15 @@ function _M:_event_loop(lconn)
           local reply_to = assert(call.reply_to,
                                   "unknown requester for RPC")
 
-          local res, err = self.manager:_local_call(target_id, payload.method,
-                                                    payload.params, not payload.id)
-
-          -- notification has no callback or id
-          if not payload.id then
-            ngx_log(ngx_DEBUG, "[rpc] notification has no response")
-            goto continue
-          end
-
-          if res then
-            -- call success
-            res, err = self:_enqueue_rpc_response(reply_to, {
-              jsonrpc = jsonrpc.VERSION,
-              id = payload.id,
-              result = res,
-            })
-            if not res then
-              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
-            end
+          if not isarray(payload) then
+            self:process_one_request(payload)
 
           else
-            -- call failure
-            res, err = self:_enqueue_rpc_response(reply_to, {
-              jsonrpc = jsonrpc.VERSION,
-              id = payload.id,
-              error = {
-                code = jsonrpc.SERVER_ERROR,
-                message = tostring(err),
-              }
-            })
-            if not res then
-              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
+            for _, v in ipairs(payload) do
+              self:process_one_request(v)
             end
           end
 
-          ::continue::
         end -- for _, call
       end -- if n.channel == rpc_resp_channel_name
     end -- while true
