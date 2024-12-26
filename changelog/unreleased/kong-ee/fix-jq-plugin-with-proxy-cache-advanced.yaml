@@ -1,0 +1,3 @@
+message: "**jq**: Fixed an issue when jq works with proxy-cache-advanced."
+type: bugfix
+scope: Plugin
