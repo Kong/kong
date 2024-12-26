@@ -141,11 +141,11 @@ function _M:_event_loop(lconn)
         local payload = cjson_decode(n.payload)
 
         if not isarray(payload) then
-          process_one_response(payload)
+          self:process_one_response(payload)
 
         else
           for _, v in ipairs(payload) do
-            process_one_response(v)
+            self:process_one_response(v)
           end
         end
 
@@ -233,7 +233,7 @@ function _M:_event_loop(lconn)
     else
       notifications_queue:push(res)
     end
-  end -- get from rpc call
+  end -- while not exiting()
 end
 
 
