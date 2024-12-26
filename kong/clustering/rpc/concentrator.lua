@@ -100,15 +100,15 @@ function _M:process_one_response(payload)
   local cb = self.interest[payload_id]
   self.interest[payload_id] = nil -- edge trigger only once
 
-  if cb then
-    local res, err = cb(payload)
-    if not res then
-      ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
-              payload_id, ", err: ", err)
-    end
-
-  else
+  if not cb then
     ngx_log(ngx_WARN, "[rpc] no interest for concentrator response id: ", payload_id, ", dropping it")
+    return
+  end
+
+  local res, err = cb(payload)
+  if not res then
+    ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
+            payload_id, ", err: ", err)
   end
 end
 
