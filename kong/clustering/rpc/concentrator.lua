@@ -113,7 +113,7 @@ function _M:process_one_response(payload)
 end
 
 
-function _M:process_one_request(payload, collection)
+function _M:process_one_request(target_id, reply_to, payload, collection)
   local payload_id = payload.id
 
   local res, err = self.manager:_local_call(target_id, payload.method,
@@ -211,11 +211,11 @@ function _M:_event_loop(lconn)
                                   "unknown requester for RPC")
 
           if not isarray(payload) then
-            self:process_one_request(payload)
+            self:process_one_request(target_id, reply_to, payload)
 
           else
             for _, v in ipairs(payload) do
-              self:process_one_request(v)
+              self:process_one_request(target_id, reply_to, v)
             end
           end
 
