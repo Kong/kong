@@ -8,7 +8,7 @@ local cjson = require("cjson")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local rpc_utils = require("kong.clustering.rpc.utils")
 local isarray = require("table.isarray")
---local isempty = require("table.isempty")
+local isempty = require("table.isempty")
 
 
 local setmetatable = setmetatable
@@ -181,12 +181,13 @@ function _M:_event_loop(lconn)
         local payload = cjson_decode(n.payload)
 
         if not isarray(payload) then
+          -- one rpc response
           self:process_one_response(payload)
 
         else
-          local collection = {}
+          -- batch rpc response
           for _, v in ipairs(payload) do
-            self:process_one_response(v, collection)
+            self:process_one_response(v)
           end
         end
 
@@ -211,13 +212,24 @@ function _M:_event_loop(lconn)
                                   "unknown requester for RPC")
 
           if not isarray(payload) then
+            -- one rpc call
             self:process_one_request(target_id, reply_to, payload)
 
           else
+            local collection = {}
+
+            -- batching rpc call
             for _, v in ipairs(payload) do
-              self:process_one_request(target_id, reply_to, v)
+              self:process_one_request(target_id, reply_to, v, collection)
             end
-          end
+
+            if not isempty(collection) then
+              local res, err = self:_enqueue_rpc_response(reply_to, collection)
+              if not res then
+                ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
+              end
+            end
+          end -- if not isarray(payload)
 
         end -- for _, call
       end -- if n.channel == rpc_resp_channel_name
@@ -300,7 +312,12 @@ end
 
 
 -- enqueue a RPC response from CP worker with ID worker_id
-function _M:_enqueue_rpc_response(worker_id, payload)
+function _M:_enqueue_rpc_response(worker_id, payload, collection)
+  if collection then
+    table.insert(collection, payload)
+    return
+  end
+
   local sql = string_format("SELECT pg_notify(%s, %s);",
                             self.db.connector:escape_literal(RESP_CHANNEL_PREFIX .. worker_id),
                             self.db.connector:escape_literal(cjson_encode(payload)))
