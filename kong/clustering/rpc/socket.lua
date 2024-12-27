@@ -16,6 +16,7 @@ local isempty = require("table.isempty")
 local tb_insert = table.insert
 
 
+local type = type
 local assert = assert
 local unpack = unpack
 local string_format = string.format
@@ -126,6 +127,17 @@ end
 
 
 function _M:process_rpc_msg(payload, collection)
+  if type(payload) ~= "table" then
+    local res, err = self:push_response(
+                      new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"),
+                      collection)
+    if not res then
+      return nil, err
+    end
+
+    return true
+  end
+
   assert(payload.jsonrpc == jsonrpc.VERSION)
 
   local payload_id = payload.id
