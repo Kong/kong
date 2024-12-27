@@ -1,6 +1,17 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local sub   = string.sub
+local sha256_bin       = require "kong.tools.sha256".sha256_bin
+local encode_base64url = require "ngx.base64".encode_base64url
 
+local function sha256_subject(key)
+  local subject, err = sha256_bin(key)
+  if err then
+    return nil, err
+  end
+
+  return encode_base64url(sub(subject, 1, 16))
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (kong storage adapter) [#" .. strategy .. "]", function()
@@ -29,6 +40,16 @@ for _, strategy in helpers.each_strategy() do
       local route3 = bp.routes:insert {
         paths = {"/headers"},
         hosts = {"konghq.test"},
+      }
+
+      local route4 = bp.routes:insert {
+        paths = { "/metadata1" },
+        hosts = { "konghq.metadata1" },
+      }
+
+      local route5 = bp.routes:insert {
+        paths = { "/hash_subject" },
+        hosts = { "konghq.hash_subject" },
       }
 
       assert(bp.plugins:insert {
@@ -63,6 +84,33 @@ for _, strategy in helpers.each_strategy() do
         },
         config = {
           storage = "kong",
+          secret = "ultra top secret session",
+          response_headers = { "id", "timeout", "audience", "subject" }
+        }
+      })
+
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route4.id,
+        },
+        config = {
+          storage = "kong",
+          store_metadata = true,
+          secret = "ultra top secret session",
+          response_headers = { "id", "timeout", "audience", "subject" }
+        }
+      })
+
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route5.id,
+        },
+        config = {
+          storage = "kong",
+          hash_subject = true,
+          store_metadata = true,
           secret = "ultra top secret session",
           response_headers = { "id", "timeout", "audience", "subject" }
         }
@@ -111,6 +159,26 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
         route = {
           id = route3.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route4.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route5.id,
         },
         config = {
           anonymous = anonymous.id
@@ -329,6 +397,58 @@ for _, strategy in helpers.each_strategy() do
 
         local json = cjson.decode(assert.res_status(200, res))
         assert.equal('beatles, ramones', json.headers['x-authenticated-groups'])
+      end)
+
+      it("store metadata", function()
+        local request = {
+          method = "GET",
+          path = "/metadata1",
+          headers = { host = "konghq.metadata1", },
+        }
+
+        request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
+        local res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        local sid = res.headers["Session-Id"]
+        local audience = res.headers["Session-audience"]
+        local subject = res.headers["Session-subject"]
+
+        ngx.sleep(2)
+        subject  = encode_base64url(subject)
+        audience = encode_base64url(audience)
+
+        local session_metadatas = kong.db.session_metadatas:select_by_audience_and_subject(audience, subject)
+        assert.equal(1, #session_metadatas)
+        local metadata = session_metadatas[1]
+        assert.equal(sid, metadata.sid)
+      end)
+
+      it("store metadata with hash_subject", function()
+        local request = {
+          method = "GET",
+          path = "/hash_subject",
+          headers = { host = "konghq.hash_subject", },
+        }
+
+        request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
+        local res = assert(client:send(request))
+        assert.response(res).has.status(200)
+
+        local sid = res.headers["Session-Id"]
+        local audience = res.headers["Session-audience"]
+        local subject = res.headers["Session-subject"]
+        ngx.sleep(2)
+        subject  = sha256_subject(subject)
+        audience = encode_base64url(audience)
+        local session_metadatas = kong.db.session_metadatas:select_by_audience_and_subject(audience, subject)
+        assert.equal(1, #session_metadatas)
+        local metadata = session_metadatas[1]
+        assert.equal(subject, metadata.subject)
+        assert.equal(audience, metadata.audience)
+        assert.equal(sid, metadata.sid)
       end)
     end)
   end)
