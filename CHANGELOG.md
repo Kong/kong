@@ -263,7 +263,6 @@ database contains invalid Wasm filters.
  [#289](https://github.com/Kong/kong-manager/issues/289)
 
 
->>>>>>> 4fb6d639ab (docs(changelog): update 3.9.0 changelog (#14016))
 ## 3.8.1
 
 ## Kong
