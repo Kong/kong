@@ -265,8 +265,7 @@ function _M:start()
       -- rpc call with an empty Array
       if isempty(payload) then
         local res, err = self:push_response(
-                          new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"),
-                          collection)
+                          new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"))
         if not res then
           return nil, err
         end
