@@ -150,6 +150,7 @@ local wait = reload_module("spec.internal.wait")
   wait_pid = pid.wait_pid,
   wait_timer = wait.wait_timer,
   wait_for_all_config_update = wait.wait_for_all_config_update,
+  wait_for_dp_sync = wait.wait_for_dp_sync,
   wait_for_file = wait.wait_for_file,
   wait_for_file_contents = wait.wait_for_file_contents,
   tcp_server = server.tcp_server,

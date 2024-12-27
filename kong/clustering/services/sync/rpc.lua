@@ -16,6 +16,9 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = constants.CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local UNKNOWN = CLUSTERING_SYNC_STATUS.UNKNOWN
+local SYNCING = CLUSTERING_SYNC_STATUS.SYNCING
+local NORMAL = CLUSTERING_SYNC_STATUS.NORMAL
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 local MAX_RETRY = 5
 
@@ -54,20 +57,13 @@ local function full_sync_result()
 end
 
 
-function _M:init_cp(manager)
-  local purge_delay = manager.conf.cluster_data_plane_purge_delay
-
+function _M:init_cp()
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
   -- example: { default = { version = 1000, }, }
-  manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
+  kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
-
-    local rpc_peers
-    if kong.rpc then
-      rpc_peers = kong.rpc:get_peers()
-    end
 
     local default_namespace = current_versions.default
 
@@ -77,45 +73,51 @@ function _M:init_cp(manager)
 
     -- { default = { version = 1000, }, }
     local default_namespace_version = default_namespace.version
+
     local node_info = assert(kong.rpc:get_peer_info(node_id))
 
-    -- follow update_sync_status() in control_plane.lua
-    local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, {
-      last_seen = ngx.time(),
-      hostname = node_id,
+    kong.rpc:update_node_info(node_id, {
+      config_hash = fmt("%032d", default_namespace_version),
       ip = node_info.ip,   -- get the correct ip
       version = node_info.version,    -- get from rpc call
       labels = node_info.labels,    -- get from rpc call
-      sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
-      config_hash = fmt("%032d", default_namespace_version),
-      rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
-    }, { ttl = purge_delay, no_broadcast_crud_event = true, })
-    if not ok then
-      ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
-    end
+    })
 
     local latest_version, err = self.strategy:get_latest_version()
     if not latest_version then
+      kong.rpc:update_node_info(node_id, {
+        sync_status = UNKNOWN,
+      })
       return nil, err
     end
 
     if default_namespace_version == 0 or
        default_namespace_version < latest_version then
+      kong.rpc:update_node_info(node_id, {
+        sync_status = SYNCING,
+      })
+
       return full_sync_result()
     end
+
+    -- DP will recall this method to notify CP once the sync is done
+    -- normal meaning DP is in sync with CP
+    kong.rpc:update_node_info(node_id, {
+      sync_status = NORMAL,
+    })
 
     return empty_sync_result()
   end)
 end
 
 
-function _M:init_dp(manager)
+function _M:init_dp()
   local kong_shm = ngx.shared.kong
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
   -- { default = { new_version = 1000, }, }
-  manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
+  kong.rpc.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
     local default_new_version = new_versions.default
     if not default_new_version then
@@ -139,11 +141,11 @@ function _M:init_dp(manager)
 end
 
 
-function _M:init(manager, is_cp)
+function _M:init(is_cp)
   if is_cp then
-    self:init_cp(manager)
+    self:init_cp()
   else
-    self:init_dp(manager)
+    self:init_dp()
   end
 end
 
@@ -388,6 +390,8 @@ function sync_once_impl(premature, retry_count)
 
   local current_version = tonumber(declarative.get_current_hash()) or 0
   if current_version >= latest_notified_version then
+    -- trigger the call one more time to report CP that we are in sync
+    sync_handler()
     ngx_log(ngx_DEBUG, "version already updated")
     return
   end

@@ -19,6 +19,9 @@ local asserts = require("spec.internal.asserts") -- luacheck: ignore
 local client = require("spec.internal.client")
 
 
+local ngx_time = ngx.time
+
+
 local get_available_port
 do
   local USED_PORTS = {}
@@ -271,6 +274,101 @@ local function wait_for_invalidation(key, timeout)
   end, timeout)
 end
 
+
+--- Wait for incremental sync CP reports DP being synced
+-- the function only applies to sync v2 nodes
+--
+-- @function wait_for_dp_sync
+-- @tparam string|table|nil node_ids a node id or a list of node ids to wait for, if nil, wait for all nodes connected
+-- @tparam[opt] table opts a table contains params, if it's a number, it will be treated as timeout
+-- @tparam[opt=30] number opts.timeout maximum seconds to wait, defatuls is 30
+-- @tparam[opt] number opts.admin_client_timeout to override the default timeout setting
+-- @tparam[opt] number opts.forced_admin_port to override the default Admin API port
+local wait_for_dp_sync do
+  local kong_constants = require("kong.constants")
+  local NORMAL = kong_constants.CLUSTERING_SYNC_STATUS.NORMAL
+  local CLUSTERING_PING_INTERVAL = kong_constants.CLUSTERING_PING_INTERVAL
+
+
+  local function is_v2_node(node)
+    return node.rpc_capabilities and node.rpc_capabilities["kong.sync.v2"]
+  end
+
+
+  local function is_synced_node(node, current_time)
+    -- the node is disconnected
+    if ngx_time() - node.last_seen > CLUSTERING_PING_INTERVAL * 2 then
+      return false
+    end
+
+    return node.sync_status == NORMAL
+  end
+
+
+  function wait_for_dp_sync(node_ids, opts)
+    if type(opts) == "number" then
+      opts = { timeout = opts }
+    elseif opts == nil then
+      opts = {}
+    end
+
+    local timeout = opts.timeout or 30
+    local forced_admin_port = opts.forced_admin_port or 8001
+    local admin_client_timeout = opts.admin_client_timeout
+    local client = client.admin_client(admin_client_timeout, forced_admin_port)
+
+    local function get_nodes()
+      local res = client:get("/clustering/data-planes")
+      local json = assert.response(res).has.jsonbody()
+      local ret = {}
+      for _, node in ipairs(json.data) do
+        ret[node.id] = node
+      end
+
+      return ret
+    end
+
+    local current_time = ngx.now()
+
+    if type(node_ids) == "string" then
+      node_ids = { node_ids }
+    end
+
+    local sync_map
+    if node_ids then
+      sync_map = {}
+      for _, node_id in ipairs(node_ids) do
+        sync_map[node_id] = true
+      end
+
+    else
+      -- by default we wait for all nodes to be synced
+      -- wait for at least one node connected
+      wait_until(function()
+        sync_map = get_nodes()
+        return next(sync_map), "no nodes found"
+      end, timeout)
+    end
+
+    if not next(sync_map) then
+      return
+    end
+
+    wait_until(function()
+      local nodes = get_nodes()
+      for node_id in ipairs(sync_map) do
+        local node = nodes[node_id]
+        if not is_v2_node(node) then
+          error("node " .. node_id .. " is not a v2 node")
+        end
+        if not is_synced_node(node, current_time) then
+          return false
+        end
+      end
+      return true
+    end, timeout)
+  end
+end
 
 --- Wait for all targets, upstreams, services, and routes update
 --
@@ -683,6 +781,7 @@ return {
   wait_timer = wait_timer,
   wait_for_invalidation = wait_for_invalidation,
   wait_for_all_config_update = wait_for_all_config_update,
+  wait_for_dp_sync = wait_for_dp_sync,
   wait_for_file = wait_for_file,
   wait_for_file_contents = wait_for_file_contents,
   wait_until_no_common_workers = wait_until_no_common_workers,

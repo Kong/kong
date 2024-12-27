@@ -31,6 +31,10 @@ local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
+local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local DISCONNECTED = CLUSTERING_SYNC_STATUS.DISCONNECTED
+local UNKNOWN = CLUSTERING_SYNC_STATUS.UNKNOWN
+
 
 
 local _log_prefix = "[rpc] "
@@ -60,7 +64,6 @@ function _M.new(conf, node_id)
 
   if conf.role == "control_plane" then
     self.concentrator = require("kong.clustering.rpc.concentrator").new(self, kong.db)
-    self.client_info = {}  -- store DP node's ip addr and version
   end
 
   return setmetatable(self, _MT)
@@ -99,7 +102,6 @@ function _M:_remove_socket(socket)
     self.client_capabilities[node_id] = nil
 
     if self.concentrator then
-      self.client_info[node_id] = nil
       assert(self.concentrator:_enqueue_unsubscribe(node_id))
     end
   end
@@ -142,6 +144,31 @@ function _M:_find_node_and_check_capability(node_id, cap)
 
   return nil, "requested capability does not exist, capability: " ..
               cap .. ", node_id: " .. node_id
+end
+
+
+function _M:update_node_info(node_id, extra_info)
+  local update_time = extra_info.update_time
+  extra_info.update_time = nil
+
+  if update_time ~= false then
+    extra_info.last_seen = ngx.time()
+  end
+
+  local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, extra_info, {
+    -- we shall have a much longer ttl and rely on the last_seen and ping updates to
+    -- determine if a node is still alive
+    ttl = self.conf.cluster_data_plane_purge_delay,
+    no_broadcast_crud_event = true,
+    -- wait for first ping to update the status
+    sync_status = UNKNOWN,
+  })
+  
+  if not ok then
+    ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
+  end
+
+  return ok, err
 end
 
 
@@ -213,7 +240,6 @@ function _M:_handle_meta_call(c)
 
   -- we are on cp side
   assert(self.concentrator)
-  assert(self.client_info)
 
   -- see communicate() in data_plane.lua
   local labels do
@@ -225,13 +251,15 @@ function _M:_handle_meta_call(c)
       end
     end
   end
-
-  -- store DP's ip addr
-  self.client_info[node_id] = {
-    ip = ngx_var.remote_addr,
+  
+  self:update_node_info(node_id, {
     version = info.kong_version,
+    ip = ngx_var.remote_addr,
+    hostname = node_id,
+    rpc_capabilities = capabilities_list,
+    sync_status = UNKNOWN,
     labels = labels,
-  }
+  })
 
   return node_id
 end
@@ -286,16 +314,6 @@ function _M:_meta_call(c, meta_cap, node_id)
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
-
-  -- tell outside that rpc is ready
-  local worker_events = assert(kong.worker_events)
-
-  -- notify this worker
-  local ok, err = worker_events.post_local("clustering:jsonrpc", "connected",
-                                           capabilities_list)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connected event: ", err)
-  end
 
   return true
 end
@@ -411,6 +429,40 @@ function _M:notify(node_id, method, ...)
 end
 
 
+local function communicate(self, c, node_id)
+  local worker_events = assert(kong.worker_events)
+
+  -- notify this worker
+  local event_ok, event_err = worker_events.post_local("clustering:jsonrpc", "connected", {
+    node_id = node_id,
+    capabilities = self.client_capabilities[node_id],
+  })
+
+  if not event_ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connected event: ", event_err)
+  end
+
+  local s = socket.new(self, c, node_id)
+  self:_add_socket(s)
+  
+  s:start()
+  local ok, err = s:join() -- main event loop
+
+  self:_remove_socket(s)
+
+  event_ok, event_err = worker_events.post_local("clustering:jsonrpc", "disconnected", {
+    node_id = node_id,
+    reason = err,
+  })
+
+  if not event_ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc disconnected event: ", event_err)
+  end
+
+  return ok, err
+end
+
+
 -- handle incoming client connections
 function _M:handle_websocket()
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
@@ -456,14 +508,14 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  local s = socket.new(self, wb, node_id)
-  self:_add_socket(s)
+  local ok, err = communicate(self, wb, node_id)
 
-  s:start()
-  local res, err = s:join()
-  self:_remove_socket(s)
+  self:update_node_info(node_id, {
+    update_time = false,
+    sync_status = DISCONNECTED,
+  })
 
-  if not res then
+  if not ok then
     ngx_log(ngx_ERR, _log_prefix, "RPC connection broken: ", err, " node_id: ", node_id)
     return ngx_exit(ngx.ERROR)
   end
@@ -569,13 +621,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
-    local s = socket.new(self, c, node_id)
-    s:start()
-    self:_add_socket(s)
-
-    ok, err = s:join() -- main event loop
-
-    self:_remove_socket(s)
+    local ok, err = communicate(self, c, node_id)
 
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "connection to node_id: ", node_id, " broken, err: ",
@@ -600,11 +646,6 @@ function _M:get_peers()
   end
 
   return res
-end
-
-
-function _M:get_peer_info(node_id)
-  return self.client_info[node_id]
 end
 
 
