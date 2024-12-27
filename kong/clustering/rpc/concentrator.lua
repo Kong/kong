@@ -9,6 +9,7 @@ local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local rpc_utils = require("kong.clustering.rpc.utils")
 local isarray = require("table.isarray")
 local isempty = require("table.isempty")
+local tb_insert = table.insert
 
 
 local setmetatable = setmetatable
@@ -314,7 +315,7 @@ end
 -- enqueue a RPC response from CP worker with ID worker_id
 function _M:_enqueue_rpc_response(worker_id, payload, collection)
   if collection then
-    table.insert(collection, payload)
+    tb_insert(collection, payload)
     return
   end
 
