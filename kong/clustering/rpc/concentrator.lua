@@ -12,6 +12,7 @@ local isempty = require("table.isempty")
 local tb_insert = table.insert
 
 
+local type = type
 local setmetatable = setmetatable
 local tostring = tostring
 local pcall = pcall
@@ -25,6 +26,7 @@ local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
+local new_error = jsonrpc.new_error
 
 
 local RESP_CHANNEL_PREFIX = "rpc:resp:" -- format: rpc:resp:<worker_uuid>
@@ -115,6 +117,18 @@ end
 
 
 function _M:process_one_request(target_id, reply_to, payload, collection)
+  if type(payload) ~= "table" then
+    local res, err = self:_enqueue_rpc_response(
+                      reply_to,
+                      new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"),
+                      collection)
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
+    end
+
+    return
+  end
+
   local payload_id = payload.id
 
   local res, err = self.manager:_local_call(target_id, payload.method,
@@ -216,22 +230,37 @@ function _M:_event_loop(lconn)
             -- one rpc call
             self:process_one_request(target_id, reply_to, payload)
 
-          else
-            local collection = {}
+            goto continue
+          end
 
-            -- batching rpc call
-            for _, v in ipairs(payload) do
-              self:process_one_request(target_id, reply_to, v, collection)
+          -- rpc call with an empty Array
+          if isempty(payload) then
+            local res, err = self:_enqueue_rpc_response(
+                              reply_to,
+                              new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"))
+            if not res then
+              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
             end
 
-            if not isempty(collection) then
-              local res, err = self:_enqueue_rpc_response(reply_to, collection)
-              if not res then
-                ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
-              end
-            end
-          end -- if not isarray(payload)
+            goto continue
+          end
 
+          -- batching rpc call
+
+          local collection = {}
+
+          for _, v in ipairs(payload) do
+            self:process_one_request(target_id, reply_to, v, collection)
+          end
+
+          if not isempty(collection) then
+            local res, err = self:_enqueue_rpc_response(reply_to, collection)
+            if not res then
+              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
+            end
+          end
+
+          ::continue::
         end -- for _, call
       end -- if n.channel == rpc_resp_channel_name
     end -- while true
