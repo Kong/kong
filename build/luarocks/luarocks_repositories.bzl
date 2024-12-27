@@ -1,6 +1,6 @@
 """A module defining the third party dependency luarocks"""
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
@@ -16,4 +16,12 @@ def luarocks_repositories():
         urls = [
             "https://luarocks.org/releases/luarocks-" + version + ".tar.gz",
         ],
+    )
+
+    http_file(
+        name = "lua_messagepack_src",
+        urls = [
+            "https://luarocks.org/manifests/fperrad/lua-messagepack-0.5.2-1.src.rock",
+        ],
+        sha256 = "cbb1b7b12834b7f49fd20621446ec4d76eff67d324b8182b7988324b10830a43",
     )
