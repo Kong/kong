@@ -194,7 +194,7 @@ local function do_sync()
 
   local deltas = ns_delta.deltas
 
-  if isempty(deltas) then
+  if not deltas or isempty(deltas) then
     -- no delta to sync
     return true
   end
