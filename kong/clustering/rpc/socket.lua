@@ -68,6 +68,8 @@ function _M:push_request(msg)
 end
 
 
+-- collection is only for rpc batch call.
+-- if collection is nil, it means the rpc is a single call.
 function _M:push_response(msg, err_prefix, collection)
   -- may be a batch
   if collection then
