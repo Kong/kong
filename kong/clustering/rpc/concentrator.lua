@@ -120,7 +120,7 @@ function _M:process_one_request(target_id, reply_to, payload, collection)
   if type(payload) ~= "table" then
     local res, err = self:_enqueue_rpc_response(
                       reply_to,
-                      new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"),
+                      new_error(nil, jsonrpc.INVALID_REQUEST, "not an valid object"),
                       collection)
     if not res then
       ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
@@ -237,7 +237,7 @@ function _M:_event_loop(lconn)
           if isempty(payload) then
             local res, err = self:_enqueue_rpc_response(
                               reply_to,
-                              new_error(nil, jsonrpc.INVALID_REQUEST, "Invalid Request"))
+                              new_error(nil, jsonrpc.INVALID_REQUEST, "empty batch array"))
             if not res then
               ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
             end
