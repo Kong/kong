@@ -342,6 +342,8 @@ end
 
 
 -- enqueue a RPC response from CP worker with ID worker_id
+-- collection is only for rpc batch call.
+-- if collection is nil, it means the rpc is a single call.
 function _M:_enqueue_rpc_response(worker_id, payload, collection)
   if collection then
     tb_insert(collection, payload)
