@@ -567,10 +567,13 @@ build = {
     ["kong.plugins.session.header_filter"] = "kong/plugins/session/header_filter.lua",
     ["kong.plugins.session.session"] = "kong/plugins/session/session.lua",
     ["kong.plugins.session.daos"] = "kong/plugins/session/daos.lua",
+    ["kong.plugins.session.daos.session_metadatas"] = "kong/plugins/session/daos/session_metadatas.lua",
+    ["kong.plugins.session.strategies.postgres.session_metadatas"] = "kong/plugins/session/strategies/postgres/session_metadatas.lua",
     ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",
     ["kong.plugins.session.migrations.000_base_session"] = "kong/plugins/session/migrations/000_base_session.lua",
     ["kong.plugins.session.migrations.001_add_ttl_index"] = "kong/plugins/session/migrations/001_add_ttl_index.lua",
     ["kong.plugins.session.migrations.002_320_to_330"] = "kong/plugins/session/migrations/002_320_to_330.lua",
+    ["kong.plugins.session.migrations.003_330_to_3100"] = "kong/plugins/session/migrations/003_330_to_3100.lua",
     ["kong.plugins.session.migrations"] = "kong/plugins/session/migrations/init.lua",
 
     ["kong.plugins.proxy-cache.handler"]              = "kong/plugins/proxy-cache/handler.lua",

@@ -1,0 +1,4 @@
+message: |
+  **session**: Added two boolean configuration fields `hash_subject` (default `false`) and `store_metadata` (default `false`) to store session's metadata in the database.
+type: feature
+scope: "Plugin"
