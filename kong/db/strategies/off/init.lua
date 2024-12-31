@@ -12,6 +12,7 @@ local assert = assert
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null = ngx.null
+local get_phase = ngx.get_phase
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
 local pk_string = declarative_config.pk_string
@@ -40,7 +41,10 @@ local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
 
 
 local function get_default_workspace()
-  if kong.default_workspace == UNINIT_WORKSPACE_ID then
+  -- in init phase we can not access lmdb
+  if kong.default_workspace == UNINIT_WORKSPACE_ID and
+     get_phase() ~= "init"
+  then
     local res = kong.db.workspaces:select_by_name("default")
     kong.default_workspace = assert(res and res.id)
   end
@@ -446,6 +450,10 @@ function off.new(connector, schema, errors)
 
   return setmetatable(self, _mt)
 end
+
+
+-- called in import.lua
+off.get_default_workspace = get_default_workspace
 
 
 return off

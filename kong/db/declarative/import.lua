@@ -14,6 +14,7 @@ local nkeys = require("table.nkeys")
 local sha256_hex = require("kong.tools.sha256").sha256_hex
 local pk_string = declarative_config.pk_string
 local EMPTY = require("kong.tools.table").EMPTY
+local get_default_workspace = require("kong.db.strategies.off").get_default_workspace
 
 local assert = assert
 local type = type
@@ -31,20 +32,6 @@ local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPAC
 
 
 local GLOBAL_WORKSPACE_TAG = "*"
-local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
-
-
-local function get_default_workspace()
-  -- in init phase we can not access lmdb
-  if kong.default_workspace == UNINIT_WORKSPACE_ID and
-     get_phase() ~= "init"
-  then
-    local res = kong.db.workspaces:select_by_name("default")
-    kong.default_workspace = assert(res and res.id)
-  end
-
-  return kong.default_workspace
-end
 
 
 -- Generates the appropriate workspace ID for current operating context
