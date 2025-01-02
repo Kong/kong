@@ -263,7 +263,8 @@ function _M:communicate(premature)
   local config_err_t
 
   local config_thread = ngx.thread.spawn(function()
-    while not exiting() and not config_exit do
+    -- outside flag will stop the communicate() loop
+    while not exiting() and not config_exit and self.run_communicate do
       local ok, err = config_semaphore:wait(1)
 
       if not ok then
@@ -333,11 +334,6 @@ function _M:communicate(premature)
       counter = counter - 1
 
       ngx_sleep(1)
-
-      -- outside flag will stop the communicate() loop
-      if not self.run_communicate then
-        return
-      end
     end
   end)
 
