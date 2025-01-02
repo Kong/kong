@@ -421,7 +421,7 @@ function _M:sync_every(delay, stop)
 
   if stop then
     if is_managed then
-      kong.timer:cancel(name)
+      assert(kong.timer:cancel(name))
     end
     return true
   end
