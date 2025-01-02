@@ -88,6 +88,9 @@ function _M:init_worker(basic_info)
 
   -- does not config rpc sync
   if not kong.sync then
+    -- start communicate()
+    self.run_communicate = true
+
     start_communicate()
     return
   end
