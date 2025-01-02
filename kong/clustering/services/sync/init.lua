@@ -57,11 +57,6 @@ function _M:init_worker()
 
   -- if rpc is ready we will start to sync
   worker_events.register(function(capabilities_list)
-    -- we only check once
-    if self.inited then
-      return
-    end
-
     local has_sync_v2
 
     -- check cp's capabilities
@@ -78,10 +73,15 @@ function _M:init_worker()
       return
     end
 
-    self.inited = true
-
     -- sync to CP ASAP
     assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
+
+    -- we only check once
+    if self.inited then
+      return
+    end
+
+    self.inited = true
 
     assert(self.rpc:sync_every(EACH_SYNC_DELAY))
 
