@@ -108,10 +108,15 @@ function _M:init_worker(basic_info)
 
     -- cp supports kong.sync.v2
     if has_sync_v2 then
-      -- notify communicate() to exit
-      self.config_exit = true
       return
     end
+
+    -- we only check once
+    if self.inited then
+      return
+    end
+
+    self.inited = true
 
     ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
 
@@ -251,15 +256,13 @@ function _M:communicate(premature)
   -- * write_thread: it is the only thread that receives WS frames from the CP,
   --                 and is also responsible for handling timeout detection
 
-  -- the flag that outside could stop the loop forcely
-  self.config_exit = false
-
   local ping_immediately
+  local config_exit
   local next_data
   local config_err_t
 
   local config_thread = ngx.thread.spawn(function()
-    while not exiting() and not self.config_exit do
+    while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
 
       if not ok then
@@ -403,7 +406,7 @@ function _M:communicate(premature)
 
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
-  self.config_exit = true
+  config_exit = true
 
   ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
