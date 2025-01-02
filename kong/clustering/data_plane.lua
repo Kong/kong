@@ -96,11 +96,6 @@ function _M:init_worker(basic_info)
 
   -- if rpc is ready we will check then decide how to sync
   worker_events.register(function(capabilities_list)
-    -- we only check once
-    if self.inited then
-      return
-    end
-
     local has_sync_v2
 
     -- check cp's capabilities
@@ -117,6 +112,11 @@ function _M:init_worker(basic_info)
     end
 
     ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
+
+    -- we only check once
+    if self.inited then
+      return
+    end
 
     self.inited = true
 
