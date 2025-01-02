@@ -109,11 +109,13 @@ function _M:init_worker(basic_info)
     -- cp supports kong.sync.v2
     if has_sync_v2 then
       -- notify communicate() to exit
-      self.communicate_exit = true
+      self.run_communicate = false
       return
     end
 
-    self.communicate_exit = false
+    -- start communicate()
+    self.run_communicate = true
+
     ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
 
     -- only run in process which worker_id() == 0
@@ -330,7 +332,7 @@ function _M:communicate(premature)
       ngx_sleep(1)
 
       -- outside flag will stop the communicate() loop
-      if self.communicate_exit then
+      if not self.run_communicate then
         return
       end
     end
@@ -417,7 +419,7 @@ function _M:communicate(premature)
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
   end
 
-  if not exiting() and not self.communicate_exit then
+  if not exiting() and self.run_communicate then
     assert(ngx.timer.at(reconnection_delay, function(premature)
       self:communicate(premature)
     end))
