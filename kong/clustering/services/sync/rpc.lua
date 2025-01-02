@@ -194,6 +194,10 @@ local function do_sync()
 
   local deltas = ns_delta.deltas
 
+  if not deltas then
+    return nil, "sync get_delta error: deltas is null"
+  end
+
   if isempty(deltas) then
     -- no delta to sync
     return true
