@@ -44,6 +44,12 @@ function _M:init_worker()
   if self.is_cp then
     events.init()
 
+    -- When "clustering", "push_config" worker event is received by a worker,
+    -- it will notify the connected data planes
+    events.clustering_push_config(function(_)
+      self.hooks:notify_all_nodes()
+    end)
+
     self.strategy:init_worker()
     return
   end
