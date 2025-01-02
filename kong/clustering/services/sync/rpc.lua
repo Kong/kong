@@ -194,7 +194,11 @@ local function do_sync()
 
   local deltas = ns_delta.deltas
 
-  if not deltas or isempty(deltas) then
+  if not deltas then
+    ngx_log(ngx_ERR, "sync get_delta error: deltas is null")
+  end
+
+  if isempty(deltas) then
     -- no delta to sync
     return true
   end
