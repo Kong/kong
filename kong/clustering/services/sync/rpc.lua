@@ -413,8 +413,15 @@ function _M:sync_once(delay)
 end
 
 
-function _M:sync_every(delay)
-  return ngx.timer.every(delay, sync_handler)
+function _M:sync_every(delay, stop)
+  local name = "rpc_sync_v2_every"
+
+  if stop and ngx.timer.is_managed(name) then
+    ngx.timer.cancel(name)
+    return
+  end
+
+  return ngx.timer.named_every(name, delay, sync_handler)
 end
 
 
