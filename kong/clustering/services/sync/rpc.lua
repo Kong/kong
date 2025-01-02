@@ -415,13 +415,13 @@ end
 
 function _M:sync_every(delay, stop)
   local name = "rpc_sync_v2_every"
-  local is_managed = ngx.timer.is_managed(name)
+  local is_managed = kong.timer:is_managed(name)
 
   -- we only start or stop once
 
   if stop then
     if is_managed then
-      ngx.timer.cancel(name)
+      kong.timer:cancel(name)
     end
     return true
   end
@@ -430,7 +430,7 @@ function _M:sync_every(delay, stop)
     return true
   end
 
-  return ngx.timer.named_every(name, delay, sync_handler)
+  return kong.timer:named_every(name, delay, sync_handler)
 end
 
 
