@@ -2,7 +2,13 @@ local _M = {}
 local _MT = { __index = _M }
 
 
+local fmt = string.format
 local ngx_null = ngx.null
+
+
+-- version string should be greater than any hex string(ngx.md5)
+-- e.g.: "R000" > "FFFF"
+local VERSION_FMT = "R%031d"
 
 
 function _M.new(db)
@@ -44,10 +50,10 @@ function _M:get_latest_version()
 
   local ver = res[1] and res[1].max
   if ver == ngx_null then
-    return 0
+    return fmt(VERSION_FMT, 0)
   end
 
-  return ver
+  return fmt(VERSION_FMT, ver)
 end
 
 
