@@ -59,6 +59,11 @@ local function get_current_version()
 end
 
 
+local function is_empty_version(v)
+  return v == DECLARATIVE_EMPTY_CONFIG_HASH
+end
+
+
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
@@ -105,7 +110,7 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if default_namespace_version == DECLARATIVE_EMPTY_CONFIG_HASH or
+    if is_empty_version(default_namespace_version) or
        default_namespace_version < latest_version then
       return full_sync_result()
     end
