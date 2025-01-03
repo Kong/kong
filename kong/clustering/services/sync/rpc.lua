@@ -54,6 +54,11 @@ local function full_sync_result()
 end
 
 
+local function get_current_hash()
+  return declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
+end
+
+
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
@@ -128,7 +133,7 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
-    local lmdb_ver = declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
+    local lmdb_ver = get_current_hash()
     if lmdb_ver < version then
       -- set lastest version to shm
       kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
@@ -172,11 +177,7 @@ local function do_sync()
     return nil, "rpc is not ready"
   end
 
-  local msg = { default =
-                 { version =
-                   declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH,
-                 },
-               }
+  local msg = { default = { version = get_current_hash(), }, }
 
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta", msg)
   if not ns_deltas then
@@ -391,7 +392,7 @@ function sync_once_impl(premature, retry_count)
     return
   end
 
-  local current_version = declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
+  local current_version = get_current_hash()
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
     return
