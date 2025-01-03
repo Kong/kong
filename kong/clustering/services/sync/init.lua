@@ -86,6 +86,11 @@ function _M:init_worker()
     assert(self.rpc:sync_every(EACH_SYNC_DELAY))
 
   end, "clustering:jsonrpc", "connected")
+
+  -- if rpc is down we will also stop to sync
+  worker_events.register(function()
+    assert(self.rpc:sync_every(EACH_SYNC_DELAY), true)  -- stop timer
+  end, "clustering:jsonrpc", "disconnected")
 end
 
 

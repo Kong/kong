@@ -469,6 +469,17 @@ function _M:handle_websocket()
   local res, err = s:join()
   self:_remove_socket(s)
 
+  -- tell outside that rpc disconnected
+  do
+    local worker_events = assert(kong.worker_events)
+
+    -- notify this worker
+    local ok, err = worker_events.post_local("clustering:jsonrpc", "disconnected")
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "unable to post rpc disconnected event: ", err)
+    end
+  end
+
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "RPC connection broken: ", err, " node_id: ", node_id)
     return ngx_exit(ngx.ERROR)
