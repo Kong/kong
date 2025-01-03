@@ -128,7 +128,7 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
-    local lmdb_ver = declarative.get_current_hash()
+    local lmdb_ver = declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
     if lmdb_ver < version then
       -- set lastest version to shm
       kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
@@ -174,7 +174,7 @@ local function do_sync()
 
   local msg = { default =
                  { version =
-                   declarative.get_current_hash(),
+                   declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH,
                  },
                }
 
@@ -391,7 +391,7 @@ function sync_once_impl(premature, retry_count)
     return
   end
 
-  local current_version = declarative.get_current_hash()
+  local current_version = declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
     return
