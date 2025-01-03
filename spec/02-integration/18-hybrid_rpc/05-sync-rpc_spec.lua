@@ -1,4 +1,3 @@
-local constants = require("kong.constants")
 local helpers = require("spec.helpers")
 local misc = require("spec.internal.misc")
 local cp = require("spec.helpers.rpc_mock.cp")
@@ -6,7 +5,6 @@ local dp = require("spec.helpers.rpc_mock.dp")
 local setup = require("spec.helpers.rpc_mock.setup")
 local get_node_id = misc.get_node_id
 local DP_PREFIX = "servroot_dp"
-local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 local function change_config()
   -- the initial sync is flaky. let's trigger a sync by creating a service
