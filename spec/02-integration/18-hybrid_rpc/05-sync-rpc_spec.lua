@@ -1,3 +1,4 @@
+local constants = require("kong.constants")
 local helpers = require("spec.helpers")
 local misc = require("spec.internal.misc")
 local cp = require("spec.helpers.rpc_mock.cp")
@@ -5,6 +6,7 @@ local dp = require("spec.helpers.rpc_mock.dp")
 local setup = require("spec.helpers.rpc_mock.setup")
 local get_node_id = misc.get_node_id
 local DP_PREFIX = "servroot_dp"
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 local function change_config()
   -- the initial sync is flaky. let's trigger a sync by creating a service
@@ -74,12 +76,12 @@ describe("kong.sync.v2", function()
       local called = false
       mocked_cp:mock("kong.sync.v2.get_delta", function(node_id, payload)
         called = true
-        return { default = { version = 100, deltas = {} } }
+        return { default = { version = "100", deltas = {} } }
       end)
 
       -- make a call from the mocked cp
       -- CP->DP: notify_new_version
-      assert(mocked_cp:call(node_id, "kong.sync.v2.notify_new_version", { default = { new_version = 100, } }))
+      assert(mocked_cp:call(node_id, "kong.sync.v2.notify_new_version", { default = { new_version = "100", } }))
 
       -- DP->CP: get_delta
       -- the dp after receiving the notification will make a call to the cp
@@ -120,7 +122,7 @@ describe("kong.sync.v2", function()
       -- this is a workaround to registers the data plane node
       -- CP does not register the DP node until it receives a call from the DP
       function register_dp()
-        local res, err = mocked_dp:call("control_plane", "kong.sync.v2.get_delta", { default = { version = 0,},})
+        local res, err = mocked_dp:call("control_plane", "kong.sync.v2.get_delta", { default = { version = "0",},})
         assert.is_nil(err)
         assert.is_table(res and res.default and res.default.deltas)
       end
@@ -132,7 +134,7 @@ describe("kong.sync.v2", function()
     end)
 
     it("rpc call", function()
-      local res, err = mocked_dp:call("control_plane", "kong.sync.v2.get_delta", { default = { version = 0,},})
+      local res, err = mocked_dp:call("control_plane", "kong.sync.v2.get_delta", { default = { version = "0",},})
       assert.is_nil(err)
       assert.is_table(res and res.default and res.default.deltas)
 
