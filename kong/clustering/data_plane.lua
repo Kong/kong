@@ -88,6 +88,9 @@ function _M:init_worker(basic_info)
 
   -- does not config rpc sync
   if not kong.sync then
+    -- start communicate()
+    self.run_communicate = true
+
     start_communicate()
     return
   end
@@ -108,15 +111,13 @@ function _M:init_worker(basic_info)
 
     -- cp supports kong.sync.v2
     if has_sync_v2 then
+      -- notify communicate() to exit
+      self.run_communicate = false
       return
     end
 
-    -- we only check once
-    if self.inited then
-      return
-    end
-
-    self.inited = true
+    -- start communicate()
+    self.run_communicate = true
 
     ngx_log(ngx_WARN, "sync v1 is enabled due to rpc sync can not work.")
 
@@ -262,7 +263,8 @@ function _M:communicate(premature)
   local config_err_t
 
   local config_thread = ngx.thread.spawn(function()
-    while not exiting() and not config_exit do
+    -- outside flag will stop the communicate() loop
+    while not exiting() and not config_exit and self.run_communicate do
       local ok, err = config_semaphore:wait(1)
 
       if not ok then
@@ -416,7 +418,7 @@ function _M:communicate(premature)
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
   end
 
-  if not exiting() then
+  if not exiting() and self.run_communicate then
     assert(ngx.timer.at(reconnection_delay, function(premature)
       self:communicate(premature)
     end))

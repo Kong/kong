@@ -76,18 +76,12 @@ function _M:init_worker()
     -- cp does not support kong.sync.v2
     if not has_sync_v2 then
       ngx.log(ngx.WARN, "rpc sync is disabled in CP.")
+      assert(self.rpc:sync_every(EACH_SYNC_DELAY), true)  -- stop timer
       return
     end
 
     -- sync to CP ASAP
     assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
-
-    -- we only check once
-    if self.inited then
-      return
-    end
-
-    self.inited = true
 
     assert(self.rpc:sync_every(EACH_SYNC_DELAY))
 
