@@ -231,7 +231,7 @@ end
 
 
 local function get_current_hash()
-  return lmdb.get(DECLARATIVE_HASH_KEY)
+  return lmdb.get(DECLARATIVE_HASH_KEY) or DECLARATIVE_EMPTY_CONFIG_HASH
 end
 
 

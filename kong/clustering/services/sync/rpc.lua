@@ -14,6 +14,7 @@ local insert_entity_for_txn = declarative.insert_entity_for_txn
 local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = constants.CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
@@ -22,7 +23,6 @@ local MAX_RETRY = 5
 
 local assert = assert
 local ipairs = ipairs
-local fmt = string.format
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -60,7 +60,7 @@ function _M:init_cp(manager)
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
-  -- example: { default = { version = 1000, }, }
+  -- example: { default = { version = "1000", }, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
 
@@ -75,7 +75,7 @@ function _M:init_cp(manager)
       return nil, "default namespace does not exist inside params"
     end
 
-    -- { default = { version = 1000, }, }
+    -- { default = { version = "1000", }, }
     local default_namespace_version = default_namespace.version
     local node_info = assert(kong.rpc:get_peer_info(node_id))
 
@@ -88,7 +88,7 @@ function _M:init_cp(manager)
       labels = node_info.labels,    -- get from rpc call
       cert_details = node_info.cert_details,  -- get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
-      config_hash = fmt("%032d", default_namespace_version),
+      config_hash = default_namespace_version,
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
@@ -100,7 +100,7 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if default_namespace_version == 0 or
+    if default_namespace_version == DECLARATIVE_EMPTY_CONFIG_HASH or
        default_namespace_version < latest_version then
       return full_sync_result()
     end
@@ -115,7 +115,7 @@ function _M:init_dp(manager)
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
-  -- { default = { new_version = 1000, }, }
+  -- { default = { new_version = "1000", }, }
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
     local default_new_version = new_versions.default
@@ -128,7 +128,7 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
-    local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+    local lmdb_ver = declarative.get_current_hash()
     if lmdb_ver < version then
       -- set lastest version to shm
       kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
@@ -174,7 +174,7 @@ local function do_sync()
 
   local msg = { default =
                  { version =
-                   tonumber(declarative.get_current_hash()) or 0,
+                   declarative.get_current_hash(),
                  },
                }
 
@@ -226,13 +226,13 @@ local function do_sync()
 
   local db = kong.db
 
-  local version = 0
+  local version = ""
   local opts = {}
   local crud_events = {}
   local crud_events_n = 0
 
   -- delta should look like:
-  -- { type = ..., entity = { ... }, version = 1, ws_id = ..., }
+  -- { type = ..., entity = { ... }, version = "1", ws_id = ..., }
   for _, delta in ipairs(deltas) do
     local delta_version = delta.version
     local delta_type = delta.type
@@ -308,7 +308,7 @@ local function do_sync()
     end
 
     -- delta.version should not be nil or ngx.null
-    assert(type(delta_version) == "number")
+    assert(type(delta_version) == "string")
 
     if delta_version ~= version then
       version = delta_version
@@ -316,7 +316,7 @@ local function do_sync()
   end -- for _, delta
 
   -- store current sync version
-  t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
+  t:set(DECLARATIVE_HASH_KEY, version)
 
   -- store the correct default workspace uuid
   if default_ws_changed then
@@ -391,7 +391,7 @@ function sync_once_impl(premature, retry_count)
     return
   end
 
-  local current_version = tonumber(declarative.get_current_hash()) or 0
+  local current_version = declarative.get_current_hash()
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
     return
