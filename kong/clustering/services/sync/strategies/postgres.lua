@@ -6,6 +6,11 @@ local fmt = string.format
 local ngx_null = ngx.null
 
 
+-- version string should be greater than any hex string(ngx.md5)
+-- e.g.: "R000" > "FFFF"
+local VERSION_FMT = "R%031d"
+
+
 function _M.new(db)
   local self = {
     connector = db.connector,
@@ -45,10 +50,10 @@ function _M:get_latest_version()
 
   local ver = res[1] and res[1].max
   if ver == ngx_null then
-    return fmt("%032d", 0)
+    return fmt(VERSION_FMT, 0)
   end
 
-  return fmt("%032d", ver)
+  return fmt(VERSION_FMT, ver)
 end
 
 
