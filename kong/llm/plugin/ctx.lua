@@ -7,6 +7,7 @@ local schemas = {
     response_body = "string",
     sse_body_buffer = "userdata",
     response_body_sent = "boolean",
+    stream_content_type = "string",
   },
 }
 

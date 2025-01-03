@@ -1,7 +1,7 @@
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
-local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors("_base")
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors("_base")
 
 -- Our own "phases", to avoid confusion with Kong's phases we use a different name
 local STAGES = {
@@ -104,8 +104,11 @@ function MetaPlugin:header_filter(sub_plugin, conf)
   if kong.response.get_source() == "service" then
     -- we use openai's streaming mode (SSE)
     if get_global_ctx("stream_mode") then
-      -- we are going to send plaintext event-stream frames for ALL models
+      -- we are going to send plaintext event-stream frames for ALL models,
+      -- but we capture the original incoming content-type for the chunk-parser later.
+      set_global_ctx("stream_content_type", kong.service.response.get_header("Content-Type"))
       kong.response.set_header("Content-Type", "text/event-stream")
+
       -- TODO: disable gzip for SSE because it needs immediate flush for each chunk
       -- and seems nginx doesn't support it
 
