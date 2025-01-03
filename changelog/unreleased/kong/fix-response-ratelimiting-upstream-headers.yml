@@ -1,0 +1,3 @@
+message: "**response-ratelimiting**: ensure rate-limiting headers are sent upstream."
+type: bugfix
+scope: Plugin
