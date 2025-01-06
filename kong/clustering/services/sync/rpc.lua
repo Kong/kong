@@ -61,12 +61,12 @@ end
 
 local is_invalid_version
 do
-  local byte = string.byte
-  local CHAR_V = byte("V")
+  local sub = string.sub
+  local VER_PREFIX = "V02_"
 
-  -- version string must start with char 'V'
+  -- version string must start with 'V02_'
   is_invalid_version = function(v)
-    return byte(v) ~= CHAR_V
+    return sub(v, 1, 4) ~= VER_PREFIX
   end
 end
 
