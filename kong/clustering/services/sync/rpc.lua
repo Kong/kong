@@ -59,13 +59,13 @@ local function get_current_version()
 end
 
 
-local is_empty_version
+local is_invalid_version
 do
   local byte = string.byte
   local CHAR_V = byte("V")
 
   -- version string must start with char 'V'
-  is_empty_version = function(v)
+  is_invalid_version = function(v)
     return byte(v) ~= CHAR_V
   end
 end
@@ -117,7 +117,8 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    if is_empty_version(default_namespace_version) or
+    --  string comparison effectively does the same as number comparison
+    if is_invalid_version(default_namespace_version) or
        default_namespace_version < latest_version then
       return full_sync_result()
     end
