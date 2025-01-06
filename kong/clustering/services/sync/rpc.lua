@@ -62,11 +62,11 @@ end
 local is_empty_version
 do
   local byte = string.byte
-  local CHAR_R = byte("R")
+  local CHAR_V = byte("V")
 
-  -- version string must start with char 'R'
+  -- version string must start with char 'V'
   is_empty_version = function(v)
-    return byte(v) ~= CHAR_R
+    return byte(v) ~= CHAR_V
   end
 end
 

@@ -9,7 +9,7 @@ local DP_PREFIX = "servroot_dp"
 
 -- now version must be a string
 local function fmt(v)
-  return string.format("R%031d", v)
+  return string.format("V%031d", v)
 end
 
 
