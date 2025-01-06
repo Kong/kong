@@ -170,10 +170,24 @@ function _M:process_rpc_msg(payload, collection)
       return true
     end
 
+    local res, err
+
     -- call dispatch
-    local res, err = kong.timer:named_at(string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
-                                                       self.node_id, payload_id or 0, payload_method),
-                                         0, _M._dispatch, self, dispatch_cb, payload, collection)
+
+    if collection then
+
+      -- collection is not nil, it means it is a batch call
+      -- we should call sync function
+      res, err = _M._dispatch(nil, self, dispatch_cb, payload, collection)
+    else
+
+      -- collection is nil, it means it is a single call
+      -- we should call async function
+      local name = string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
+                                 self.node_id, payload_id or 0, payload_method)
+      res, err = kong.timer:named_at(name, 0, _M._dispatch, self, dispatch_cb, payload)
+    end
+
     if not res and payload_id then
       local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
                                             "unable to send \"INTERNAL_ERROR\" error back to client: ",
