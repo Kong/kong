@@ -509,6 +509,11 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     if not ok then
       return nil, err
     end
+
+    local success = pl_utils.executeex("chmod 755 " .. kong_config.socket_path)
+    if not success then
+      return nil, "can not set correct permissions for socket path: " .. kong_config.socket_path
+    end
   end
 
   -- create directories in prefix
