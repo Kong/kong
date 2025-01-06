@@ -59,8 +59,15 @@ local function get_current_version()
 end
 
 
-local function is_empty_version(v)
-  return v == DECLARATIVE_EMPTY_CONFIG_HASH
+local is_empty_version
+do
+  local byte = string.byte
+  local CHAR_R = byte("R")
+
+  -- version string must start with char 'R'
+  is_empty_version = function(v)
+    return byte(v) ~= CHAR_R
+  end
 end
 
 
