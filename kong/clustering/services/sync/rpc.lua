@@ -59,14 +59,14 @@ local function get_current_version()
 end
 
 
-local is_invalid_version
+local is_valid_version
 do
   local sub = string.sub
   local VER_PREFIX = "V02_"
 
   -- version string must start with 'V02_'
-  is_invalid_version = function(v)
-    return sub(v, 1, 4) ~= VER_PREFIX
+  is_valid_version = function(v)
+    return sub(v, 1, 4) == VER_PREFIX
   end
 end
 
@@ -118,7 +118,7 @@ function _M:init_cp(manager)
     end
 
     --  string comparison effectively does the same as number comparison
-    if is_invalid_version(default_namespace_version) or
+    if not is_valid_version(default_namespace_version) or
        default_namespace_version < latest_version then
       return full_sync_result()
     end
