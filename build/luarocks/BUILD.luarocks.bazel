@@ -170,9 +170,9 @@ genrule(
         export LDOC=true
 
         # Install lua-messagepack
-        $(location :luarocks_exec) install $(location :prepare_lua_messagepack) 2>&1 >$@.tmp
+        $(location :luarocks_exec) install $(location :prepare_lua_messagepack) >>$@.tmp 2>&1
 
-        $(location :luarocks_exec) make --no-doc 2>&1 >$@.tmp
+        $(location :luarocks_exec) make --no-doc >>$@.tmp 2>&1
 
         # only generate the output when the command succeeds
         mv $@.tmp $@
