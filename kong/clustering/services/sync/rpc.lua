@@ -369,7 +369,7 @@ local sync_once_impl
 
 
 local function start_sync_once_timer(retry_count)
-  local ok, err = ngx.timer.at(0, sync_once_impl, retry_count or 0)
+  local ok, err = kong.timer:at(0, sync_once_impl, retry_count or 0)
   if not ok then
     return nil, err
   end
@@ -384,6 +384,8 @@ function sync_once_impl(premature, retry_count)
   end
 
   sync_handler()
+
+  -- check if "kong.sync.v2.notify_new_version" updates the latest version
 
   local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   if not latest_notified_version then
