@@ -409,7 +409,15 @@ end
 
 
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_once_impl, 0)
+  local name = "rpc_sync_v2_once"
+  local is_managed = kong.timer:is_managed(name)
+
+  -- we are running a sync handler
+  if is_managed then
+    return true
+  end
+
+  return kong.timer:named_at(name, delay or 0, sync_once_impl, 0)
 end
 
 
