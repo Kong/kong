@@ -23,6 +23,7 @@ local MAX_RETRY = 5
 
 local assert = assert
 local ipairs = ipairs
+local sub = string.sub
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -61,7 +62,6 @@ end
 
 local is_valid_version
 do
-  local sub = string.sub
   local VER_PREFIX = "V02_"
 
   -- version string must start with 'V02_'
