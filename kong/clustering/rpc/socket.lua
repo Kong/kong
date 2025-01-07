@@ -63,15 +63,7 @@ function _M:_get_next_id()
 end
 
 
--- collection is only for rpc batch call.
--- if collection is nil, it means the rpc is a single call.
-function _M:push_request(msg, collection)
-  -- may be a batch
-  if collection then
-    tb_insert(collection, msg)
-    return true
-  end
-
+function _M:push_request(msg)
   return self.outgoing:push(msg)
 end
 
@@ -398,7 +390,7 @@ end
 -- needed for this implementation, but it is important
 -- for concentrator socket, so we include it just to keep
 -- the signature consistent
-function _M:call(node_id, method, params, callback, collection)
+function _M:call(node_id, method, params, callback)
   assert(node_id == self.node_id)
 
   local id
@@ -414,7 +406,7 @@ function _M:call(node_id, method, params, callback, collection)
     method = method,
     params = params,
     id = id,
-  }, collection)
+  })
 end
 
 
