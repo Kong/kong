@@ -602,6 +602,31 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
     end)
 
+    describe("compatibility tests for sesssion plugin", function ()
+      it("removes `config.store_metadata` and `config.hash_subject` before sending them to older(3.9.0.0)DP nodes", function ()
+            local session = admin.plugins:insert {
+              name = "session",
+              enabled = true,
+              config = {
+                -- [[ new fields 3.10.0
+                store_metadata = true,
+                hash_subject = true,
+                -- ]]
+              }
+            }
+
+            assert.not_nil(session.config.store_metadata)
+            assert.not_nil(session.config.hash_subject)
+            local expected_session = cycle_aware_deep_copy(session)
+            expected_session.config.store_metadata = nil
+            expected_session.config.hash_subject = nil
+            do_assert(uuid(), "3.9.0", expected_session)
+
+            -- cleanup
+            admin.plugins:remove({ id = session.id })
+      end)
+    end)
+
     describe("ai plugins supported providers", function()
       it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
         -- [[ 3.8.x ]] --
