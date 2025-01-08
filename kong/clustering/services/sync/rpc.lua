@@ -419,7 +419,12 @@ function _M:sync_once(delay)
     return true
   end
 
-  return kong.timer:named_at(name, delay or 0, sync_once_impl, 0)
+  local ok, err = kong.timer:named_at(name, delay or 0, sync_once_impl, 0)
+  if not ok then
+    return nil, err
+  end
+
+  return true
 end
 
 
@@ -440,7 +445,12 @@ function _M:sync_every(delay, stop)
     return true
   end
 
-  return kong.timer:named_every(name, delay, sync_handler)
+  local ok, err = kong.timer:named_every(name, delay, sync_handler)
+  if not ok then
+    return nil, err
+  end
+
+  return true
 end
 
 
