@@ -35,7 +35,6 @@ local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = CLUSTERING_PING_INTERVAL * 1.5
 local PING_TYPE = "PING"
 local PONG_TYPE = "PONG"
---local BATCH_DONE = "BATCH_DONE"
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
@@ -173,6 +172,7 @@ function _M:process_rpc_msg(payload, collection)
       -- collection is not nil, it means it is a batch call
       -- we should call sync function
       res, err = _M._dispatch(nil, self, dispatch_cb, payload, collection)
+
     else
 
       -- collection is nil, it means it is a single call
@@ -280,7 +280,7 @@ function _M:start()
         goto continue
       end
 
-      -- rpc call with an empty Array
+      -- rpc call with an empty array
       if isempty(payload) then
         local res, err = self:push_response(
                           new_error(nil, jsonrpc.INVALID_REQUEST, "empty batch array"))
@@ -319,9 +319,9 @@ function _M:start()
     end
   end)
 
-  local batch_requests = {}
-
   self.write_thread = ngx.thread.spawn(function()
+    local batch_requests = {}
+
     while not exiting() do
       -- 0.5 seconds for not waiting too long
       local payload, err = self.outgoing:pop(0.5)
