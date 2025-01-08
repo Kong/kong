@@ -396,37 +396,6 @@ function _M:start()
         return nil, err
       end
 
-      --[[
-      if payload then
-        if payload == PING_TYPE then
-          local _, err = self.wb:send_ping()
-          if err then
-            return nil, "failed to send PING frame to peer: " .. err
-
-          else
-            ngx_log(ngx_DEBUG, "[rpc] sent PING frame to peer")
-          end
-
-        elseif payload == PONG_TYPE then
-          local _, err = self.wb:send_pong()
-          if err then
-            return nil, "failed to send PONG frame to peer: " .. err
-
-          else
-            ngx_log(ngx_DEBUG, "[rpc] sent PONG frame to peer")
-          end
-
-        else
-          assert(type(payload) == "table")
-
-          local bytes, err = self.wb:send_binary(compress_payload(payload))
-          if not bytes then
-            return nil, err
-          end
-        end
-      end
-      --]]
-
       ::continue::
     end
   end)
