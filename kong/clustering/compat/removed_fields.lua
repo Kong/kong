@@ -228,4 +228,10 @@ return {
       "queue.concurrency_limit",
     },
   },
+  [30010000000] = {
+    session = {
+      "hash_subject",
+      "store_metadata",
+    }
+  }
 }
