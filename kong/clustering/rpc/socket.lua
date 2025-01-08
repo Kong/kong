@@ -13,6 +13,7 @@ local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local constants = require("kong.constants")
 local isarray = require("table.isarray")
 local isempty = require("table.isempty")
+local tb_clear = require("table.clear")
 local tb_insert = table.insert
 
 
@@ -34,6 +35,7 @@ local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = CLUSTERING_PING_INTERVAL * 1.5
 local PING_TYPE = "PING"
 local PONG_TYPE = "PONG"
+--local BATCH_DONE = "BATCH_DONE"
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
@@ -192,7 +194,7 @@ function _M:process_rpc_msg(payload, collection)
     end
 
   else
-    -- response
+    -- response, don't care about `collection`
     local interest_cb = self.interest[payload_id]
     self.interest[payload_id] = nil -- edge trigger only once
 
@@ -300,7 +302,7 @@ function _M:start()
         end
       end
 
-      -- may be all notifications
+      -- may be responses or all notifications
       if isempty(collection) then
         goto continue
       end
@@ -317,13 +319,77 @@ function _M:start()
     end
   end)
 
+  local batch_requests = {}
+
   self.write_thread = ngx.thread.spawn(function()
     while not exiting() do
-      local payload, err = self.outgoing:pop(5)
+      -- 0.5 seconds for not waiting too long
+      local payload, err = self.outgoing:pop(0.5)
       if err then
         return nil, err
       end
 
+      -- timeout
+      if not payload then
+        if #batch_requests > 0 then
+          local bytes, err = self.wb:send_binary(compress_payload(batch_requests))
+          if not bytes then
+            return nil, err
+          end
+
+          tb_clear(batch_requests)
+        end
+        goto continue
+      end
+
+      if payload == PING_TYPE then
+        local _, err = self.wb:send_ping()
+        if err then
+          return nil, "failed to send PING frame to peer: " .. err
+
+        else
+          ngx_log(ngx_DEBUG, "[rpc] sent PING frame to peer")
+        end
+        goto continue
+      end
+
+      if payload == PONG_TYPE then
+        local _, err = self.wb:send_pong()
+        if err then
+          return nil, "failed to send PONG frame to peer: " .. err
+
+        else
+          ngx_log(ngx_DEBUG, "[rpc] sent PONG frame to peer")
+        end
+        goto continue
+      end
+
+      assert(type(payload) == "table")
+
+      -- batch enabled
+      local batch_size = self.manager.batch_size
+
+      if batch_size > 0 then
+        tb_insert(batch_requests, payload)
+
+        -- send batch requests
+        if #batch_requests >= batch_size then
+          local bytes, err = self.wb:send_binary(compress_payload(batch_requests))
+          if not bytes then
+            return nil, err
+          end
+
+          tb_clear(batch_requests)
+        end
+        goto continue
+      end
+
+      local bytes, err = self.wb:send_binary(compress_payload(payload))
+      if not bytes then
+        return nil, err
+      end
+
+      --[[
       if payload then
         if payload == PING_TYPE then
           local _, err = self.wb:send_ping()
@@ -352,6 +418,9 @@ function _M:start()
           end
         end
       end
+      --]]
+
+      ::continue::
     end
   end)
 end
