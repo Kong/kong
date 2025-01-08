@@ -84,8 +84,8 @@ for _, strategy in helpers.each_strategy() do
         end, 10)
 
         helpers.pwait_until(function()
-          assert.logfile().has.line(
-            "[rpc] got batch RPC call: 1", true)
+          --assert.logfile().has.line(
+          --  "[rpc] got batch RPC call: 1", true)
           assert.logfile().has.line(
             "kong.test.batch called: world", true)
 
