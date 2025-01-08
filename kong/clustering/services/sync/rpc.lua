@@ -62,9 +62,9 @@ end
 
 local is_valid_version
 do
-  local VER_PREFIX = "V02_"
+  local VER_PREFIX = "v02_"
 
-  -- version string must start with 'V02_'
+  -- version string must start with 'v02_'
   is_valid_version = function(v)
     return sub(v, 1, 4) == VER_PREFIX
   end

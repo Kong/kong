@@ -7,8 +7,8 @@ local ngx_null = ngx.null
 
 
 -- version string should be greater than any hex string(ngx.md5)
--- e.g.: "V02_0000" > "FFFFFFFF"
-local VERSION_FMT = "V02_%028d"
+-- e.g.: "v02_0000" > "FFFFFFFF"
+local VERSION_FMT = "v02_%028d"
 
 
 function _M.new(db)
