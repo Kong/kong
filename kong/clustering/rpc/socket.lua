@@ -169,6 +169,7 @@ function _M:process_rpc_msg(payload, collection)
 
     if collection then
 
+      -- TODO: async call by using a new manager of timer
       -- collection is not nil, it means it is a batch call
       -- we should call sync function
       res, err = _M._dispatch(nil, self, dispatch_cb, payload, collection)
