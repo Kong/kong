@@ -131,7 +131,8 @@ function Jq:body_filter(conf)
     local response_body = kong.response.get_raw_body()
 
     if response_body then
-      if kong.ctx.shared.proxy_cache_hit and kong.ctx.shared.proxy_cache_hit.res.body then
+      local proxy_cache_hit = kong.ctx.shared.proxy_cache_hit
+      if proxy_cache_hit and proxy_cache_hit.res and proxy_cache_hit.res.body then
         kong.response.set_raw_body(response_body)
         return
       end
