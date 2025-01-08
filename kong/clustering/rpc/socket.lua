@@ -132,7 +132,7 @@ end
 function _M:process_rpc_msg(payload, collection)
   if type(payload) ~= "table" then
     local res, err = self:push_response(
-                      new_error(nil, jsonrpc.INVALID_REQUEST, "not an valid object"),
+                      new_error(nil, jsonrpc.INVALID_REQUEST, "not a valid object"),
                       collection)
     if not res then
       return nil, err
