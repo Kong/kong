@@ -83,7 +83,10 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
 
-        assert.logfile().has.line("kong.test.batch called", true)
+        helpers.pwait_until(function()
+          assert.logfile().has.line("kong.test.batch called", true)
+          return true
+        end, 5)
       end)
     end)
   end)
