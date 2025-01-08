@@ -172,7 +172,7 @@ function _M:process_rpc_msg(payload, collection)
       -- TODO: async call by using a new manager of timer
       -- collection is not nil, it means it is a batch call
       -- we should call sync function
-      res, err = _M._dispatch(nil, self, dispatch_cb, payload, collection)
+      _M._dispatch(nil, self, dispatch_cb, payload, collection)
 
     else
 
@@ -181,17 +181,17 @@ function _M:process_rpc_msg(payload, collection)
       local name = string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
                                  self.node_id, payload_id or 0, payload_method)
       res, err = kong.timer:named_at(name, 0, _M._dispatch, self, dispatch_cb, payload)
-    end
 
-    if not res and payload_id then
-      local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
-                                            "unable to send \"INTERNAL_ERROR\" error back to client: ",
-                                            collection)
-      if not reso then
-        return nil, erro
+      if not res and payload_id then
+        local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
+                                              "unable to send \"INTERNAL_ERROR\" error back to client: ",
+                                              collection)
+        if not reso then
+          return nil, erro
+        end
+
+        return nil, "unable to dispatch JSON-RPC callback: " .. err
       end
-
-      return nil, "unable to dispatch JSON-RPC callback: " .. err
     end
 
   else
