@@ -340,6 +340,8 @@ function _M:start()
             return nil, err
           end
 
+          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", #batch_requests)
+
           tb_clear(batch_requests)
         end
         goto continue
@@ -381,6 +383,8 @@ function _M:start()
           if not bytes then
             return nil, err
           end
+
+          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", #batch_requests)
 
           tb_clear(batch_requests)
         end

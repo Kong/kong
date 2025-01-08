@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("batch works", function()
-      it("DP calls CP via batching ", function()
+      it("DP calls CP via batching", function()
         local admin_client = helpers.admin_client(10000)
         finally(function()
           admin_client:close()
@@ -90,10 +90,14 @@ for _, strategy in helpers.each_strategy() do
             "kong.test.batch called: world", true)
 
           assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] sent batch RPC call: 1", true)
+          assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] got batch RPC call: 1", true)
           assert.logfile("servroot2/logs/error.log").has.line(
             "kong.test.batch called: hello world", true)
 
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] sent batch RPC call: 2", true)
           assert.logfile().has.line(
             "[rpc] got batch RPC call: 2", true)
           assert.logfile().has.line(
@@ -102,7 +106,7 @@ for _, strategy in helpers.each_strategy() do
             "kong.test.batch called: gateway", true)
 
           return true
-        end, 5)
+        end, 10)
       end)
     end)
   end)
