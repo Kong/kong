@@ -296,6 +296,8 @@ function _M:start()
 
       local collection = {}
 
+      ngx_log(ngx_DEBUG, "[rpc] got batch RPC call: ", #payload)
+
       for _, v in ipairs(payload) do
         local ok, err = self:process_rpc_msg(v, collection)
         if not ok then
