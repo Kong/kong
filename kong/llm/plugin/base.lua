@@ -1,7 +1,7 @@
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
-local get_global_ctx = ai_plugin_ctx.get_global_accessors("_base")
+local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors("_base")
 
 -- Our own "phases", to avoid confusion with Kong's phases we use a different name
 local STAGES = {

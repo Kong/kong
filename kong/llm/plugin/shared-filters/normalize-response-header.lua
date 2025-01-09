@@ -8,7 +8,7 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors("_base")
 
 local FILTER_OUTPUT_SCHEMA = {
-  stream_content_type = "table",
+  stream_content_type = "string",
 }
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
