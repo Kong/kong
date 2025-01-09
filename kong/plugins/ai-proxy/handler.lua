@@ -7,7 +7,7 @@ local AIPlugin = ai_plugin_base.define(NAME, PRIORITY)
 
 local SHARED_FILTERS = {
   "parse-request", "normalize-request", "enable-buffering",
-  "parse-sse-chunk", "normalize-sse-chunk",
+  "parse-sse-chunk", "normalize-sse-chunk", "normalize-response-header",
   "parse-json-response", "normalize-json-response",
   "serialize-analytics",
 }
