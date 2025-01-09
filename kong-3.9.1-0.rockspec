@@ -643,6 +643,7 @@ build = {
     ["kong.llm.plugin.shared-filters.enable-buffering"] = "kong/llm/plugin/shared-filters/enable-buffering.lua",
     ["kong.llm.plugin.shared-filters.normalize-json-response"] = "kong/llm/plugin/shared-filters/normalize-json-response.lua",
     ["kong.llm.plugin.shared-filters.normalize-request"] = "kong/llm/plugin/shared-filters/normalize-request.lua",
+    ["kong.llm.plugin.shared-filters.normalize-response-header"] = "kong/llm/plugin/shared-filters/normalize-response-header.lua",
     ["kong.llm.plugin.shared-filters.normalize-sse-chunk"] = "kong/llm/plugin/shared-filters/normalize-sse-chunk.lua",
     ["kong.llm.plugin.shared-filters.parse-json-response"] = "kong/llm/plugin/shared-filters/parse-json-response.lua",
     ["kong.llm.plugin.shared-filters.parse-request"] = "kong/llm/plugin/shared-filters/parse-request.lua",
