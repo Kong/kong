@@ -510,8 +510,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       return nil, err
     end
 
-    local _, _, stderr
-    ok, _, _, stderr = pl_utils.executeex("chmod 755 " .. kong_config.socket_path)
+    local ok, _, _, stderr = pl_utils.executeex("chmod 755 " .. kong_config.socket_path)
     if not ok then
       return nil, "can not set correct permissions for socket path: " .. kong_config.socket_path
                   .. " (" .. stderr .. ")"

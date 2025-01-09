@@ -1,3 +1,3 @@
-message: "Fix issue where `socket_path` permissions are not correctly set to `755` when umask is `0027`"
+message: "Fix issue where `socket_path` permissions are not correctly set to `755` when the umask setting does not give enough permission"
 type: bugfix
 scope: Core
