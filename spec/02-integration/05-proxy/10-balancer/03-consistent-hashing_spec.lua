@@ -109,6 +109,44 @@ for _, strategy in helpers.each_strategy() do
           assert(count1.total + count2.total == requests)
         end)
 
+        it("hashing on Hyphenated-Pascal-Case headers", function()
+          local requests = bu.SLOTS * 2 -- go round the balancer twice
+
+          bu.begin_testcase_setup(strategy, bp)
+          local upstream_name, upstream_id = bu.add_upstream(bp, {
+            hash_on = "header",
+            hash_on_header = "X-LB-Hash",
+          })
+          local port1 = bu.add_target(bp, upstream_id, localhost)
+          local port2 = bu.add_target(bp, upstream_id, localhost)
+          local api_host = bu.add_api(bp, upstream_name)
+          bu.end_testcase_setup(strategy, bp)
+
+          -- setup target servers
+          local server1 = https_server.new(port1, localhost)
+          local server2 = https_server.new(port2, localhost)
+          server1:start()
+          server2:start()
+
+          -- Go hit them with our test requests
+          local oks = bu.client_requests(requests, {
+            ["Host"] = api_host,
+            ["X-LB-Hash"] = { "1st value", "2nd value", },
+          })
+          assert.are.equal(requests, oks)
+          assert.logfile().has.line("trying to get peer with value to hash: \\[1st value, 2nd value\\]")
+
+          -- collect server results; hitcount
+          -- one should get all the hits, the other 0
+          local count1 = server1:shutdown()
+          local count2 = server2:shutdown()
+
+          -- verify
+          assert(count1.total == 0 or count1.total == requests, "counts should either get 0 or ALL hits")
+          assert(count2.total == 0 or count2.total == requests, "counts should either get 0 or ALL hits")
+          assert(count1.total + count2.total == requests)
+        end)
+
         it("hashing on missing header", function()
           local requests = bu.SLOTS * 2 -- go round the balancer twice
 

@@ -12,7 +12,7 @@ local targets = require "kong.runloop.balancer.targets"
 
 -- due to startup/require order, cannot use the ones from 'kong' here
 local dns_client = require "kong.resty.dns.client"
-
+local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 local toip = dns_client.toip
 local sub = string.sub
@@ -132,7 +132,8 @@ local function get_value_to_hash(upstream, ctx)
     elseif hash_on == "header" then
       -- since nginx 1.23.0/openresty 1.25.3.1
       -- ngx.var will automatically combine all header values with identical name
-      identifier = var["http_" .. upstream[header_field_name]]
+      local header_name = replace_dashes_lower(upstream[header_field_name])
+      identifier = var["http_" .. header_name]
 
     elseif hash_on == "cookie" then
       identifier = var["cookie_" .. upstream.hash_on_cookie]
