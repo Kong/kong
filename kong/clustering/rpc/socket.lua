@@ -334,14 +334,13 @@ function _M:start()
 
       -- timeout
       if not payload then
-        local n = #batch_requests
-        if n > 0 then
+        if #batch_requests > 0 then
           local bytes, err = self.wb:send_binary(compress_payload(batch_requests))
           if not bytes then
             return nil, err
           end
 
-          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", n)
+          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", #batch_requests)
 
           tb_clear(batch_requests)
         end
@@ -379,14 +378,13 @@ function _M:start()
         tb_insert(batch_requests, payload)
 
         -- send batch requests
-        local n = #batch_requests
-        if n >= batch_size then
+        if #batch_requests >= batch_size then
           local bytes, err = self.wb:send_binary(compress_payload(batch_requests))
           if not bytes then
             return nil, err
           end
 
-          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", n)
+          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", #batch_requests)
 
           tb_clear(batch_requests)
         end
