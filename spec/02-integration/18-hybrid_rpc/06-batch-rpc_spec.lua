@@ -111,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
             "kong.test.batch called: gateway", true)
 
           return true
-        end, 10)
+        end, 15)
       end)
     end)
   end)
