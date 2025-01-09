@@ -100,28 +100,6 @@ function MetaPlugin:rewrite(sub_plugin, conf)
 end
 
 function MetaPlugin:header_filter(sub_plugin, conf)
-  -- for error and exit response, just use plaintext headers
-  if kong.response.get_source() == "service" then
-    -- we use openai's streaming mode (SSE)
-    if get_global_ctx("stream_mode") then
-      -- we are going to send plaintext event-stream frames for ALL models
-      kong.response.set_header("Content-Type", "text/event-stream")
-      -- TODO: disable gzip for SSE because it needs immediate flush for each chunk
-      -- and seems nginx doesn't support it
-
-    elseif get_global_ctx("accept_gzip") then
-      -- for gzip response, don't set content-length at all to align with upstream
-      kong.response.clear_header("Content-Length")
-      kong.response.set_header("Content-Encoding", "gzip")
-
-    else
-      kong.response.clear_header("Content-Encoding")
-    end
-
-  else
-    kong.response.clear_header("Content-Encoding")
-  end
-
   run_stage(STAGES.REQ_POST_PROCESSING, sub_plugin, conf)
   -- TODO: order this in better place
   run_stage(STAGES.RES_INTROSPECTION, sub_plugin, conf)
