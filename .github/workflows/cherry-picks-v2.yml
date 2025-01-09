@@ -1,6 +1,6 @@
-name: Cherry Pick to remote repository
+name: Cherry Pick to remote repository v2
 on:
-  pull_request_target:
+  pull_request:
     types: [closed, labeled]
   issue_comment:
     types: [created]
@@ -17,7 +17,7 @@ jobs:
     if: >
       github.ref == 'refs/heads/master' &&
       (
-        github.event_name == 'pull_request_target' &&
+        github.event_name == 'pull_request' &&
         github.event.pull_request.merged
       ) || (
         github.event_name == 'issue_comment' &&
