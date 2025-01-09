@@ -5,7 +5,7 @@ local _M = {
 }
 
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
-local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors("_base")
+local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(_M.NAME)
 
 local FILTER_OUTPUT_SCHEMA = {
   stream_content_type = "string",
