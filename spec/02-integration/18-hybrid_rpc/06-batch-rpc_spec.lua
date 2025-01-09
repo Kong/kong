@@ -16,8 +16,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        plugins = "bundled,rpc-batch-test",
-        cluster_rpc_sync = "off",
+        plugins = "bundled,rpc-batch-test", -- enable custom plugin
+        cluster_rpc_sync = "off", -- disable rpc sync
       }))
 
       assert(helpers.start_kong({
@@ -30,8 +30,8 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc = "on",
-        plugins = "bundled,rpc-batch-test",
-        cluster_rpc_sync = "off",
+        plugins = "bundled,rpc-batch-test", -- enable custom plugin
+        cluster_rpc_sync = "off", -- disable rpc sync
       }))
     end)
 
