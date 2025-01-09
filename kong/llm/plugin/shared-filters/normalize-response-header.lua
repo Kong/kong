@@ -35,6 +35,7 @@ function _M:run(_)
   else
     kong.response.clear_header("Content-Encoding")
   end
+  return true
 end
 
 return _M
