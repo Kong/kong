@@ -867,6 +867,8 @@ for _, strategy in helpers.all_strategies() do
 
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
       it("good stream request openai with partial split chunks", function()
@@ -955,6 +957,8 @@ for _, strategy in helpers.all_strategies() do
         assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
         assert.match_re(actual_request_log, [[.*content.*What is 1 \+ 1.*]])
         assert.match_re(actual_response_log, [[.*content.*The answer.*]])
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
       it("good stream request cohere", function()
@@ -1017,6 +1021,8 @@ for _, strategy in helpers.all_strategies() do
 
         assert.equal(#events, 17)
         assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
       it("good stream request anthropic", function()
@@ -1079,6 +1085,8 @@ for _, strategy in helpers.all_strategies() do
 
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "1 + 1 = 2")
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
       it("bad request is returned to the client not-streamed", function()
@@ -1129,6 +1137,8 @@ for _, strategy in helpers.all_strategies() do
 
         assert.equal(#events, 1)
         assert.equal(res.status, 400)
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
       it("good stream request gemini with function calls", function()

@@ -15,10 +15,10 @@ local FILTER_OUTPUT_SCHEMA = {
 local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(_M.NAME)
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
 
-
 local function handle_streaming_frame(conf, chunk, finished)
 
-  local content_type = kong.service.response.get_header("Content-Type")
+  local content_type = ai_plugin_ctx.get_namespaced_ctx("normalize-response-header", "stream_content_type")
+
   local normalized_content_type = content_type and content_type:sub(1, (content_type:find(";") or 0) - 1)
   if normalized_content_type and (not ai_shared._SUPPORTED_STREAMING_CONTENT_TYPES[normalized_content_type]) then
     return true
