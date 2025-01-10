@@ -12,11 +12,11 @@ function RpcBatchTestHandler:init_worker()
 
   local worker_events = assert(kong.worker_events)
 
-  -- if rpc is ready we will start to sync
+  -- if rpc is ready we will start to batch call
   worker_events.register(function(capabilities_list)
     kong.rpc:set_batch(1)
 
-    local res, err = kong.rpc:call("control_plane", "kong.test.batch", "world")
+    local res = kong.rpc:call("control_plane", "kong.test.batch", "world")
     if not res then
       return
     end

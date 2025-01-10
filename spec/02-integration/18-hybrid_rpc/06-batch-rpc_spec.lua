@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require("cjson.safe")
 
 -- register a test rpc service in custom plugin rpc-batch-test
 for _, strategy in helpers.each_strategy() do
@@ -43,13 +42,13 @@ for _, strategy in helpers.each_strategy() do
     describe("batch works", function()
       it("DP calls CP via batching", function()
         helpers.pwait_until(function()
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] sent batch RPC call: 1", true)
+
           assert.logfile().has.line(
             "[rpc] got batch RPC call: 1", true)
           assert.logfile().has.line(
             "kong.test.batch called: world", true)
-
-          assert.logfile("servroot2/logs/error.log").has.line(
-            "[rpc] sent batch RPC call: 1", true)
 
           assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] got batch RPC call: 1", true)
