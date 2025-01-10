@@ -36,8 +36,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong("servroot2")
-      helpers.stop_kong()
+      helpers.clean_prefix("servroot2")
+      helpers.clean_prefix()
     end)
 
     describe("batch works", function()
@@ -82,6 +82,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end
         end, 10)
+
+        -- try to flush log files
+        helpers.stop_kong(nil, true)
+        helpers.stop_kong("servroot2", true)
 
         helpers.pwait_until(function()
           assert.logfile().has.line(
