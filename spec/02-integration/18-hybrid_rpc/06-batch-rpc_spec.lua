@@ -41,30 +41,33 @@ for _, strategy in helpers.each_strategy() do
 
     describe("batch works", function()
       it("DP calls CP via batching", function()
+        local cp_logfile = nil
+        local dp_logfile = "servroot2/logs/error.log"
+
         helpers.pwait_until(function()
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(dp_logfile).has.line(
             "[rpc] sent batch RPC call: 1", true)
 
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "[rpc] got batch RPC call: 1", true)
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "kong.test.batch called: world", true)
 
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(dp_logfile).has.line(
             "[rpc] got batch RPC call: 1", true)
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(dp_logfile).has.line(
             "kong.test.batch called: hello world", true)
 
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(dp_logfile).has.line(
             "[rpc] sent batch RPC call: 2", true)
 
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "[rpc] got batch RPC call: 2", true)
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "kong.test.batch called: kong", true)
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "kong.test.batch called: gateway", true)
-          assert.logfile().has.line(
+          assert.logfile(cp_logfile).has.line(
             "[rpc] notification has no response", true)
 
           return true
