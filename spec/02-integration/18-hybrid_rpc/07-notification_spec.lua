@@ -46,31 +46,35 @@ for _, strategy in helpers.each_strategy() do
 
     describe("notification works", function()
       it("in custom plugin", function()
+        local name = nil
+
         -- cp logs
         helpers.pwait_until(function()
-          assert.logfile().has.line(
+          assert.logfile(name).has.line(
             "notification is hello", true)
-          assert.logfile().has.line(
+          assert.logfile(name).has.line(
             "[rpc] notifying kong.test.notification(node_id:", true)
-          assert.logfile().has.line(
+          assert.logfile(name).has.line(
             "[rpc] notification has no response", true)
-          assert.logfile().has.no.line(
+          assert.logfile(name).has.no.line(
             "assert failed", true)
           return true
-        end, 15)
+        end, 10)
+
+        local name = "servroot2/logs/error.log"
 
         -- dp logs
         helpers.pwait_until(function()
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(name).has.line(
             "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(name).has.line(
             "notification is world", true)
-          assert.logfile("servroot2/logs/error.log").has.line(
+          assert.logfile(name).has.line(
             "[rpc] notification has no response", true)
-          assert.logfile("servroot2/logs/error.log").has.no.line(
+          assert.logfile(name).has.no.line(
             "assert failed", true)
           return true
-        end, 15)
+        end, 10)
 
       end)
     end)
