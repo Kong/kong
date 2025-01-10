@@ -6,8 +6,7 @@ local fmt = string.format
 local ngx_null = ngx.null
 
 
--- version string should be greater than any hex string(ngx.md5)
--- e.g.: "v02_0000" > "FFFFFFFF"
+-- version string should look like: "v02_0000"
 local VERSION_FMT = "v02_%028x"
 
 
