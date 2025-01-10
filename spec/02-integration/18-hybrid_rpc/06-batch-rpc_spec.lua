@@ -42,66 +42,22 @@ for _, strategy in helpers.each_strategy() do
 
     describe("batch works", function()
       it("DP calls CP via batching", function()
-        local admin_client = helpers.admin_client(10000)
-        finally(function()
-          admin_client:close()
-        end)
-
-        local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        assert.res_status(201, res)
-
-        res = assert(admin_client:post("/services/mockbin-service/routes", {
-          body = { paths = { "/" }, },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-        local route_id = json.id
-
-        -- add a plugin for route
-        res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
-          body = { name = "rpc-batch-test" },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        assert.res_status(201, res)
-
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-          res = proxy_client:send({
-            method  = "GET",
-            path    = "/",
-          })
-
-          local status = res and res.status
-          proxy_client:close()
-          if status == 200 then
-            return true
-          end
-        end, 10)
-
         helpers.pwait_until(function()
           assert.logfile().has.line(
             "[rpc] got batch RPC call: 1", true)
           assert.logfile().has.line(
             "kong.test.batch called: world", true)
 
-          -- this may cause flakiness
-          --assert.logfile("servroot2/logs/error.log").has.line(
-          --  "[rpc] sent batch RPC call: 1", true)
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] sent batch RPC call: 1", true)
 
           assert.logfile("servroot2/logs/error.log").has.line(
             "[rpc] got batch RPC call: 1", true)
           assert.logfile("servroot2/logs/error.log").has.line(
             "kong.test.batch called: hello world", true)
 
-
-          -- this may cause flakiness
-          --assert.logfile("servroot2/logs/error.log").has.line(
-          --  "[rpc] sent batch RPC call: 2", true)
+          assert.logfile("servroot2/logs/error.log").has.line(
+            "[rpc] sent batch RPC call: 2", true)
 
           assert.logfile().has.line(
             "[rpc] got batch RPC call: 2", true)

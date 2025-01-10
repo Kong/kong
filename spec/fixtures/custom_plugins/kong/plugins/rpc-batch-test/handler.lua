@@ -9,24 +9,25 @@ function RpcBatchTestHandler:init_worker()
     ngx.log(ngx.DEBUG, "kong.test.batch called: ", greeting)
     return "hello ".. greeting
   end)
-end
 
+  local worker_events = assert(kong.worker_events)
 
-function RpcBatchTestHandler:access()
-  kong.rpc:set_batch(1)
+  -- if rpc is ready we will start to sync
+  worker_events.register(function(capabilities_list)
+    kong.rpc:set_batch(1)
 
-  local res, err = kong.rpc:call("control_plane", "kong.test.batch", "world")
-  if not res then
-    return kong.response.exit(500, err)
-  end
+    local res, err = kong.rpc:call("control_plane", "kong.test.batch", "world")
+    if not res then
+      return
+    end
 
-  ngx.log(ngx.DEBUG, "kong.test.batch called: ", res)
+    ngx.log(ngx.DEBUG, "kong.test.batch called: ", res)
 
-  kong.rpc:set_batch(2)
-  kong.rpc:notify("control_plane", "kong.test.batch", "kong")
-  kong.rpc:notify("control_plane", "kong.test.batch", "gateway")
+    kong.rpc:set_batch(2)
+    kong.rpc:notify("control_plane", "kong.test.batch", "kong")
+    kong.rpc:notify("control_plane", "kong.test.batch", "gateway")
 
-  return kong.response.exit(200, res)
+  end, "clustering:jsonrpc", "connected")
 end
 
 
