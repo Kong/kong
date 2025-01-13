@@ -260,6 +260,13 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
+  local ctx = kong.ctx.plugin
+  if conf.cache_control then
+    if cc["no-cache"] then
+      return signal_cache_req(ctx, conf, cache_key, "Bypass")
+    end
+  end
+
   set_header(conf, "X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
@@ -268,7 +275,6 @@ function ProxyCacheHandler:access(conf)
     strategy_opts = conf[conf.strategy],
   })
 
-  local ctx = kong.ctx.plugin
   local res, err = strategy:fetch(cache_key)
   if err == "request object not in cache" then -- TODO make this a utils enum err
 
@@ -298,9 +304,6 @@ function ProxyCacheHandler:access(conf)
 
   -- figure out if the client will accept our cache value
   if conf.cache_control then
-    if cc["no-cache"] then
-      return signal_cache_req(ctx, conf, cache_key, "Bypass")
-    end
     if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
       return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
