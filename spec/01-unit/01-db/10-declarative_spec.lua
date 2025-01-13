@@ -68,9 +68,21 @@ keyauth_credentials:
   end)
 
   it("parse nested entities correctly", function ()
-    -- This test case is to make sure that when a relatively
+    -- This regression test case is to make sure that when a
     -- "raw" input of declarative config is given, the dc parser
     -- can generate correct UUIDs for those nested entites.
+    -- When the declarative config parser tries to flatten the
+    -- config input, the input will be running agains the
+    -- declarative_config schema validation. But some input
+    -- might lacks required fieds(such as UUIDS) and their
+    -- relationships are declared by nesting objects. In such
+    -- cases the declarative config parser must generate necessary
+    -- fields for all the objects(known entities) inside the config.
+    -- This test case is to make sure that the parser can generate
+    -- correct UUIDs for nested entities. What's more, it also makes
+    -- sure that UUID generation are not influenced by the `transient`
+    -- field(used as a backref to foreign objects) configured inside
+    -- the schema.
     --
     -- See https://github.com/Kong/kong/pull/14082 for more details.
     local cluster_cert_content = assert(pl_file.read("spec/fixtures/kong_clustering.crt"))
