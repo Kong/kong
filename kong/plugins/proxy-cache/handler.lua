@@ -98,7 +98,7 @@ local function cacheable_request(conf, cc)
 
   -- check for explicit disallow directives
   -- TODO note that no-cache isnt quite accurate here
-  if conf.cache_control and (cc["no-store"] or cc["no-cache"] or
+  if conf.cache_control and (cc["no-store"] or
      ngx.var.authorization) then
     return false
   end
@@ -298,6 +298,9 @@ function ProxyCacheHandler:access(conf)
 
   -- figure out if the client will accept our cache value
   if conf.cache_control then
+    if cc["no-cache"] then
+      return signal_cache_req(ctx, conf, cache_key, "Bypass")
+    end
     if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
       return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
