@@ -119,7 +119,7 @@ function _M:init_cp(manager)
 
     --  string comparison effectively does the same as number comparison
     if not is_valid_version(default_namespace_version) or
-       default_namespace_version < latest_version then
+       default_namespace_version ~= latest_version then
       return full_sync_result()
     end
 
