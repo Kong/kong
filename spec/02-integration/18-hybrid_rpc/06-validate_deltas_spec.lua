@@ -42,6 +42,11 @@ local function db_insert(bp, name, entity)
 end
 
 
+-- Cache the declarative_config to avoid the overhead of repeatedly executing
+-- the time-consuming chain:
+--   declarative.new_config -> declarative_config.load -> load_plugin_subschemas
+local cached_dc
+
 local function setup_bp()
   -- reset lmdb
   lmdb_drop()
@@ -54,9 +59,13 @@ local function setup_bp()
   workspaces.upsert_default(db)
 
   -- init declarative config
-  local dc, err = declarative.new_config(kong.configuration)
-  assert(dc, err)
-  kong.db.declarative_config = dc
+  if not cached_dc then
+    local err
+    cached_dc, err = declarative.new_config(kong.configuration)
+    assert(cached_dc, err)
+  end
+
+  kong.db.declarative_config = cached_dc
 
   return bp, db
 end
