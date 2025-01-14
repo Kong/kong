@@ -93,7 +93,7 @@ for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
-  describe("node id persistence " .. " rpc_sync=" .. rpc_sync, function()
+  describe("node id persistence rpc_sync = " .. rpc_sync, function()
 
     local control_plane_config = {
       role = "control_plane",
