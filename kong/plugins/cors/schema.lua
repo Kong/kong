@@ -48,6 +48,7 @@ return {
           { credentials = { description = "Flag to determine whether the `Access-Control-Allow-Credentials` header should be sent with `true` as the value.", type = "boolean", required = true, default = false }, },
           { private_network = { description = "Flag to determine whether the `Access-Control-Allow-Private-Network` header should be sent with `true` as the value.", type = "boolean", required = true, default = false }, },
           { preflight_continue = { description = "A boolean value that instructs the plugin to proxy the `OPTIONS` preflight request to the Upstream service.", type = "boolean", required = true, default = false }, },
+          { skip_cors_when_origin_is_empty = { description = "A boolean value that skip cors response headers when origin header of request is empty", type = "boolean", required = true, default = false }, },
     }, }, },
   },
 }
