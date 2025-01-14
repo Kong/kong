@@ -1,6 +1,7 @@
 local declarative = require("kong.db.declarative")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
+
 local null = ngx.null
 local tb_insert = table.insert
 local validate = declarative_config.validate
