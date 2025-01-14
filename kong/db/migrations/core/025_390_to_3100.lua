@@ -32,6 +32,14 @@ return {
           ALTER TABLE clustering_sync_version ALTER COLUMN version TYPE BIGINT USING version::BIGINT;
         END;
       $$;
+
+      DO $$
+          BEGIN
+          ALTER TABLE IF EXISTS ONLY "keys" ADD "x5t" TEXT UNIQUE;
+          EXCEPTION WHEN DUPLICATE_COLUMN THEN
+          -- Do nothing, accept existing state
+          END;
+      $$;
     ]]
   }
 }
