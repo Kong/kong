@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 
 
+-- register a rpc connected event in custom plugin rpc-get-delta-test
+-- ENABLE rpc sync on cp side for testing sync.v2.get_delta
+-- DISABLE rpc sync on dp side
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy, function()
 
@@ -22,7 +25,6 @@ for _, strategy in helpers.each_strategy() do
         cluster_rpc_sync = "on", -- enable rpc sync
       }))
 
-      -- register a rpc connected event in custom plugin rpc-get-delta-test
       assert(helpers.start_kong({
         role = "data_plane",
         database = "off",
