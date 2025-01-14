@@ -57,6 +57,16 @@ for _, strategy in helpers.each_strategy() do
           return true
         end, 10)
 
+        -- dp logs
+        helpers.pwait_until(function()
+          assert.logfile(name).has.line(
+            "[rpc] RPC failed, code: -32600, err: empty batch array", true)
+          assert.logfile(name).has.line(
+            "test #2 ok", true)
+          assert.logfile(name).has.no.line(
+            "assertion failed", true)
+          return true
+        end, 10)
       end)
     end)
   end)

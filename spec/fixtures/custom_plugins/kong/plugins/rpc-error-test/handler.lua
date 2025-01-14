@@ -38,12 +38,12 @@ function RpcErrorTestHandler:init_worker()
   end, "clustering:jsonrpc", "connected")
 
   worker_events.register(function(capabilities_list)
-    local node_id = "control_plane"
+    local s = next(kong.rpc.clients[node_id])
 
-    --local s = next(kong.rpc.clients[node_id])
+    -- send an empty array
+    local msg = setmetatable({}, cjson.array_mt)
+    assert(s:push_request({}))
 
-    -- send a empty array
-    --assert(s:push_request({}))
     ngx.log(ngx.DEBUG, "test #2 ok")
 
   end, "clustering:jsonrpc", "connected")
