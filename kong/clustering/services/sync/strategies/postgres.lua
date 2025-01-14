@@ -9,6 +9,7 @@ local ngx_null = ngx.null
 
 -- version string should look like: "v02_0000"
 local VER_PREFIX = "v02_"
+local VER_PREFIX_LEN = #VER_PREFIX
 local VERSION_FMT = VER_PREFIX .. "%028x"
 
 
@@ -59,7 +60,7 @@ end
 
 
 function _M:is_valid_version(str)
-  return sub(str, 1, 4) == VER_PREFIX
+  return sub(str, 1, VER_PREFIX_LEN) == VER_PREFIX
 end
 
 
