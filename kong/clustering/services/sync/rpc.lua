@@ -318,8 +318,10 @@ local function do_sync()
   -- store current sync version
   t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
 
-  -- store the correct default workspace uuid
-  if default_ws_changed then
+  -- record the default workspace into LMDB for any of the following case:
+  -- * wipe is false, but the default workspace has been changed
+  -- * wipe is true (full sync)
+  if default_ws_changed or wipe then
     t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
   end
 
