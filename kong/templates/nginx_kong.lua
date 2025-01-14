@@ -73,6 +73,9 @@ lua_kong_load_var_index default;
 
 upstream kong_upstream {
     server 0.0.0.1;
+> if upstream_keepalive_pool_size > 0 then
+    balancer_keepalive ${{UPSTREAM_KEEPALIVE_POOL_SIZE}};
+> end
 
     # injected nginx_upstream_* directives
 > for _, el in ipairs(nginx_upstream_directives) do

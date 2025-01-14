@@ -1,22 +1,7 @@
-# http://cgit.openembedded.org/meta-openembedded/tree/meta-webserver/recipes-httpd/nginx/files/0001-Allow-the-overriding-of-the-endianness-via-the-confi.patch
-From be9970aa16c5142ef814531d74a07990a8e9eb14 Mon Sep 17 00:00:00 2001
-From: Derek Straka <derek@asterius.io>
-Date: Fri, 1 Dec 2017 10:32:29 -0500
-Subject: [PATCH] Allow the overriding of the endianness via the configure flag
- --with-endian
-
-The existing configure options contain the --with-endian; however, the command
-line flag does not actually function.  It does not set the endianness and it
-appears to do nothing.
-
-Upstream-Status: Pending
-
-Signed-off-by: Derek Straka <derek@asterius.io>
-
-diff --git a/auto/endianness b/auto/endianness
+diff --git a/bundle/nginx-1.27.1/auto/endianness b/bundle/nginx-1.27.1/auto/endianness
 index 1b552b6..be84487 100644
---- a/bundle/nginx-1.25.3/endianness
-+++ b/bundle/nginx-1.25.3/auto/endianness
+--- a/bundle/nginx-1.27.1/auto/endianness
++++ b/bundle/nginx-1.27.1/auto/endianness
 @@ -13,7 +13,13 @@ checking for system byte ordering
  END
  
@@ -75,5 +60,3 @@ index 1b552b6..be84487 100644
 +        exit 1
 +    fi
  fi
--- 
-2.7.4

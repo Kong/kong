@@ -146,15 +146,11 @@ describe("#postgres upstream keepalive", function()
           .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
+          .has.line([[lua balancer: keepalive no free connection, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|one.test]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
+          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|one.test]])
     assert.errlog()
-          .has.line([[lua balancer: keepalive no free connection, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
 
     local res = assert(proxy_client:send {
       method = "GET",
@@ -170,24 +166,15 @@ describe("#postgres upstream keepalive", function()
           .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|two.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|two.test, cpool: 0+]])
+          .has.line([[lua balancer: keepalive no free connection, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|two.test]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|two.test, size: \d+]])
+          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|two.test]])
     assert.errlog()
-          .has.line([[lua balancer: keepalive no free connection, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
 
     local handle, result
 
-    handle = io.popen([[grep 'cpool: 0000000000' servroot/logs/error.log|wc -l]])
-    result = handle:read("*l")
-    handle:close()
-    assert(tonumber(result) == 2)
-
-    handle = io.popen([[grep 'keepalive create pool, name:' servroot/logs/error.log|wc -l]])
+    handle = io.popen([[grep 'lua balancer: keepalive no free connection' servroot/logs/error.log|wc -l]])
     result = handle:read("*l")
     handle:close()
     assert(tonumber(result) == 2)
@@ -227,16 +214,12 @@ describe("#postgres upstream keepalive", function()
     assert.errlog()
           .has.line([[enabled connection keepalive \(pool=[0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+]])
     assert.errlog()
-          .has.line([[keepalive get pool, name: [0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+, cpool: 0+]])
+          .has.line([[lua balancer: keepalive no free connection, host: 127.0.0.1:\d+, name: [0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+, size: \d+]])
-    assert.errlog()
-          .has.line([[lua balancer: keepalive no free connection, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
+          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, host: 127.0.0.1:\d+, name: [0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+]])
 
     assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
   end)
 
 
@@ -258,11 +241,6 @@ describe("#postgres upstream keepalive", function()
           .not_has
           .line("enabled connection keepalive", true)
 
-    assert.errlog()
-          .not_has.line([[keepalive get pool]], true)
-    assert.errlog()
-          .not_has.line([[keepalive create pool]], true)
-
     local res = assert(proxy_client:send {
       method = "GET",
       path = "/echo_sni",
@@ -277,11 +255,7 @@ describe("#postgres upstream keepalive", function()
           .line("enabled connection keepalive", true)
 
     assert.errlog()
-          .not_has.line([[keepalive get pool]], true)
-    assert.errlog()
-          .not_has.line([[keepalive create pool]], true)
-    assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
   end)
 
 
@@ -302,20 +276,16 @@ describe("#postgres upstream keepalive", function()
           .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
+          .has.line([[lua balancer: keepalive no free connection, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|one.test]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
+          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, host: 127.0.0.1:\d+, name: [A-F0-9.:]+\|\d+\|one.test]])
     assert.errlog()
-          .has.line([[keepalive no free connection, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[keepalive saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
 
     local handle, upool_ptr
 
     handle = io.popen([[grep 'lua balancer: keepalive saving connection' servroot/logs/error.log]] .. "|" ..
-                      [[grep -Eo 'cpool: [A-F0-9]+']])
+                      [[grep -Eo 'host: [A-F0-9]+']])
     upool_ptr = handle:read("*l")
     handle:close()
 
@@ -333,13 +303,11 @@ describe("#postgres upstream keepalive", function()
           .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, ]] .. upool_ptr)
+          .has.line([[lua balancer: keepalive reusing connection [A-F0-9]+, host: 127.0.0.1:\d+, name: 127.0.0.1|\d+|[A-F0-9.:]+\|\d+\|one.test]] .. upool_ptr)
     assert.errlog()
-          .has.line([[keepalive reusing connection [A-F0-9]+, requests: \d+, ]] .. upool_ptr)
+          .has.line([[lua balancer: keepalive saving connection [A-F0-9]+, host: 127.0.0.1:\d+, name: 127.0.0.1|\d+|[A-F0-9.:]+\|\d+\|one.test]] .. upool_ptr)
     assert.errlog()
-          .has.line([[keepalive saving connection [A-F0-9]+, ]] .. upool_ptr)
-    assert.errlog()
-          .not_has.line([[keepalive free pool]], true)
+          .not_has.line([[keepalive: free connection pool]], true)
   end)
 
 
@@ -360,15 +328,11 @@ describe("#postgres upstream keepalive", function()
           .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
+          .has.line([[lua balancer: keepalive no free connection, host: 127.0.0.1:\d+, name: 127.0.0.1|\d+|one.test]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
+          .has.line([[lua balancer: keepalive not saving connection [A-F0-9]+]])
     assert.errlog()
-          .has.line([[keepalive no free connection, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[keepalive not saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
-    assert.errlog()
-          .has.line([[keepalive free pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: [A-F0-9]+]])
+          .has.line([[keepalive: free connection pool [A-F0-9.:]+ for \"127.0.0.1|\d+|[A-F0-9.:]+\|\d+\|one.test\"]])
 
     assert.errlog()
           .not_has.line([[keepalive saving connection]], true)
@@ -407,12 +371,12 @@ describe("#postgres upstream keepalive", function()
 
     local handle
 
-    handle = io.popen([[grep 'enabled connection keepalive ' servroot/logs/error.log]] .. "|" ..
+    handle = io.popen([[grep 'enabled connection keepalive' servroot/logs/error.log]] .. "|" ..
                       [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|plumless.xxx']])
     local name1 = handle:read("*l")
     handle:close()
 
-    handle = io.popen([[grep 'enabled connection keepalive ' servroot/logs/error.log]] .. "|" ..
+    handle = io.popen([[grep 'enabled connection keepalive' servroot/logs/error.log]] .. "|" ..
                       [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|buckeroo.xxx']])
     local name2 = handle:read("*l")
     handle:close()
@@ -422,7 +386,7 @@ describe("#postgres upstream keepalive", function()
     assert.equal(crc1, crc2)
 
     handle = io.popen([[grep 'lua balancer: keepalive saving connection' servroot/logs/error.log]] .. "|" ..
-                      [[grep -Eo 'cpool: [A-F0-9]+']])
+                      [[grep -Eo 'name: .*']])
     local upool_ptr1 = handle:read("*l")
     local upool_ptr2 = handle:read("*l")
     handle:close()

@@ -548,7 +548,7 @@ function _M:matching(params)
       port = service_port,
     },
     upstream_scheme = service_protocol,
-    upstream_host  = matched_route.preserve_host and sni or nil,
+    upstream_host = matched_route.preserve_host and sni or nil,
   }
 end
 
@@ -588,7 +588,10 @@ function _M:exec(ctx)
   -- cache lookup
 
   local match_t = self.cache:get(cache_key)
-  if not match_t then
+  if match_t then
+    route_match_stat(ctx, "pos")
+
+  else
     if self.cache_neg:get(cache_key) then
       route_match_stat(ctx, "neg")
       return nil
@@ -616,14 +619,11 @@ function _M:exec(ctx)
     end
 
     self.cache:set(cache_key, match_t)
+  end
 
-  else
-    route_match_stat(ctx, "pos")
-
-    -- preserve_host logic, modify cache result
-    if match_t.route.preserve_host then
-      match_t.upstream_host = fields:get_value("tls.sni", CACHE_PARAMS)
-    end
+  -- preserve_host logic, modify cache result
+  if match_t.route.preserve_host and match_t.upstream_host == nil then
+    match_t.upstream_host = fields:get_value("tls.sni", CACHE_PARAMS)
   end
 
   return match_t
