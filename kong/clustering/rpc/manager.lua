@@ -56,6 +56,11 @@ function _M.new(conf, node_id)
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
     cluster_cert_key = assert(clustering_tls.get_cluster_cert_key(conf)),
     callbacks = callbacks.new(),
+
+    __batch_size = 0,  -- rpc batching size, 0 means disable.
+                       -- currently, we don't have Lua interface to initiate
+                       -- a batch call, any value `> 0` should be considered
+                       -- as testing code.
   }
 
   if conf.role == "control_plane" then
@@ -622,6 +627,14 @@ end
 
 function _M:get_peer_info(node_id)
   return self.client_info[node_id]
+end
+
+
+-- Currently, this function only for testing purpose,
+-- we don't have a Lua interface to initiate a batch call yet.
+function _M:__set_batch(n)
+  assert(type(n) == "number" and n >= 0)
+  self.__batch_size = n
 end
 
 
