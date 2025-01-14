@@ -507,12 +507,7 @@ local function validate_references(self, input)
 end
 
 
-function DeclarativeConfig.validate_references_full(self, input)
-  return validate_references(self, input)
-end
-
-
-function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
+function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_sync)
   local errs = {}
 
   for _, delta in ipairs(deltas) do
@@ -543,7 +538,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
         local fvalue = deltas_map[pks]
 
         -- try to find it in DB (LMDB)
-        if not fvalue then
+        if not fvalue and not is_full_sync then
           fvalue = dao:select(v, { workspace = ws_id })
         end
 
