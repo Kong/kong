@@ -558,7 +558,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
 
           insert(errs[item_type][foreign_entity], msg)
         end
-      end
+      end  -- if foreign_entity and v ~= null
 
     end  -- for k, v in pairs(item)
 
