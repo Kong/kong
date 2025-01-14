@@ -562,7 +562,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
       end
 
       ::found::
-    end
+    end   -- for k, v in pairs(item)
 
     ::continue::
   end  -- for _, delta in ipairs(deltas)
