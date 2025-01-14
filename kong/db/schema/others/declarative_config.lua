@@ -565,7 +565,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
     end
 
     ::continue::
-  end
+  end  -- for _, delta in ipairs(deltas)
 
 
   if next(errs) then
