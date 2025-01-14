@@ -849,7 +849,7 @@ local function get_unique_key(schema, entity, field, value)
 end
 
 
-function DeclarativeConfig.validate(self, input)
+function DeclarativeConfig.validate_schema(self, input)
   local ok, err = self:validate(input)
   if not ok then
     yield()
@@ -885,7 +885,7 @@ local function flatten(self, input)
     input._transform = true
   end
 
-  local ok, err = DeclarativeConfig.validate(self, input)
+  local ok, err = DeclarativeConfig.validate_schema(self, input)
   if not ok then
     return nil, err
   end

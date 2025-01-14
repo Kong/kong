@@ -4,7 +4,7 @@ local declarative_config = require("kong.db.schema.others.declarative_config")
 
 local null = ngx.null
 local tb_insert = table.insert
-local validate = declarative_config.validate
+local validate_schema = declarative_config.validate_schema
 local pk_string = declarative_config.pk_string
 local validate_references_sync = declarative_config.validate_references_sync
 local pretty_print_error = declarative.pretty_print_error
@@ -38,10 +38,10 @@ local function validate_deltas(deltas, is_full_sync)
     end
   end
 
-  -- validate schema
+  -- validate schema (same logic as the sync v1 full-sync schema validation)
   local dc_schema = db.declarative_config.schema
 
-  local ok, err_t = validate(dc_schema, dc_table)
+  local ok, err_t = validate_schema(dc_schema, dc_table)
   if not ok then
     return nil, pretty_print_error(err_t)
   end
