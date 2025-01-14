@@ -546,7 +546,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
         end
 
         -- try to find it in DB (LMDB)
-        fvalue, _ = db:select(v, { workspace = ws_id })
+        fvalue = db:select(v, { workspace = ws_id })
 
         -- could not find its foreign reference
         if not fvalue then
