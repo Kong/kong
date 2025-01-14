@@ -6,7 +6,6 @@ local null = ngx.null
 local tb_insert = table.insert
 local validate = declarative_config.validate
 local pk_string = declarative_config.pk_string
-local validate_references_full = declarative_config.validate_references_full
 local validate_references_sync = declarative_config.validate_references_sync
 local pretty_print_error = declarative.pretty_print_error
 
@@ -31,13 +30,11 @@ local function validate_deltas(deltas, is_full_sync)
       tb_insert(dc_table[delta_type], delta_entity)
 
       -- table: primary key string -> entity
-      if not is_full_sync then
-        local schema = db[delta_type].schema
-        local pk = schema:extract_pk_values(delta_entity)
-        local pks = pk_string(schema, pk)
+      local schema = db[delta_type].schema
+      local pk = schema:extract_pk_values(delta_entity)
+      local pks = pk_string(schema, pk)
 
-        deltas_map[pks] = delta_entity
-      end
+      deltas_map[pks] = delta_entity
     end
   end
 
@@ -49,17 +46,8 @@ local function validate_deltas(deltas, is_full_sync)
     return nil, pretty_print_error(err_t)
   end
 
-  -- validate references for full sync
-  if is_full_sync then
-    local ok, err_t = validate_references_full(dc_schema, dc_table)
-    if not ok then
-      return nil, pretty_print_error(err_t)
-    end
-    return true
-  end
-
-  -- validate references for non full sync
-  local ok, err_t = validate_references_sync(deltas, deltas_map)
+  -- validate references
+  local ok, err_t = validate_references_sync(deltas, deltas_map, is_full_sync)
   if not ok then
     return nil, pretty_print_error(err_t)
   end
