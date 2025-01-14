@@ -202,6 +202,13 @@ function _M:process_rpc_msg(payload, collection)
     if not interest_cb then
       ngx_log(ngx_WARN, "[rpc] no interest for RPC response id: ", payload_id, ", dropping it")
 
+      -- may be some error message for peer
+      if payload.error then
+        ngx_log(ngx.ERR, "[rpc] RPC failed, code: ",
+                         payload.error.code, ", err: ",
+                         payload.error.message)
+      end
+
       return true
     end
 
