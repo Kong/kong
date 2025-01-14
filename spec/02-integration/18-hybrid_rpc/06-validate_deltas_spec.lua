@@ -80,7 +80,7 @@ describe("[delta validations]",function()
 
     for _, delta in ipairs(deltas) do
       local ws_id = delta.ws_id
-      assert(ws_id)
+      assert(ws_id and ws_id ~= ngx.null)
     end
   end)
 
@@ -99,7 +99,7 @@ describe("[delta validations]",function()
     local deltas = declarative.export_config_sync()
 
     local ok, err = validate_deltas(deltas)
-    assert(ok, "validate should not fail: " .. tostring(err))
+    assert.is_true(ok, "validate should not fail: " .. tostring(err))
   end)
 
   it("route has unmatched foreign service", function()
