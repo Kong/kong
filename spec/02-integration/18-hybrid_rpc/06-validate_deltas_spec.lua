@@ -139,7 +139,7 @@ describe("[delta validations]",function()
 
     local deltas = declarative.export_config_sync()
     local ok, err = validate_deltas(deltas, false)
-    assert(ok, "validate should not fail: " .. tostring(err))
+    assert.is_true(ok, "validate should not fail: " .. tostring(err))
   end)
 
   it("100 routes -> 100 services: matched foreign keys", function()
@@ -161,7 +161,7 @@ describe("[delta validations]",function()
 
     local deltas = declarative.export_config_sync()
     local ok, err = validate_deltas(deltas, false)
-    assert(ok, "validate should not fail: " .. tostring(err))
+    assert.is_true(ok, "validate should not fail: " .. tostring(err))
   end)
 
   it("100 routes: unmatched foreign service", function()
