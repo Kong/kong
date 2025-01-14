@@ -536,19 +536,18 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
 
       if foreign_entity and v ~= null then  -- k is foreign key
 
-        local db = kong.db[foreign_entity]
+        local dao = kong.db[foreign_entity]
 
         -- try to find it in deltas
-        local pks = DeclarativeConfig.pk_string(db.schema, v)
+        local pks = DeclarativeConfig.pk_string(dao.schema, v)
         local fvalue = deltas_map[pks]
-        if fvalue then
-          goto found
-        end
 
         -- try to find it in DB (LMDB)
-        fvalue = db:select(v, { workspace = ws_id })
+        if not fvalue then
+          fvalue = dao:select(v, { workspace = ws_id })
+        end
 
-        -- could not find its foreign reference
+        -- record an error if not finding its foreign reference
         if not fvalue then
           errs[item_type] = errs[item_type] or {}
           errs[item_type][foreign_entity] = errs[item_type][foreign_entity] or {}
@@ -561,8 +560,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map)
         end
       end
 
-      ::found::
-    end   -- for k, v in pairs(item)
+    end  -- for k, v in pairs(item)
 
     ::continue::
   end  -- for _, delta in ipairs(deltas)
