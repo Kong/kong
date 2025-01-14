@@ -797,8 +797,9 @@ local function new(self)
     else
       cache_value = NEGATIVELY_CACHED_VALUE
 
-      -- negatively cached values will be rotated on each rotation interval
-      shdict_ttl = max(config.neg_ttl or 0, SECRETS_CACHE_MIN_TTL)
+      -- Negatively cached values will be rotated when after neg_ttl and not before expiration from shdict.
+      -- Adding SECRETS_CACHE_MIN_TTL to neg_ttl to make sure the value doesn't expire when after neg_ttl.
+      shdict_ttl = (config.neg_ttl or 0) + SECRETS_CACHE_MIN_TTL
     end
 
     return cache_value, shdict_ttl, lru_ttl
@@ -1280,7 +1281,7 @@ local function new(self)
     -- negatively cached.
     local resurrect
     local ttl = SECRETS_CACHE:ttl(new_cache_key)
-    if ttl and SECRETS_CACHE:get(new_cache_key) ~= NEGATIVELY_CACHED_VALUE then
+    if ttl then
       local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
       -- the secret is still within ttl, no need to refresh
       if ttl > resurrect_ttl then
@@ -1291,6 +1292,13 @@ local function new(self)
       -- we do not forciblly override it with a negative value, so that the cached value
       -- can be resurrected
       resurrect = ttl > SECRETS_CACHE_MIN_TTL
+
+      -- Only refresh negatively cached values after neg_ttl (not every minute).
+      -- Note that `ttl` variable means remaining time in shdict, and the ttl in the shdict for negatively values adds
+      -- an extra SECRETS_CACHE_MIN_TTL to make sure the value doesn't expire when after neg_ttl.
+      if ttl > SECRETS_CACHE_MIN_TTL and SECRETS_CACHE:get(new_cache_key) == NEGATIVELY_CACHED_VALUE then
+        return true
+      end
     end
 
     strategy = caching_strategy(strategy, config_hash)
