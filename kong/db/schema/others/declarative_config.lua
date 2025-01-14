@@ -854,10 +854,6 @@ function DeclarativeConfig.validate(self, input)
   if not ok then
     yield()
 
-    if self.include_foreign then
-      return nil, err
-    end
-
     -- the error may be due entity validation that depends on foreign entity,
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
