@@ -630,7 +630,9 @@ function _M:get_peer_info(node_id)
 end
 
 
-function _M:set_batch(n)
+-- Currently, this function only for testing purpose,
+-- we don't have a Lua interface to initiate a batch call yet.
+function _M:__set_batch(n)
   assert(type(n) == "number" and n >= 0)
   self.batch_size = n
 end

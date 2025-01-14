@@ -14,7 +14,7 @@ function RpcBatchTestHandler:init_worker()
 
   -- if rpc is ready we will start to batch call
   worker_events.register(function(capabilities_list)
-    kong.rpc:set_batch(1)
+    kong.rpc:__set_batch(1)
 
     local res = kong.rpc:call("control_plane", "kong.test.batch", "world")
     if not res then
@@ -23,7 +23,7 @@ function RpcBatchTestHandler:init_worker()
 
     ngx.log(ngx.DEBUG, "kong.test.batch called: ", res)
 
-    kong.rpc:set_batch(2)
+    kong.rpc:__set_batch(2)
     kong.rpc:notify("control_plane", "kong.test.batch", "kong")
     kong.rpc:notify("control_plane", "kong.test.batch", "gateway")
 
