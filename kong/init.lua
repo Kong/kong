@@ -712,7 +712,10 @@ function Kong.init()
   end
 
   if is_dbless(config) then
-    local dc, err = declarative.new_config(config)
+    -- If sync is enabled, we need to genearte full schema (including complete
+    -- foreign entity) for declarative config. Therefore, sync deltas validation
+    -- could work as expected to check full schema entities.
+    local dc, err = declarative.new_config(config, nil, not not kong.sync)
     if not dc then
       error(err)
     end

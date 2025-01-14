@@ -33,8 +33,8 @@ local _MT = { __index = _M, }
 -- @tparam boolean partial Input is not a full representation
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
-function _M.new_config(kong_config, partial)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
+function _M.new_config(kong_config, partial, include_foreign)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults, include_foreign)
   if not schema then
     return nil, err
   end
@@ -42,6 +42,7 @@ function _M.new_config(kong_config, partial)
   local self = {
     schema = schema,
     partial = partial,
+    include_foreign = include_foreign,
   }
 
   setmetatable(self, _MT)
