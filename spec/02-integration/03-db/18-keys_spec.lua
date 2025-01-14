@@ -249,5 +249,48 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(jwk_priv)
       assert.matches("could not load a private key from public key material", p_err)
     end)
+
+    it(":insert key with x5t", function()
+      local key, err = db.keys:insert {
+        name = "testkey1",
+        set = init_key_set,
+        kid = "kid1",
+        x5t = "x5t1",
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      }
+      assert.is_nil(err)
+      assert(key)
+
+      key, err = db.keys:insert({
+        name = "testkey2",
+        set = init_key_set,
+        kid = "kid2",
+        x5t = "x5t1",
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      })
+      assert.is_nil(key)
+      assert.matches("UNIQUE violation detected on", err)
+    end)
+
+    it(":select key by x5t", function()
+      local key, err = db.keys:insert {
+        name = "testkey3",
+        set = init_key_set,
+        kid = "kid3",
+        x5t = "x5t3",
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      }
+      assert.is_nil(err)
+      assert(key)
+
+      local key2, err2 = db.keys:select_by_x5t("x5t3")
+      assert.is_nil(err2)
+      assert.same("testkey3", key2.name)
+      assert.same("x5t3", key2.x5t)
+
+      local key3, err3 = db.keys:select_by_x5t("x5t4")
+      assert.is_nil(key3)
+      assert.is_nil(err3)
+    end)
   end)
 end
