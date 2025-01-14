@@ -57,7 +57,10 @@ function _M.new(conf, node_id)
     cluster_cert_key = assert(clustering_tls.get_cluster_cert_key(conf)),
     callbacks = callbacks.new(),
 
-    batch_size = 0,  -- rpc batching
+    batch_size = 0,  -- rpc batching size, 0 means disable.
+                     -- currently, we don't have Lua interface to initiate
+                     -- a batch call, any value `> 0` should be considered
+                     -- as testing code.
   }
 
   if conf.role == "control_plane" then
