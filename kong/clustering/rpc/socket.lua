@@ -373,7 +373,7 @@ function _M:start()
       assert(type(payload) == "table")
 
       -- batch enabled
-      local batch_size = self.manager.batch_size
+      local batch_size = self.manager.__batch_size
 
       if batch_size > 0 then
         tb_insert(batch_requests, payload)
