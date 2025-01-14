@@ -256,8 +256,9 @@ local function should_process_route(route)
 end
 
 
-local function load_service_from_db(service_pk)
-  local service, err = kong.db.services:select(service_pk, GLOBAL_QUERY_OPTS)
+local function load_service_from_db(service_pk, ws_id)
+  local options = ws_id and { workspace = ws_id, show_ws_id = true }
+  local service, err = kong.db.services:select(service_pk, options)
   if service == nil then
     -- the third value means "do not cache"
     return nil, err, -1
@@ -299,20 +300,21 @@ local function get_service_for_route(db, route, services_init_cache)
   end
 
   local err
+  local ws_id = route.ws_id
 
   -- kong.core_cache is available, not in init phase
   if kong.core_cache and db.strategy ~= "off" then
     local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
-                                            route.ws_id)
+                                            ws_id)
     service, err = kong.core_cache:get(cache_key, TTL_ZERO,
-                                       load_service_from_db, service_pk)
+                                       load_service_from_db, service_pk, ws_id)
 
   else -- dbless or init phase, kong.core_cache not needed/available
 
     -- A new service/route has been inserted while the initial route
     -- was being created, on init (perhaps by a different Kong node).
     -- Load the service individually and update services_init_cache with it
-    service, err = load_service_from_db(service_pk)
+    service, err = load_service_from_db(service_pk, ws_id)
     services_init_cache[id] = service
   end
 
@@ -990,8 +992,30 @@ return {
       if strategy ~= "off" or kong.sync then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
+        --[[
+                    +-----------+
+                    |   Start   | <-------------------------------------+
+                    +-----------+                                       |
+                          |                                             |
+                          |                                             |
+                          v                                             |
+                    ***************************           +-------+     |
+                    * Is reconfigure running? * ---Yes--->| Sleep | ----+
+                    ***************************           +-------+
+                          |                                   ^
+                          No                                  |
+                          |                                   |
+                          v                                   |
+                    +---------------+                         |
+                    | rebuild router|-------------------------+
+                    +---------------+
+
+            Since reconfigure will also rebuild the router, we skip this round
+            of rebuilding the router.
+        --]]
         local router_async_opts = {
-          name = "router",
+          name = RECONFIGURE_OPTS and RECONFIGURE_OPTS.name or "router", -- please check the above diagram for the
+                                        -- reason of using the same name as reconfigure
           timeout = 0,
           on_timeout = "return_true",
         }

@@ -1,6 +1,6 @@
 # Table of Contents
 
-- 3.9.0
+- [3.9.0](#390)
 - [3.8.1](#381)
 - [3.8.0](#380)
 - [3.7.1](#371)
@@ -263,7 +263,6 @@ database contains invalid Wasm filters.
  [#289](https://github.com/Kong/kong-manager/issues/289)
 
 
->>>>>>> 4fb6d639ab (docs(changelog): update 3.9.0 changelog (#14016))
 ## 3.8.1
 
 ## Kong

@@ -120,9 +120,13 @@ local function header_filter(conf)
 end
 
 
-local function http_export_traces(conf, spans)
+local function http_export_traces(params, spans)
+  local conf = params.conf
+  local resource_attributes = params.options.compiled_resource_attributes
+                              or conf.resource_attributes
   local headers = get_headers(conf.headers)
-  local payload = encode_traces(spans, conf.resource_attributes)
+
+  local payload = encode_traces(spans, resource_attributes)
 
   local ok, err = http_export_request({
     connect_timeout = conf.connect_timeout,
@@ -143,7 +147,7 @@ local function http_export_traces(conf, spans)
 end
 
 
-local function log(conf)
+local function log(conf, options)
   ngx_log(ngx_DEBUG, _log_prefix, "total spans in current request: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
 
   kong.tracing.process_span(function (span)
@@ -158,13 +162,17 @@ local function log(conf)
       span.trace_id = trace_id
     end
 
+    local params = {
+      conf = conf,
+      options = options,
+    }
     local queue_conf = clone(Queue.get_plugin_params("opentelemetry", conf))
     queue_conf.name = queue_conf.name .. ":traces"
 
     local ok, err = Queue.enqueue(
       queue_conf,
       http_export_traces,
-      conf,
+      params,
       encode_span(span)
     )
     if not ok then

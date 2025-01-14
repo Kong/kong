@@ -14,6 +14,7 @@ local insert_entity_for_txn = declarative.insert_entity_for_txn
 local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY = constants.CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
@@ -22,16 +23,10 @@ local MAX_RETRY = 5
 
 local assert = assert
 local ipairs = ipairs
-local fmt = string.format
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
-local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
-
-
--- number of versions behind before a full sync is forced
-local DEFAULT_FULL_SYNC_THRESHOLD = 512
 
 
 function _M.new(strategy)
@@ -43,8 +38,8 @@ function _M.new(strategy)
 end
 
 
-local function inc_sync_result(res)
-  return { default = { deltas = res, wipe = false, }, }
+local function empty_sync_result()
+  return { default = { deltas = {}, wipe = false, }, }
 end
 
 
@@ -59,17 +54,18 @@ local function full_sync_result()
 end
 
 
+local function get_current_version()
+  return declarative.get_current_hash() or DECLARATIVE_EMPTY_CONFIG_HASH
+end
+
+
 function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
-
-  -- number of versions behind before a full sync is forced
-  local FULL_SYNC_THRESHOLD = manager.conf.cluster_full_sync_threshold or
-                              DEFAULT_FULL_SYNC_THRESHOLD
 
   -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
-  -- example: { default = { version = 1000, }, }
+  -- example: { default = { version = "1000", }, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
 
@@ -84,7 +80,7 @@ function _M:init_cp(manager)
       return nil, "default namespace does not exist inside params"
     end
 
-    -- { default = { version = 1000, }, }
+    -- { default = { version = "1000", }, }
     local default_namespace_version = default_namespace.version
     local node_info = assert(kong.rpc:get_peer_info(node_id))
 
@@ -94,8 +90,10 @@ function _M:init_cp(manager)
       hostname = node_id,
       ip = node_info.ip,   -- get the correct ip
       version = node_info.version,    -- get from rpc call
+      labels = node_info.labels,    -- get from rpc call
+      cert_details = node_info.cert_details,  -- get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
-      config_hash = fmt("%032d", default_namespace_version),
+      config_hash = default_namespace_version,
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
@@ -107,48 +105,13 @@ function _M:init_cp(manager)
       return nil, err
     end
 
-    -- is the node empty? If so, just do a full sync to bring it up to date faster
-    if default_namespace_version == 0 or
-       latest_version - default_namespace_version > FULL_SYNC_THRESHOLD
-    then
-      -- we need to full sync because holes are found
-
-      ngx_log(ngx_INFO,
-              "[kong.sync.v2] database is empty or too far behind for node_id: ", node_id,
-              ", current_version: ", default_namespace_version,
-              ", forcing a full sync")
-
+    --  string comparison effectively does the same as number comparison
+    if not self.strategy:is_valid_version(default_namespace_version) or
+       default_namespace_version ~= latest_version then
       return full_sync_result()
     end
 
-    -- do we need an incremental sync?
-
-    local res, err = self.strategy:get_delta(default_namespace_version)
-    if not res then
-      return nil, err
-    end
-
-    if isempty(res) then
-      -- node is already up to date
-      return inc_sync_result(res)
-    end
-
-    -- some deltas are returned, are they contiguous?
-    if res[1].version == default_namespace_version + 1 then
-      -- doesn't wipe dp lmdb, incremental sync
-      return inc_sync_result(res)
-    end
-
-    -- we need to full sync because holes are found
-    -- in the delta, meaning the oldest version is no longer
-    -- available
-
-    ngx_log(ngx_INFO,
-            "[kong.sync.v2] delta for node_id no longer available: ", node_id,
-            ", current_version: ", default_namespace_version,
-            ", forcing a full sync")
-
-    return full_sync_result()
+    return empty_sync_result()
   end)
 end
 
@@ -158,7 +121,7 @@ function _M:init_dp(manager)
   -- DP
   -- Method: kong.sync.v2.notify_new_version
   -- Params: new_versions: list of namespaces and their new versions, like:
-  -- { default = { new_version = 1000, }, }
+  -- { default = { new_version = "1000", }, }
   manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
     -- TODO: currently only default is supported, and anything else is ignored
     local default_new_version = new_versions.default
@@ -171,7 +134,7 @@ function _M:init_dp(manager)
       return nil, "'new_version' key does not exist"
     end
 
-    local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+    local lmdb_ver = get_current_version()
     if lmdb_ver < version then
       -- set lastest version to shm
       kong_shm:set(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY, version)
@@ -215,11 +178,7 @@ local function do_sync()
     return nil, "rpc is not ready"
   end
 
-  local msg = { default =
-                 { version =
-                   tonumber(declarative.get_current_hash()) or 0,
-                 },
-               }
+  local msg = { default = { version = get_current_version(), }, }
 
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta", msg)
   if not ns_deltas then
@@ -236,6 +195,10 @@ local function do_sync()
   end
 
   local deltas = ns_delta.deltas
+
+  if not deltas then
+    return nil, "sync get_delta error: deltas is null"
+  end
 
   if isempty(deltas) then
     -- no delta to sync
@@ -265,13 +228,13 @@ local function do_sync()
 
   local db = kong.db
 
-  local version = 0
+  local version = ""
   local opts = {}
   local crud_events = {}
   local crud_events_n = 0
 
   -- delta should look like:
-  -- { type = ..., entity = { ... }, version = 1, ws_id = ..., }
+  -- { type = ..., entity = { ... }, version = "1", ws_id = ..., }
   for _, delta in ipairs(deltas) do
     local delta_version = delta.version
     local delta_type = delta.type
@@ -347,7 +310,7 @@ local function do_sync()
     end
 
     -- delta.version should not be nil or ngx.null
-    assert(type(delta_version) == "number")
+    assert(type(delta_version) == "string")
 
     if delta_version ~= version then
       version = delta_version
@@ -355,10 +318,12 @@ local function do_sync()
   end -- for _, delta
 
   -- store current sync version
-  t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
+  t:set(DECLARATIVE_HASH_KEY, version)
 
-  -- store the correct default workspace uuid
-  if default_ws_changed then
+  -- record the default workspace into LMDB for any of the following case:
+  -- * wipe is false, but the default workspace has been changed
+  -- * wipe is true (full sync)
+  if default_ws_changed or wipe then
     t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
   end
 
@@ -408,7 +373,7 @@ local sync_once_impl
 
 
 local function start_sync_once_timer(retry_count)
-  local ok, err = ngx.timer.at(0, sync_once_impl, retry_count or 0)
+  local ok, err = kong.timer:at(0, sync_once_impl, retry_count or 0)
   if not ok then
     return nil, err
   end
@@ -424,13 +389,15 @@ function sync_once_impl(premature, retry_count)
 
   sync_handler()
 
+  -- check if "kong.sync.v2.notify_new_version" updates the latest version
+
   local latest_notified_version = ngx.shared.kong:get(CLUSTERING_DATA_PLANES_LATEST_VERSION_KEY)
   if not latest_notified_version then
     ngx_log(ngx_DEBUG, "no version notified yet")
     return
   end
 
-  local current_version = tonumber(declarative.get_current_hash()) or 0
+  local current_version = get_current_version()
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
     return
@@ -448,12 +415,46 @@ end
 
 
 function _M:sync_once(delay)
-  return ngx.timer.at(delay or 0, sync_once_impl, 0)
+  local name = "rpc_sync_v2_once"
+  local is_managed = kong.timer:is_managed(name)
+
+  -- we are running a sync handler
+  if is_managed then
+    return true
+  end
+
+  local ok, err = kong.timer:named_at(name, delay or 0, sync_once_impl, 0)
+  if not ok then
+    return nil, err
+  end
+
+  return true
 end
 
 
-function _M:sync_every(delay)
-  return ngx.timer.every(delay, sync_handler)
+function _M:sync_every(delay, stop)
+  local name = "rpc_sync_v2_every"
+  local is_managed = kong.timer:is_managed(name)
+
+  -- we only start or stop once
+
+  if stop then
+    if is_managed then
+      assert(kong.timer:cancel(name))
+    end
+    return true
+  end
+
+  if is_managed then
+    return true
+  end
+
+  local ok, err = kong.timer:named_every(name, delay, sync_handler)
+  if not ok then
+    return nil, err
+  end
+
+  return true
 end
 
 

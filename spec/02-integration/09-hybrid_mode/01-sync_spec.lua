@@ -732,6 +732,12 @@ describe("CP/DP config sync #" .. strategy .. " rpc_sync=" .. rpc_sync, function
         end
       end, 5)
 
+      -- TODO: it may cause flakiness
+      -- wait for rpc sync finishing
+      if rpc_sync == "on" then
+        ngx.sleep(0.5)
+      end
+
       for i = 5, 2, -1 do
         res = proxy_client:get("/" .. i)
         assert.res_status(404, res)
@@ -795,12 +801,8 @@ describe("CP/DP labels #" .. strategy, function()
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal("mycloud", v.labels.deployment)
-              assert.equal("us-east-1", v.labels.region)
-            end
+            assert.equal("mycloud", v.labels.deployment)
+            assert.equal("us-east-1", v.labels.region)
             return true
           end
         end
@@ -859,11 +861,7 @@ describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal(1888983905, v.cert_details.expiry_timestamp)
-            end
+            assert.equal(1888983905, v.cert_details.expiry_timestamp)
             return true
           end
         end
@@ -928,11 +926,7 @@ describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
 
         for _, v in pairs(json.data) do
           if v.ip == "127.0.0.1" then
-            -- TODO: The API output does include labels and certs when the
-            --       rpc sync is enabled.
-            if rpc_sync == "off" then
-              assert.equal(1897136778, v.cert_details.expiry_timestamp)
-            end
+            assert.equal(1897136778, v.cert_details.expiry_timestamp)
             return true
           end
         end

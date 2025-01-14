@@ -14,7 +14,7 @@ please check out the [rules_rust](https://github.com/bazelbuild/rules_rust).
 
 ```bash
 crates="atc_router_crate_index"
-CARGO_BAZEL_REPIN=1 CARGO_BAZEL_REPIN_ONLY=$scrates bazel sync --only=$crates
+CARGO_BAZEL_REPIN=1 CARGO_BAZEL_REPIN_ONLY=$crates bazel sync --only=$crates
 unset crates
 ```
 

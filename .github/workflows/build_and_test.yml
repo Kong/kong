@@ -139,7 +139,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download runtimes file
-      uses: Kong/gh-storage/download@v1
+      uses: Kong/gh-storage/download@b196a6b94032e56e414227c749e9f96a6afc2b91 # v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:

@@ -34,7 +34,7 @@ local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
 
 
 local _log_prefix = "[rpc] "
-local RPC_MATA_V1 = "kong.meta.v1"
+local RPC_META_V1 = "kong.meta.v1"
 local RPC_SNAPPY_FRAMED = "x-snappy-framed"
 
 
@@ -56,6 +56,11 @@ function _M.new(conf, node_id)
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
     cluster_cert_key = assert(clustering_tls.get_cluster_cert_key(conf)),
     callbacks = callbacks.new(),
+
+    __batch_size = 0,  -- rpc batching size, 0 means disable.
+                       -- currently, we don't have Lua interface to initiate
+                       -- a batch call, any value `> 0` should be considered
+                       -- as testing code.
   }
 
   if conf.role == "control_plane" then
@@ -146,7 +151,7 @@ end
 
 
 -- CP => DP
-function _M:_handle_meta_call(c)
+function _M:_handle_meta_call(c, cert)
   local data, typ, err = c:recv_frame()
   if err then
     return nil, err
@@ -159,7 +164,7 @@ function _M:_handle_meta_call(c)
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == jsonrpc.VERSION)
 
-  if payload.method ~= RPC_MATA_V1 .. ".hello" then
+  if payload.method ~= RPC_META_V1 .. ".hello" then
     return nil, "wrong RPC meta call: " .. tostring(payload.method)
   end
 
@@ -201,6 +206,11 @@ function _M:_handle_meta_call(c)
   local capabilities_list = info.rpc_capabilities
   local node_id = info.kong_node_id
 
+  -- we already set this dp node
+  if self.client_capabilities[node_id] then
+    return node_id
+  end
+
   self.client_capabilities[node_id] = {
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
@@ -210,10 +220,28 @@ function _M:_handle_meta_call(c)
   assert(self.concentrator)
   assert(self.client_info)
 
+  -- see communicate() in data_plane.lua
+  local labels do
+    if info.kong_conf.cluster_dp_labels then
+      labels = {}
+      for _, lab in ipairs(info.kong_conf.cluster_dp_labels) do
+        local del = lab:find(":", 1, true)
+        labels[lab:sub(1, del - 1)] = lab:sub(del + 1)
+      end
+    end
+  end
+
+  -- values in cert_details must be strings
+  local cert_details = {
+    expiry_timestamp = cert:get_not_after(),
+  }
+
   -- store DP's ip addr
   self.client_info[node_id] = {
     ip = ngx_var.remote_addr,
     version = info.kong_version,
+    labels = labels,
+    cert_details = cert_details,
   }
 
   return node_id
@@ -269,6 +297,16 @@ function _M:_meta_call(c, meta_cap, node_id)
     set = pl_tablex_makeset(capabilities_list),
     list = capabilities_list,
   }
+
+  -- tell outside that rpc is ready
+  local worker_events = assert(kong.worker_events)
+
+  -- notify this worker
+  local ok, err = worker_events.post_local("clustering:jsonrpc", "connected",
+                                           capabilities_list)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connected event: ", err)
+  end
 
   return true
 end
@@ -394,7 +432,7 @@ function _M:handle_websocket()
   -- choice a proper protocol
   for _, v in ipairs(protocols) do
     -- now we only support kong.meta.v1
-    if RPC_MATA_V1 == string_tools.strip(v) then
+    if RPC_META_V1 == string_tools.strip(v) then
       meta_v1_supported = true
       break
     end
@@ -414,7 +452,7 @@ function _M:handle_websocket()
   end
 
   -- now we only use kong.meta.v1
-  ngx.header["Sec-WebSocket-Protocol"] = RPC_MATA_V1
+  ngx.header["Sec-WebSocket-Protocol"] = RPC_META_V1
 
   local wb, err = server:new(WS_OPTS)
   if not wb then
@@ -423,7 +461,7 @@ function _M:handle_websocket()
   end
 
   -- if timeout (default is 5s) we will close the connection
-  local node_id, err = self:_handle_meta_call(wb)
+  local node_id, err = self:_handle_meta_call(wb, cert)
   if not node_id then
     ngx_log(ngx_ERR, _log_prefix, "unable to handshake with client: ", err)
     return ngx_exit(ngx.HTTP_CLOSE)
@@ -435,6 +473,17 @@ function _M:handle_websocket()
   s:start()
   local res, err = s:join()
   self:_remove_socket(s)
+
+  -- tell outside that rpc disconnected
+  do
+    local worker_events = assert(kong.worker_events)
+
+    -- notify this worker
+    local ok, err = worker_events.post_local("clustering:jsonrpc", "disconnected")
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "unable to post rpc disconnected event: ", err)
+    end
+  end
 
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "RPC connection broken: ", err, " node_id: ", node_id)
@@ -480,7 +529,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     ssl_verify = true,
     client_cert = cert,
     client_priv_key = key,
-    protocols = RPC_MATA_V1,
+    protocols = RPC_META_V1,
   }
 
   if self.conf.cluster_mtls == "shared" then
@@ -527,7 +576,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     -- should like "kong.meta.v1"
     local meta_cap = resp_headers["sec_websocket_protocol"]
 
-    if meta_cap ~= RPC_MATA_V1 then
+    if meta_cap ~= RPC_META_V1 then
       ngx_log(ngx_ERR, _log_prefix, "did not support protocol : ", meta_cap)
       c:send_close() -- can't do much if this fails
       goto err
@@ -559,6 +608,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   if not exiting() then
+    c:close()
     self:try_connect(reconnection_delay)
   end
 end
@@ -577,6 +627,14 @@ end
 
 function _M:get_peer_info(node_id)
   return self.client_info[node_id]
+end
+
+
+-- Currently, this function only for testing purpose,
+-- we don't have a Lua interface to initiate a batch call yet.
+function _M:__set_batch(n)
+  assert(type(n) == "number" and n >= 0)
+  self.__batch_size = n
 end
 
 

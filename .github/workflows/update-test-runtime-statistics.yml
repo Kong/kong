@@ -28,7 +28,7 @@ jobs:
           artifact-name-regexp: "^test-runtime-statistics-\\d+$"
 
       - name: Upload new runtimes file
-        uses: Kong/gh-storage/upload@v1
+        uses: Kong/gh-storage/upload@b196a6b94032e56e414227c749e9f96a6afc2b91 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:

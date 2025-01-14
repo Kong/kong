@@ -38,8 +38,32 @@ local function load_session_from_cache(key)
   return kong.cache:get(cache_key, nil, load_session_from_db, key)
 end
 
+local function insert_session_metadata(metadata, session)
+  if not metadata then
+    return
+  end
 
-local function insert_session(key, value, ttl, current_time, old_key, stale_ttl, remember)
+  local audiences = metadata.audiences
+  local subjects  = metadata.subjects
+  local count     = #audiences
+  for i = 1, count do
+    local _, err = kong.db.session_metadatas:insert({
+      sid      = session.session_id,
+      audience = audiences[i],
+      subject  = subjects[i],
+      session  = session,
+    })
+
+    if err then
+      kong.db.sessions:delete(session.id)
+      return false, err
+    end
+  end
+
+  return true
+end
+
+local function insert_session(key, value, ttl, current_time, old_key, stale_ttl, metadata, remember)
   DATA.session_id = key
   DATA.data = value
   DATA.expires = current_time + ttl
@@ -47,6 +71,13 @@ local function insert_session(key, value, ttl, current_time, old_key, stale_ttl,
   TTL.ttl = ttl
 
   local insert_ok, insert_err = kong.db.sessions:insert(DATA, TTL)
+  if not insert_err then
+    local ok, err = insert_session_metadata(metadata, insert_ok)
+    if not ok and err then
+      return nil, err
+    end
+  end
+
   if not old_key then
     return insert_ok, insert_err
   end
@@ -103,11 +134,11 @@ end
 
 function storage:set(name, key, value, ttl, current_time, old_key, stale_ttl, metadata, remember)
   if get_phase() == "header_filter" then
-    timer_at(0, insert_session_timer, key, value, ttl, current_time, old_key, stale_ttl, remember)
+    timer_at(0, insert_session_timer, key, value, ttl, current_time, old_key, stale_ttl, metadata, remember)
     return true
   end
 
-  return insert_session(key, value, ttl, current_time, old_key, stale_ttl, remember)
+  return insert_session(key, value, ttl, current_time, old_key, stale_ttl, metadata, remember)
 end
 
 

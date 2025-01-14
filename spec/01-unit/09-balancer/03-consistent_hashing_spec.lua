@@ -319,10 +319,10 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
         res[addr..":"..port] = (res[addr..":"..port] or 0) + 1
         res[host..":"..port] = (res[host..":"..port] or 0) + 1
       end
-      assert(15 == res["1.2.3.4:123"] or nil == res["1.2.3.4:123"], "mismatch")
-      assert(15 == res["mashape.com:123"] or nil == res["mashape.com:123"], "mismatch")
-      assert(15 == res["5.6.7.8:321"] or nil == res["5.6.7.8:321"], "mismatch")
-      assert(15 == res["getkong.org:321"] or nil == res["getkong.org:321"], "mismatch")
+      assert.is_true(15 == res["1.2.3.4:123"] or nil == res["1.2.3.4:123"], "mismatch")
+      assert.is_true(15 == res["mashape.com:123"] or nil == res["mashape.com:123"], "mismatch")
+      assert.is_true(15 == res["5.6.7.8:321"] or nil == res["5.6.7.8:321"], "mismatch")
+      assert.is_true(15 == res["getkong.org:321"] or nil == res["getkong.org:321"], "mismatch")
     end)
     it("evaluate the change in the continuum", function()
       local res1 = {}
@@ -359,8 +359,8 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
       -- increasing the number of addresses from 5 to 6 should change 49% of
       -- targets if we were using a simple distribution, like an array.
       -- anyway, we should be below than 20%.
-      assert((dif/100) < 49, "it should be better than a simple distribution")
-      assert((dif/100) < 20, "it is still to much change ")
+      assert.is_true((dif/100) < 49, "it should be better than a simple distribution")
+      assert.is_true((dif/100) < 20, "it is still to much change ")
 
 
       add_target(b, "10.0.0.7", 7, 100)
@@ -384,10 +384,10 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
       -- targets, and from 6 to 8, 76%, if we were using a simple distribution,
       -- like an array.
       -- either way, we should be below than 40% and 25%.
-      assert((dif/100) < 83, "it should be better than a simple distribution")
-      assert((dif/100) < 40, "it is still to much change ")
-      assert((dif2/100) < 76, "it should be better than a simple distribution")
-      assert((dif2/100) < 25, "it is still to much change ")
+      assert.is_true((dif/100) < 83, "it should be better than a simple distribution")
+      assert.is_true((dif/100) < 40, "it is still to much change ")
+      assert.is_true((dif2/100) < 76, "it should be better than a simple distribution")
+      assert.is_true((dif2/100) < 25, "it is still to much change ")
     end)
     it("gets an IP address and port number; consistent hashing skips unhealthy addresses", function()
       dnsA({
@@ -544,8 +544,8 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
             error("unknown action received: "..tostring(action))
           end
           if action ~= "health" then
-            assert(ip == "mashape1.com" or ip == "mashape2.com")
-            assert(port == 8001 or port == 8002)
+            assert.is_true(ip == "mashape1.com" or ip == "mashape2.com")
+            assert.is_true(port == 8001 or port == 8002)
             assert.equals("mashape.com", hostname)
           end
         end
@@ -1064,7 +1064,7 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
       })
       local ip, port = b:getPeer(false, nil, "test")
       assert.equal("1.2.3.6", ip)
-      assert(port == 8001 or port == 8002, "port expected 8001 or 8002")
+      assert.is_true(port == 8001 or port == 8002, "port expected 8001 or 8002")
     end)
     it("recreate Kong issue #2131", function()
       -- erasing does not remove the address from the host

@@ -1,0 +1,4 @@
+message: |
+  Add a patch for kong.resty.set_next_upstream() to control the next upstream retry logic in lua side. [Kong/lua-kong-nginx-module#98](https://github.com/Kong/lua-kong-nginx-module/pull/98)
+type: bugfix
+scope: Core
