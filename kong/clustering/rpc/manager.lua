@@ -34,7 +34,7 @@ local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
 
 
 local _log_prefix = "[rpc] "
-local RPC_MATA_V1 = "kong.meta.v1"
+local RPC_META_V1 = "kong.meta.v1"
 local RPC_SNAPPY_FRAMED = "x-snappy-framed"
 
 
@@ -164,7 +164,7 @@ function _M:_handle_meta_call(c, cert)
   local payload = cjson_decode(data)
   assert(payload.jsonrpc == jsonrpc.VERSION)
 
-  if payload.method ~= RPC_MATA_V1 .. ".hello" then
+  if payload.method ~= RPC_META_V1 .. ".hello" then
     return nil, "wrong RPC meta call: " .. tostring(payload.method)
   end
 
@@ -432,7 +432,7 @@ function _M:handle_websocket()
   -- choice a proper protocol
   for _, v in ipairs(protocols) do
     -- now we only support kong.meta.v1
-    if RPC_MATA_V1 == string_tools.strip(v) then
+    if RPC_META_V1 == string_tools.strip(v) then
       meta_v1_supported = true
       break
     end
@@ -452,7 +452,7 @@ function _M:handle_websocket()
   end
 
   -- now we only use kong.meta.v1
-  ngx.header["Sec-WebSocket-Protocol"] = RPC_MATA_V1
+  ngx.header["Sec-WebSocket-Protocol"] = RPC_META_V1
 
   local wb, err = server:new(WS_OPTS)
   if not wb then
@@ -529,7 +529,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     ssl_verify = true,
     client_cert = cert,
     client_priv_key = key,
-    protocols = RPC_MATA_V1,
+    protocols = RPC_META_V1,
   }
 
   if self.conf.cluster_mtls == "shared" then
@@ -576,7 +576,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     -- should like "kong.meta.v1"
     local meta_cap = resp_headers["sec_websocket_protocol"]
 
-    if meta_cap ~= RPC_MATA_V1 then
+    if meta_cap ~= RPC_META_V1 then
       ngx_log(ngx_ERR, _log_prefix, "did not support protocol : ", meta_cap)
       c:send_close() -- can't do much if this fails
       goto err
