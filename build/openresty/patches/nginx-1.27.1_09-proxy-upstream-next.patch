@@ -1,8 +1,8 @@
-diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
-index 2be233c..7f7132d 100644
---- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
-+++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
-@@ -2563,7 +2563,11 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
+diff --git a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
+index 1c771bc..3445bf2 100644
+--- a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
+@@ -2581,7 +2581,11 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
          }
  
          if (u->peer.tries > 1
@@ -14,7 +14,7 @@ index 2be233c..7f7132d 100644
              && !(u->request_sent && r->request_body_no_buffering)
              && !(timeout && ngx_current_msec - u->peer.start_time >= timeout))
          {
-@@ -4420,7 +4424,12 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
+@@ -4451,7 +4455,12 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
      }
  
      if (u->peer.tries == 0

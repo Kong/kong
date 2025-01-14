@@ -24,6 +24,6 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = { "1.25.3.2" },
+    nginx = { "1.27.1.1" },
   }
 }

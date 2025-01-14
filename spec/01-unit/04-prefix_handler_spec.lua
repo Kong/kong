@@ -791,7 +791,7 @@ describe("NGINX conf compiler", function()
           nginx_supstream_keepalive = "120",
         }))
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
-        assert.matches("keepalive%s120;", nginx_conf)
+        assert.matches("[^_]keepalive%s120;", nginx_conf)
       end)
 
       it("does not inject directives if value is 'NONE'", function()
@@ -799,7 +799,7 @@ describe("NGINX conf compiler", function()
           nginx_upstream_keepalive = "NONE",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.not_matches("keepalive%s+%d+;", nginx_conf)
+        assert.not_matches("[^_]keepalive%s+%d+;", nginx_conf)
       end)
 
       describe("default injected NGINX directives", function()

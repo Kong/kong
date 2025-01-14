@@ -1,0 +1,26 @@
+diff --git a/bundle/nginx-1.27.1/src/http/ngx_http_special_response.c b/bundle/nginx-1.27.1/src/http/ngx_http_special_response.c
+index b5db811..0dbc2d3 100644
+--- a/bundle/nginx-1.27.1/src/http/ngx_http_special_response.c
++++ b/bundle/nginx-1.27.1/src/http/ngx_http_special_response.c
+@@ -19,21 +19,18 @@ static ngx_int_t ngx_http_send_refresh(ngx_http_request_t *r);
+ 
+ 
+ static u_char ngx_http_error_full_tail[] =
+-"<hr><center>" NGINX_VER "</center>" CRLF
+ "</body>" CRLF
+ "</html>" CRLF
+ ;
+ 
+ 
+ static u_char ngx_http_error_build_tail[] =
+-"<hr><center>" NGINX_VER_BUILD "</center>" CRLF
+ "</body>" CRLF
+ "</html>" CRLF
+ ;
+ 
+ 
+ static u_char ngx_http_error_tail[] =
+-"<hr><center>openresty</center>" CRLF
+ "</body>" CRLF
+ "</html>" CRLF
+ ;
