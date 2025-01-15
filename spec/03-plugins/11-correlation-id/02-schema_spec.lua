@@ -79,38 +79,39 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       local res, err = db.connector:query(sql)
       assert.is_nil(err)
       assert.is_nil(res[1].generator)
-
       res = admin_client:get("/plugins")
       res = cjson.decode(assert.res_status(200, res))
       assert.equals(res.data[1].config.generator, "uuid#counter")
     end)
   end)
 
-  for _, rpc_sync in ipairs { "off", "on" } do
-  for _, cluster_rpc in ipairs { "off", "on" } do
+  for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+    local rpc, rpc_sync = v[1], v[2]
   describe("in hybrid mode" .. " rpc_sync=" .. rpc_sync, function()
     local route
     local plugin_name = "correlation-id"
-    local bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
-    local ws = db.workspaces:select_by_name("default")
-    local plugin_id = uuid.generate_v4()
-    plugin_id = uuid.generate_v4()
-    local sql = render([[
-      INSERT INTO plugins (id, name, config, enabled, ws_id) VALUES
-        ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE, '$(WS_ID)');
-      COMMIT;
-    ]], {
-      ID = plugin_id,
-      PLUGIN_NAME = plugin_name,
-      CONFIG = pgmoon_json.encode_json(plugin_config),
-      WS_ID = ws.id,
-    })
-
-    local res, err = db.connector:query(sql)
-    assert.is_nil(err)
-    assert.is_not_nil(res)
+    local bp, db, ws, plugin_id
 
     lazy_setup(function()
+      -- copy from outer lazy_setup, to avoid database reused.
+      bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
+      ws = db.workspaces:select_by_name("default")
+      plugin_id = uuid.generate_v4()
+      local sql = render([[
+        INSERT INTO plugins (id, name, config, enabled, ws_id) VALUES
+          ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE, '$(WS_ID)');
+        COMMIT;
+      ]], {
+        ID = plugin_id,
+        PLUGIN_NAME = plugin_name,
+        CONFIG = pgmoon_json.encode_json(plugin_config),
+        WS_ID = ws.id,
+      })
+
+      local res, err = db.connector:query(sql)
+      assert.is_nil(err)
+      assert.is_not_nil(res)
+
       route = bp.routes:insert({
         hosts = {"example.com"},
       })
@@ -145,7 +146,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc_sync = rpc_sync,
-        cluster_rpc = cluster_rpc
+        cluster_rpc = rpc
       }))
 
       assert(helpers.start_kong({
@@ -158,7 +159,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
         cluster_rpc_sync = rpc_sync,
-        cluster_rpc = cluster_rpc
+        cluster_rpc = rpc
       }))
     end)
 
@@ -208,6 +209,5 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       proxy_client:close()
     end)
   end)
-  end -- for rpc_sync
-  end -- for cluster_sync
+  end -- for rpc, rpc_sync
 end)
