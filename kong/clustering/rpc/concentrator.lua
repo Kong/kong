@@ -99,6 +99,16 @@ function _M:process_one_response(payload)
   assert(payload.jsonrpc == jsonrpc.VERSION)
   local payload_id = payload.id
 
+  -- may be some error message for peer
+  if not payload_id then
+    if payload.error then
+      ngx_log(ngx_ERR, "[rpc] RPC failed, code: ",
+                       payload.error.code, ", err: ",
+                       payload.error.message)
+    end
+    return
+  end
+
   -- response
   local cb = self.interest[payload_id]
   self.interest[payload_id] = nil -- edge trigger only once
