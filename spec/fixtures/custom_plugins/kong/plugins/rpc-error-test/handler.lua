@@ -45,7 +45,7 @@ function RpcErrorTestHandler:init_worker()
     local msg = setmetatable({}, cjson.array_mt)
     assert(s:push_request(msg))
 
-    -- send a invalid msg
+    -- send an invalid msg
     local msg = ({"invalid_request"})
     assert(s:push_request(msg))
 
