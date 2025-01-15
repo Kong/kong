@@ -146,8 +146,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         prefix = "servroot",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        cluster_rpc_sync = rpc_sync,
         cluster_rpc = rpc
+        cluster_rpc_sync = rpc_sync,
       }))
 
       assert(helpers.start_kong({
