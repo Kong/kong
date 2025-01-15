@@ -159,8 +159,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
-        cluster_rpc_sync = rpc_sync,
         cluster_rpc = rpc
+        cluster_rpc_sync = rpc_sync,
       }))
     end)
 
