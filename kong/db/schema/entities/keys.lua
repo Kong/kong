@@ -45,8 +45,7 @@ return {
         type     = "string",
         description = "X.509 certificate SHA-1 thumbprint.",
         required = false,
-        unique   = true,
-        unique_across_ws = true,
+        unique = false,
       },
     },
     {

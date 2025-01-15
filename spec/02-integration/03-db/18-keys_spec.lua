@@ -6,7 +6,7 @@ local fmt = string.format
 
 for _, strategy in helpers.all_strategies() do
   describe("db.keys #" .. strategy, function()
-    local init_key_set, init_pem_key, pem_pub, pem_priv, jwk
+    local init_key_set, key_set2, init_pem_key, pem_pub, pem_priv, jwk
     local bp, db
 
     lazy_setup(function()
@@ -20,6 +20,10 @@ for _, strategy in helpers.all_strategies() do
 
       init_key_set = assert(bp.key_sets:insert {
         name = "testset",
+      })
+
+      key_set2 = assert(bp.key_sets:insert {
+        name = "testset2"
       })
 
       local jwk_pub, jwk_priv = helpers.generate_keys("JWK")
@@ -269,28 +273,42 @@ for _, strategy in helpers.all_strategies() do
         pem = { private_key = pem_priv, public_key = pem_pub }
       })
       assert.is_nil(key)
-      assert.matches("UNIQUE violation detected on", err)
+      assert.matches("violation on", err)
+
+      key, err = db.keys:insert {
+        name = "testkey3",
+        set = key_set2,
+        kid = "kid3",
+        x5t = "x5t1",
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      }
+      assert.is_nil(err)
+      assert(key)
     end)
 
     it(":select key by x5t", function()
       local key, err = db.keys:insert {
-        name = "testkey3",
+        name = "testkey4",
         set = init_key_set,
-        kid = "kid3",
-        x5t = "x5t3",
+        kid = "kid4",
+        x5t = "x5t4",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
       assert.is_nil(err)
       assert(key)
 
-      local key2, err2 = db.keys:select_by_x5t("x5t3")
+      local key2, err2 = db.keys:select_by_x5t_set_id("x5t4", init_key_set.id)
       assert.is_nil(err2)
-      assert.same("testkey3", key2.name)
-      assert.same("x5t3", key2.x5t)
+      assert.same("testkey4", key2.name)
+      assert.same("x5t4", key2.x5t)
 
-      local key3, err3 = db.keys:select_by_x5t("x5t4")
-      assert.is_nil(key3)
+      local key3, err3 = db.keys:select_by_x5t_set_id("x5t4", key_set2.id)  -- inexistent
       assert.is_nil(err3)
+      assert.is_nil(key3)
+
+      local key4, err4 = db.keys:select_by_x5t_set_id("x5t4")  -- inexistent
+      assert.is_nil(err4)
+      assert.is_nil(key4)
     end)
   end)
 end
