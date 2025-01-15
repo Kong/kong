@@ -291,6 +291,14 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors14.test" },
       })
 
+      local route15 = bp.routes:insert({
+        hosts = { "cors15.test" },
+      })
+
+      local route16 = bp.routes:insert({
+        hosts = { "cors16.test" },
+      })
+
       local mock_upstream = bp.services:insert {
         host = helpers.mock_upstream_hostname,
         port = helpers.mock_upstream_port,
@@ -461,6 +469,28 @@ for _, strategy in helpers.each_strategy() do
         config = {
           preflight_continue = false,
           origins = { "foo.bar", "*" }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route15.id },
+        config = {
+          skip_cors_when_origin_is_empty = true,
+          origins = { "foo.bar" },
+          exposed_headers    = { "x-auth-token" },
+          credentials     = true
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
+        route = { id = route16.id },
+        config = {
+          skip_cors_when_origin_is_empty = false,
+          origins = { "foo.bar" },
+          exposed_headers    = { "x-auth-token" },
+          credentials     = true
         }
       }
 
@@ -1129,6 +1159,32 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, res.headers["Access-Control-Allow-Origin"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("disallowed-domain.test", json.headers["origin"])
+      end)
+
+      it("when enable skip_cors_when_origin_is_empty, no ACAO", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors15.test",
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+        assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      end)
+
+      it("when disable skip_cors_when_origin_is_empty, ACAO is returned", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors16.test",
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal("foo.bar", res.headers["Access-Control-Allow-Origin"] )
+        assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
       end)
     end)
   end)
