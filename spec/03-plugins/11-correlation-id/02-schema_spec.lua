@@ -87,8 +87,29 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
   end)
 
   for _, rpc_sync in ipairs { "off", "on" } do
+  for _, cluster_rpc in ipairs { "off", "on" } do
   describe("in hybrid mode" .. " rpc_sync=" .. rpc_sync, function()
     local route
+    local plugin_name = "correlation-id"
+    local bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
+    local ws = db.workspaces:select_by_name("default")
+    local plugin_id = uuid.generate_v4()
+    plugin_id = uuid.generate_v4()
+    local sql = render([[
+      INSERT INTO plugins (id, name, config, enabled, ws_id) VALUES
+        ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE, '$(WS_ID)');
+      COMMIT;
+    ]], {
+      ID = plugin_id,
+      PLUGIN_NAME = plugin_name,
+      CONFIG = pgmoon_json.encode_json(plugin_config),
+      WS_ID = ws.id,
+    })
+
+    local res, err = db.connector:query(sql)
+    assert.is_nil(err)
+    assert.is_not_nil(res)
+
     lazy_setup(function()
       route = bp.routes:insert({
         hosts = {"example.com"},
@@ -124,6 +145,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         cluster_rpc_sync = rpc_sync,
+        cluster_rpc = cluster_rpc
       }))
 
       assert(helpers.start_kong({
@@ -136,6 +158,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
         cluster_rpc_sync = rpc_sync,
+        cluster_rpc = cluster_rpc
       }))
     end)
 
@@ -186,4 +209,5 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
     end)
   end)
   end -- for rpc_sync
+  end -- for cluster_sync
 end)
