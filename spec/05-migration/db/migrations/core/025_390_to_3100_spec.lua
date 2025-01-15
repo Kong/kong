@@ -29,6 +29,6 @@ describe("database migration", function()
   end)
 
   uh.old_after_up("has created the expected new columns", function()
-    assert.table_has_column("keys", "x5t", "boolean")
+    assert.table_has_column("keys", "x5t", "text")
   end)
 end)
