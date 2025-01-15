@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
           assert.logfile(name).has.line(
             "kong.sync.v2.get_delta ok", true)
           assert.logfile(name).has.no.line(
-            "assert failed", true)
+            "assertion failed", true)
           assert.logfile(name).has.no.line(
             "[error]", true)
           return true
@@ -66,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
         -- cp logs
         helpers.pwait_until(function()
           assert.logfile(name).has.no.line(
-            "assert failed", true)
+            "assertion failed", true)
           assert.logfile(name).has.no.line(
             "[error]", true)
           return true
