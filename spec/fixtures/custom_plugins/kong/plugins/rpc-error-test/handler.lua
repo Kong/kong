@@ -46,7 +46,7 @@ function RpcErrorTestHandler:init_worker()
     assert(s:push_request(msg))
 
     -- send an invalid msg
-    local msg = ({"invalid_request"})
+    local msg = setmetatable({"invalid_request"}, cjson.array_mt)
     assert(s:push_request(msg))
 
     ngx.log(ngx.DEBUG, "test #2 ok")
