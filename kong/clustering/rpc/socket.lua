@@ -282,6 +282,16 @@ function _M:start()
 
       local payload = decompress_payload(data)
 
+      if not payload then
+        local res, err = self:push_response(
+                          new_error(nil, jsonrpc.PARSE_ERROR))
+        if not res then
+          return nil, err
+        end
+
+        goto continue
+      end
+
       -- single rpc call
       if not isarray(payload) then
         local ok, err = self:process_rpc_msg(payload)

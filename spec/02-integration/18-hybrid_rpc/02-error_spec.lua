@@ -61,6 +61,12 @@ for _, strategy in helpers.each_strategy() do
         helpers.pwait_until(function()
           assert.logfile(name).has.line(
             "[rpc] RPC failed, code: -32600, err: empty batch array", true)
+
+          assert.logfile(dp_logfile).has.line(
+            "[rpc] got batch RPC call: 1", true)
+          assert.logfile(name).has.line(
+            "[rpc] RPC failed, code: -32600, err: not a valid object", true)
+
           assert.logfile(name).has.line(
             "test #2 ok", true)
           assert.logfile(name).has.no.line(

@@ -37,12 +37,17 @@ function RpcErrorTestHandler:init_worker()
 
   end, "clustering:jsonrpc", "connected")
 
+  -- if rpc is ready we will start to send raw msg
   worker_events.register(function(capabilities_list)
     local s = next(kong.rpc.clients[node_id])
 
     -- send an empty array
     local msg = setmetatable({}, cjson.array_mt)
-    assert(s:push_request({}))
+    assert(s:push_request(msg))
+
+    -- send a invalid msg
+    local msg = ({"invalid_request"})
+    assert(s:push_request(msg))
 
     ngx.log(ngx.DEBUG, "test #2 ok")
 
