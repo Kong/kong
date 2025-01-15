@@ -259,7 +259,10 @@ function CorsHandler:header_filter(conf)
   configure_credentials(conf, allow_all, true)
 
   local req_origin = kong.request.get_header("origin")
-  if req_origin and conf.exposed_headers and #conf.exposed_headers > 0 then
+  if not req_origin and conf.skip_cors_when_origin_is_empty then
+    return
+  end
+  if conf.exposed_headers and #conf.exposed_headers > 0 then
     kong.response.set_header("Access-Control-Expose-Headers",
                              concat(conf.exposed_headers, ","))
   end
