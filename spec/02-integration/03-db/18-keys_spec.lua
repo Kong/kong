@@ -256,57 +256,76 @@ for _, strategy in helpers.all_strategies() do
 
     it(":insert key with x5t", function()
       local key, err = db.keys:insert {
-        name = "testkey1",
+        name = "insert_key1",
         set = init_key_set,
-        kid = "kid1",
-        x5t = "x5t1",
+        kid = "insert_kid1",
+        x5t = "insert_x5t1",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
       assert.is_nil(err)
       assert(key)
 
       key, err = db.keys:insert({
-        name = "testkey2",
+        name = "insert_key2",
         set = init_key_set,
-        kid = "kid2",
-        x5t = "x5t1",
+        kid = "insert_kid2",
+        x5t = "insert_x5t1",
         pem = { private_key = pem_priv, public_key = pem_pub }
       })
       assert.is_nil(key)
       assert.matches("violation on", err)
 
       key, err = db.keys:insert {
-        name = "testkey3",
+        name = "insert_key3",
         set = key_set2,
-        kid = "kid3",
-        x5t = "x5t1",
+        kid = "insert_kid3",
+        x5t = "insert_x5t1",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
       assert.is_nil(err)
       assert(key)
+
+      -- x5t should be unique even when set is not specified
+      local key, err = db.keys:insert {
+        name = "insert_key4",
+        kid = "insert_kid1",
+        x5t = "insert_x5t1",
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      }
+      assert.is_nil(err)
+      assert(key)
+
+      key, err = db.keys:insert({
+        name = "insert_key5",
+        kid = "insert_kid2",
+        x5t = "insert_x5t1",   -- unique voilation
+        pem = { private_key = pem_priv, public_key = pem_pub }
+      })
+      assert.is_nil(key)
+      assert.matches("violation on", err)
     end)
 
     it(":select key by x5t", function()
       local key, err = db.keys:insert {
-        name = "testkey4",
+        name = "select_key1",
         set = init_key_set,
-        kid = "kid4",
-        x5t = "x5t4",
+        kid = "select_kid1",
+        x5t = "select_x5t1",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
       assert.is_nil(err)
       assert(key)
 
-      local key2, err2 = db.keys:select_by_x5t_set_id("x5t4", init_key_set.id)
+      local key2, err2 = db.keys:select_by_x5t_set_id("select_x5t1", init_key_set.id)
       assert.is_nil(err2)
-      assert.same("testkey4", key2.name)
-      assert.same("x5t4", key2.x5t)
+      assert.same("select_key1", key2.name)
+      assert.same("select_x5t1", key2.x5t)
 
-      local key3, err3 = db.keys:select_by_x5t_set_id("x5t4", key_set2.id)  -- inexistent
+      local key3, err3 = db.keys:select_by_x5t_set_id("select_x5t1", key_set2.id)  -- inexistent
       assert.is_nil(err3)
       assert.is_nil(key3)
 
-      local key4, err4 = db.keys:select_by_x5t_set_id("x5t4")  -- inexistent
+      local key4, err4 = db.keys:select_by_x5t_set_id("select_x5t1")  -- inexistent
       assert.is_nil(err4)
       assert.is_nil(key4)
     end)
