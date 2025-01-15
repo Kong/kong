@@ -4,7 +4,6 @@ function Keys:select_by_x5t_set_id(x5t, set_id)
   local PAGE_SIZE = 100
   local next_offset = nil
   local rows, err
-  local matches = {}
 
   repeat
     rows, err, next_offset = self:page(PAGE_SIZE, next_offset)
