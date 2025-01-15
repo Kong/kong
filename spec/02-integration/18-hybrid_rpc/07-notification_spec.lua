@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
           assert.logfile(name).has.line(
             "[rpc] notification has no response", true)
           assert.logfile(name).has.no.line(
-            "assert failed", true)
+            "assertion failed", true)
           return true
         end, 10)
 
@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
           assert.logfile(name).has.line(
             "[rpc] notification has no response", true)
           assert.logfile(name).has.no.line(
-            "assert failed", true)
+            "assertion failed", true)
           return true
         end, 10)
 
