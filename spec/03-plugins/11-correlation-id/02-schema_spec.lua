@@ -80,6 +80,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       assert.is_nil(err)
       assert.is_nil(res[1].generator)
       res = admin_client:get("/plugins")
+
       res = cjson.decode(assert.res_status(200, res))
       assert.equals(res.data[1].config.generator, "uuid#counter")
     end)
