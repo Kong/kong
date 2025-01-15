@@ -35,7 +35,8 @@ return {
 
       DO $$
           BEGIN
-          ALTER TABLE IF EXISTS ONLY "keys" ADD "x5t" TEXT UNIQUE;
+          ALTER TABLE IF EXISTS ONLY "keys" ADD "x5t" TEXT;
+          ALTER TABLE IF EXISTS ONLY "keys" ADD CONSTRAINT "keys_x5t_set_id_unique" UNIQUE ("x5t", "set_id");
           EXCEPTION WHEN DUPLICATE_COLUMN THEN
           -- Do nothing, accept existing state
           END;
