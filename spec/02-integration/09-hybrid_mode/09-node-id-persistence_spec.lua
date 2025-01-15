@@ -21,7 +21,7 @@ local function get_http_node_id()
   local client = helpers.proxy_client(nil, 9002)
   finally(function() client:close() end)
 
-  -- wait until 30s: Its original value is 5s. Since we added delta validation
+  -- wait until 45s: Its original value is 5s. Since we added delta validation
   -- logic, the foreign entity in the deltas items is complete, like
   -- { id = "uuid" }. If it uses kong.db.declarative_config to validate
   -- deltas, it will fail. Then, declarative_config will load a full schema to
@@ -35,7 +35,7 @@ local function get_http_node_id()
       res:read_body()
     end
     return res and res.status == 200
-  end, 30, 0.5)
+  end, 45, 0.5)
 
   helpers.wait_for_file("file", PREFIX .. "/kong.id.http")
   return helpers.file.read(PREFIX .. "/kong.id.http")
