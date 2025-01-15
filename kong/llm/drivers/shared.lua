@@ -353,7 +353,7 @@ function _M.frame_to_events(frame, content_type)
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
   local frame_start = frame and frame:sub(1, 1)
-  if frame_start == "," or frame_start == "[" then
+  if (not kong or not kong.ctx.plugin.truncated_frame) and (frame_start == "," or frame_start == "[") then
     local done = false
 
     -- if this is the first frame, it will begin with array opener '['
@@ -416,7 +416,7 @@ function _M.frame_to_events(frame, content_type)
       if #dat > 0 and #event_lines == i then
         ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
         if kong then
-          kong.ctx.plugin.truncated_frame = dat
+          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), dat)
         end
 
         break  -- stop parsing immediately, server has done something wrong
