@@ -94,7 +94,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
     local bp, db, ws, plugin_id
 
     lazy_setup(function()
-      -- copy from outer lazy_setup, to avoid database reused.
+      -- if the database is not cleared, the residual RPC connection information between different tests will cause the test to fail.
       bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
       ws = db.workspaces:select_by_name("default")
       plugin_id = uuid.generate_v4()
@@ -146,8 +146,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         prefix = "servroot",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        cluster_rpc = rpc
-        cluster_rpc_sync = rpc_sync,
+        cluster_rpc = rpc,
+        cluster_rpc_sync = rpc_sync
       }))
 
       assert(helpers.start_kong({
@@ -159,8 +159,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
-        cluster_rpc = rpc
-        cluster_rpc_sync = rpc_sync,
+        cluster_rpc = rpc,
+        cluster_rpc_sync = rpc_sync
       }))
     end)
 
