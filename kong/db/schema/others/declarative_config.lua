@@ -1051,10 +1051,19 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
     return nil, err
   end
 
-  -- we replace the "foreign"-type fields at the top-level
-  -- with "string"-type fields only after the subschemas have been loaded,
-  -- otherwise they will detect the mismatch.
-  if not include_foreign then
+  -- If sync.v2 enabled, it generates foreign_references and does not replace
+  -- replace the "foreign"-type fields with "string"-type fields.
+  --
+  -- For sync.v2,
+  -- * The "foreign"-type fields are used to validate schema.
+  -- * The foreign_references are used to validate references.
+  if is_sync then
+    reference_foreign_by_name_sync(known_entities, records)
+
+  elseif not include_foreign then
+    -- we replace the "foreign"-type fields at the top-level
+    -- with "string"-type fields only after the subschemas have been loaded,
+    -- otherwise they will detect the mismatch.
     reference_foreign_by_name(known_entities, records)
   end
 
