@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("sync.v2.get_delta works", function()
-      it("in cp side", function()
+      it("on cp side", function()
         local name = "servroot2/logs/error.log"
 
         -- dp logs
