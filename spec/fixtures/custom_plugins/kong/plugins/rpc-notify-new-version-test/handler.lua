@@ -1,5 +1,4 @@
-local rep = string.rep
-local isempty = require("table.isempty")
+local fmt = string.format
 
 
 local RpcSyncV2NotifyNewVersioinTestHandler = {
@@ -10,35 +9,28 @@ local RpcSyncV2NotifyNewVersioinTestHandler = {
 
 function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
   -- mock function on cp side
-  kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-    local latest_version = string.format("v02_%028d", 10)
+  local counter = 0
 
-    local fake_uuid1 = "00000000-0000-0000-0000-111111111111"
-    local fake_uuid2 = "00000000-0000-0000-0000-222222222222"
+  kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
+    local latest_version = fmt("v02_%028d", 10)
+
+    local fake_uuid = "00000000-0000-0000-0000-111111111111"
 
     -- a basic config data
     local deltas = {
       {
         entity = {
-          id = fake_uuid1,
+          id = fake_uuid,
           name = "default",
         },
         type = "workspaces",
         version = latest_version,
-        ws_id = fake_uuid1,
+        ws_id = fake_uuid,
       },
-      {
-        entity = {
-          key = "cluster_id",
-          value = fake_uuid2,
-        },
-        type = "parameters",
-        version = latest_version,
-        ws_id = fake_uuid1,
-      }
     }
 
-    ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok")
+    counter = counter + 1
+    ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok: ", counter)
 
     return { default = { deltas = deltas, wipe = true, }, }
   end)
@@ -60,6 +52,20 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(not res)
     assert(err == "'new_version' key does not exist")
+
+    -- same version number
+    local msg = { default = { new_version = fmt("v02_%028d", 10), }, }
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(res)
+    assert(not err)
+
+    -- less version number
+    local msg = { default = { new_version = fmt("v02_%028d", 5), }, }
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(res)
+    assert(not err)
+
+    ngx.log(ngx.DEBUG, "kong.test.notify_new_version ok")
 
     return true
   end)

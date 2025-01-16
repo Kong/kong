@@ -62,7 +62,11 @@ for _, strategy in helpers.each_strategy() do
 
         -- cp logs
         assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok", true, 10)
+          "kong.sync.v2.get_delta ok: 1", true, 10)
+        assert.logfile(name).has.line(
+          "kong.test.notify_new_version ok", true, 10)
+        assert.logfile(name).has.no.line(
+          "kong.sync.v2.get_delta ok: 2", true, 0)
         assert.logfile(name).has.no.line(
           "assertion failed", true, 0)
         assert.logfile(name).has.no.line(
