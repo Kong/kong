@@ -49,28 +49,19 @@ for _, strategy in helpers.each_strategy() do
         local name = "servroot2/logs/error.log"
 
         -- dp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.line(
-            "test #1 ok", true)
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.line(
+          "test #1 ok", true, 10)
 
         -- dp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.line(
-            "[rpc] RPC failed, code: -32600, err: empty batch array", true)
+        assert.logfile(name).has.line(
+          "[rpc] RPC failed, code: -32600, err: empty batch array", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] RPC failed, code: -32600, err: not a valid object", true, 10)
+        assert.logfile(name).has.line(
+          "test #2 ok", true, 10)
 
-          assert.logfile(name).has.line(
-            "[rpc] RPC failed, code: -32600, err: not a valid object", true)
-
-          assert.logfile(name).has.line(
-            "test #2 ok", true)
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
       end)
     end)
   end)
