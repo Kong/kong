@@ -12,7 +12,7 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
 
   -- mock function on cp side
   kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-    local latest_version = fmt("v02_%028d", 10)
+    local latest_version = fmt("v02_%028x", 10)
 
     local fake_uuid = "00000000-0000-0000-0000-111111111111"
 
@@ -53,19 +53,19 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     assert(err == "'new_version' key does not exist")
 
     -- same version number
-    local msg = { default = { new_version = fmt("v02_%028d", 10), }, }
+    local msg = { default = { new_version = fmt("v02_%028x", 10), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
     assert(not err)
 
     -- less version number
-    local msg = { default = { new_version = fmt("v02_%028d", 5), }, }
+    local msg = { default = { new_version = fmt("v02_%028x", 5), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
     assert(not err)
 
     -- greater version number
-    local msg = { default = { new_version = fmt("v02_%028d", 20), }, }
+    local msg = { default = { new_version = fmt("v02_%028x", 20), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
     assert(not err)

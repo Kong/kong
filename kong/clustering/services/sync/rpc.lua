@@ -141,6 +141,8 @@ function _M:init_dp(manager)
       return self:sync_once()
     end
 
+    ngx_log(ngx_DEBUG, "no sync runs, version is ", version)
+
     return true
   end)
 end
