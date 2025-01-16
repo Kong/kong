@@ -225,25 +225,6 @@ local function nest_foreign_relationships(known_entities, records, include_forei
 end
 
 
--- It generates foreign_references to be used by sync v2's reference validation
--- and does not clear fdata's reference in records.
-local function reference_foreign_by_name_sync(known_entities, records)
-  for i = #known_entities, 1, -1 do
-    local entity = known_entities[i]
-    local record = records[entity]
-    for _, f in ipairs(record.fields) do
-      local fname, fdata = next(f)
-      if fdata.type == "foreign" then
-        if not foreign_references[entity] then
-          foreign_references[entity] = {}
-        end
-        foreign_references[entity][fname] = fdata.reference
-      end
-    end
-  end
-end
-
-
 local function reference_foreign_by_name(known_entities, records)
   for i = #known_entities, 1, -1 do
     local entity = known_entities[i]
@@ -866,10 +847,6 @@ end
 function DeclarativeConfig.validate_schema(self, input)
   local ok, err = self:validate(input)
   if not ok then
-    if self.is_sync then
-      return nil, err
-    end
-
     yield()
 
     -- the error may be due entity validation that depends on foreign entity,
@@ -1051,16 +1028,27 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
     return nil, err
   end
 
-  -- If sync.v2 enabled, it generates foreign_references and does not replace
-  -- replace the "foreign"-type fields with "string"-type fields.
-  --
-  -- For sync.v2,
-  -- * The "foreign"-type fields are used to validate schema.
-  -- * The foreign_references are used to validate references.
-  if is_sync then
-    reference_foreign_by_name_sync(known_entities, records)
+  -- Pre-load full schema to validate schema for sync.v2:
+  local full_schema
 
-  elseif not include_foreign then
+  if is_sync then
+    local def = {
+      name = "declarative_config",
+      primary_key = {},
+      -- copy fields to avoid its "foreign"-type fields from being cleared by
+      -- reference_foreign_by_name()
+      fields = kong_table.cycle_aware_deep_copy(fields, true),
+    }
+    full_schema = Schema.new(def)
+
+    full_schema.known_entities = known_entities
+    full_schema.flatten = flatten
+    full_schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
+    full_schema.plugin_set = plugin_set
+    full_schema.vault_set = vault_set
+  end
+
+  if not include_foreign then
     -- we replace the "foreign"-type fields at the top-level
     -- with "string"-type fields only after the subschemas have been loaded,
     -- otherwise they will detect the mismatch.
@@ -1080,7 +1068,10 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set
-  schema.is_sync = is_sync
+
+  if is_sync then
+    schema.full_schema = full_schema
+  end
 
   return schema, nil, def
 end
