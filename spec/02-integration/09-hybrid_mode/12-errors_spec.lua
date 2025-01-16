@@ -71,7 +71,7 @@ end
 
 -- these tests are only for sync v1
 for _, strategy in helpers.each_strategy() do
-  describe("CP/DP sync error-reporting with #" .. strategy .. " rpc_sync=" .. rpc_sync .. " backend", function()
+  describe("CP/DP sync error-reporting with #" .. strategy .. " backend", function()
     local client
     local cluster_port
     local cluster_ssl_port
