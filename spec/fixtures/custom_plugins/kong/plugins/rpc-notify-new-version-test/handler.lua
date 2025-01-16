@@ -43,8 +43,24 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     return { default = { deltas = deltas, wipe = true, }, }
   end)
 
-  -- call dp's sync.v2.notify_new_version
+  -- test dp's sync.v2.notify_new_version
   kong.rpc.callbacks:register("kong.test.notify_new_version", function(node_id)
+
+    local dp_node_id = next(kong.rpc.clients)
+    local method = "kong.sync.v2.notify_new_version"
+
+    -- no default
+    local msg = {}
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(not res)
+    assert(err == "default namespace does not exist inside params")
+
+    -- no default.new_version
+    local msg = { default = {}, }
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(not res)
+    assert(err == "'new_version' key does not exist")
+
     return true
   end)
 
@@ -54,6 +70,7 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
   worker_events.register(function(capabilities_list)
     local node_id = "control_plane"
 
+    -- trigger cp's test
     local res, err = kong.rpc:call(node_id, "kong.test.notify_new_version")
     assert(res == true)
     assert(not err)
