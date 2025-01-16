@@ -203,19 +203,27 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     describe("compatibility test for cors plugin", function()
-      it("removes `config.private_network` before sending them to older(less than 3.5.0.0) DP nodes", function()
+      it("removes config.options before sending them to older DP nodes", function()
         local cors = admin.plugins:insert {
           name = "cors",
           enabled = true,
           config = {
+            -- [[ new fields 3.10.0
+            skip_cors_when_origin_is_empty = false,
+            -- ]]
             -- [[ new fields 3.5.0
             private_network = false
             -- ]]
           }
         }
 
-        assert.not_nil(cors.config.private_network)
+        assert.not_nil(cors.config.skip_cors_when_origin_is_empty)
         local expected_cors = cycle_aware_deep_copy(cors)
+        do_assert(uuid(), "3.10.0", expected_cors)
+        expected_cors.config.skip_cors_when_origin_is_empty = nil
+
+        assert.not_nil(cors.config.private_network)
+        expected_cors = cycle_aware_deep_copy(expected_cors)
         expected_cors.config.private_network = nil
         do_assert(uuid(), "3.4.0", expected_cors)
 
@@ -223,16 +231,22 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = cors.id })
       end)
 
-      it("does not remove `config.private_network` from DP nodes that are already compatible", function()
+      it("does not remove config.options from DP nodes that are already compatible", function()
         local cors = admin.plugins:insert {
           name = "cors",
           enabled = true,
           config = {
+            -- [[ new fields 3.10.0
+            skip_cors_when_origin_is_empty = false,
+            -- ]]
             -- [[ new fields 3.5.0
             private_network = false
             -- ]]
           }
         }
+        do_assert(uuid(), "3.10.0", cors)
+        cors.config.skip_cors_when_origin_is_empty = nil
+
         do_assert(uuid(), "3.5.0", cors)
 
         -- cleanup
