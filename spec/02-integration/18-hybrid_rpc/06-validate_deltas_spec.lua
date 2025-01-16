@@ -61,7 +61,7 @@ local function setup_bp()
   -- init declarative config
   if not cached_dc then
     local err
-    cached_dc, err = declarative.new_config(kong.configuration)
+    cached_dc, err = declarative.new_config(kong.configuration, nil, nil, true)
     assert(cached_dc, err)
   end
 

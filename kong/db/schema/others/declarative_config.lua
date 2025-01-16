@@ -225,6 +225,25 @@ local function nest_foreign_relationships(known_entities, records, include_forei
 end
 
 
+-- It generates foreign_references to be used by sync v2's reference validation
+-- and does not clear fdata's reference in records.
+local function reference_foreign_by_name_sync(known_entities, records)
+  for i = #known_entities, 1, -1 do
+    local entity = known_entities[i]
+    local record = records[entity]
+    for _, f in ipairs(record.fields) do
+      local fname, fdata = next(f)
+      if fdata.type == "foreign" then
+        if not foreign_references[entity] then
+          foreign_references[entity] = {}
+        end
+        foreign_references[entity][fname] = fdata.reference
+      end
+    end
+  end
+end
+
+
 local function reference_foreign_by_name(known_entities, records)
   for i = #known_entities, 1, -1 do
     local entity = known_entities[i]
@@ -847,6 +866,10 @@ end
 function DeclarativeConfig.validate_schema(self, input)
   local ok, err = self:validate(input)
   if not ok then
+    if self.is_sync then
+      return nil, err
+    end
+
     yield()
 
     -- the error may be due entity validation that depends on foreign entity,
@@ -980,7 +1003,7 @@ local function load_entity_subschemas(entity_name, entity)
 end
 
 
-function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
+function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
   all_schemas = {}
   local schemas_array = {}
   for _, entity in ipairs(constants.CORE_ENTITIES) do
@@ -1015,7 +1038,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
     known_entities[i] = schema.name
   end
 
-  local fields, records = build_fields(known_entities, include_foreign)
+  local fields, records = build_fields(known_entities, include_foreign or is_sync)
   -- assert(no_foreign(fields))
 
   local ok, err = load_plugin_subschemas(fields, plugin_set)
@@ -1048,6 +1071,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set
+  schema.is_sync = is_sync
 
   return schema, nil, def
 end
