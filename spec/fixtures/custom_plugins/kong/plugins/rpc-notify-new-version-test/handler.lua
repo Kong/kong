@@ -65,6 +65,12 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     assert(res)
     assert(not err)
 
+    -- greater version number
+    local msg = { default = { new_version = fmt("v02_%028d", 20), }, }
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(res)
+    assert(not err)
+
     ngx.log(ngx.DEBUG, "kong.test.notify_new_version ok")
 
     return true
