@@ -1028,7 +1028,9 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
     return nil, err
   end
 
-  -- Pre-load full schema to validate schema for sync.v2:
+  -- Pre-load the full schema to validate the schema for sync.v2. Lazy loading
+  -- the full schema with DeclarativeConfig.load() will consume a lot of time
+  -- due to load_plugin_subschemas().
   local full_schema
 
   if is_sync then
