@@ -102,9 +102,9 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         },
       }
       local sql = render([[
-        UPDATE plugins SET route_id='$(ROUTE_ID)', 
-        protocols=ARRAY['grpc','grpcs','http','https'], 
-        cache_key='$(CACHE_KEY)' 
+        UPDATE plugins SET route_id='$(ROUTE_ID)',
+        protocols=ARRAY['grpc','grpcs','http','https'],
+        cache_key='$(CACHE_KEY)'
         WHERE id='$(ID)';
         COMMIT;
       ]], {
@@ -174,16 +174,20 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       assert.equals("uuid#counter", res.config.generator)
 
       local proxy_client = helpers.proxy_client(20000, 9002, "127.0.0.1")
-      res = assert(proxy_client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          ["Host"] = "example.com",
-        }
-      })
-      assert.res_status(200, res)
-      assert.is_not_nil(res.headers["Kong-Request-ID"])
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_not_nil(res.headers["Kong-Request-ID"])
+        proxy_client:close()
+      end, 10)
       proxy_client:close()
+
     end)
   end)
   end -- for rpc_sync
