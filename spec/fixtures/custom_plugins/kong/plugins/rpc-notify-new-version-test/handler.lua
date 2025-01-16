@@ -13,7 +13,30 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
   kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     local latest_version = "v02_" .. string.rep("1", 28)
 
-    local deltas = {}
+    local fake_uuid1 = "00000000-0000-0000-0000-111111111111"
+    local fake_uuid2 = "00000000-0000-0000-0000-222222222222"
+
+    -- a basic config data
+    local deltas = {
+      {
+        entity = {
+          id = fake_uuid1,
+          name = "default",
+        },
+        type = "workspaces",
+        version = latest_version,
+        ws_id = fake_uuid1,
+      },
+      {
+        entity = {
+          key = "cluster_id",
+          value = fake_uuid2,
+        },
+        type = "parameters",
+        version = latest_version,
+        ws_id = fake_uuid1,
+      }
+    }
 
     return { default = { deltas = deltas, wipe = true, }, }
   end)
