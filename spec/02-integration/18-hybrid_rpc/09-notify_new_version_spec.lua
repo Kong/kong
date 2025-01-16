@@ -57,6 +57,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert.logfile(name).has.line(
           "no sync runs, version is " .. rep(".", 32), true, 10)
+        assert.logfile(name).has.line(
+          "no sync runs, version is " .. rep("0", 32), true, 10)
 
         assert.logfile(name).has.line(
           "sync_once retry count exceeded. retry_count: 6", true, 10)
@@ -66,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
         local name = nil
 
         -- cp logs
-        for i = 1, 7 do
+        for i = 0, 6 do
           assert.logfile(name).has.line(
             "kong.sync.v2.get_delta ok: " .. i, true, 10)
         end

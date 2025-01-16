@@ -30,8 +30,8 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
       },
     }
 
-    counter = counter + 1
     ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok: ", counter)
+    counter = counter + 1
 
     return { default = { deltas = deltas, wipe = true, }, }
   end)
@@ -56,6 +56,13 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     -- less version string
     -- "....." < "00000" < "v02_xx"
     local msg = { default = { new_version = rep(".", 32), }, }
+    local res, err = kong.rpc:call(dp_node_id, method, msg)
+    assert(res)
+    assert(not err)
+
+    -- less or equal version string
+    -- "00000" < "v02_xx"
+    local msg = { default = { new_version = rep("0", 32), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
     assert(not err)
