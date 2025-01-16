@@ -1,3 +1,4 @@
+local fmt = string.format
 local helpers = require "spec.helpers"
 
 
@@ -48,16 +49,17 @@ for _, strategy in helpers.each_strategy() do
 
     describe("sync.v2.notify_new_version works", function()
       it("on dp side", function()
-        --local fmt = string.format
         local name = "servroot2/logs/error.log"
 
         -- dp logs
         assert.logfile(name).has.line(
           "kong.test.notify_new_version ok", true, 10)
-        --assert.logfile(name).has.line(
-        --  "no sync runs, version is " .. fmt("v02_%028x", 10), true, 10)
-        --assert.logfile(name).has.line(
-        --  "no sync runs, version is " .. fmt("v02_%028x", 5), true, 10)
+
+        assert.logfile(name).has.line(
+          "no sync runs, version is " .. fmt("v02_%028x", 10), true, 10)
+        assert.logfile(name).has.line(
+          "no sync runs, version is " .. fmt("v02_%028x", 5), true, 10)
+
         assert.logfile(name).has.line(
           "sync_once retry count exceeded. retry_count: 6", true, 10)
         assert.logfile(name).has.no.line(

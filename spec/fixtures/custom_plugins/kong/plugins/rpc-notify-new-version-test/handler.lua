@@ -1,3 +1,7 @@
+local declarative = require("kong.db.declarative")
+local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
+
+
 local fmt = string.format
 
 
@@ -79,6 +83,17 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
 
   -- if rpc is ready we will send test calls
   worker_events.register(function(capabilities_list)
+    -- wait dp's first sync finish
+    for i = 1, 100 do
+      local ver = declarative.get_current_hash()
+      if ver ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+        break
+      end
+      ngx.sleep(0.05)
+    end
+
+    -- now dp's version should be "v02_0000a"
+
     local node_id = "control_plane"
 
     -- trigger cp's test
