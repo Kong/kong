@@ -195,6 +195,17 @@ function _M:process_rpc_msg(payload, collection)
     end
 
   else
+    -- may be some error message for peer
+    if not payload_id then
+      if payload.error then
+        ngx_log(ngx.ERR, "[rpc] RPC failed, code: ",
+                         payload.error.code, ", err: ",
+                         payload.error.message)
+      end
+
+      return true
+    end
+
     -- response, don't care about `collection`
     local interest_cb = self.interest[payload_id]
     self.interest[payload_id] = nil -- edge trigger only once
@@ -270,6 +281,16 @@ function _M:start()
       assert(typ == "binary")
 
       local payload = decompress_payload(data)
+
+      if not payload then
+        local res, err = self:push_response(
+                          new_error(nil, jsonrpc.PARSE_ERROR))
+        if not res then
+          return nil, err
+        end
+
+        goto continue
+      end
 
       -- single rpc call
       if not isarray(payload) then
