@@ -27,6 +27,7 @@ function RpcBatchTestHandler:init_worker()
     kong.rpc:notify("control_plane", "kong.test.batch", "kong")
     kong.rpc:notify("control_plane", "kong.test.batch", "gateway")
 
+    ngx.log(ngx.DEBUG, "kong.test.batch ok")
   end, "clustering:jsonrpc", "connected")
 end
 
