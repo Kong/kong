@@ -51,26 +51,20 @@ for _, strategy in helpers.each_strategy() do
         local name = "servroot2/logs/error.log"
 
         -- dp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.line(
-            "kong.sync.v2.get_delta ok", true)
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          assert.logfile(name).has.no.line(
-            "[error]", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.line(
+          "kong.sync.v2.get_delta ok", true, 10)
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
+        assert.logfile(name).has.no.line(
+          "[error]", true, 0)
 
         local name = nil
 
         -- cp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          assert.logfile(name).has.no.line(
-            "[error]", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
+        assert.logfile(name).has.no.line(
+          "[error]", true, 0)
 
       end)
     end)
