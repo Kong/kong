@@ -184,7 +184,6 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         })
         assert.res_status(200, res)
         assert.is_not_nil(res.headers["Kong-Request-ID"])
-        proxy_client:close()
       end, 10)
       proxy_client:close()
 
