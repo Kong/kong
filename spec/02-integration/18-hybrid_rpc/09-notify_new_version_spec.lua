@@ -1,4 +1,4 @@
-local fmt = string.format
+local rep = string.rep
 local helpers = require "spec.helpers"
 
 
@@ -56,9 +56,7 @@ for _, strategy in helpers.each_strategy() do
           "kong.test.notify_new_version ok", true, 10)
 
         assert.logfile(name).has.line(
-          "no sync runs, version is " .. fmt("v02_%028x", 10), true, 10)
-        assert.logfile(name).has.line(
-          "no sync runs, version is " .. fmt("v02_%028x", 5), true, 10)
+          "no sync runs, version is " .. rep(".", 32), true, 10)
 
         assert.logfile(name).has.line(
           "sync_once retry count exceeded. retry_count: 6", true, 10)

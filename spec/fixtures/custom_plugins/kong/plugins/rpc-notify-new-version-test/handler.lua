@@ -1,22 +1,5 @@
 local fmt = string.format
-
-
-local wait_first_sync_ok
-do
-  local declarative = require("kong.db.declarative")
-  local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
-
-  -- wait dp's first sync finish
-  wait_first_sync_ok = function()
-    for i = 1, 100 do
-      local ver = declarative.get_current_hash()
-      if ver ~= DECLARATIVE_EMPTY_CONFIG_HASH then
-        return
-      end
-      ngx.sleep(0.05)
-    end
-  end
-end
+local rep = string.rep
 
 
 local RpcSyncV2NotifyNewVersioinTestHandler = {
@@ -70,19 +53,14 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     assert(not res)
     assert(err == "'new_version' key does not exist")
 
-    -- same version number
-    local msg = { default = { new_version = fmt("v02_%028x", 10), }, }
+    -- less version string
+    -- "....." < "00000" < "v02_xx"
+    local msg = { default = { new_version = rep(".", 32), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
     assert(not err)
 
-    -- less version number
-    local msg = { default = { new_version = fmt("v02_%028x", 5), }, }
-    local res, err = kong.rpc:call(dp_node_id, method, msg)
-    assert(res)
-    assert(not err)
-
-    -- greater version number
+    -- greater version string
     local msg = { default = { new_version = fmt("v02_%028x", 20), }, }
     local res, err = kong.rpc:call(dp_node_id, method, msg)
     assert(res)
@@ -97,10 +75,6 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
 
   -- if rpc is ready we will send test calls
   worker_events.register(function(capabilities_list)
-    wait_first_sync_ok()
-
-    -- now dp's version should be "v02_0000a"
-
     local node_id = "control_plane"
 
     -- trigger cp's test
