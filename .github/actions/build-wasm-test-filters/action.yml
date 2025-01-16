@@ -41,7 +41,7 @@ runs:
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/toolchain@v1
+      uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
       with:
         profile: minimal
         toolchain: stable
@@ -51,7 +51,7 @@ runs:
 
     - name: cargo build
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/cargo@v1
+      uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
       with:
         command: build
         # building in release mode yields smaller library sizes, so it's
