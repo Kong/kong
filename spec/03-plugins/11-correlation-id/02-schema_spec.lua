@@ -94,7 +94,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
     local bp, db, ws, plugin_id
 
     lazy_setup(function()
-      -- if the database is not cleared, the residual RPC connection information between different tests will cause the test to fail.
+      -- if the database is not cleared, the residual RPC connection information 
+      -- between different tests will cause the test to fail.
       bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
       ws = db.workspaces:select_by_name("default")
       plugin_id = uuid.generate_v4()
