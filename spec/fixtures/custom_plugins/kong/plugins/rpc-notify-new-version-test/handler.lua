@@ -11,7 +11,7 @@ local RpcSyncV2NotifyNewVersioinTestHandler = {
 function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
   -- mock function on cp side
   kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-    local latest_version = "v02_" .. string.rep("1", 28)
+    local latest_version = string.format("v02_%028d", 10)
 
     local fake_uuid1 = "00000000-0000-0000-0000-111111111111"
     local fake_uuid2 = "00000000-0000-0000-0000-222222222222"
@@ -38,11 +38,14 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
       }
     }
 
+    ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok")
+
     return { default = { deltas = deltas, wipe = true, }, }
   end)
 
   -- call dp's sync.v2.notify_new_version
   kong.rpc.callbacks:register("kong.test.notify_new_version", function(node_id)
+    return true
   end)
 
   local worker_events = assert(kong.worker_events)
@@ -52,6 +55,8 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     local node_id = "control_plane"
 
     local res, err = kong.rpc:call(node_id, "kong.test.notify_new_version")
+    assert(res == true)
+    assert(not err)
 
     ngx.log(ngx.DEBUG, "kong.sync.v2.notify_new_version ok")
 
