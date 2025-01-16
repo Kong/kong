@@ -1,7 +1,9 @@
 local helpers = require "spec.helpers"
 
 
--- register a test rpc service in custom plugin rpc-notification-test
+-- register a rpc connected event in custom plugin rpc-get-delta-test
+-- ENABLE rpc sync on cp side for testing sync.v2.get_delta
+-- DISABLE rpc sync on dp side
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy, function()
 
@@ -17,10 +19,10 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled,rpc-notification-test",
+        plugins = "bundled",
         nginx_worker_processes = 4, -- multiple workers
         cluster_rpc = "on", -- enable rpc
-        cluster_rpc_sync = "off", -- disable rpc sync
+        cluster_rpc_sync = "on", -- enable rpc sync
       }))
 
       assert(helpers.start_kong({
@@ -32,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled,rpc-notification-test",
+        plugins = "bundled,rpc-get-delta-test",
         nginx_worker_processes = 4, -- multiple workers
         cluster_rpc = "on", -- enable rpc
         cluster_rpc_sync = "off", -- disable rpc sync
@@ -44,31 +46,25 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("notification works", function()
-      it("in custom plugin", function()
-        local name = nil
-
-        -- cp logs
-        assert.logfile(name).has.line(
-          "notification is hello", true, 10)
-        assert.logfile(name).has.line(
-          "[rpc] notifying kong.test.notification(node_id:", true, 10)
-        assert.logfile(name).has.line(
-          "[rpc] notification has no response", true, 10)
-        assert.logfile(name).has.no.line(
-          "assertion failed", true, 0)
-
+    describe("sync.v2.get_delta works", function()
+      it("on cp side", function()
         local name = "servroot2/logs/error.log"
 
         -- dp logs
         assert.logfile(name).has.line(
-          "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true, 10)
-        assert.logfile(name).has.line(
-          "notification is world", true, 10)
-        assert.logfile(name).has.line(
-          "[rpc] notification has no response", true, 10)
+          "kong.sync.v2.get_delta ok", true, 10)
         assert.logfile(name).has.no.line(
           "assertion failed", true, 0)
+        assert.logfile(name).has.no.line(
+          "[error]", true, 0)
+
+        local name = nil
+
+        -- cp logs
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
+        assert.logfile(name).has.no.line(
+          "[error]", true, 0)
 
       end)
     end)
