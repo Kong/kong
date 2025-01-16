@@ -49,32 +49,26 @@ for _, strategy in helpers.each_strategy() do
         local name = nil
 
         -- cp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.line(
-            "notification is hello", true)
-          assert.logfile(name).has.line(
-            "[rpc] notifying kong.test.notification(node_id:", true)
-          assert.logfile(name).has.line(
-            "[rpc] notification has no response", true)
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.line(
+          "notification is hello", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] notifying kong.test.notification(node_id:", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] notification has no response", true, 10)
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
 
         local name = "servroot2/logs/error.log"
 
         -- dp logs
-        helpers.pwait_until(function()
-          assert.logfile(name).has.line(
-            "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true)
-          assert.logfile(name).has.line(
-            "notification is world", true)
-          assert.logfile(name).has.line(
-            "[rpc] notification has no response", true)
-          assert.logfile(name).has.no.line(
-            "assertion failed", true)
-          return true
-        end, 10)
+        assert.logfile(name).has.line(
+          "[rpc] notifying kong.test.notification(node_id: control_plane) via local", true, 10)
+        assert.logfile(name).has.line(
+          "notification is world", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] notification has no response", true, 10)
+        assert.logfile(name).has.no.line(
+          "assertion failed", true, 0)
 
       end)
     end)
