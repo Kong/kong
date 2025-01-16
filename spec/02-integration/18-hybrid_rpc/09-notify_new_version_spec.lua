@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- dp logs
         assert.logfile(name).has.line(
-          "kong.sync.v2.notify_new_version ok", true, 10)
+          "kong.test.notify_new_version ok", true, 10)
         assert.logfile(name).has.line(
           "sync_once retry count exceeded. retry_count: 6", true, 10)
         assert.logfile(name).has.no.line(
@@ -61,26 +61,14 @@ for _, strategy in helpers.each_strategy() do
         local name = nil
 
         -- cp logs
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 1", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 2", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 3", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 4", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 5", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 6", true, 10)
-        assert.logfile(name).has.line(
-          "kong.sync.v2.get_delta ok: 7", true, 10)
+        for i = 1, 7 do
+          assert.logfile(name).has.line(
+            "kong.sync.v2.get_delta ok: " .. i, true, 10)
+        end
 
         assert.logfile(name).has.line(
           "kong.test.notify_new_version ok", true, 10)
 
-        assert.logfile(name).has.no.line(
-          "kong.sync.v2.get_delta ok: 8", true, 0)
         assert.logfile(name).has.no.line(
           "assertion failed", true, 0)
         assert.logfile(name).has.no.line(

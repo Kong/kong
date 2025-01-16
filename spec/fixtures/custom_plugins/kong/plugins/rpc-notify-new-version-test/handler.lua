@@ -8,9 +8,9 @@ local RpcSyncV2NotifyNewVersioinTestHandler = {
 
 
 function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
-  -- mock function on cp side
   local counter = 0
 
+  -- mock function on cp side
   kong.rpc.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     local latest_version = fmt("v02_%028d", 10)
 
@@ -35,9 +35,8 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     return { default = { deltas = deltas, wipe = true, }, }
   end)
 
-  -- test dp's sync.v2.notify_new_version
+  -- test dp's sync.v2.notify_new_version on cp side
   kong.rpc.callbacks:register("kong.test.notify_new_version", function(node_id)
-
     local dp_node_id = next(kong.rpc.clients)
     local method = "kong.sync.v2.notify_new_version"
 
@@ -87,7 +86,7 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
     assert(res == true)
     assert(not err)
 
-    ngx.log(ngx.DEBUG, "kong.sync.v2.notify_new_version ok")
+    ngx.log(ngx.DEBUG, "kong.test.notify_new_version ok")
 
   end, "clustering:jsonrpc", "connected")
 end
