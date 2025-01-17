@@ -177,7 +177,7 @@ local function generate_keys(fmt, typ)
       bits = 2048,
       exp = 65537
     })
-  else if typ == "EC" then
+  elseif typ == "EC" then
     key, err = pkey.new({
       type = 'EC',
       curve = 'prime256v1',
