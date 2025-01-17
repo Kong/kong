@@ -165,10 +165,11 @@ end
 --- Generate asymmetric keys
 -- @function generate_keys
 -- @param fmt format to receive the public and private pair
+-- @param typ (optional) the type of key to generate, default: RSA
 -- @return `pub, priv` key tuple or `nil + err` on failure
 local function generate_keys(fmt, typ)
   fmt = string.upper(fmt) or "JWK"
-  typ = string.upper(typ) or "RSA"
+  typ = typ or string.upper(typ) or "RSA"
   local key, err
   -- only support RSA and EC for now
   if typ == "RSA" then
