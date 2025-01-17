@@ -32,13 +32,11 @@ local _MT = { __index = _M, }
 -- @tparam table kong_config The Kong configuration table
 -- @tparam boolean partial Input is not a full representation
 -- of the database (e.g. for db_import)
--- @tparam is_sync It generates full schema and foreign references to validate
--- schema and references for sync.v2
 -- @treturn table A Config schema adjusted for this configuration
-function _M.new_config(kong_config, partial, include_foreign, is_sync)
+function _M.new_config(kong_config, partial, include_foreign)
   local schema, err = declarative_config.load(kong_config.loaded_plugins,
                                               kong_config.loaded_vaults,
-                                              include_foreign, is_sync)
+                                              include_foreign, kong.sync ~= nil)
   if not schema then
     return nil, err
   end

@@ -980,9 +980,9 @@ local function load_entity_subschemas(entity_name, entity)
 end
 
 
--- @tparam is_sync It generates full schema and foreign references to validate
--- schema and references for sync.v2
-function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
+-- @tparam sync_v2_enabled It generates full schema and foreign references to
+-- validate schema and references for sync.v2
+function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, sync_v2_enabled)
   all_schemas = {}
   local schemas_array = {}
   for _, entity in ipairs(constants.CORE_ENTITIES) do
@@ -1017,7 +1017,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
     known_entities[i] = schema.name
   end
 
-  local fields, records = build_fields(known_entities, include_foreign or is_sync)
+  local fields, records = build_fields(known_entities, include_foreign or sync_v2_enabled)
   -- assert(no_foreign(fields))
 
   local ok, err = load_plugin_subschemas(fields, plugin_set)
@@ -1035,7 +1035,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
   -- due to load_plugin_subschemas().
   local full_schema
 
-  if is_sync then
+  if sync_v2_enabled then
     local def = {
       name = "declarative_config",
       primary_key = {},
@@ -1043,6 +1043,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
       -- reference_foreign_by_name()
       fields = kong_table.cycle_aware_deep_copy(fields, true),
     }
+
     full_schema = Schema.new(def)
 
     full_schema.known_entities = known_entities
@@ -1073,7 +1074,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set
 
-  if is_sync then
+  if sync_v2_enabled then
     schema.full_schema = full_schema
   end
 

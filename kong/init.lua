@@ -712,7 +712,7 @@ function Kong.init()
   end
 
   if is_dbless(config) then
-    local dc, err = declarative.new_config(config, nil, nil, kong.sync ~= nil)
+    local dc, err = declarative.new_config(config)
     if not dc then
       error(err)
     end
