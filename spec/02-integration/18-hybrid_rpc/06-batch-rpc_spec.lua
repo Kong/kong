@@ -44,34 +44,33 @@ for _, strategy in helpers.each_strategy() do
         local cp_logfile = nil
         local dp_logfile = "servroot2/logs/error.log"
 
-        helpers.pwait_until(function()
-          assert.logfile(dp_logfile).has.line(
-            "[rpc] sent batch RPC call: 1", true)
+        assert.logfile(dp_logfile).has.line(
+          "[rpc] sent batch RPC call: 1", true, 10)
 
-          assert.logfile(cp_logfile).has.line(
-            "[rpc] got batch RPC call: 1", true)
-          assert.logfile(cp_logfile).has.line(
-            "kong.test.batch called: world", true)
+        assert.logfile(cp_logfile).has.line(
+          "[rpc] got batch RPC call: 1", true, 10)
+        assert.logfile(cp_logfile).has.line(
+          "kong.test.batch called: world", true, 10)
 
-          assert.logfile(dp_logfile).has.line(
-            "[rpc] got batch RPC call: 1", true)
-          assert.logfile(dp_logfile).has.line(
-            "kong.test.batch called: hello world", true)
+        assert.logfile(dp_logfile).has.line(
+          "[rpc] got batch RPC call: 1", true, 10)
+        assert.logfile(dp_logfile).has.line(
+          "kong.test.batch called: hello world", true, 10)
 
-          assert.logfile(dp_logfile).has.line(
-            "[rpc] sent batch RPC call: 2", true)
+        assert.logfile(dp_logfile).has.line(
+          "[rpc] sent batch RPC call: 2", true, 10)
 
-          assert.logfile(cp_logfile).has.line(
-            "[rpc] got batch RPC call: 2", true)
-          assert.logfile(cp_logfile).has.line(
-            "kong.test.batch called: kong", true)
-          assert.logfile(cp_logfile).has.line(
-            "kong.test.batch called: gateway", true)
-          assert.logfile(cp_logfile).has.line(
-            "[rpc] notification has no response", true)
+        assert.logfile(cp_logfile).has.line(
+          "[rpc] got batch RPC call: 2", true, 10)
+        assert.logfile(cp_logfile).has.line(
+          "kong.test.batch called: kong", true, 10)
+        assert.logfile(cp_logfile).has.line(
+          "kong.test.batch called: gateway", true, 10)
+        assert.logfile(cp_logfile).has.line(
+          "[rpc] notification has no response", true, 10)
 
-          return true
-        end, 15)
+        assert.logfile(dp_logfile).has.line(
+          "kong.test.batch ok", true, 10)
       end)
     end)
   end)
