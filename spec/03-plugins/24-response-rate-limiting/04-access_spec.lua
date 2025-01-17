@@ -18,16 +18,7 @@ local fmt = string.format
 local proxy_client = helpers.proxy_client
 
 
-local function wait(reset)
-  ngx.update_time()
-  local now = ngx.now()
-  local seconds = (now - math.floor(now/60)*60)
-  if (seconds > 50) or reset then -- tune tolerance time to reduce test time or stabilize tests depending on machine spec
-    ngx.sleep(60 - seconds + 3) -- avoid time jitter between test and kong
-  end
-end
-
-local function wait_mills()
+local function wait()
   ngx.update_time()
   local now = ngx.now()
   local millis = (now - math.floor(now))
@@ -69,8 +60,8 @@ local function test_limit(path, host, limit)
     headers = { Host = host:format(1) },
   })
   assert.res_status(429, res)
-  assert.equal(limit, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-  assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+  assert.equal(limit, tonumber(res.headers["x-ratelimit-limit-video-second"]))
+  assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 end
 
 
@@ -141,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS } },
             },
           })
 
@@ -164,8 +155,8 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS*2, hour = ITERATIONS*4 },
-                                    image = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS*2, minute = ITERATIONS*4 },
+                                    image = { second = ITERATIONS } },
             },
           })
 
@@ -189,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits = { video = { minute = ITERATIONS - 3 }
+              limits = { video = { second = ITERATIONS - 3 }
             } },
           })
 
@@ -208,7 +199,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS - 2 } },
+              limits            = { video = { second = ITERATIONS - 2 } },
             },
           })
 
@@ -232,8 +223,8 @@ for _, strategy in helpers.each_strategy() do
                 database    = REDIS_DATABASE,
               },
               limits            = {
-                video = { minute = ITERATIONS * 2 + 2 },
-                image = { minute = ITERATIONS }
+                video = { second = ITERATIONS * 2 + 2 },
+                image = { second = ITERATIONS }
               },
             }
           })
@@ -260,11 +251,11 @@ for _, strategy in helpers.each_strategy() do
               block_on_first_violation = true,
               limits                   = {
                 video = {
-                  minute = ITERATIONS,
-                  hour = ITERATIONS * 2,
+                  second = ITERATIONS,
+                  minute = ITERATIONS * 2,
                 },
                 image = {
-                  minute = 4,
+                  second = 4,
                 },
               },
             }
@@ -289,8 +280,8 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS, hour = ITERATIONS*2 },
-                                    image = { minute = ITERATIONS-1 } },
+              limits            = { video = { second = ITERATIONS, minute = ITERATIONS*2 },
+                                    image = { second = ITERATIONS-1 } },
             }
           })
 
@@ -314,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits              = { video = { minute = ITERATIONS } },
+              limits              = { video = { second = ITERATIONS } },
             }
           })
 
@@ -343,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS } },
             }
           })
 
@@ -372,7 +363,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS } },
             }
           })
 
@@ -405,8 +396,8 @@ for _, strategy in helpers.each_strategy() do
               headers = { Host = "test1.test" },
             })
             assert.res_status(200, res)
-            assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-            assert.equal(ITERATIONS - n - 1, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
+            assert.equal(ITERATIONS - n - 1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
           end)
 
           it("returns remaining counter #grpc", function()
@@ -419,8 +410,8 @@ for _, strategy in helpers.each_strategy() do
               },
             }
             assert.truthy(ok, res)
-            assert.matches("x%-ratelimit%-limit%-video%-minute: %d+", res)
-            assert.matches("x%-ratelimit%-remaining%-video%-minute: %d+", res)
+            assert.matches("x%-ratelimit%-limit%-video%-second: %d+", res)
+            assert.matches("x%-ratelimit%-remaining%-video%-second: %d+", res)
 
             -- Note: tests for this plugin rely on the ability to manipulate
             -- upstream response headers, which is not currently possible with
@@ -429,7 +420,6 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("blocks if exceeding limit", function()
-            wait(true)
             test_limit("/response-headers?x-kong-limit=video%3D1", "test1.test")
           end)
 
@@ -452,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the list
 
-            -- Additional request, while limit is ITERATIONS/minute
+            -- Additional request, while limit is ITERATIONS/second
             local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20test%3D" .. ITERATIONS, {
               headers = { Host = "test-service1.test" },
             })
@@ -473,12 +463,12 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(200, res)
             end
 
-            assert.equal(ITERATIONS * 2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-            assert.equal(ITERATIONS * 2 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-            assert.equal(ITERATIONS * 4, tonumber(res.headers["x-ratelimit-limit-video-hour"]))
-            assert.equal(ITERATIONS * 4 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
-            assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
-            assert.equal(ITERATIONS - n, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+            assert.equal(ITERATIONS * 2, tonumber(res.headers["x-ratelimit-limit-video-second"]))
+            assert.equal(ITERATIONS * 2 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+            assert.equal(ITERATIONS * 4, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+            assert.equal(ITERATIONS * 4 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-image-second"]))
+            assert.equal(ITERATIONS - n, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
 
             for i = n+1, ITERATIONS do
               if i == ITERATIONS then
@@ -489,9 +479,9 @@ for _, strategy in helpers.each_strategy() do
               })
               assert.res_status(200, res)
             end
-            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
-            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
-            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
+            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
@@ -499,9 +489,9 @@ for _, strategy in helpers.each_strategy() do
               headers = { Host = "test2.test" },
             })
 
-            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
-            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
-            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
+            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
             assert.res_status(429, res)
           end)
         end)
@@ -567,8 +557,8 @@ for _, strategy in helpers.each_strategy() do
             })
 
             assert.res_status(429, res)
-            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
-            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
           end)
         end)
 
@@ -597,8 +587,8 @@ for _, strategy in helpers.each_strategy() do
             })
 
             assert.res_status(200, res)
-            assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
-            assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
+            assert.is_nil(res.headers["x-ratelimit-remaining-video-second"])
+            assert.is_nil(res.headers["x-ratelimit-limit-video-second"])
           end)
         end)
       end)
@@ -642,7 +632,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("expires a counter", function()
-          wait_mills()
+          wait()
           local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
             headers = { Host = "expire1.test" },
           })
@@ -654,7 +644,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(ITERATIONS-1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
           ngx.sleep(0.01)
-          wait_mills() -- Wait for counter to expire
+          wait() -- Wait for counter to expire
 
           local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
             headers = { Host = "expire1.test" },
@@ -699,7 +689,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS } },
             }
           })
 
@@ -742,7 +732,7 @@ for _, strategy in helpers.each_strategy() do
                 password    = REDIS_PASSWORD,
                 database    = REDIS_DATABASE,
               },
-              limits            = { video = { minute = ITERATIONS } },
+              limits            = { video = { second = ITERATIONS } },
             }
           })
 
@@ -776,13 +766,13 @@ for _, strategy in helpers.each_strategy() do
 
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-          -- last query, while limit is ITERATIONS/minute
+          -- last query, while limit is ITERATIONS/second
           local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
             headers = { Host = "test1.test" },
           })
           assert.res_status(429, res)
-          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+          assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
         end)
       end)
 
@@ -812,7 +802,7 @@ for _, strategy in helpers.each_strategy() do
                     server_name = redis_conf.redis_server_name,
                     password    = REDIS_PASSWORD,
                   },
-                  limits            = { video = { minute = ITERATIONS} },
+                  limits            = { video = { second = ITERATIONS} },
                 }
               }
 
@@ -833,7 +823,7 @@ for _, strategy in helpers.each_strategy() do
                     server_name = redis_conf.redis_server_name,
                     password    = REDIS_PASSWORD,
                   },
-                  limits            = { video = {minute = ITERATIONS} }
+                  limits            = { video = {second = ITERATIONS} }
                 }
               }
 
@@ -855,8 +845,8 @@ for _, strategy in helpers.each_strategy() do
                 headers = { Host = "failtest1.test" },
               })
               assert.res_status(200, res)
-              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
+              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
               -- Simulate an error on the database
               -- (valid SQL and CQL)
@@ -878,8 +868,8 @@ for _, strategy in helpers.each_strategy() do
                 headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
-              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
+              assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
               -- Simulate an error on the database
               -- (valid SQL and CQL)
@@ -892,8 +882,8 @@ for _, strategy in helpers.each_strategy() do
                 headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
-              assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
-              assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
+              assert.is_nil(res.headers["x-ratelimit-limit-video-second"])
+              assert.is_nil(res.headers["x-ratelimit-remaining-video-second"])
             end)
           end)
         end
@@ -917,7 +907,7 @@ for _, strategy in helpers.each_strategy() do
                   host = "5.5.5.5",
                   port = REDIS_PORT
                 },
-                limits         = { video = { minute = ITERATIONS } },
+                limits         = { video = { second = ITERATIONS } },
               }
             }
 
@@ -935,7 +925,7 @@ for _, strategy in helpers.each_strategy() do
                   host = "5.5.5.5",
                   port = REDIS_PORT
                 },
-                limits         = { video = { minute = ITERATIONS } },
+                limits         = { video = { second = ITERATIONS } },
               }
             }
 
@@ -967,8 +957,8 @@ for _, strategy in helpers.each_strategy() do
               headers = { Host = "failtest4.test" },
             })
             assert.res_status(200, res)
-            assert.falsy(res.headers["x-ratelimit-limit-video-minute"])
-            assert.falsy(res.headers["x-ratelimit-remaining-video-minute"])
+            assert.falsy(res.headers["x-ratelimit-limit-video-second"])
+            assert.falsy(res.headers["x-ratelimit-remaining-video-second"])
           end)
         end
       end)
