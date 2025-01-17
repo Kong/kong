@@ -980,6 +980,8 @@ local function load_entity_subschemas(entity_name, entity)
 end
 
 
+-- @tparam is_sync It generates full schema and foreign references to validate
+-- schema and references for sync.v2
 function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, is_sync)
   all_schemas = {}
   local schemas_array = {}
