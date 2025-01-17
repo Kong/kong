@@ -549,7 +549,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_
 
           local msg = fmt("could not find %s's foreign refrences %s (%s)",
                           item_type, foreign_entity,
-                          (type(v) == "string" and v or cjson_encode(v)))
+                          type(v) == "string" and v or cjson_encode(v))
 
           insert(errs[item_type][foreign_entity], msg)
         end
