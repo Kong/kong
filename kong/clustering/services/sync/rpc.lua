@@ -8,6 +8,7 @@ local constants = require("kong.constants")
 local concurrency = require("kong.concurrency")
 local isempty = require("table.isempty")
 local events = require("kong.runloop.events")
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
@@ -94,7 +95,7 @@ function _M:init_cp(manager)
       cert_details = node_info.cert_details,  -- get from rpc call
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = default_namespace_version,
-      rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
+      rpc_capabilities = rpc_peers and rpc_peers[node_id] or EMPTY,
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
