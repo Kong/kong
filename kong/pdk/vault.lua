@@ -1281,6 +1281,8 @@ local function new(self)
     -- negatively cached.
     local resurrect
     local ttl = SECRETS_CACHE:ttl(new_cache_key)
+    -- Note that `ttl` variable means remaining time in shdict, and there's an extra time in the shdict ttl
+    -- to make sure that the cache entry doesn't expire when after actual ttl.
     if ttl then
       local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
       -- the secret is still within ttl, no need to refresh
@@ -1293,9 +1295,7 @@ local function new(self)
       -- can be resurrected
       resurrect = ttl > SECRETS_CACHE_MIN_TTL
 
-      -- Only refresh negatively cached values after neg_ttl (not every minute).
-      -- Note that `ttl` variable means remaining time in shdict, and the ttl in the shdict for negatively values adds
-      -- an extra SECRETS_CACHE_MIN_TTL to make sure the value doesn't expire when after neg_ttl.
+      -- Only refresh negatively cached values after neg_ttl.
       if ttl > SECRETS_CACHE_MIN_TTL and SECRETS_CACHE:get(new_cache_key) == NEGATIVELY_CACHED_VALUE then
         return true
       end
