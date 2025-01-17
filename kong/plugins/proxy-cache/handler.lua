@@ -97,7 +97,6 @@ local function cacheable_request(conf, cc)
   end
 
   -- check for explicit disallow directives
-  -- TODO note that no-cache isnt quite accurate here
   if conf.cache_control and (cc["no-store"] or
      ngx.var.authorization) then
     return false
