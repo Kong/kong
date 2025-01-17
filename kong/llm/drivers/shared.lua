@@ -82,6 +82,7 @@ _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
   ["text/event-stream"] = true,
   ["application/vnd.amazon.eventstream"] = true,
   ["application/json"] = true,
+  ["application/stream+json"] = true,
 }
 
 _M.streaming_has_token_counts = {
