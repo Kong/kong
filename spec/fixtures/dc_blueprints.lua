@@ -28,6 +28,8 @@ local function remove_nulls(tbl)
 end
 
 
+-- tparam boolean expand_foreigns expand the complete "foreign"-type fields, not
+-- replacing it with "string"-type fields
 local function wrap_db(db, expand_foreigns)
   local dc_as_db = {}
 
