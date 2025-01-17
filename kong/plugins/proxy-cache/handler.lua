@@ -261,13 +261,14 @@ function ProxyCacheHandler:access(conf)
   end
 
   local ctx = kong.ctx.plugin
+
+  set_header(conf, "X-Cache-Key", cache_key)
   if conf.cache_control then
     if cc["no-cache"] then
       return signal_cache_req(ctx, conf, cache_key, "Bypass")
     end
   end
 
-  set_header(conf, "X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
   local strategy = require(STRATEGY_PATH)({
