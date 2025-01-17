@@ -19,7 +19,7 @@ end)
 
 local strategy = "postgres"
 describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
-  local admin_client, bp, db, plugin_id,ws
+  local admin_client, db, plugin_id,ws
   local plugin_config = {
     generator = ngx.null,
     header_name = "Kong-Request-ID",
@@ -32,7 +32,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
 
   lazy_setup(function()
     local plugin_name = "correlation-id"
-    bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
+    _, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
     ws = db.workspaces:select_by_name("default")
     assert.is_truthy(ws)
     plugin_id = uuid.generate_v4()
