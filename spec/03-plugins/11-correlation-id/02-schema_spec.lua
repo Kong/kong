@@ -32,7 +32,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
 
   lazy_setup(function()
     local plugin_name = "correlation-id"
-    _, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
+    db = select(2, helpers.get_db_utils(strategy, { "plugins", "workspaces", }))
     ws = db.workspaces:select_by_name("default")
     assert.is_truthy(ws)
     plugin_id = uuid.generate_v4()
