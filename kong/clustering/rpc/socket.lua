@@ -347,7 +347,7 @@ function _M:start()
     local batch_requests = {}
 
     while not exiting() do
-      -- 5 seconds for non-batching rpc calls
+      -- TODO: find the more proper timeout
       local payload, err = self.outgoing:pop(5)
       if err then
         return nil, err
