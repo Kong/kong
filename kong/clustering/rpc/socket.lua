@@ -347,22 +347,21 @@ function _M:start()
     local batch_requests = {}
 
     while not exiting() do
-      -- 0.5 seconds for not waiting too long
-      local payload, err = self.outgoing:pop(0.5)
+      -- 5 seconds for non-batching rpc calls
+      local payload, err = self.outgoing:pop(5)
       if err then
         return nil, err
       end
 
       -- timeout
       if not payload then
-        local n = #batch_requests
-        if n > 0 then
+        if not isempty(batch_requests) then
           local bytes, err = self.wb:send_binary(compress_payload(batch_requests))
           if not bytes then
             return nil, err
           end
 
-          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", n)
+          ngx_log(ngx_DEBUG, "[rpc] sent batch RPC call: ", #batch_requests)
 
           tb_clear(batch_requests)
         end
