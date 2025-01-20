@@ -980,9 +980,7 @@ local function load_entity_subschemas(entity_name, entity)
 end
 
 
--- @tparam sync_v2_enabled It generates full schema and foreign references to
--- validate schema and references for sync.v2
-function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, sync_v2_enabled)
+function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
   all_schemas = {}
   local schemas_array = {}
   for _, entity in ipairs(constants.CORE_ENTITIES) do
@@ -1017,7 +1015,7 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, sync_v2_
     known_entities[i] = schema.name
   end
 
-  local fields, records = build_fields(known_entities, include_foreign or sync_v2_enabled)
+  local fields, records = build_fields(known_entities, include_foreign)
   -- assert(no_foreign(fields))
 
   local ok, err = load_plugin_subschemas(fields, plugin_set)
@@ -1030,33 +1028,10 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, sync_v2_
     return nil, err
   end
 
-  -- Pre-load the full schema to validate the schema for sync.v2. Lazy loading
-  -- the full schema with DeclarativeConfig.load() will consume a lot of time
-  -- due to load_plugin_subschemas().
-  local full_schema
-
-  if sync_v2_enabled then
-    local def = {
-      name = "declarative_config",
-      primary_key = {},
-      -- copy fields to avoid its "foreign"-type fields from being cleared by
-      -- reference_foreign_by_name()
-      fields = kong_table.cycle_aware_deep_copy(fields, true),
-    }
-
-    full_schema = Schema.new(def)
-
-    full_schema.known_entities = known_entities
-    full_schema.flatten = flatten
-    full_schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
-    full_schema.plugin_set = plugin_set
-    full_schema.vault_set = vault_set
-  end
-
+  -- we replace the "foreign"-type fields at the top-level
+  -- with "string"-type fields only after the subschemas have been loaded,
+  -- otherwise they will detect the mismatch.
   if not include_foreign then
-    -- we replace the "foreign"-type fields at the top-level
-    -- with "string"-type fields only after the subschemas have been loaded,
-    -- otherwise they will detect the mismatch.
     reference_foreign_by_name(known_entities, records)
   end
 
@@ -1073,10 +1048,6 @@ function DeclarativeConfig.load(plugin_set, vault_set, include_foreign, sync_v2_
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
   schema.vault_set = vault_set
-
-  if sync_v2_enabled then
-    schema.full_schema = full_schema
-  end
 
   return schema, nil, def
 end

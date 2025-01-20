@@ -94,6 +94,34 @@ describe("[delta validations]",function()
     end
   end)
 
+  it("route has unknown field", function()
+    local bp = setup_bp()
+
+    -- add entities
+    db_insert(bp, "workspaces", { name = "ws-001" })
+    local service = db_insert(bp, "services", { name = "service-001", })
+    db_insert(bp, "routes", {
+      name = "route-001",
+      paths = { "/mock" },
+      service = { id = service.id },
+    })
+
+    local deltas = declarative.export_config_sync()
+
+    for _, delta in ipairs(deltas) do
+      if delta.type == "routes" then
+        delta.entity.foo = "invalid_field_value"
+        break
+      end
+    end
+
+    local _, err = validate_deltas(deltas)
+    assert.matches([[- in entry 1 of 'deltas':
+  in 'routes':
+    in 'foo': unknown field]],
+      err)
+  end)
+
   it("route has foreign service", function()
     local bp = setup_bp()
 

@@ -34,9 +34,7 @@ local _MT = { __index = _M, }
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
 function _M.new_config(kong_config, partial, include_foreign)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins,
-                                              kong_config.loaded_vaults,
-                                              include_foreign, kong.sync ~= nil)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults, include_foreign)
   if not schema then
     return nil, err
   end
