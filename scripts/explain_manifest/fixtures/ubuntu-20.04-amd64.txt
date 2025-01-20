@@ -51,7 +51,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
+- Path      : /usr/local/kong/lib/libexpat.so.1.10.0
   Needed    :
   - libc.so.6
 
