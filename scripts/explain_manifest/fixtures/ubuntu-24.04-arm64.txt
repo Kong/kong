@@ -44,7 +44,7 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
+- Path      : /usr/local/kong/lib/libexpat.so.1.10.0
   Needed    :
   - libc.so.6
   - ld-linux-aarch64.so.1

@@ -61,7 +61,7 @@
   - ld-linux-aarch64.so.1
   Rpath     : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
+- Path      : /usr/local/kong/lib/libexpat.so.1.10.0
   Needed    :
   - libm.so.6
   - libstdc++.so.6
