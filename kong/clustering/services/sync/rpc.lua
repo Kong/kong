@@ -402,7 +402,7 @@ function sync_once_impl(premature, retry_count)
   local current_version = get_current_version()
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
-    return
+    return sync_handler() -- one more call to report CP the latest version synced
   end
 
   -- retry if the version is not updated
