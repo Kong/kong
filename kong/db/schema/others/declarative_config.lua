@@ -844,7 +844,15 @@ local function get_unique_key(schema, entity, field, value)
 end
 
 
-function DeclarativeConfig.validate_schema(self, input)
+local function flatten(self, input)
+  -- manually set transform here
+  -- we can't do this in the schema with a `default` because validate
+  -- needs to happen before process_auto_fields, which
+  -- is the one in charge of filling out default values
+  if input._transform == nil then
+    input._transform = true
+  end
+
   local ok, err = self:validate(input)
   if not ok then
     yield()
@@ -865,24 +873,6 @@ function DeclarativeConfig.validate_schema(self, input)
     end
 
     yield()
-  end
-
-  return true
-end
-
-
-local function flatten(self, input)
-  -- manually set transform here
-  -- we can't do this in the schema with a `default` because validate
-  -- needs to happen before process_auto_fields, which
-  -- is the one in charge of filling out default values
-  if input._transform == nil then
-    input._transform = true
-  end
-
-  local ok, err = DeclarativeConfig.validate_schema(self, input)
-  if not ok then
-    return nil, err
   end
 
   generate_ids(input, self.known_entities)
