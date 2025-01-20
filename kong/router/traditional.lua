@@ -1755,9 +1755,11 @@ function _M.new(routes, cache, cache_neg)
     exec = function(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
-      local req_host = lower(get_header("host", ctx))
+      local req_host = get_header("host", ctx)
       local req_scheme = ctx and ctx.scheme or var.scheme
       local sni = server_name()
+
+      req_host = req_host and lower(req_host) or nil
 
       local headers
       if match_headers then
