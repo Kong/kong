@@ -27,6 +27,7 @@ local ipairs = ipairs
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
+local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
 
 
@@ -226,6 +227,8 @@ local function do_sync()
 
   local wipe = ns_delta.wipe
   if wipe then
+    ngx_log(ngx_INFO, "[kong.sync.v2] full sync begins")
+
     t:db_drop(false)
   end
 
@@ -336,6 +339,8 @@ local function do_sync()
   end
 
   if wipe then
+    ngx_log(ngx_INFO, "[kong.sync.v2] full sync ends")
+
     kong.core_cache:purge()
     kong.cache:purge()
 
