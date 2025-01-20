@@ -9,6 +9,7 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local string = string
@@ -260,7 +261,7 @@ function _M:handle_cp_websocket(cert)
       labels = data.labels,
       cert_details = dp_cert_details,
       -- only update rpc_capabilities if dp_id is connected
-      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or {},
+      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or EMPTY,
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
