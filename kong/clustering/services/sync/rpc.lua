@@ -177,6 +177,17 @@ local function is_rpc_ready()
 end
 
 
+-- tell cp we already updated the version by rpc notification
+local function update_status(ver)
+  local msg = { default = { version = ver, }, }
+
+  local ok, err = kong.rpc:notify("control_plane", "kong.sync.v2.get_delta", msg)
+  if not ok then
+    ngx_log(ngx_ERR, "update status notification failed: ", err)
+  end
+end
+
+
 local function do_sync()
   if not is_rpc_ready() then
     return nil, "rpc is not ready"
@@ -384,6 +395,8 @@ local function sync_once_impl(premature, retry_count)
     return
   end
 
+  local version_before_sync = get_current_version()
+
   local _, err = sync_handler()
 
   -- check if "kong.sync.v2.notify_new_version" updates the latest version
@@ -397,6 +410,12 @@ local function sync_once_impl(premature, retry_count)
   local current_version = get_current_version()
   if current_version >= latest_notified_version then
     ngx_log(ngx_DEBUG, "version already updated")
+
+    -- version changed, we should update status
+    if version_before_sync ~= current_version then
+      update_status(current_version)
+    end
+
     return
   end
 
