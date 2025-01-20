@@ -173,7 +173,7 @@ server {
     proxy_protocol on;
 
     set $kong_tls_preread_block 1;
-    set $kong_tls_preread_block_upstream 'unix:${{SOCKET_PATH}}/${{STREAM_TLS_TERMINATE_SOCK}}';
+    set $kong_tls_preread_block_upstream '';
     proxy_pass $kong_tls_preread_block_upstream;
 }
 
