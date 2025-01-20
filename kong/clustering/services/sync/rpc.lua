@@ -374,28 +374,17 @@ local function sync_handler(premature)
   if not res and err ~= "timeout" then
     ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
   end
+
+  return res, err
 end
 
 
-local sync_once_impl
-
-
-local function start_sync_once_timer(retry_count)
-  local ok, err = kong.timer:at(0, sync_once_impl, retry_count or 0)
-  if not ok then
-    return nil, err
-  end
-
-  return true
-end
-
-
-function sync_once_impl(premature, retry_count)
+local function sync_once_impl(premature, retry_count)
   if premature then
     return
   end
 
-  sync_handler()
+  local _, err = sync_handler()
 
   -- check if "kong.sync.v2.notify_new_version" updates the latest version
 
@@ -413,12 +402,24 @@ function sync_once_impl(premature, retry_count)
 
   -- retry if the version is not updated
   retry_count = retry_count or 0
+
   if retry_count > MAX_RETRY then
     ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
     return
   end
 
-  return start_sync_once_timer(retry_count + 1)
+  -- we do not count a timed out sync. just retry
+  if err ~= "timeout" then
+    retry_count = retry_count + 1
+  end
+
+  -- in some cases, the new spawned timer will be switched to immediately,
+  -- preventing the coroutine who possesses the mutex to run
+  -- to let other coroutines has a chance to run
+  local ok, err = kong.timer:at(0.1, sync_once_impl, retry_count or 0)
+  -- this is a workaround for a timerng bug, where tail recursion causes failure
+  -- ok could be a string so let's convert it to boolean
+  return ok and true or false, err
 end
 
 
