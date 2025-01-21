@@ -617,14 +617,14 @@ local function new(self)
   -- kong.request.get_header("Host")            -- "foo.com"
   -- kong.request.get_header("x-custom-header") -- "bla"
   -- kong.request.get_header("X-Another")       -- "foo bar"
-  function _REQUEST.get_header(name, ctx)
+  function _REQUEST.get_header(name)
     check_phase(PHASES.request)
 
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
 
-    return http_get_header(name, ctx)
+    return http_get_header(name)
   end
 
 
