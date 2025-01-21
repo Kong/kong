@@ -417,7 +417,7 @@ local function sync_once_impl(premature, retry_count)
   -- in some cases, the new spawned timer will be switched to immediately,
   -- preventing the coroutine who possesses the mutex to run
   -- to let other coroutines has a chance to run
-  local ok, err = kong.timer:at(0.1, sync_once_impl, retry_count or 0)
+  local ok, err = kong.timer:at(0.1, sync_once_impl, retry_count)
   -- this is a workaround for a timerng bug, where tail recursion causes failure
   -- ok could be a string so let's convert it to boolean
   if not ok then
