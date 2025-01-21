@@ -476,7 +476,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route15.id },
         config = {
-          skip_cors_when_origin_is_empty = true,
+          allow_origin_absent = false,
           origins = { "foo.bar" },
           exposed_headers    = { "x-auth-token" },
           credentials     = true
@@ -487,7 +487,7 @@ for _, strategy in helpers.each_strategy() do
         name = "cors",
         route = { id = route16.id },
         config = {
-          skip_cors_when_origin_is_empty = false,
+          allow_origin_absent = true,
           origins = { "foo.bar" },
           exposed_headers    = { "x-auth-token" },
           credentials     = true
@@ -1161,7 +1161,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("disallowed-domain.test", json.headers["origin"])
       end)
 
-      it("when enable skip_cors_when_origin_is_empty, no ACAO", function()
+      it("when disable allow_origin_absent, no ACAO", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
@@ -1174,7 +1174,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
       end)
 
-      it("when disable skip_cors_when_origin_is_empty, ACAO is returned", function()
+      it("when enable allow_origin_absent, ACAO is returned", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {

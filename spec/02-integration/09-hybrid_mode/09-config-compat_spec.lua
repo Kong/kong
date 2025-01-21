@@ -209,7 +209,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           enabled = true,
           config = {
             -- [[ new fields 3.10.0
-            skip_cors_when_origin_is_empty = false,
+            allow_origin_absent = true,
             -- ]]
             -- [[ new fields 3.5.0
             private_network = false
@@ -217,10 +217,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
 
-        assert.not_nil(cors.config.skip_cors_when_origin_is_empty)
+        assert.not_nil(cors.config.allow_origin_absent)
         local expected_cors = cycle_aware_deep_copy(cors)
         do_assert(uuid(), "3.10.0", expected_cors)
-        expected_cors.config.skip_cors_when_origin_is_empty = nil
+        expected_cors.config.allow_origin_absent = nil
 
         assert.not_nil(cors.config.private_network)
         expected_cors = cycle_aware_deep_copy(expected_cors)
@@ -237,7 +237,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           enabled = true,
           config = {
             -- [[ new fields 3.10.0
-            skip_cors_when_origin_is_empty = false,
+            allow_origin_absent = true,
             -- ]]
             -- [[ new fields 3.5.0
             private_network = false
@@ -245,7 +245,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
         do_assert(uuid(), "3.10.0", cors)
-        cors.config.skip_cors_when_origin_is_empty = nil
+        cors.config.allow_origin_absent = nil
 
         do_assert(uuid(), "3.5.0", cors)
 

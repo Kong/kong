@@ -248,7 +248,7 @@ function CorsHandler:header_filter(conf)
   end
 
   local req_origin = kong.request.get_header("origin")
-  if not req_origin and conf.skip_cors_when_origin_is_empty then
+  if not req_origin and not conf.allow_origin_absent then
     return
   end
 
