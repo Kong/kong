@@ -169,7 +169,7 @@ end
 -- @return `pub, priv` key tuple or `nil + err` on failure
 local function generate_keys(fmt, typ)
   fmt = string.upper(fmt) or "JWK"
-  typ = typ or string.upper(typ) or "RSA"
+  typ = typ and string.upper(typ) or "RSA"
   local key, err
   -- only support RSA and EC for now
   if typ == "RSA" then
