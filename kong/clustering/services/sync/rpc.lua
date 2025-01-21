@@ -27,6 +27,7 @@ local ipairs = ipairs
 local ngx_null = ngx.null
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
+local ngx_WARN = ngx.WARN
 local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
 
@@ -403,8 +404,8 @@ local function sync_once_impl(premature, retry_count)
   -- retry if the version is not updated
   retry_count = retry_count or 0
 
-  if retry_count > MAX_RETRY then
-    ngx_log(ngx_ERR, "sync_once retry count exceeded. retry_count: ", retry_count)
+  if retry_count >= MAX_RETRY then
+    ngx_log(ngx_WARN, "sync_once retry count exceeded. retry_count: ", retry_count)
     return
   end
 
