@@ -419,7 +419,10 @@ local function sync_once_impl(premature, retry_count)
   local ok, err = kong.timer:at(0.1, sync_once_impl, retry_count or 0)
   -- this is a workaround for a timerng bug, where tail recursion causes failure
   -- ok could be a string so let's convert it to boolean
-  return ok and true or false, err
+  if not ok then
+    return nil, err
+  end
+  return true
 end
 
 
