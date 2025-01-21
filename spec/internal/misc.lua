@@ -178,11 +178,15 @@ local function generate_keys(fmt, typ)
       bits = 2048,
       exp = 65537
     })
+
   elseif typ == "EC" then
     key, err = pkey.new({
       type = 'EC',
       curve = 'prime256v1',
     })
+
+  else
+    return nil, "unsupported key type"
   end
   assert(key)
   assert(err == nil, err)
