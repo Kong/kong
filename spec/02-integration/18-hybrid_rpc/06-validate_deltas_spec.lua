@@ -60,7 +60,6 @@ local function setup_bp()
 
   -- init declarative config
   if not cached_dc then
-    kong.sync = "fake sync to generate dc with sync_v2_enabled"
     local err
     cached_dc, err = declarative.new_config(kong.configuration)
     assert(cached_dc, err)

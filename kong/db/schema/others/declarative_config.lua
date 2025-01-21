@@ -507,6 +507,9 @@ local function validate_references(self, input)
 end
 
 
+-- TODO: Completely implement validate_references_sync without associating it
+-- to declarative config. Currently, we will use the dc-generated
+-- foreign_references table to accelerate iterating over entity foreign keys.
 function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_sync)
   local errs = {}
 
