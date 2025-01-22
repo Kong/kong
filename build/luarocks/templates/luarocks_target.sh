@@ -33,7 +33,7 @@ EOF
 export LUAROCKS_CONFIG=$ROCKS_CONFIG
 
 $host_luajit $luarocks_wrap_script \
-            luarocks $rocks_tree $install_destdir 2>&1 > $@.tmp
+            luarocks $rocks_tree $install_destdir > $@.tmp 2>&1
 
 # write the luarocks config with host configuration
 mkdir -p $rocks_tree/etc/luarocks
