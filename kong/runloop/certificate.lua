@@ -261,7 +261,7 @@ local function get_certificate(pk, sni_name, ws_id)
                                                           pk, sni_name, ws_id)
 
   if certificate and hit_level ~= 3 and certificate["$refs"] then
-    certificate = parse_key_and_cert(kong.vault.update(certificate))
+    certificate, err = parse_key_and_cert(kong.vault.update(certificate))
   end
 
   return certificate, err
