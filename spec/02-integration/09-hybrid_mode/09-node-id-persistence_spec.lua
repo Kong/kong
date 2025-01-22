@@ -20,6 +20,7 @@ local write_node_id = [[
 local function get_http_node_id()
   local client = helpers.proxy_client(nil, 9002)
   finally(function() client:close() end)
+
   helpers.wait_until(function()
     local res = client:get("/request", {
       headers = { host = "http.node-id.test" },
@@ -87,7 +88,7 @@ for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
-  describe("node id persistence " .. " rpc_sync=" .. rpc_sync, function()
+  describe("node id persistence rpc_sync = " .. rpc_sync, function()
 
     local control_plane_config = {
       role = "control_plane",
