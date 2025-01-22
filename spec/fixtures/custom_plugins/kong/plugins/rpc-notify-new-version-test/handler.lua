@@ -23,6 +23,10 @@ function RpcSyncV2NotifyNewVersioinTestHandler:init_worker()
         entity = {
           id = fake_uuid,
           name = "default",
+          -- It must contain feild "config" and "meta", otherwise the deltas
+          -- validation will fail with the error "required field missing".
+          config = {},
+          meta = {},
         },
         type = "workspaces",
         version = latest_version,
