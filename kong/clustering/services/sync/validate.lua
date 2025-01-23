@@ -36,13 +36,14 @@ local function validate_deltas(deltas, is_full_sync)
         -- unknown field.
         -- TODO: On the CP side, remove ws_id from the entity and set it only
         -- in the delta.
-        local ws_id = delta_entity.ws_id
-        delta_entity.ws_id = nil      -- clear ws_id
 
-        local ok, err_t = dao.schema:validate(delta_entity)
+        -- needs to insert default values into entity to align with the function
+        -- dc:validate(input), which will call process_auto_fields on its
+        -- entities of input.
+        local copy = dao.schema:process_auto_fields(delta_entity, "insert")
+        copy.ws_id = nil
 
-        delta_entity.ws_id = ws_id    -- restore ws_id
-
+        local ok, err_t = dao.schema:validate(copy)
         if not ok then
           errs[#errs + 1] = { [delta_type] = err_t }
         end
