@@ -93,6 +93,31 @@ describe("[delta validations]",function()
     end
   end)
 
+  it("route has no required field", function()
+    local bp = setup_bp()
+
+    -- add entities
+    db_insert(bp, "workspaces", { name = "ws-001" })
+    local service = db_insert(bp, "services", { name = "service-001", })
+    db_insert(bp, "routes", {
+      name = "route-001",
+      paths = { "/mock" },
+      service = { id = service.id },
+    })
+
+    local deltas = declarative.export_config_sync()
+
+    for _, delta in ipairs(deltas) do
+      if delta.type == "routes" then
+        delta.entity.protocols = nil
+        break
+      end
+    end
+
+    local ok, err = validate_deltas(deltas)
+    assert.is_true(ok, "validate should not fail: " .. tostring(err))
+  end)
+
   it("route has unknown field", function()
     local bp = setup_bp()
 
