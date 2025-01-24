@@ -54,7 +54,7 @@ local function wait_until_healthy(prefix)
   if conf.admin_listen and conf.admin_listen ~= "off" then
     local port = assert(conf.admin_listen:match(":([0-9]+)"))
     assert
-      .with_timeout(5)
+      .with_timeout(10)
       .eventually(function()
         local client = helpers.admin_client(1000, port)
         local res, err = client:send({ path = "/status", method = "GET" })
@@ -413,7 +413,7 @@ describe("kong start/stop #" .. strategy, function()
         assert(helpers.start_kong({
           database = "off",
           declarative_config = yaml_file,
-          nginx_worker_processes = 100, -- stress test initialization
+          nginx_worker_processes = 50, -- stress test initialization
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 

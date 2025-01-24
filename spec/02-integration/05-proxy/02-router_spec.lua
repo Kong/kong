@@ -2542,7 +2542,7 @@ for _, strategy in helpers.each_strategy() do
 
         local workers_before = helpers.get_kong_workers()
         assert(helpers.signal_workers(nil, "-TERM"))
-        helpers.wait_until_no_common_workers(workers_before, 1) -- respawned
+        helpers.wait_until_no_common_workers(workers_before, 4) -- respawned
 
         proxy_client:close()
         proxy_client = helpers.proxy_client()
