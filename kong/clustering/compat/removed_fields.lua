@@ -233,6 +233,6 @@ return {
     session = {
       "hash_subject",
       "store_metadata",
-    }
+    },
   }
 }

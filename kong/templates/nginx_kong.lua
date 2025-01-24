@@ -357,9 +357,11 @@ server {
           -- we need to re-set them here to the new nginx request.
           local ctx = ngx.ctx
           local upstream_ssl = require("kong.runloop.upstream_ssl")
+          local upstream_retry = require("kong.runloop.upstream_retry")
 
           upstream_ssl.set_service_ssl(ctx)
           upstream_ssl.fallback_upstream_client_cert(ctx)
+          upstream_retry.fallback_proxy_next_upstream()
         }
         access_by_lua_block        {;}
         header_filter_by_lua_block {;}
