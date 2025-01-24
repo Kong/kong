@@ -185,9 +185,6 @@ build = {
     ["kong.status"] = "kong/status/init.lua",
     ["kong.status.ready"] = "kong/status/ready.lua",
 
-    ["kong.tls.plugins.certificate"] = "kong/tls/plugins/certificate.lua",
-    ["kong.tls.plugins.sni_filter"] = "kong/tls/plugins/sni_filter.lua",
-
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
