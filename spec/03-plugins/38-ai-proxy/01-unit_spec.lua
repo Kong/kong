@@ -6,6 +6,82 @@ local fmt = string.format
 local llm = require("kong.llm")
 local ai_shared = require("kong.llm.drivers.shared")
 
+local SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_URL = {
+  messages = {
+    {
+      role = "user",
+      content = {
+        {
+          type = "text",
+          text = "What is in this picture?",
+        },
+        {
+          type = "image_url",
+          image_url = {
+            url = "https://example.local/image.jpg",
+          },
+        },
+      },
+    },
+    {
+      role = "assistant",
+      content = {
+        {
+          type = "text",
+          text = "A picture of a cat.",
+        },
+      },
+    },
+    {
+      role = "user",
+      content = {
+        {
+          type = "text",
+          text = "Now draw it wearing a party-hat.",
+        },
+      },
+    },
+  }
+}
+
+local SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_B64 = {
+  messages = {
+    {
+      role = "user",
+      content = {
+        {
+          type = "text",
+          text = "What is in this picture?",
+        },
+        {
+          type = "image_url",
+          image_url = {
+            url = "data:image/png;base64,Y2F0X3BuZ19oZXJlX2xvbAo=",
+          },
+        },
+      },
+    },
+    {
+      role = "assistant",
+      content = {
+        {
+          type = "text",
+          text = "A picture of a cat.",
+        },
+      },
+    },
+    {
+      role = "user",
+      content = {
+        {
+          type = "text",
+          text = "Now draw it wearing a party-hat.",
+        },
+      },
+    },
+  }
+}
+
 local SAMPLE_LLM_V1_CHAT = {
   messages = {
     [1] = {
@@ -866,6 +942,186 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       }))
     end)
   end)
+
+  describe("gemini multimodal", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+  
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("transforms a text type prompt to gemini GOOD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "text",
+          ["text"] = "What is in this picture?",
+        })
+
+      assert.not_nil(gemini_prompt)
+      assert.is_nil(err)
+
+      assert.same(gemini_prompt,
+        {
+          ["text"] = "What is in this picture?",
+        })
+    end)
+
+    it("transforms a text type prompt to gemini BAD MISSING TEXT FIELD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "text",
+          ["bad_text_field"] = "What is in this picture?",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("message part type is 'text' but is missing .text block", err)
+    end)
+
+    it("transforms an image_url type prompt when data is a URL to gemini GOOD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "image_url",
+          ["image_url"] = {
+            ["url"] = "https://example.local/image.jpg",
+          },
+        })
+
+      assert.not_nil(gemini_prompt)
+      assert.is_nil(err)
+
+      assert.same(gemini_prompt,
+        {
+          ["fileData"] = {
+            ["fileUri"] = "https://example.local/image.jpg",
+            ["mimeType"] = "image/generic",
+          },
+        })
+    end)
+
+    it("transforms an image_url type prompt when data is a URL to gemini BAD MISSING IMAGE FIELD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "image_url",
+          ["image_url"] = "https://example.local/image.jpg",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("message part type is 'image_url' but is missing .image_url.url block", err)
+    end)
+
+    it("fails to transform a non-mapped multimodal entity type", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "doesnt_exist",
+          ["doesnt_exist"] = "https://example.local/video.mp4",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("cannot transform part of type 'doesnt_exist' to Gemini format", err)
+    end)
+
+    it("transforms 'describe this image' via URL from openai to gemini", function()
+      local gemini_prompt, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_URL)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+
+      gemini_prompt.generationConfig = nil  -- not needed for comparison
+
+      assert.same({
+        ["contents"] = {
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "What is in this picture?",
+              },
+              {
+                ["fileData"] = {
+                  ["fileUri"] = "https://example.local/image.jpg",
+                  ["mimeType"] = "image/generic",
+                },
+              }
+            },
+          },
+          {
+            ["role"] = "model",
+            ["parts"] = {
+              {
+                ["text"] = "A picture of a cat.",
+              },
+            },
+          },
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "Now draw it wearing a party-hat.",
+              },
+            },
+          },
+        }
+      }, gemini_prompt)
+    end)
+
+    it("transforms 'describe this image' via base64 from openai to gemini", function()
+      local gemini_prompt, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_B64)
+  
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+  
+      gemini_prompt.generationConfig = nil  -- not needed for comparison
+  
+      assert.same({
+        ["contents"] = {
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "What is in this picture?",
+              },
+              {
+                ["inlineData"] = {
+                  ["data"] = "Y2F0X3BuZ19oZXJlX2xvbAo=",
+                  ["mimeType"] = "image/png",
+                },
+              }
+            },
+          },
+          {
+            ["role"] = "model",
+            ["parts"] = {
+              {
+                ["text"] = "A picture of a cat.",
+              },
+            },
+          },
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "Now draw it wearing a party-hat.",
+              },
+            },
+          },
+        }
+      }, gemini_prompt)
+    end)
+
+  end)
+
 
   describe("gemini tools", function()
     local gemini_driver
