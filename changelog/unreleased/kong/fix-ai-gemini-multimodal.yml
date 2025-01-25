@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where multimodal requests (in OpenAI format) would not transform properly, when using the Gemini provider."
+type: bugfix
+scope: Plugin
