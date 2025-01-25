@@ -11,6 +11,8 @@ local table_insert = table.insert
 local string_lower = string.lower
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_base = require("kong.llm.plugin.base")
+local pl_string = require "pl.stringx"
+
 --
 
 -- globals
@@ -134,6 +136,91 @@ local function to_tools(in_tools)
   return out_tools
 end
 
+
+local function image_url_to_components(img)
+  -- determine the protocol from the first 10 bytes
+  if #img < 10 then
+    return nil, "image URL is less than 10 bytes, which is not parsable"
+  end
+
+  -- capture only 10 bytes for the 'protocol://' to increase performance
+  local protocol_parts = pl_string.split(img:sub(1, 6), ":")
+
+  if protocol_parts then
+    local protocol = protocol_parts[1]
+
+    -- if the protocol is "data" then we can parse it,
+    -- otherwise just send it as-is, because it's probably
+    -- as GCP bucket or https link.
+    if protocol == "data" then
+      local coordinates_outer = pl_string.split(img:sub(#protocol+2), ";")
+      local coordinates_inner = pl_string.split(coordinates_outer[2], ",")
+
+      return {
+        mimetype = coordinates_outer[1],
+        encoding = coordinates_inner[1],
+        data = coordinates_inner[2],
+      }
+    else
+      return img
+    end
+  end
+
+  return nil, "unable to determine the PROTOCOL from the image url"
+end
+
+-- expects nil return if part does not match expected format or cannot be transformed
+local function openai_part_to_gemini_part(openai_part)
+  if not openai_part then
+    return nil
+  end
+
+  local gemini_part
+
+  if openai_part.type and openai_part.type == "image_url" then
+    if not (openai_part.image_url and openai_part.image_url.url) then
+      return nil, "message part type is 'image_url' but is missing .image_url.url block"
+    end
+
+    local image_components, err = image_url_to_components(openai_part.image_url.url)
+    if err then
+      return nil, "could not decode OpenAI image-part, " .. err
+    end
+
+    if image_components and type(image_components) == "table" then
+      gemini_part = {
+        inlineData = {
+          data = image_components.data,
+          mimeType = image_components.mimetype,
+        }
+      }
+
+    elseif image_components and type(image_components) == "string" then
+      gemini_part = {
+        fileData = {
+          fileUri = image_components,
+          mimeType = "image/generic",
+        }
+      }
+
+    end
+
+  elseif openai_part.type and openai_part.type == "text" then
+    if not openai_part.text then
+      return nil, "message part type is 'text' but is missing .text block"
+    end
+
+    gemini_part = {
+      text = openai_part.text,
+    }
+
+  else
+    return nil, "cannot transform part of type '" .. openai_part.type .. "' to Gemini format"
+  end
+
+  return gemini_part
+end
+
 local function to_gemini_chat_openai(request_table, model_info, route_type)
   local new_r = {}
 
@@ -183,21 +270,40 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
           })
 
         else
-          -- for any other role, just construct the chat history as 'parts.text' type
+          local this_parts = {}
+
+          -- for any other role, just construct the chat history as 'parts' type
           new_r.contents = new_r.contents or {}
 
-          local part = v.content
           if type(v.content) == "string" then
-            part = {
-              text = v.content
+            this_parts = {
+              {
+                text = v.content,
+              },
             }
+
+          elseif type(v.content) == "table" then
+            if #v.content > 0 then  -- check it has ome kind of array element
+              for j, part in ipairs(v.content) do
+                local this_part, err = openai_part_to_gemini_part(part)
+                
+                if not this_part then
+                  if not err then
+                    err = "message at position " .. i .. ", part at position " .. j .. " does not match expected OpenAI format"
+                  end
+                  return nil, nil, err
+                end
+
+                this_parts[j] = this_part
+              end
+            else
+              return nil, nil, "message at position " .. i .. " does not match expected array format"
+            end
           end
 
           table_insert(new_r.contents, {
             role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-            parts = {
-              part,
-            },
+            parts = this_parts,
           })
         end
 
@@ -569,7 +675,9 @@ end
 if _G._TEST then
   -- export locals for testing
   _M._to_tools = to_tools
+  _M._to_gemini_chat_openai = to_gemini_chat_openai
   _M._from_gemini_chat_openai = from_gemini_chat_openai
+  _M._openai_part_to_gemini_part = openai_part_to_gemini_part
 end
 
 
