@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.25.3/auto/feature b/bundle/nginx-1.25.3/auto/feature
+diff --git a/bundle/nginx-1.27.1/auto/feature b/bundle/nginx-1.27.1/auto/feature
 index 3561f59..d6a2889 100644
---- a/bundle/nginx-1.25.3/auto/feature
-+++ b/bundle/nginx-1.25.3/auto/feature
+--- a/bundle/nginx-1.27.1/auto/feature
++++ b/bundle/nginx-1.27.1/auto/feature
 @@ -49,12 +49,20 @@ eval "/bin/sh -c \"$ngx_test\" >> $NGX_AUTOCONF_ERR 2>&1"
  
  if [ -x $NGX_AUTOTEST ]; then
@@ -66,11 +66,11 @@ index 3561f59..d6a2889 100644
                  echo " not found"
  
              else
-diff --git a/bundle/nginx-1.25.3/auto/options b/bundle/nginx-1.25.3/auto/options
-index e6e0cd3..5117342 100644
---- a/bundle/nginx-1.25.3/auto/options
-+++ b/bundle/nginx-1.25.3/auto/options
-@@ -411,6 +411,18 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
+diff --git a/bundle/nginx-1.27.1/auto/options b/bundle/nginx-1.27.1/auto/options
+index d22f48b..0fa47c5 100644
+--- a/bundle/nginx-1.27.1/auto/options
++++ b/bundle/nginx-1.27.1/auto/options
+@@ -413,6 +413,18 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
          --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
          --test-build-solaris-sendfilev)  NGX_TEST_BUILD_SOLARIS_SENDFILEV=YES ;;
  
@@ -89,7 +89,7 @@ index e6e0cd3..5117342 100644
          *)
              echo "$0: error: invalid option \"$option\""
              exit 1
-@@ -605,6 +617,17 @@ cat << END
+@@ -608,6 +620,17 @@ cat << END
  
    --with-debug                       enable debug logging
  
@@ -107,7 +107,7 @@ index e6e0cd3..5117342 100644
  END
  
      exit 1
-@@ -613,6 +636,8 @@ fi
+@@ -616,6 +639,8 @@ fi
  
  if [ ".$NGX_PLATFORM" = ".win32" ]; then
      NGX_WINE=$WINE
@@ -116,10 +116,10 @@ index e6e0cd3..5117342 100644
  fi
  
  
-diff --git a/bundle/nginx-1.25.3/auto/types/sizeof b/bundle/nginx-1.25.3/auto/types/sizeof
+diff --git a/bundle/nginx-1.27.1/auto/types/sizeof b/bundle/nginx-1.27.1/auto/types/sizeof
 index 480d8cf..23c5171 100644
---- a/bundle/nginx-1.25.3/auto/types/sizeof
-+++ b/bundle/nginx-1.25.3/auto/types/sizeof
+--- a/bundle/nginx-1.27.1/auto/types/sizeof
++++ b/bundle/nginx-1.27.1/auto/types/sizeof
 @@ -12,9 +12,12 @@ checking for $ngx_type size
  
  END
@@ -158,10 +158,10 @@ index 480d8cf..23c5171 100644
  fi
  
  
-diff --git a/bundle/nginx-1.25.3/auto/unix b/bundle/nginx-1.25.3/auto/unix
+diff --git a/bundle/nginx-1.27.1/auto/unix b/bundle/nginx-1.27.1/auto/unix
 index 6b44fc9..7410746 100644
---- a/bundle/nginx-1.25.3/auto/unix
-+++ b/bundle/nginx-1.25.3/auto/unix
+--- a/bundle/nginx-1.27.1/auto/unix
++++ b/bundle/nginx-1.27.1/auto/unix
 @@ -640,13 +640,13 @@ ngx_feature_libs=
  
  # C types
