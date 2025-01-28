@@ -529,3 +529,90 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
 
 end)
 end
+
+describe("CP/DP connectivity state #", function ()
+  local status_client
+  local cp_running
+
+  local function get_metrics()
+    if not status_client then
+      status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
+      status_client.reopen = true -- retry on a closed connection
+    end
+
+    local res, err = status_client:get("/metrics")
+
+    assert.is_nil(err, "failed GET /metrics: " .. tostring(err))
+    return assert.res_status(200, res)
+  end
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+    }
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      prefix = "prom_dp",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9000",
+      worker_state_update_frequency = 1,
+      status_listen = "0.0.0.0:" .. tcp_status_port,
+      nginx_worker_processes = 1,
+      dedicated_config_processing = "on",
+      plugins = "bundled, prometheus",
+    }))
+    status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
+  end)
+
+  teardown(function()
+    if status_client then
+      status_client:close()
+    end
+
+    helpers.stop_kong("prom_dp")
+    if cp_running then
+      helpers.stop_kong("prom_cp")
+    end
+  end)
+
+  it("exposes control plane connectivity status", function ()
+    assert.eventually(function()
+      local body = get_metrics()
+      assert.matches('kong_control_plane_connected 0', body, nil, true)
+    end).has_no_error("metric kong_control_plane_connected => 0")
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      prefix = "prom_cp",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_listen = "127.0.0.1:9005",
+      plugins = "bundled, prometheus",
+    }))
+    cp_running = true
+
+    -- it takes some time for the cp<->dp connection to get established and the
+    -- metric to reflect that. On failure, re-connection attempts are spaced out
+    -- in `math.random(5, 10)` second intervals, so a generous timeout is used
+    -- in case we get unlucky and have to wait multiple retry cycles
+    assert.with_timeout(30).eventually(function()
+      local body = get_metrics()
+      assert.matches('kong_control_plane_connected 1', body, nil, true)
+    end).has_no_error("metric kong_control_plane_connected => 1")
+
+    helpers.stop_kong("prom_cp")
+    cp_running = false
+
+    assert.eventually(function()
+      local body = get_metrics()
+      assert.matches('kong_control_plane_connected 0', body, nil, true)
+    end).has_no_error("metric kong_control_plane_connected => 0")
+  end)
+end)
