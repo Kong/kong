@@ -44,7 +44,7 @@ endif
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 GRPCURL_VERSION ?= 1.8.5
-BAZLISK_VERSION ?= 1.20.0
+BAZLISK_VERSION ?= 1.25.0
 H2CLIENT_VERSION ?= 0.4.4
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
