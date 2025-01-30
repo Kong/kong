@@ -18,7 +18,7 @@ return {
     {
       set = {
         type      = "foreign",
-        description = "The id of the key-set with which to associate the key.",
+        description = "The id of the Key Set with which to associate the key.",
         required  = false,
         reference = "key_sets",
         on_delete = "cascade",
