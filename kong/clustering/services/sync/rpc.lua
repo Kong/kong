@@ -284,10 +284,15 @@ local function do_sync()
   -- and replace the old one with it
   local default_ws_changed
   for _, delta in ipairs(deltas) do
-    if delta.type == "workspaces" and delta.entity.name == "default" and
-      kong.default_workspace ~= delta.entity.id
+    local delta_entity = delta.entity
+    -- Update default workspace if delta is for workspace update
+    if delta.type == "workspaces" and
+      delta_entity ~= nil and
+      delta_entity ~= ngx_null and
+      delta_entity.name == "default" and
+      kong.default_workspace ~= delta_entity.id
     then
-      kong.default_workspace = delta.entity.id
+      kong.default_workspace = delta_entity.id
       default_ws_changed = true
       break
     end
