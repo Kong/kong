@@ -12,7 +12,8 @@ local callbacks = require("kong.clustering.rpc.callbacks")
 local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
-local pl_tablex = require("pl.tablex")
+local table_clone = require("table.clone")
+local table_remove = table.remove
 local cjson = require("cjson.safe")
 local string_tools = require("kong.tools.string")
 
@@ -20,17 +21,19 @@ local string_tools = require("kong.tools.string")
 local ipairs = ipairs
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
+local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
-local pl_tablex_makeset = pl_tablex.makeset
+local pl_tablex_makeset = require("pl.tablex").makeset
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local parse_proxy_url = require("kong.clustering.utils").parse_proxy_url
+local version_num = require("kong.clustering.compat.version").string_to_number
 
 
 local _log_prefix = "[rpc] "
@@ -42,7 +45,6 @@ local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = kong.configuration.cluster_max_payload,
 }
-local KONG_VERSION = kong.version
 
 
 -- create a new RPC manager, node_id is own node_id
@@ -188,10 +190,36 @@ function _M:_handle_meta_call(c, cert)
   assert(type(info.kong_hostname) == "string")
   assert(type(info.kong_conf) == "table")
 
+  local rpc_capabilities = self.callbacks:get_capabilities_list()
+  -- For data planes older than the control plane, we don't want to enable
+  -- kong.sync.v2 because we decided to not add the compatibility layer to
+  -- it. The v1 sync implements the compatibility code, and thus by not
+  -- advertising the kong.sync.v2 the data plane will automatically fall
+  -- back to v1 sync.
+  --
+  -- In case we want to reverse the decision, the compatibility code for the
+  -- kong.sync.v2 can be found here: https://github.com/Kong/kong-ee/pull/11040
+  local dp_version = info.kong_version
+  if version_num(kong.version) > version_num(dp_version) then
+    local delta_index
+    for i, rpc_capability in ipairs(rpc_capabilities) do
+      if rpc_capability == "kong.sync.v2" then
+        delta_index = i
+        break
+      end
+    end
+    if delta_index then
+      ngx_log(ngx_INFO, "disabling kong.sync.v2 because the data plane is older ",
+                        "than the control plane, node_id: ", info.kong_node_id)
+      rpc_capabilities = table_clone(rpc_capabilities)
+      table_remove(rpc_capabilities, delta_index)
+    end
+  end
+
   local payload = {
     jsonrpc = jsonrpc.VERSION,
     result = {
-      rpc_capabilities = self.callbacks:get_capabilities_list(),
+      rpc_capabilities = rpc_capabilities,
       -- now we only support snappy
       rpc_frame_encoding = RPC_SNAPPY_FRAMED,
       },
@@ -239,7 +267,7 @@ function _M:_handle_meta_call(c, cert)
   -- store DP's ip addr
   self.client_info[node_id] = {
     ip = ngx_var.remote_addr,
-    version = info.kong_version,
+    version = dp_version,
     labels = labels,
     cert_details = cert_details,
   }
@@ -256,7 +284,7 @@ function _M:_meta_call(c, meta_cap, node_id)
     -- now we only support snappy
     rpc_frame_encodings =  { RPC_SNAPPY_FRAMED, },
 
-    kong_version = KONG_VERSION,
+    kong_version = kong.version,
     kong_hostname = kong.node.get_hostname(),
     kong_node_id = self.node_id,
     kong_conf = kong.configuration.remove_sensitive(),
