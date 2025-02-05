@@ -124,10 +124,12 @@ end
 
 function _M:run(conf)
   -- if plugin ordering was altered, receive the "decorated" request
-  local request_body_table = ai_plugin_ctx.get_request_body_table_inuse()
+  local request_body_table, source = ai_plugin_ctx.get_request_body_table_inuse()
   if not request_body_table then
     return bad_request("this LLM route only supports application/json requests")
   end
+
+  kong.log.debug("using request body from source: ", source)
 
   -- run access handler
   local ok, err = execute(request_body_table, conf)
