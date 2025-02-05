@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
--- register a rpc connected event in custom plugin rpc-validation-test
+-- mock kong.sync.v2.get_delta in custom plugin rpc-validation-test
 -- DISABLE rpc sync on cp side
 -- ENABLE rpc sync on dp side
 for _, strategy in helpers.each_strategy() do
