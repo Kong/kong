@@ -178,9 +178,9 @@ function _M:process_rpc_msg(payload, collection)
 
       -- collection is nil, it means it is a single call
       -- we should call async function
-      -- for notification we will give it a negative fake id as timer's name
-      local name = string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
-                                 self.node_id, payload_id or -math.random(10^5), payload_method)
+      -- random is for avoiding timer's name confliction
+      local name = string_format("JSON-RPC callback for node_id: %s, id: %d, rand: %d, method: %s",
+                                 self.node_id, payload_id or 0, math.random(10^5), payload_method)
       res, err = kong.timer:named_at(name, 0, _M._dispatch, self, dispatch_cb, payload)
 
       if not res and payload_id then
