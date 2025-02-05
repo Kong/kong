@@ -1,4 +1,4 @@
 message: |
-  **AI Plugins**: fix AI upstream URL trailing being empty
+  **AI Plugins**: Fixed AI upstream URL trailing being empty.
 type: bugfix
 scope: Plugin
