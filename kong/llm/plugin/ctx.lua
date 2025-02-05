@@ -4,6 +4,7 @@ local schemas = {
   _global = {
     accept_gzip = "boolean",
     stream_mode = "boolean",
+    request_body_table = "table",
     response_body = "string",
     sse_body_buffer = "userdata",
     response_body_sent = "boolean",
@@ -137,22 +138,31 @@ end
 
 local EMPTY_REQUEST_T = _M.immutable_table({})
 
+function _M.set_request_body_table_inuse(t, source)
+  assert(source, "source is missing")
+
+  -- merge overlay keys into the key itself
+  local mt = getmetatable(t)
+  setmetatable(t, nil)
+  if mt and mt.__index then
+    for k, v in pairs(mt.__index) do
+      if not t[k] then
+        t[k] = v
+      end
+    end
+  end
+
+  _M.set_namespaced_ctx("_global", "request_body_table", t)
+  ngx.ctx.ai_request_body_table_source = source
+end
+
 function _M.get_request_body_table_inuse()
-  local request_body_table
-
-  if _M.has_namespace("decorate-prompt") then -- has ai-prompt-decorator and others in future
-    request_body_table = _M.get_namespaced_ctx("decorate-prompt", "request_body_table")
+  local value = _M.get_namespaced_ctx("_global", "request_body_table")
+  if not value then
+    return EMPTY_REQUEST_T, "none"
   end
 
-  if _M.has_namespace("normalize-request") then -- has ai-proxy/ai-proxy-advanced
-    request_body_table = _M.get_namespaced_ctx("normalize-request", "request_body_table")
-  end
-
-  if not request_body_table then
-    request_body_table = _M.get_namespaced_ctx("parse-request", "request_body_table")
-  end
-
-  return request_body_table or EMPTY_REQUEST_T
+  return _M.immutable_table(value), ngx.ctx.ai_request_body_table_source
 end
 
 local EMPTY_MODEL_T = _M.immutable_table({
