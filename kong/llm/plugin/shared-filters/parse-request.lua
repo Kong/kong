@@ -50,9 +50,8 @@ function _M:run(conf)
     set_ctx("multipart_request", true)
   end
 
-  request_table = ai_plugin_ctx.immutable_table(request_table)
-
   set_ctx("request_body_table", request_table)
+  ai_plugin_ctx.set_request_body_table_inuse(request_table, _M.NAME)
 
   local req_model = {
     provider = "UNSPECIFIED",

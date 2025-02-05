@@ -13,7 +13,6 @@ local _M = {
 local FILTER_OUTPUT_SCHEMA = {
   model = "table",
   route_type = "string",
-  request_body_table = "table",
 }
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
@@ -76,17 +75,13 @@ local function validate_and_transform(conf)
   local model_t = conf_m.model
   local model_provider = conf.model.provider -- use the one from conf, not the merged one to avoid potential security risk
 
-  local request_table
-  if ai_plugin_ctx.has_namespace("decorate-prompt") and
-     ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "decorated") then
-    request_table = ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "request_body_table")
-  else
-    request_table = ai_plugin_ctx.get_namespaced_ctx("parse-request", "request_body_table")
-  end
+  local request_table, source = ai_plugin_ctx.get_request_body_table_inuse()
 
   if not request_table then
     return bail(400, "content-type header does not match request body, or bad JSON formatting")
   end
+
+  kong.log.debug("using request body from source: ", source)
 
   if not validate_incoming(request_table) then
     return bail(400, "request body doesn't contain valid prompts")
@@ -95,7 +90,7 @@ local function validate_and_transform(conf)
   -- duplicate it, to avoid our mutation of the table poplute the original parsed request
   -- TODO: a proper func to skip copying request_table.messages but keep others
   request_table = copy_request_table(request_table)
-  set_ctx("request_body_table", request_table)
+  ai_plugin_ctx.set_request_body_table_inuse(request_table, _M.NAME)
 
   -- copy from the user request if present
   if (not model_t.name) and (request_table.model) then
