@@ -1,5 +1,4 @@
 local fmt = string.format
-local rep = string.rep
 
 
 local RpcSyncV2ValidationHandler = {
@@ -30,7 +29,7 @@ function RpcSyncV2ValidationHandler:init_worker()
       },
     }
 
-    ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok: ", counter)
+    ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok")
 
     return { default = { deltas = deltas, wipe = true, }, }
   end)

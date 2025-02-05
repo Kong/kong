@@ -1,4 +1,3 @@
-local rep = string.rep
 local helpers = require "spec.helpers"
 
 
