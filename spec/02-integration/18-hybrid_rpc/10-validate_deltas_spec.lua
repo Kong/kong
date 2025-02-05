@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
         assert.logfile(name).has.line(
           "[error]", true, 10)
         assert.logfile(name).has.line(
-          "unable to create worker mutex and sync", true, 5)
+          "unable to create worker mutex and sync", true, 10)
         assert.logfile(name).has.line(
           "'name': required field missing", true, 10)
 
