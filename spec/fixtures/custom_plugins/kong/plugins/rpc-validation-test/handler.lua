@@ -15,13 +15,12 @@ function RpcSyncV2ValidationHandler:init_worker()
     local fake_uuid = "00000000-0000-0000-0000-111111111111"
 
     -- a basic config data,
-    -- it has no field "config" or "meta",
+    -- it has no field "name",
     -- and will cause validation error
     local deltas = {
       {
         entity = {
           id = fake_uuid,
-          name = "default",
         },
         type = "workspaces",
         version = latest_version,
