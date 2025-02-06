@@ -55,12 +55,18 @@ for _, strategy in helpers.each_strategy() do
           "[error]", true, 10)
         assert.logfile(name).has.line(
           "unable to create worker mutex and sync", true, 10)
+
         assert.logfile(name).has.line(
           "'name': required field missing", true, 10)
         assert.logfile(name).has.line(
           "'meta': expected a record", true, 10)
         assert.logfile(name).has.line(
           "'config': expected a record", true, 10)
+
+        assert.logfile(name).has.line(
+          "'key': expected a string", true, 10)
+        assert.logfile(name).has.line(
+          "'value': expected a string", true, 10)
 
         local name = nil
 

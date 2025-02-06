@@ -28,6 +28,15 @@ function RpcSyncV2ValidationHandler:init_worker()
         version = latest_version,
         ws_id = fake_uuid,
       },
+      {
+        entity = {
+          key = 100, -- should be a string
+          value = {}, -- should be a string
+        },
+        type = "parameters",
+        version = latest_version,
+        ws_id = fake_uuid,
+      },
     }
 
     ngx.log(ngx.DEBUG, "kong.sync.v2.get_delta ok")
