@@ -76,8 +76,9 @@ local function get_sync_status(id)
 end
 
 
--- XXX TODO: helpers.clustering_client supports rpc sync
-for _, rpc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, rpc_sync = v[1], v[2]
+
 for _, strategy in helpers.each_strategy() do
 
 describe("CP/DP config compat transformations #" .. strategy, function()
@@ -103,6 +104,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled",
+      cluster_rpc= rpc,
       cluster_rpc_sync = rpc_sync,
     }))
   end)
