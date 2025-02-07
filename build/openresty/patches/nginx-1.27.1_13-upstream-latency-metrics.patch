@@ -1,0 +1,213 @@
+diff --git a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
+index 3445bf2..73231db 100644
+--- a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
+@@ -160,6 +160,8 @@ static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data);
+ static ngx_int_t ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data);
++static ngx_int_t ngx_http_upstream_response_timestamp_us_variable(ngx_http_request_t *r,
++    ngx_http_variable_value_t *v, uintptr_t data);
+ static ngx_int_t ngx_http_upstream_response_length_variable(
+     ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data);
+ static ngx_int_t ngx_http_upstream_header_variable(ngx_http_request_t *r,
+@@ -399,6 +401,26 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
+       ngx_http_upstream_response_time_variable, 0,
+       NGX_HTTP_VAR_NOCACHEABLE, 0 },
+ 
++    { ngx_string("upstream_start_timestamp_us"), NULL,
++      ngx_http_upstream_response_timestamp_us_variable, 4,
++      NGX_HTTP_VAR_NOCACHEABLE, 0 },
++
++    { ngx_string("upstream_connect_timestamp_us"), NULL,
++      ngx_http_upstream_response_timestamp_us_variable, 3,
++      NGX_HTTP_VAR_NOCACHEABLE, 0 },
++
++    { ngx_string("upstream_request_timestamp_us"), NULL,
++      ngx_http_upstream_response_timestamp_us_variable, 2,
++      NGX_HTTP_VAR_NOCACHEABLE, 0 },
++
++    { ngx_string("upstream_header_timestamp_us"), NULL,
++      ngx_http_upstream_response_timestamp_us_variable, 1,
++      NGX_HTTP_VAR_NOCACHEABLE, 0 },
++
++    { ngx_string("upstream_response_timestamp_us"), NULL,
++      ngx_http_upstream_response_timestamp_us_variable, 0,
++      NGX_HTTP_VAR_NOCACHEABLE, 0 },
++
+     { ngx_string("upstream_response_length"), NULL,
+       ngx_http_upstream_response_length_variable, 0,
+       NGX_HTTP_VAR_NOCACHEABLE, 0 },
+@@ -1534,6 +1556,13 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
+ }
+ 
+ 
++static uint64_t ngx_get_us_timestamp(void) {
++    struct timeval tv;
++    ngx_gettimeofday(&tv);
++    return (uint64_t) tv.tv_sec * 1000000 + (uint64_t) tv.tv_usec;
++}
++
++
+ static void
+ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
+ {
+@@ -1545,6 +1574,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
+ 
+     if (u->state && u->state->response_time == (ngx_msec_t) -1) {
+         u->state->response_time = ngx_current_msec - u->start_time;
++        u->state->response_timestamp_us = ngx_get_us_timestamp();
+     }
+ 
+     u->state = ngx_array_push(r->upstream_states);
+@@ -1561,6 +1591,11 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
+     u->state->response_time = (ngx_msec_t) -1;
+     u->state->connect_time = (ngx_msec_t) -1;
+     u->state->header_time = (ngx_msec_t) -1;
++    u->state->start_timestamp_us = ngx_get_us_timestamp();
++    u->state->connect_timestamp_us = 0;
++    u->state->request_timestamp_us = 0;
++    u->state->response_timestamp_us = 0;
++    u->state->header_timestamp_us = 0;
+ 
+     rc = ngx_event_connect_peer(&u->peer);
+ 
+@@ -2119,6 +2154,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
+ 
+     if (u->state->connect_time == (ngx_msec_t) -1) {
+         u->state->connect_time = ngx_current_msec - u->start_time;
++        u->state->connect_timestamp_us = ngx_get_us_timestamp();
+     }
+ 
+     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
+@@ -2409,6 +2445,8 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                    "http upstream process header");
+ 
++    u->state->request_timestamp_us = ngx_get_us_timestamp();
++
+     c->log->action = "reading response header from upstream";
+ 
+     if (c->read->timedout) {
+@@ -2534,6 +2572,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
+     /* rc == NGX_OK */
+ 
+     u->state->header_time = ngx_current_msec - u->start_time;
++    u->state->header_timestamp_us = ngx_get_us_timestamp();
+ 
+     if (u->headers_in.status_n >= NGX_HTTP_SPECIAL_RESPONSE) {
+ 
+@@ -4561,6 +4600,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
+ 
+     if (u->state && u->state->response_time == (ngx_msec_t) -1) {
+         u->state->response_time = ngx_current_msec - u->start_time;
++        u->state->response_timestamp_us = ngx_get_us_timestamp();
+ 
+         if (u->pipe && u->pipe->read_length) {
+             u->state->bytes_received += u->pipe->read_length
+@@ -5793,6 +5833,89 @@ ngx_http_upstream_status_variable(ngx_http_request_t *r,
+ }
+ 
+ 
++static ngx_int_t
++ngx_http_upstream_response_timestamp_us_variable(ngx_http_request_t *r,
++    ngx_http_variable_value_t *v, uintptr_t data)
++{
++    u_char                     *p;
++    size_t                      len;
++    ngx_uint_t                  i;
++    uint64_t                    us;
++    ngx_http_upstream_state_t  *state;
++
++    v->valid = 1;
++    v->no_cacheable = 0;
++    v->not_found = 0;
++
++    if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
++        v->not_found = 1;
++        return NGX_OK;
++    }
++
++    len = r->upstream_states->nelts * (NGX_TIME_T_LEN + 7 + 2);
++
++    p = ngx_pnalloc(r->pool, len);
++    if (p == NULL) {
++        return NGX_ERROR;
++    }
++
++    v->data = p;
++
++    i = 0;
++    state = r->upstream_states->elts;
++
++    for ( ;; ) {
++
++        if (data == 1) {
++            us = state[i].header_timestamp_us;
++
++        } else if (data == 2) {
++            us = state[i].request_timestamp_us;
++
++        } else if (data == 3) {
++            us = state[i].connect_timestamp_us;
++
++        } else if (data == 4) {
++            us = state[i].start_timestamp_us;
++
++        } else {
++            us = state[i].response_timestamp_us;
++        }
++
++        if (us != 0) {
++            p = ngx_sprintf(p, "%T.%06ui", (time_t) us / 1000000, us % 1000000);
++
++        } else {
++            *p++ = '-';
++        }
++
++        if (++i == r->upstream_states->nelts) {
++            break;
++        }
++
++        if (state[i].peer) {
++            *p++ = ',';
++            *p++ = ' ';
++
++        } else {
++            *p++ = ' ';
++            *p++ = ':';
++            *p++ = ' ';
++
++            if (++i == r->upstream_states->nelts) {
++                break;
++            }
++
++            continue;
++        }
++    }
++
++    v->len = p - v->data;
++
++    return NGX_OK;
++}
++
++
+ static ngx_int_t
+ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data)
+diff --git a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.h b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.h
+index f6621af..4ab6793 100644
+--- a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.h
++++ b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.h
+@@ -61,6 +61,11 @@ typedef struct {
+     ngx_msec_t                       response_time;
+     ngx_msec_t                       connect_time;
+     ngx_msec_t                       header_time;
++    uint64_t                         start_timestamp_us;
++    uint64_t                         connect_timestamp_us;
++    uint64_t                         request_timestamp_us;
++    uint64_t                         header_timestamp_us;
++    uint64_t                         response_timestamp_us;
+     ngx_msec_t                       queue_time;
+     off_t                            response_length;
+     off_t                            bytes_received;
