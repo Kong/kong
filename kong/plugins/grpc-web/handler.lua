@@ -50,7 +50,7 @@ function grpc_web:access(conf)
   end
 
   local dec, err = deco.new(
-    ngx.var.http_content_type,
+    ngx_var.http_content_type,
     uri, conf.proto)
 
   if not dec then
