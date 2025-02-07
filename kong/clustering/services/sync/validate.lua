@@ -11,6 +11,7 @@ local pretty_print_error = declarative.pretty_print_error
 local function validate_deltas(deltas, is_full_sync)
 
   local errs = {}
+  local errs_n = 0
 
   -- generate deltas table mapping primary key string to entity item
   local deltas_map = {}
@@ -45,7 +46,8 @@ local function validate_deltas(deltas, is_full_sync)
 
         local ok, err_t = dao.schema:validate(copy)
         if not ok then
-          errs[#errs + 1] = { [delta_type] = err_t }
+          errs_n = errs_n + 1
+          errs[errs_n] = { [delta_type] = err_t }
         end
       end
     end

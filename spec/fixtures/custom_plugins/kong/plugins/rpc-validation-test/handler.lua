@@ -21,8 +21,19 @@ function RpcSyncV2ValidationHandler:init_worker()
       {
         entity = {
           id = fake_uuid,
+          meta = "wrong", -- should be a record,
+          config = 100, -- should be a record,
         },
         type = "workspaces",
+        version = latest_version,
+        ws_id = fake_uuid,
+      },
+      {
+        entity = {
+          key = 100, -- should be a string
+          value = {}, -- should be a string
+        },
+        type = "parameters",
         version = latest_version,
         ws_id = fake_uuid,
       },
