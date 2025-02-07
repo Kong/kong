@@ -237,9 +237,9 @@ return function(options)
       -- READ REQUEST BODY [
       _G.ngx.req.read_body = function()
         -- for the same request, only one `read_body` call is needed
-        if not ngx.ctx.req_body_read then
+        if not ngx.ctx._req_body_has_read then
           read_req_body()
-          ngx.ctx.req_body_read = true
+          ngx.ctx._req_body_has_read = true
         end
       end
       -- ]
