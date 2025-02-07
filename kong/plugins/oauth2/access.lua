@@ -27,7 +27,7 @@ local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
 local ngx_encode_base64 = ngx.encode_base64
-
+local ngx_var = ngx.var
 
 local _M = {}
 
@@ -877,7 +877,7 @@ local function parse_access_token(conf)
       parameters[ACCESS_TOKEN] = nil
       kong.service.request.set_query(parameters)
 
-      local content_type = ngx.var.http_content_type
+      local content_type = ngx_var.http_content_type
       local is_form_post = content_type and
         string_find(content_type, "application/x-www-form-urlencoded", 1, true)
 
