@@ -65,7 +65,9 @@ function _M:notify_all_nodes()
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do
     local res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", msg)
     if not res then
-      if not err:find("requested capability does not exist", nil, true) then
+      if not err:find("requested capability does not exist", nil, true) and
+         not err:find("node is not connected", nil, true)
+      then
         ngx_log(ngx_ERR, "unable to notify ", node, " new version: ", err)
       end
     end
