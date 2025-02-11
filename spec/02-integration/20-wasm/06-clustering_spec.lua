@@ -296,7 +296,10 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
     end)
   end)
 
-  describe("data planes with wasm disabled", function()
+  -- XXX TODO: currently sync v2 does not support configuration compatibility check
+  local only_sync_v1 = rpc_sync == "on" and pending or describe
+
+  only_sync_v1("data planes with wasm disabled", function()
     local node_id
 
     lazy_setup(function()
@@ -333,7 +336,7 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
     end)
   end)
 
-  describe("data planes missing one or more wasm filter", function()
+  only_sync_v1("data planes missing one or more wasm filter", function()
     local tmp_dir
     local node_id
 
