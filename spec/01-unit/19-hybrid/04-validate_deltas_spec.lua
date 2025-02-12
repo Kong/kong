@@ -113,6 +113,8 @@ describe("[delta validations]",function()
     assert.same(err_t, dc_err_t)
 
     if expected_errs then
+      print("+++ ", require("inspect")(err_t))
+      print("+++ ", require("inspect")(expected_errs))
       assert.same(err_t, expected_errs)
     end
   end
