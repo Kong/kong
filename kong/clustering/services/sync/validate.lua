@@ -13,12 +13,14 @@ local function format_error(err_t)
   -- Declarative config parse errors will include all the input entities in
   -- the error table. Strip these out to keep the error payload size small.
   local errors = err_t.flattened_errors
-  if type(errors) == "table" then
-    for i = 1, #errors do
-      local err = errors[i]
-      if type(err) == "table" then
-        err.entity = nil
-      end
+  if type(errors) ~= "table" then
+    return
+  end
+
+  for i = 1, #errors do
+    local err = errors[i]
+    if type(err) == "table" then
+      err.entity = nil
     end
   end
 end
