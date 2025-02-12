@@ -181,7 +181,11 @@ end
 
 -- tell cp that the deltas validation failed
 local function notify_error(ver, err_t)
-  local msg = { version = ver, error = err_t, }
+  local msg = {
+    version = ver or "v02_deltas_have_no_latest_version_field",
+    error = err_t,
+  }
+
   local ok, err = kong.rpc:notify("control_plane",
                                   "kong.sync.v2.notify_validation_error",
                                   msg)
@@ -314,9 +318,7 @@ local function do_sync()
   -- validate deltas
   local ok, err, err_t = validate_deltas(deltas, wipe)
   if not ok then
-    notify_error(ns_delta.lastest_version or
-                 "v02_get_deltas_does_not_return_latest_version_field", err_t)
-
+    notify_error(ns_delta.lastest_version, err_t)
     return nil, err
   end
 
