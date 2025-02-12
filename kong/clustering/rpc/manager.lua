@@ -634,6 +634,13 @@ function _M:connect(premature, node_id, host, path, cert, key)
   end
 
   ::err::
+  local worker_events = assert(kong.worker_events)
+
+  -- notify this worker
+  local ok, err = worker_events.post_local("clustering:jsonrpc", "connection_lost")
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connection_lost event: ", err)
+  end
 
   if not exiting() then
     c:close()
