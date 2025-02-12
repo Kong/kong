@@ -16,6 +16,7 @@ local table_concat = table.concat
 local type = type
 local string_find = string.find
 local string_sub = string.sub
+local string_gsub = string.gsub
 local string_byte = string.byte
 local string_lower = string.lower
 local normalize_multi_header = checks.normalize_multi_header
@@ -295,7 +296,11 @@ local function new(self)
 
     local args = ngx_var.args
     if args and args ~= "" then
-      ngx_var.args = search_remove(args, name)
+      args = search_remove(args, name)
+      if string_find(args, "+", nil, true) then
+        args = string_gsub(args, "+", "%%20")
+      end
+      ngx_var.args = args
     end
   end
 
