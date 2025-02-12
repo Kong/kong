@@ -9,6 +9,7 @@ local EMPTY = require("kong.tools.table").EMPTY
 local ipairs = ipairs
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
+local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
 
@@ -76,6 +77,19 @@ end
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
+  if not is_delete and entity.ttl then
+    -- Replace relative TTL value to absolute TTL value
+    local exported_entity = self.strategy:export_entity(name, entity, options)
+
+    if exported_entity then
+      ngx_log(ngx_DEBUG, "[kong.sync.v2] Update TTL from relative value to absolute value ", exported_entity.ttl, ".")
+      entity.ttl = exported_entity.ttl
+
+    else
+      ngx_log(ngx_WARN, "[kong.sync.v2] Cannot update TTL of entity (", name, ") to absolute value.")
+    end
+  end
+
   local res, err = self.strategy:insert_delta()
   if not res then
     self.strategy:cancel_txn()

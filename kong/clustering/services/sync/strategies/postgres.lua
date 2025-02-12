@@ -1,6 +1,7 @@
 local _M = {}
 local _MT = { __index = _M }
 
+local kong_table = require("kong.tools.table")
 
 local sub = string.sub
 local fmt = string.format
@@ -15,6 +16,7 @@ local VERSION_FMT = VER_PREFIX .. "%028x"
 
 function _M.new(db)
   local self = {
+    db = db,
     connector = db.connector,
   }
 
@@ -61,6 +63,13 @@ end
 
 function _M:is_valid_version(str)
   return sub(str, 1, VER_PREFIX_LEN) == VER_PREFIX
+end
+
+
+function _M:export_entity(name, entity, options)
+  local options = kong_table.cycle_aware_deep_copy(options, true)
+  options["export"] = true
+  return self.db[name]:select(entity, options)
 end
 
 

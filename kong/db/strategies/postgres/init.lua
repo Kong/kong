@@ -570,8 +570,14 @@ end
 
 function _mt:select(primary_key, options)
   local statement_name = "select"
-  if self.schema.ttl and options and options.skip_ttl then
-    statement_name = "select_skip_ttl"
+  if options then
+    -- If we do select for export, there is no need to skip ttl.
+    if options.export then
+      statement_name = "select_for_export"
+
+    elseif self.schema.ttl and options.skip_ttl then
+      statement_name = "select_skip_ttl"
+    end
   end
 
   local res, err = execute(self, statement_name, self.collapse(primary_key), options)
@@ -1244,6 +1250,22 @@ function _M.new(connector, schema, errors)
       where_clause(
         " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
                    ws_id_select_where),
+      " LIMIT 1;"
+    }
+  })
+
+  add_statement_for_export("select", {
+    operation = "read",
+    expr = select_expressions,
+    argn = primary_key_names,
+    argv = primary_key_args,
+    code = {
+      "SELECT ",  select_expressions, "\n",
+      "  FROM ",  table_name_escaped, "\n",
+      where_clause(
+      " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
+                 ttl_select_where,
+                 ws_id_select_where),
       " LIMIT 1;"
     }
   })
