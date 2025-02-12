@@ -41,6 +41,7 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
                         ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
                         ["/status/:code"]               = "Returns a response with the specified <status code>",
                         ["/stream/:num"]                = "Stream <num> chunks of JSON data via chunked Transfer Encoding",
+                        ["/timestamp"]                  = "Returns server timestamp in header",
                     },
                 })
             }
@@ -97,6 +98,14 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response({}, ngx.req.get_uri_args(0))
             }
+        }
+
+        location = /timestamp {
+            content_by_lua_block {
+                local ts = ngx.now()
+                ngx.header["Server-Time"] = ts
+                ngx.exit(200)
+            }           
         }
 
         location = /hop-by-hop {
