@@ -55,6 +55,8 @@ local ERRORS              = {
   INVALID_WORKSPACE       = 17, -- strategy reports a workspace error
   INVALID_UNIQUE_GLOBAL   = 18, -- unique field value is invalid for global query
   REFERENCED_BY_OTHERS    = 19, -- still referenced by other entities
+  INVALID_SEARCH_QUERY    = 20, -- ex. searched_field[unknown] = something -> 'unknown' is invalid (HTTP 400)
+  SYNC_DELTAS             = 21, -- error parsing sync deltas for sync.v2
 }
 
 
@@ -81,6 +83,8 @@ local ERRORS_NAMES                 = {
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "invalid global query",
   [ERRORS.REFERENCED_BY_OTHERS]    = "referenced by others",
+  [ERRORS.INVALID_SEARCH_QUERY]    = "invalid search query",
+  [ERRORS.SYNC_DELTAS]             = "invalid sync deltas",
 }
 
 
