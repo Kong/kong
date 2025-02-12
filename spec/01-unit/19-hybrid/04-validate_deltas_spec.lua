@@ -405,5 +405,5 @@ describe("[delta validations]",function()
     assert_same_validation_error(deltas, config, errs)
   end)
 
-  -- TODO: add another test cases
+  -- TODO: add more test cases
 end)
