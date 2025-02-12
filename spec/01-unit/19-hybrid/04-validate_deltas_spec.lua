@@ -1,10 +1,14 @@
 local helpers = require "spec.helpers"
 local txn = require "resty.lmdb.transaction"
 local declarative = require "kong.db.declarative"
+local validate = require("kong.clustering.services.sync.validate")
+local db_errors = require("kong.db.errors")
+local declarative_config = require "kong.db.schema.others.declarative_config"
 
 
 local insert_entity_for_txn = declarative.insert_entity_for_txn
-local validate_deltas = require("kong.clustering.services.sync.validate").validate_deltas
+local validate_deltas = validate.validate_deltas
+local format_error = validate.format_error
 
 
 local function lmdb_drop()
@@ -73,6 +77,46 @@ end
 
 describe("[delta validations]",function()
 
+  local DeclarativeConfig = assert(declarative_config.load(
+    helpers.test_conf.loaded_plugins,
+    helpers.test_conf.loaded_vaults
+  ))
+
+  -- Assert that deltas validation error is same with sync.v1 validation error.
+  -- sync.v1 config deltas: @deltas
+  -- sync.v2 config table: @config
+  local function assert_same_validation_error(deltas, config, expected_errs)
+    local _, _, err_t = validate_deltas(deltas)
+
+    assert.equal(err_t.code, 21)
+    assert.same(err_t.source, "kong.clustering.services.sync.validate.validate_deltas")
+    assert.same(err_t.message, "sync deltas is invalid: {}")
+    assert.same(err_t.name, "sync deltas parse failure")
+
+    err_t.code = nil
+    err_t.source = nil
+    err_t.message = nil
+    err_t.name = nil
+
+    local _, dc_err = DeclarativeConfig:validate(config)
+    assert(dc_err, "validate config should has error:" .. require("inspect")(config))
+
+    local dc_err_t = db_errors:declarative_config_flattened(dc_err, config)
+
+    dc_err_t.code = nil
+    dc_err_t.source = nil
+    dc_err_t.message = nil
+    dc_err_t.name = nil
+
+    format_error(dc_err_t)
+
+    assert.same(err_t, dc_err_t)
+
+    if expected_errs then
+      assert.same(err_t, expected_errs)
+    end
+  end
+
   it("workspace id", function()
     local bp = setup_bp()
 
@@ -93,7 +137,7 @@ describe("[delta validations]",function()
     end
   end)
 
-  it("route has no required field", function()
+  it("route has no required field, but uses default value", function()
     local bp = setup_bp()
 
     -- add entities
@@ -124,7 +168,7 @@ describe("[delta validations]",function()
     -- add entities
     db_insert(bp, "workspaces", { name = "ws-001" })
     local service = db_insert(bp, "services", { name = "service-001", })
-    db_insert(bp, "routes", {
+    local route = db_insert(bp, "routes", {
       name = "route-001",
       paths = { "/mock" },
       service = { id = service.id },
@@ -139,11 +183,26 @@ describe("[delta validations]",function()
       end
     end
 
-    local _, err = validate_deltas(deltas)
-    assert.matches([[- in entry 1 of 'deltas':
-  in 'routes':
-    in 'foo': unknown field]],
-      err)
+    local config = declarative.export_config()
+    config["routes"][1].foo = "invalid_field_value"
+
+    local errs = {
+      fields = {},
+      flattened_errors = {{
+        entity_id = route.id,
+        entity_name = "route-001",
+        entity_type = "route",
+        errors = {
+          {
+            field = "foo",
+            message = "unknown field",
+            type = "field",
+          },
+        },
+      }}
+    }
+
+    assert_same_validation_error(deltas, config, errs)
   end)
 
   it("route has foreign service", function()
@@ -250,4 +309,101 @@ describe("[delta validations]",function()
         err)
     end
   end)
+
+  -- The following test cases refer to
+  -- spec/01-unit/01-db/01-schema/11-declarative_config/01-validate_spec.lua.
+
+  it("verifies required fields", function()
+    local bp = setup_bp()
+
+    -- add entities
+    db_insert(bp, "workspaces", { name = "ws-001" })
+    local service = db_insert(bp, "services", { name = "service-001", })
+
+    local deltas = declarative.export_config_sync()
+
+    -- delete host field
+    for _, delta in ipairs(deltas) do
+      if delta.type == "services" then
+        delta.entity.host = nil
+        break
+      end
+    end
+
+    local config = declarative.export_config()
+    config["services"][1].host = nil
+
+    local errs = {
+      fields = {},
+      flattened_errors = {{
+        entity_id = service.id,
+        entity_name = "service-001",
+        entity_type = "service",
+        errors = {{
+          field = "host",
+          message = "required field missing",
+          type = "field",
+        }},
+      }},
+    }
+
+    assert_same_validation_error(deltas, config, errs)
+  end)
+
+  it("performs regular validations", function()
+    local bp = setup_bp()
+
+    -- add entities
+    db_insert(bp, "workspaces", { name = "ws-001" })
+    local _ = db_insert(bp, "services", {
+      name = "service-001",
+      retries = -1,
+      protocol = "foo",
+      host = 1234,
+      port = 99999,
+      path = "/foo//bar/",
+    })
+
+    local deltas = declarative.export_config_sync()
+
+    local config = declarative.export_config()
+
+    local errs = {
+      fields = {},
+      flattened_errors = {
+        {
+          entity_id = config.services[1].id,
+          entity_name = "service-001",
+          entity_type = "service",
+          errors = {
+            {
+              field = "retries",
+              message = "value should be between 0 and 32767",
+              type = "field"
+            }, {
+              field = "protocol",
+              message = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss",
+              type = "field"
+            }, {
+              field = "port",
+              message = "value should be between 0 and 65535",
+              type = "field"
+            }, {
+              field = "path",
+              message = "must not have empty segments",
+              type = "field"
+            }, {
+              field = "host",
+              message = "expected a string",
+              type = "field"
+            },
+          },
+        },
+      },
+    }
+
+    assert_same_validation_error(deltas, config, errs)
+  end)
+
+  -- TODO: add another test cases
 end)

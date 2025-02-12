@@ -500,6 +500,17 @@ function _M:declarative_config(err_t)
 end
 
 
+function _M:sync_deltas(err_t)
+  if type(err_t) ~= "table" then
+    error("err_t must be a table", 2)
+  end
+
+  local message = fmt("sync deltas is invalid: %s", pl_pretty(err_t, ""))
+
+  return new_err_t(self, ERRORS.SYNC_DELTAS, message, err_t)
+end
+
+
 function _M:invalid_workspace(ws_id)
   if type(ws_id) ~= "string" then
     error("ws_id must be a string", 2)
@@ -1168,6 +1179,32 @@ function _M:declarative_config_flattened(err_t, input)
   err_t.flattened_errors = flattened
 
   return err_t
+end
+
+
+-- traverse schema validation errors and correlate them with objects/entities
+-- which does not pass delta validation for sync.v2
+--
+---@param  err_t table
+---@param  err_entities table
+---@return table
+function _M:sync_deltas_flattened(err_t, err_entities)
+  if type(err_t) ~= "table" then
+    error("err_t must be a table", 2)
+  end
+
+  if type(err_entities) ~= "table" then
+    error("err_entities is nil or not a table", 2)
+  end
+
+  local flattened = flatten_errors(err_entities, err_t)
+
+  err_t = self:sync_deltas(err_t)
+
+  err_t.flattened_errors = flattened
+
+  return err_t
+
 end
 
 
