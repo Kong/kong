@@ -68,7 +68,7 @@ function _M:init_cp(manager)
 
   -- CP
   -- Method: kong.sync.v2.notify_validation_error
-  -- Params: msg: list of current versions of the database
+  -- Params: msg: error message reported by DP
   -- example: { version = <lastest version of deltas>, error = <flatten error>, }
   manager.callbacks:register("kong.sync.v2.notify_validation_error", function(node_id, msg)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] received validation error")
