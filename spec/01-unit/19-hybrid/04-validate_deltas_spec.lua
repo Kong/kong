@@ -236,10 +236,26 @@ describe("[delta validations]",function()
     })
 
     local deltas = declarative.export_config_sync()
-    local _, err = validate_deltas(deltas, false)
+    local _, err, err_t = validate_deltas(deltas, false)
+
     assert.matches(
       "entry 1 of 'services': could not find routes's foreign refrences services",
       err)
+
+    assert.same(err_t, {
+      code = 21,
+      fields = {
+        routes = {
+          services = {
+            "could not find routes's foreign refrences services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})",
+          },
+        },
+      },
+      message = [[sync deltas is invalid: {routes={services={"could not find routes's foreign refrences services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})"}}}]],
+      flattened_errors = {},
+      name = "sync deltas parse failure",
+      source = "kong.clustering.services.sync.validate.validate_deltas",
+    })
   end)
 
   it("100 routes -> 1 services: matched foreign keys", function()
