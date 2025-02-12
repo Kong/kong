@@ -113,8 +113,6 @@ describe("[delta validations]",function()
     assert.same(err_t, dc_err_t)
 
     if expected_errs then
-      print("+++ ", require("inspect")(err_t))
-      print("+++ ", require("inspect")(expected_errs))
       assert.same(err_t, expected_errs)
     end
   end
@@ -400,7 +398,7 @@ describe("[delta validations]",function()
               type = "field"
             }, {
               field = "protocol",
-              message = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss",
+              message = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp",
               type = "field"
             }, {
               field = "port",
