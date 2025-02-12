@@ -77,11 +77,11 @@ end
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
-  if not is_delete and entity.ttl then
+  if not is_delete and entity and entity.ttl then
     -- Replace relative TTL value to absolute TTL value
     local exported_entity = self.strategy:export_entity(name, entity, options)
 
-    if exported_entity then
+    if exported_entity and exported_entity.ttl then
       ngx_log(ngx_DEBUG, "[kong.sync.v2] Update TTL from relative value to absolute value ", exported_entity.ttl, ".")
       entity.ttl = exported_entity.ttl
 
