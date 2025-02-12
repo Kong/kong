@@ -24,6 +24,7 @@ local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
 local escape = require("kong.tools.uri").escape
+local get_header = require("kong.tools.http").get_header
 local search_remove = require("resty.ada.search").remove
 
 
@@ -667,7 +668,7 @@ local function new(self)
         error("mime must be a string", 2)
       end
       if not mime then
-        mime = ngx_var.http_content_type
+        mime = get_header(CONTENT_TYPE)
         if not mime then
           return nil, "content type was neither explicitly given " ..
                       "as an argument or received as a header"
