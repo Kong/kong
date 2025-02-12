@@ -460,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
             -- headers are indeed inserted.
           end)
 
-          it("blocks if exceeding limit #brian2", function()
+          it("blocks if exceeding limit", function()
             wait_server_sync({ Host = "test1.test" })
             test_limit("/response-headers", {["x-kong-limit"] = "video=1"}, "test1.test")
           end)
@@ -564,7 +564,7 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
-        describe("Upstream usage headers #brian", function()
+        describe("Upstream usage headers", function()
           it("should append the headers with multiple limits", function()
             wait_server_sync( { Host = "test8.test" })
             local res = proxy_client():get("/get", {
