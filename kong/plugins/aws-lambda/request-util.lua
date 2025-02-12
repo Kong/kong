@@ -294,7 +294,7 @@ local function build_request_payload(conf)
     end
 
     if conf.forward_request_body then
-      local content_type = kong.request.get_header("Content-Type")
+      local content_type = kong.request.get_header("content-type")
       local body_raw = read_request_body(conf.skip_large_bodies)
       local body_args, err = kong.request.get_body()
       if err and err:match("content type") then
