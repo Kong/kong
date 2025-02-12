@@ -1,8 +1,11 @@
 local declarative = require("kong.db.declarative")
 local declarative_config = require("kong.db.schema.others.declarative_config")
+local db_errors = require("kong.db.errors")
+local ERRORS = require("kong.constants").CLUSTERING_DATA_PLANE_ERROR
 
 
 local null = ngx.null
+local insert = table.insert
 local pk_string = declarative_config.pk_string
 local validate_references_sync = declarative_config.validate_references_sync
 local pretty_print_error = declarative.pretty_print_error
