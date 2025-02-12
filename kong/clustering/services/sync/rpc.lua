@@ -179,6 +179,18 @@ local function is_rpc_ready()
 end
 
 
+-- tell cp that the deltas validation failed
+local function notify_error(ver, err_t)
+  local msg = { version = ver, error = err_t, }
+  local ok, err = kong.rpc:notify("control_plane",
+                                  "kong.sync.v2.notify_validation_error",
+                                  msg)
+  if not ok then
+    ngx_log(ngx_ERR, "notifying validation errors failed: ", err)
+  end
+end
+
+
 -- tell cp we already updated the version by rpc notification
 local function update_status(ver)
   local msg = { default = { version = ver, }, }
@@ -300,8 +312,11 @@ local function do_sync()
   assert(type(kong.default_workspace) == "string")
 
   -- validate deltas
-  local ok, err = validate_deltas(deltas, wipe)
+  local ok, err, err_t = validate_deltas(deltas, wipe)
   if not ok then
+    notify_error(ns_delta.lastest_version or
+                 "v02_get_deltas_does_not_return_latest_version_field", err_t)
+
     return nil, err
   end
 
