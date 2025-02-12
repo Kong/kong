@@ -67,6 +67,15 @@ function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
   -- CP
+  -- Method: kong.sync.v2.notify_validation_error
+  -- Params: msg: list of current versions of the database
+  -- example: { version = <lastest version of deltas>, error = <flatten error>, }
+  manager.callbacks:register("kong.sync.v2.notify_validation_error", function(node_id, msg)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] received validation error")
+    return true
+  end)
+
+  -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
   -- example: { default = { version = "1000", }, }
