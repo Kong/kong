@@ -668,7 +668,7 @@ local function new(self)
         error("mime must be a string", 2)
       end
       if not mime then
-        mime = ngx_var.http_content_type
+        mime = get_header(CONTENT_TYPE)
         if not mime then
           return nil, "content type was neither explicitly given " ..
                       "as an argument or received as a header"

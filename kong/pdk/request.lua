@@ -61,6 +61,8 @@ local function new(self)
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
+  local CONTENT_TYPE           = "Content-Type"
+
   local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
@@ -818,7 +820,7 @@ local function new(self)
   -- body.age  -- "42"
   function _REQUEST.get_body(mimetype, max_args, max_allowed_file_size)
     check_phase(before_content)
-    local content_type = mimetype or ngx.var.http_content_type
+    local content_type = mimetype or _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
     end
