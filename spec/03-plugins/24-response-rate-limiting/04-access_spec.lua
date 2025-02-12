@@ -9,8 +9,9 @@ local REDIS_SSL_SNI   = helpers.redis_ssl_sni
 local REDIS_PASSWORD  = ""
 local REDIS_DATABASE  = 1
 
-local SLEEP_TIME = 0.01
-local ITERATIONS = 10
+local ITERATIONS = 6
+local escape_uri = ngx.escape_uri
+local encode_args = ngx.encode_args
 
 local fmt = string.format
 
@@ -18,11 +19,54 @@ local fmt = string.format
 local proxy_client = helpers.proxy_client
 
 
-local function wait()
+-- wait for server timestamp reaching the ceiling of client timestamp secs
+-- e.g. if the client time is 1.531 secs, we want to start the test period
+-- at 2.000 of server time, so that we could have as close as 1 sec to 
+-- avoid flaky caused by short period(e.g. server start at 1.998 and it soon
+-- exceed the time period)
+local function wait_server_sync(headers, api_key)
   ngx.update_time()
   local now = ngx.now()
-  local millis = (now - math.floor(now))
-  ngx.sleep(1 - millis)
+  local secs = math.ceil(now)
+  local path = api_key and "/timestamp?apikey="..api_key or "/timestamp"
+  helpers.wait_until(function()
+    local res = proxy_client():get(path, {
+      headers = headers,
+    })
+    assert(res.status == 200)
+    local ts = res.headers["Server-Time"]
+    return res.status == 200 and math.floor(tonumber(ts)) == secs
+  end, 1, 0.1)
+end
+
+-- wait for the remain counter of ratelimintg reaching the expected number.
+-- kong server may need some time to sync the remain counter in db/redis, it's
+-- better to wait for the definite status then just wait for some time randonly
+-- 'path': the url to get remaining counter but not consume the rate 
+-- 'expected': the expected number of remaining ratelimit counters
+-- 'expected_status': the expected resp status which is 200 by default
+local function wait_remaining_sync(path, headers, expected, expected_status, api_key)
+  local res
+  if api_key then
+    path = path .. "?apikey="..api_key
+  end
+  helpers.wait_until(function()
+    res = proxy_client():get(path, {
+      headers = headers,
+    })
+    -- if expected_status is not 200, just check the status, not counter.
+    if expected_status and expected_status ~= 200 then
+      return res.status == expected_status
+    end
+    -- check every expected counter specified
+    for k, v in pairs(expected) do
+      if tonumber(res.headers[k]) ~= v then
+        return false
+      end
+    end
+    return res.status == 200
+  end, 1)
+  return res
 end
 
 local redis_confs = {
@@ -44,19 +88,20 @@ local redis_confs = {
 }
 
 
-local function test_limit(path, host, limit)
-  wait()
+local function test_limit(path, uri_args, host, limit)
+  local full_path = path .. "?" .. encode_args(uri_args)
   limit = limit or ITERATIONS
   for i = 1, limit do
-    local res = proxy_client():get(path, {
+    local res = proxy_client():get(full_path, {
       headers = { Host = host:format(i) },
     })
     assert.res_status(200, res)
   end
 
-  ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+  -- wait for async timer to increment the limit
+  wait_remaining_sync(path, { Host = host:format(1) }, {["x-ratelimit-remaining-video-second"] = 0}, 200, uri_args["apikey"])
 
-  local res = proxy_client():get(path, {
+  local res = proxy_client():get(full_path, {
     headers = { Host = host:format(1) },
   })
   assert.res_status(429, res)
@@ -94,12 +139,6 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           local bp = init_db(strategy, policy)
-
-          if policy == "local" then
-            SLEEP_TIME = 0.001
-          else
-            SLEEP_TIME = 0.15
-          end
 
           local consumer1 = bp.consumers:insert {custom_id = "provider_123"}
           bp.keyauth_credentials:insert {
@@ -381,19 +420,21 @@ for _, strategy in helpers.each_strategy() do
         describe("Without authentication (IP address)", function()
 
           it("returns remaining counter", function()
-            wait()
+            local host = "test1.test"
+            wait_server_sync( { Host = host })
+
             local n = math.floor(ITERATIONS / 2)
             for _ = 1, n do
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
-                headers = { Host = "test1.test" },
+              local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
+                headers = { Host = host },
               })
               assert.res_status(200, res)
             end
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+            wait_remaining_sync("/response-headers", { Host = "test1.test" }, {["x-ratelimit-remaining-video-second"] = ITERATIONS - n})
 
-            local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
-              headers = { Host = "test1.test" },
+            local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
+              headers = { Host = host },
             })
             assert.res_status(200, res)
             assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
@@ -401,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns remaining counter #grpc", function()
-            wait()
+            wait_server_sync({ Host = "test1.test" })
 
             local ok, res = helpers.proxy_client_grpc(){
               service = "hello.HelloService.SayHello",
@@ -419,79 +460,92 @@ for _, strategy in helpers.each_strategy() do
             -- headers are indeed inserted.
           end)
 
-          it("blocks if exceeding limit", function()
-            test_limit("/response-headers?x-kong-limit=video%3D1", "test1.test")
+          it("blocks if exceeding limit #brian2", function()
+            wait_server_sync({ Host = "test1.test" })
+            test_limit("/response-headers", {["x-kong-limit"] = "video=1"}, "test1.test")
           end)
 
           it("counts against the same service register from different routes", function()
-            wait()
+            wait_server_sync( { Host = "test1.test" })
             local n = math.floor(ITERATIONS / 2)
+            local url = "/response-headers?x-kong-limit=" .. escape_uri("video=1, test=" .. ITERATIONS)
             for i = 1, n do
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20test%3D" .. ITERATIONS, {
+              local res = proxy_client():get(url , {
                 headers = { Host = "test-service1.test" },
               })
               assert.res_status(200, res)
             end
 
             for i = n+1, ITERATIONS do
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20test%3D" .. ITERATIONS, {
+              local res = proxy_client():get(url, {
                 headers = { Host = "test-service2.test" },
               })
               assert.res_status(200, res)
             end
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the list
+            wait_remaining_sync("/response-headers", { Host = "test-service1.test" }, {["x-ratelimit-remaining-video-second"] = 0})
 
             -- Additional request, while limit is ITERATIONS/second
-            local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20test%3D" .. ITERATIONS, {
+            local res = proxy_client():get(url, {
               headers = { Host = "test-service1.test" },
             })
             assert.res_status(429, res)
           end)
 
           it("handles multiple limits", function()
-            wait()
+            wait_server_sync( { Host = "test1.test" })
             local n = math.floor(ITERATIONS / 2)
             local res
+            local url = "/response-headers?x-kong-limit=" .. escape_uri("video=2, image=1")
+            local remain_in_sec = ITERATIONS * 2
+            local remain_in_min = ITERATIONS * 4
             for i = 1, n do
-              if i == n then
-                ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-              end
-              res = proxy_client():get("/response-headers?x-kong-limit=video%3D2%2C%20image%3D1", {
+              res = proxy_client():get(url, {
                 headers = { Host = "test2.test" },
               })
               assert.res_status(200, res)
+              remain_in_sec = remain_in_sec - 2
+              remain_in_min = remain_in_min - 2
             end
+            res = wait_remaining_sync("/response-headers",
+              { Host = "test2.test" },
+              {["x-ratelimit-remaining-video-second"] = remain_in_sec, ["x-ratelimit-remaining-video-minute"] = remain_in_min}
+            )
 
             assert.equal(ITERATIONS * 2, tonumber(res.headers["x-ratelimit-limit-video-second"]))
-            assert.equal(ITERATIONS * 2 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+            assert.equal(remain_in_sec, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
             assert.equal(ITERATIONS * 4, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-            assert.equal(ITERATIONS * 4 - (n * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(remain_in_min, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
             assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-image-second"]))
             assert.equal(ITERATIONS - n, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
 
+            url = "/response-headers?x-kong-limit=" .. escape_uri("video=1, image=1")
             for i = n+1, ITERATIONS do
-              if i == ITERATIONS then
-                ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-              end
-              res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20image%3D1", {
+              res = proxy_client():get(url, {
                 headers = { Host = "test2.test" },
               })
               assert.res_status(200, res)
+              remain_in_sec = remain_in_sec - 1
+              remain_in_min = remain_in_min - 1
             end
+            res = wait_remaining_sync("/response-headers",
+              { Host = "test2.test" }, 
+              {["x-ratelimit-remaining-video-second"] = remain_in_sec, ["x-ratelimit-remaining-video-minute"] = remain_in_min})
+
             assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
-            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n), tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+            assert.equal(remain_in_min, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(remain_in_sec, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-            local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1%2C%20image%3D1", {
+            local res = proxy_client():get(url, {
               headers = { Host = "test2.test" },
             })
+            remain_in_sec = remain_in_sec - 1
+            remain_in_min = remain_in_min - 1
 
             assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-image-second"]))
-            assert.equal(ITERATIONS * 4 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-            assert.equal(ITERATIONS * 2 - (n * 2) - (ITERATIONS - n) - 1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+            assert.equal(remain_in_min, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(remain_in_sec, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
             assert.res_status(429, res)
           end)
         end)
@@ -499,18 +553,20 @@ for _, strategy in helpers.each_strategy() do
         describe("With authentication", function()
           describe("API-specific plugin", function()
             it("blocks if exceeding limit and a per consumer & route setting", function()
-              test_limit("/response-headers?apikey=apikey123&x-kong-limit=video%3D1", "test3.test", ITERATIONS - 2)
+              wait_server_sync({ Host = "test3.test" }, "apikey123")
+              test_limit("/response-headers", {["apikey"] = "apikey123", ["x-kong-limit"] = "video=1"}, "test3.test", ITERATIONS - 2)
             end)
 
             it("blocks if exceeding limit and a per route setting", function()
-              test_limit("/response-headers?apikey=apikey124&x-kong-limit=video%3D1", "test3.test", ITERATIONS - 3)
+              wait_server_sync({ Host = "test3.test" }, "apikey123")
+              test_limit("/response-headers", {["apikey"] = "apikey124", ["x-kong-limit"] = "video=1"}, "test3.test", ITERATIONS - 3)
             end)
           end)
         end)
 
-        describe("Upstream usage headers", function()
+        describe("Upstream usage headers #brian", function()
           it("should append the headers with multiple limits", function()
-            wait()
+            wait_server_sync( { Host = "test8.test" })
             local res = proxy_client():get("/get", {
               headers = { Host = "test8.test" },
             })
@@ -519,14 +575,14 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(ITERATIONS, tonumber(json.headers["x-ratelimit-remaining-video"]))
 
             -- Actually consume the limits
-            local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2%2C%20image%3D1", {
+            res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2, image=1"), {
               headers = { Host = "test8.test" },
             })
             local json2 = cjson.decode(assert.res_status(200, res))
             assert.equal(ITERATIONS-1, tonumber(json2.headers["x-ratelimit-remaining-image"]))
             assert.equal(ITERATIONS, tonumber(json2.headers["x-ratelimit-remaining-video"]))
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+            wait_remaining_sync("/response-headers", { Host = "test8.test" }, {["x-ratelimit-remaining-video-second"] =ITERATIONS - 2})
 
             local res = proxy_client():get("/get", {
               headers = { Host = "test8.test" },
@@ -537,7 +593,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("combines multiple x-kong-limit headers from upstream", function()
-            wait()
+            wait_server_sync( { Host = "test4.test" })
             -- NOTE: this test is not working as intended because multiple response headers are merged into one comma-joined header by send_text_response function
             for _ = 1, ITERATIONS do
               local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
@@ -550,7 +606,7 @@ for _, strategy in helpers.each_strategy() do
               headers = { Host = "test4.test" },
             })
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+            wait_remaining_sync("/response-headers", { Host = "test4.test" }, {["x-ratelimit-remaining-video-second"] = 1})
 
             local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1", {
               headers = { Host = "test4.test" },
@@ -563,15 +619,14 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("should block on first violation", function()
-          wait()
-          local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2%2C%20image%3D4", {
+          wait_server_sync( { Host = "test7.test" })
+          local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2, image=4"), {
             headers = { Host = "test7.test" },
           })
           assert.res_status(200, res)
+          wait_remaining_sync("/response-headers", { Host = "test7.test" }, {["x-ratelimit-remaining-video-second"] = ITERATIONS}, 429)
 
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-
-          local res = proxy_client():get("/response-headers?x-kong-limit=video%3D2", {
+          res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2"), {
             headers = { Host = "test7.test" },
           })
           local body = assert.res_status(429, res)
@@ -581,7 +636,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("Config with hide_client_headers", function()
           it("does not send rate-limit headers when hide_client_headers==true", function()
-            wait()
+            wait_server_sync( { Host = "test9.test" })
             local res = proxy_client():get("/status/200", {
               headers = { Host = "test9.test" },
             })
@@ -632,25 +687,20 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("expires a counter", function()
-          wait()
-          local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+          wait_server_sync( { Host = "expire1.test" })
+          local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
             headers = { Host = "expire1.test" },
           })
-
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
           assert.res_status(200, res)
           assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
           assert.equal(ITERATIONS-1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
 
-          ngx.sleep(0.01)
-          wait() -- Wait for counter to expire
+          wait_server_sync( { Host = "expire1.test" }) -- Wait for counter to expire
 
-          local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+          res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
             headers = { Host = "expire1.test" },
           })
-
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
           assert.res_status(200, res)
           assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
@@ -709,7 +759,8 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
-          test_limit("/response-headers?apikey=apikey126&x-kong-limit=video%3D1", "test%d.test")
+          wait_server_sync({ Host = "test1.test" }, "apikey126")
+          test_limit("/response-headers", {["apikey"] = "apikey126", ["x-kong-limit"] = "video=1"}, "test%d.test")
         end)
       end)
 
@@ -752,22 +803,22 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         before_each(function()
-          wait()
+          wait_server_sync({ Host = "test1.test" })
         end)
 
         it("blocks if exceeding limit", function()
-          wait()
           for i = 1, ITERATIONS do
-            local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+            local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
               headers = { Host = fmt("test%d.test", i) },
             })
             assert.res_status(200, res)
           end
 
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+          -- Wait for async timer to increment the limit
+          wait_remaining_sync("/response-headers", { Host = "test1.test" }, {["x-ratelimit-remaining-video-second"] = 0})
 
           -- last query, while limit is ITERATIONS/second
-          local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+          local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
             headers = { Host = "test1.test" },
           })
           assert.res_status(429, res)
@@ -833,7 +884,6 @@ for _, strategy in helpers.each_strategy() do
                 lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
               }))
 
-              wait()
             end)
 
             after_each(function()
@@ -841,7 +891,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("does not work if an error occurs", function()
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+              local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
                 headers = { Host = "failtest1.test" },
               })
               assert.res_status(200, res)
@@ -855,7 +905,7 @@ for _, strategy in helpers.each_strategy() do
               -- affecting subsequent tests.
 
               -- Make another request
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+              res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
                 headers = { Host = "failtest1.test" },
               })
               local body = assert.res_status(500, res)
@@ -864,7 +914,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("keeps working if an error occurs", function()
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+              local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
                 headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
@@ -878,7 +928,7 @@ for _, strategy in helpers.each_strategy() do
               -- affecting subsequent tests.
 
               -- Make another request
-              local res = proxy_client():get("/response-headers?x-kong-limit=video%3D1", {
+              res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=1"), {
                 headers = { Host = "failtest2.test" },
               })
               assert.res_status(200, res)
@@ -935,7 +985,6 @@ for _, strategy in helpers.each_strategy() do
               lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
             }))
 
-            wait()
           end)
 
           after_each(function()
