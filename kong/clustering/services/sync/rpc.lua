@@ -329,7 +329,7 @@ local function do_sync()
   -- validate deltas
   local ok, err, err_t = validate_deltas(deltas, wipe)
   if not ok then
-    notify_error(ns_delta.lastest_version, err_t)
+    notify_error(ns_delta.latest_version, err_t)
     return nil, err
   end
 
