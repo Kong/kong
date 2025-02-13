@@ -156,7 +156,7 @@ function _M:process_rpc_msg(payload, collection)
     if not dispatch_cb then
       -- for RPC notify
       if not payload_id then
-        ngx_log(ngx_INFO, "[rpc] unable to find RPC notify call:", payload_method)
+        ngx_log(ngx_INFO, "[rpc] unable to find RPC notify call: ", payload_method)
         return true
       end
 
