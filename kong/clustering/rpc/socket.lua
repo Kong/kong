@@ -35,6 +35,7 @@ local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = CLUSTERING_PING_INTERVAL * 1.5
 local PING_TYPE = "PING"
 local PONG_TYPE = "PONG"
+local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
 
@@ -155,7 +156,8 @@ function _M:process_rpc_msg(payload, collection)
     if not dispatch_cb then
       -- for RPC notify
       if not payload_id then
-        return nil, "unable to find RPC notify callback for method: " .. payload_method
+        ngx_log(ngx_INFO, "[rpc] unable to find RPC notify call:", payload_method)
+        return true
       end
 
       -- for RPC call
