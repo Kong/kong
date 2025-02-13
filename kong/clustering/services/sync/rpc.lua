@@ -69,7 +69,7 @@ function _M:init_cp(manager)
   -- CP
   -- Method: kong.sync.v2.notify_validation_error
   -- Params: msg: error message reported by DP
-  -- example: { version = <lastest version of deltas>, error = <flatten error>, }
+  -- example: { version = <latest version of deltas>, error = <flatten error>, }
   manager.callbacks:register("kong.sync.v2.notify_validation_error", function(node_id, msg)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] received validation error")
     -- TODO: We need a better error handling method, it might report this error
