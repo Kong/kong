@@ -394,10 +394,7 @@ function _M:communicate(premature)
       end
 
       if typ == "pong" then
-        kong.log.trace(ngx_DEBUG, _log_prefix,
-                                  "received pong frame from control plane",
-                                  log_suffix)
-
+        kong.log.trace(_log_prefix, "received pong frame from control plane", log_suffix)
         goto continue
       end
 
