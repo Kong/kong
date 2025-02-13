@@ -127,7 +127,7 @@ function _M:export_deflated_reconfigure_payload()
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. (worker_id() or -1)
   kong_dict:set(shm_key_name, json_encode(self.plugins_configured))
-  kong.log.trace("plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
+  kong.log.trace(_log_prefix, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
@@ -374,7 +374,7 @@ function _M:handle_cp_websocket(cert)
         return nil, "invalid websocket frame received from data plane: " .. typ
       end
 
-      --ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
+      kong.log.trace(_log_prefix, "received ping frame from data plane", log_suffix)
 
       config_hash = data
       last_seen = ngx_time()
@@ -419,8 +419,8 @@ function _M:handle_cp_websocket(cert)
 
           ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
 
-        --else
-        --  ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
+        else
+          kong.log.trace(_log_prefix, "sent pong frame to data plane", log_suffix)
         end
 
         -- pong ok

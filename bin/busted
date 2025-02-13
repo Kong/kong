@@ -3,7 +3,6 @@
 setmetatable(_G, nil)
 
 local pl_path = require("pl.path")
-
 local pl_file = require("pl.file")
 
 local tools_system = require("kong.tools.system")
@@ -47,6 +46,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   end
   -- add cli recursion detection
   table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
+  table.insert(script, "export KONG_IS_TESTING=1")
 
   -- rebuild the invoked commandline, while inserting extra resty-flags
   local resty_flags = DEFAULT_RESTY_FLAGS
