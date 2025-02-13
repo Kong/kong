@@ -29,7 +29,7 @@ local poll_handler
 
 
 local function log(lvl, ...)
-  return ngx_log(lvl, "[cluster_events] ", ...)
+  return ngx_log(lvl, "[cluster events] ", ...)
 end
 
 
@@ -269,6 +269,8 @@ local function process_event(self, row, local_start_time)
 end
 
 
+local prev_min_at
+
 local function poll(self)
   -- get events since last poll
 
@@ -280,7 +282,10 @@ local function poll(self)
   if min_at then
     -- apply grace period
     min_at = min_at - self.poll_offset - 0.001
-    log(DEBUG, "polling events from: ", min_at)
+    if min_at ~= prev_min_at then
+      prev_min_at = min_at
+      log(DEBUG, "polling events from: ", min_at)
+    end
 
   else
     -- 'at' was evicted from 'kong' shm - safest is to resume fetching events

@@ -71,7 +71,7 @@ function _M:init_cp(manager)
   -- Params: versions: list of current versions of the database
   -- example: { default = { version = "1000", }, }
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-    ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
+    kong.log.trace("[kong.sync.v2] config push (connected client)")
 
     local rpc_peers
     if kong.rpc then

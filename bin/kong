@@ -142,9 +142,9 @@ require("kong.cmd.init")("%s", %s)
 
 local resty_ngx_log_level
 if arg.vv then
-  resty_ngx_log_level = "debug"
+  resty_ngx_log_level = skip_inject_cmds[cmd_name] and "notice" or "debug"
 elseif arg.v then
-  resty_ngx_log_level = "info"
+  resty_ngx_log_level = skip_inject_cmds[cmd_name] and "warn" or "info"
 end
 
 local resty_cmd = string.format(

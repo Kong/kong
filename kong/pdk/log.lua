@@ -983,6 +983,10 @@ do
 end
 
 
+local IS_TESTING
+local NOOP = function() end
+
+
 local function new_log(namespace, format)
   if type(namespace) ~= "string" then
     error("namespace must be a string", 2)
@@ -1003,7 +1007,6 @@ local function new_log(namespace, format)
   end
 
   local self = {}
-
 
   function self.set_format(fmt)
     if fmt and type(fmt) ~= "string" then
@@ -1032,6 +1035,12 @@ local function new_log(namespace, format)
 
   self.inspect = new_inspect(namespace)
 
+  if IS_TESTING then
+    self.trace = self.debug
+  else
+    self.trace = NOOP
+  end
+
   self.set_serialize_value = set_serialize_value
   self.serialize = serialize
 
@@ -1045,6 +1054,9 @@ _log_mt.new = new_log
 
 return {
   new = function()
+    if IS_TESTING == nil then
+      IS_TESTING = os.getenv("KONG_IS_TESTING") == "1"
+    end
     return new_log("core", _DEFAULT_FORMAT)
   end,
 }

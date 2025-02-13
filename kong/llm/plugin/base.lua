@@ -48,7 +48,7 @@ local function run_stage(stage, sub_plugin, conf)
     elseif not ai_executed_filters[name] or REPEATED_PHASES[stage] then
       ai_executed_filters[name] = true
 
-      kong.log.debug("executing filter ", name)
+      kong.log.trace("executing filter ", name)
 
       local ok, err = f:run(conf)
       if not ok then

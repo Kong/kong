@@ -387,7 +387,7 @@ function _M:_call_or_notify(is_notification, node_id, method, ...)
 
   local params = {...}
 
-  ngx_log(ngx_DEBUG,
+  kong.log.trace(
     _log_prefix,
     is_notification and "notifying " or "calling ",
     method,
@@ -403,7 +403,7 @@ function _M:_call_or_notify(is_notification, node_id, method, ...)
       return nil, err
     end
 
-    ngx_log(ngx_DEBUG, _log_prefix, method, " succeeded")
+    kong.log.trace(_log_prefix, method, " succeeded")
 
     return res
   end
