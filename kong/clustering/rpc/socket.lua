@@ -150,7 +150,7 @@ function _M:process_rpc_msg(payload, collection)
   if payload_method then
     -- invoke
 
-    ngx_log(ngx_DEBUG, "[rpc] got RPC call: ", payload_method, " (id: ", payload_id, ")")
+    kong.log.trace("[rpc] got RPC call: ", payload_method, " (id: ", payload_id, ")")
 
     local dispatch_cb = self.manager.callbacks.callbacks[payload_method]
     if not dispatch_cb then

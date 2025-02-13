@@ -209,7 +209,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local queue = queues[key]
   if queue then
-    queue:log_debug("queue exists")
+    queue:log_trace("queue exists")
     -- We always use the latest configuration that we have seen for a queue and handler.
     queue.handler_conf = handler_conf
     return queue
@@ -243,17 +243,17 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
   if queue.concurrency_limit == 1 then
     kong.timer:named_at("queue " .. key, 0, function(_, q)
       while q:count() > 0 do
-        q:log_debug("processing queue")
+        q:log_trace("processing queue")
         q:process_once()
       end
-      q:log_debug("done processing queue")
+      q:log_trace("done processing queue")
       queues[key] = nil
     end, queue)
     queues[key] = queue
   end
 
 
-  queue:log_debug("queue created")
+  queue:log_trace("queue created")
 
   return queue
 end
@@ -274,6 +274,7 @@ function Queue:log(handler, formatstring, ...)
   end
 end
 
+function Queue:log_trace(...) self:log(kong.log.trace, ...) end
 function Queue:log_debug(...) self:log(kong.log.debug, ...) end
 function Queue:log_info(...) self:log(kong.log.info, ...) end
 function Queue:log_warn(...) self:log(kong.log.warn, ...) end
@@ -322,10 +323,10 @@ local function handle(self, entries)
   local start_time = now()
   local retry_count = 0
   while true do
-    self:log_debug("passing %d entries to handler", entry_count)
+    self:log_trace("passing %d entries to handler", entry_count)
     local status, ok, err = pcall(self.handler, self.handler_conf, entries)
     if status and ok == true then
-      self:log_debug("handler processed %d entries successfully", entry_count)
+      self:log_trace("handler processed %d entries successfully", entry_count)
       break
     end
 

@@ -65,6 +65,7 @@ describe("plugin queue", function()
     end, {
       kong = {
         log = {
+          trace = function(message) return log('DEBUG', message) end,
           debug = function(message) return log('DEBUG', message) end,
           info = function(message) return log('INFO', message) end,
           warn = function(message) return log('WARN', message) end,

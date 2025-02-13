@@ -8,7 +8,6 @@ local now = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local NOTICE = ngx.NOTICE
 local DEBUG = ngx.DEBUG
 local ALERT = ngx.ALERT
 local timer_at = ngx.timer.at
@@ -158,8 +157,8 @@ function _M.new(opts)
     end
   end
 
-  log(NOTICE, PREFIX, "supported types: ", enable_srv and "srv " or "",
-              enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
+  log(DEBUG, PREFIX, "supported types: ", enable_srv and "srv " or "",
+             enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
 
   -- parse resolv.conf
   local resolv, err = parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
@@ -603,7 +602,7 @@ function _M:resolve_all(name, qtype, cache_only, tries, has_timing)
 
   local key = name .. ":" .. qtype
 
-  log(DEBUG, PREFIX, "resolve_all ", key)
+  --log(DEBUG, PREFIX, "resolve_all ", key)
 
   local stats = self.stats
 
@@ -629,8 +628,8 @@ function _M:resolve_all(name, qtype, cache_only, tries, has_timing)
     })
   end
 
-  log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
-                     " hlv:", hit_str)
+  --log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
+  --                   " hlv:", hit_str)
 
   if has_timing then
     req_dyn_hook_run_hook("timing", "dns:cache_lookup",
