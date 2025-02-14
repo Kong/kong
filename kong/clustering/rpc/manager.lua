@@ -53,7 +53,7 @@ local function post_rpc_event(ev, params)
   -- notify this worker
   local ok, err = worker_events.post_local("clustering:jsonrpc", ev, params)
   if not ok then
-    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc ", ev, "event: ", err)
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc ", ev, " event: ", err)
   end
 end
 
