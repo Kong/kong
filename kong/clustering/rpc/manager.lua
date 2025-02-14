@@ -578,7 +578,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
                        " to connect control plane")
   end
 
-  -- a flag to enuse connection is established
+  -- a flag to ensure connection is established
   local connection_established
 
   local ok, err = c:connect(uri, opts)
