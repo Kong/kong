@@ -12,8 +12,8 @@ local ngx_arg = ngx.arg
 local ngx_var = ngx.var
 
 local kong_request_get_path = kong.request.get_path
-local kong_request_get_method = kong.request.get_method
 local kong_request_get_header = kong.request.get_header
+local kong_request_get_method = kong.request.get_method
 local kong_request_get_raw_body = kong.request.get_raw_body
 local kong_response_exit = kong.response.exit
 local kong_response_set_header = kong.response.set_header
