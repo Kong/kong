@@ -4,6 +4,7 @@ on:
 
 jobs:
   labeler:
+    if: ${{ !github.event.pull_request.head.repo.fork }}
     permissions:
       contents: read
       pull-requests: write
