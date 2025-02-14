@@ -47,6 +47,17 @@ local WS_OPTS = {
 }
 
 
+local function post_rpc_event(ev, params)
+  local worker_events = assert(kong.worker_events)
+
+  -- notify this worker
+  local ok, err = worker_events.post_local("clustering:jsonrpc", ev, params)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc ", ev, "event: ", err)
+  end
+end
+
+
 -- create a new RPC manager, node_id is own node_id
 function _M.new(conf, node_id)
   local self = {
@@ -327,14 +338,7 @@ function _M:_meta_call(c, meta_cap, node_id)
   }
 
   -- tell outside that rpc is ready
-  local worker_events = assert(kong.worker_events)
-
-  -- notify this worker
-  local ok, err = worker_events.post_local("clustering:jsonrpc", "connected",
-                                           capabilities_list)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, "unable to post rpc connected event: ", err)
-  end
+  post_rpc_event("connected", capabilities_list)
 
   return true
 end
@@ -502,17 +506,6 @@ function _M:handle_websocket()
   local res, err = s:join()
   self:_remove_socket(s)
 
-  -- tell outside that rpc disconnected
-  do
-    local worker_events = assert(kong.worker_events)
-
-    -- notify this worker
-    local ok, err = worker_events.post_local("clustering:jsonrpc", "disconnected")
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, "unable to post rpc disconnected event: ", err)
-    end
-  end
-
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "RPC connection broken: ", err, " node_id: ", node_id)
     return ngx_exit(ngx.ERROR)
@@ -631,6 +624,9 @@ function _M:connect(premature, node_id, host, path, cert, key)
       ngx_log(ngx_ERR, _log_prefix, "connection to node_id: ", node_id, " broken, err: ",
               err, ", reconnecting in ", reconnection_delay, " seconds")
     end
+
+    -- tell outside that rpc disconnected
+    post_rpc_event("disconnected")
   end
 
   ::err::
