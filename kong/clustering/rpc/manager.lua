@@ -578,6 +578,9 @@ function _M:connect(premature, node_id, host, path, cert, key)
                        " to connect control plane")
   end
 
+  -- a flag to enuse connection is established
+  local connection_established
+
   local ok, err = c:connect(uri, opts)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to connect to peer: ", err)
@@ -612,6 +615,8 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
+    connection_established = true
+
     local s = socket.new(self, c, node_id)
     s:start()
     self:_add_socket(s)
@@ -624,12 +629,12 @@ function _M:connect(premature, node_id, host, path, cert, key)
       ngx_log(ngx_ERR, _log_prefix, "connection to node_id: ", node_id, " broken, err: ",
               err, ", reconnecting in ", reconnection_delay, " seconds")
     end
-
-    -- tell outside that rpc disconnected
-    post_rpc_event("disconnected")
   end
 
   ::err::
+
+  -- tell outside that rpc disconnected or failed
+  post_rpc_event(connection_established and "disconnected" or "connection_failed")
 
   if not exiting() then
     c:close()
