@@ -232,3 +232,39 @@ GET /t?a=0&d=1&a=2&c=3&a=4&b=5&a=6&d=7&a=8
 query: d=1&c=3&b=5&d=7
 --- no_error_log
 [error]
+
+
+
+=== TEST 8: service.request.clear_query_arg() uses %20 as space instead of +
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("query: " .. tostring(ngx.var.args))
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.service.request.clear_query_arg("a")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock;
+    }
+--- request
+GET /t?a=0&c+d=1+2&a=2&c%20d=3%20&a=4&b+d=5&%20a+=6+%20+&+%20+d=+%20+7%20++&a=8
+--- response_body
+query: c%20d=1%202&c%20d=3%20&b%20d=5&%20a%20=6%20%20%20&%20%20%20d=%20%20%207%20%20%20
+--- no_error_log
+[error]
