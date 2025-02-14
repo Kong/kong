@@ -345,6 +345,10 @@
                                  # - certificate content
                                  # - base64 encoded certificate content
 
+#cluster_rpc =                   # Enable/disable cluster rpc framework
+
+#cluster_rpc_sync =              # Enable/disable cluster rpc sync protocol
+
 #------------------------------------------------------------------------------
 # HYBRID MODE DATA PLANE
 #------------------------------------------------------------------------------
