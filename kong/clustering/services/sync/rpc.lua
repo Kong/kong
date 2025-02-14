@@ -67,6 +67,17 @@ function _M:init_cp(manager)
   local purge_delay = manager.conf.cluster_data_plane_purge_delay
 
   -- CP
+  -- Method: kong.sync.v2.notify_validation_error
+  -- Params: msg: error message reported by DP
+  -- example: { version = <latest version of deltas>, error = <flatten error>, }
+  manager.callbacks:register("kong.sync.v2.notify_validation_error", function(node_id, msg)
+    ngx_log(ngx_DEBUG, "[kong.sync.v2] received validation error")
+    -- TODO: We need a better error handling method, it might report this error
+    -- to Konnect or or log it locally.
+    return true
+  end)
+
+  -- CP
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
   -- example: { default = { version = "1000", }, }
@@ -175,6 +186,22 @@ local function is_rpc_ready()
 
     -- retry later
     ngx.sleep(0.1 * i)
+  end
+end
+
+
+-- tell cp that the deltas validation failed
+local function notify_error(ver, err_t)
+  local msg = {
+    version = ver or "v02_deltas_have_no_latest_version_field",
+    error = err_t,
+  }
+
+  local ok, err = kong.rpc:notify("control_plane",
+                                  "kong.sync.v2.notify_validation_error",
+                                  msg)
+  if not ok then
+    ngx_log(ngx_ERR, "notifying validation errors failed: ", err)
   end
 end
 
@@ -300,8 +327,9 @@ local function do_sync()
   assert(type(kong.default_workspace) == "string")
 
   -- validate deltas
-  local ok, err = validate_deltas(deltas, wipe)
+  local ok, err, err_t = validate_deltas(deltas, wipe)
   if not ok then
+    notify_error(ns_delta.latest_version, err_t)
     return nil, err
   end
 

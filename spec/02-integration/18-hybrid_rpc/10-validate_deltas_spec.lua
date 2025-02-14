@@ -73,9 +73,11 @@ for _, strategy in helpers.each_strategy() do
         -- cp logs
         assert.logfile(name).has.line(
           "kong.sync.v2.get_delta ok", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] unable to find RPC notify call: kong.sync.v2.notify_validation_error",
+          true, 10)
         assert.logfile(name).has.no.line(
           "[error]", true, 0)
-
       end)
     end)
   end)
