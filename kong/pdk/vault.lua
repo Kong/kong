@@ -950,7 +950,11 @@ local function new(self)
       self.log.warn("error updating secret reference ", reference, ": ", err)
     end
 
-    record[field] = value or ""
+    if value then
+      record[field] = value
+    elseif is_reference(record[field]) then
+      record[field] = ""
+    end
   end
 
 
@@ -1002,7 +1006,7 @@ local function new(self)
   -- are specified in a `$refs` field.
   --
   -- If a reference cannot be fetched from the cache, the corresponding field is
-  -- set to nil and an warning is logged.
+  -- not changed and an warning is logged.
   --
   -- @local
   -- @function update
@@ -1428,6 +1432,8 @@ local function new(self)
         end
       end
     end
+
+    LRU:flush_all()
 
     -- refresh all the secrets
     local _, err = self.timer:named_at("secret-rotation-on-crud-event", 0, rotate_secrets_timer)
