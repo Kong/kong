@@ -199,8 +199,8 @@ local function load_credential(username)
 end
 
 
-local function validate_clock_skew(date_header_name, allowed_clock_skew, headers)
-  local date = headers[date_header_name]
+local function validate_clock_skew(date_header_name, allowed_clock_skew)
+  local date = kong_request.get_header(date_header_name)
   if not date then
     return false
   end
@@ -219,13 +219,14 @@ local function validate_clock_skew(date_header_name, allowed_clock_skew, headers
 end
 
 
-local function validate_body(digest_received)
+local function validate_body()
   local body, err = kong_request.get_raw_body()
   if err then
     kong.log.debug(err)
     return false
   end
 
+  local digest_received = kong_request.get_header(DIGEST)
   if not digest_received then
     -- if there is no digest and no body, it is ok
     return body == ""
@@ -280,9 +281,8 @@ end
 
 
 local function do_authentication(conf)
-  local headers = kong_request.get_headers()
-  local authorization = headers[AUTHORIZATION]
-  local proxy_authorization = headers[PROXY_AUTHORIZATION]
+  local authorization = kong_request.get_header(AUTHORIZATION)
+  local proxy_authorization = kong_request.get_header(PROXY_AUTHORIZATION)
   local www_auth_content = conf.realm and fmt('hmac realm="%s"', conf.realm) or 'hmac'
 
   -- If both headers are missing, return 401
@@ -291,8 +291,8 @@ local function do_authentication(conf)
   end
 
   -- validate clock skew
-  if not (validate_clock_skew(X_DATE, conf.clock_skew, headers) or
-          validate_clock_skew(DATE, conf.clock_skew, headers)) then
+  if not (validate_clock_skew(X_DATE, conf.clock_skew) or
+          validate_clock_skew(DATE, conf.clock_skew)) then
     return false, unauthorized(
       "HMAC signature cannot be verified, a valid date or " ..
       "x-date header is required for HMAC Authentication",
@@ -334,7 +334,7 @@ local function do_authentication(conf)
   end
 
   -- If request body validation is enabled, then verify digest.
-  if conf.validate_request_body and not validate_body(headers[DIGEST]) then
+  if conf.validate_request_body and not validate_body() then
     kong.log.debug("digest validation failed")
     return false, unauthorized(SIGNATURE_NOT_SAME, www_auth_content)
   end

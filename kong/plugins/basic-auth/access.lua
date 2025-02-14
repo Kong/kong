@@ -28,9 +28,9 @@ local _M = {}
 -- @param {table} conf Plugin config
 -- @return {string} public_key
 -- @return {string} private_key
-local function retrieve_credentials(header_name, conf, headers)
+local function retrieve_credentials(header_name, conf, header)
   local username, password
-  local authorization_header = headers[header_name]
+  local authorization_header = header or kong.request.get_header(header_name)
 
   if authorization_header then
     local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)", "oj")
@@ -158,22 +158,23 @@ end
 
 local function do_authentication(conf)
   local www_authenticate = "Basic realm=\"" .. conf.realm .. "\""
-  local headers = kong.request.get_headers()
+  local authorization = kong.request.get_header("authorization")
+  local proxy_authorization = kong.request.get_header("proxy-authorization")
 
   -- If both headers are missing, return 401
-  if not (headers["authorization"] or headers["proxy-authorization"]) then
+  if not (authorization or proxy_authorization) then
     return false, unauthorized("Unauthorized", www_authenticate)
   end
 
   local credential
-  local given_username, given_password = retrieve_credentials("proxy-authorization", conf, headers)
+  local given_username, given_password = retrieve_credentials("proxy-authorization", conf, proxy_authorization)
   if given_username and given_password then
     credential = load_credential_from_db(given_username)
   end
 
   -- Try with the authorization header
   if not credential then
-    given_username, given_password = retrieve_credentials("authorization", conf, headers)
+    given_username, given_password = retrieve_credentials("authorization", conf, authorization)
     if given_username and given_password then
       credential = load_credential_from_db(given_username)
     else
