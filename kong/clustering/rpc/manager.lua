@@ -337,9 +337,6 @@ function _M:_meta_call(c, meta_cap, node_id)
     list = capabilities_list,
   }
 
-  -- tell outside that rpc is ready
-  post_rpc_event("connected", capabilities_list)
-
   return true
 end
 
@@ -615,6 +612,9 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
+    -- tell outside that rpc is ready
+    post_rpc_event("connected", capabilities_list)
+
     connection_established = true
 
     local s = socket.new(self, c, node_id)
@@ -634,7 +634,8 @@ function _M:connect(premature, node_id, host, path, cert, key)
   ::err::
 
   -- tell outside that rpc disconnected or failed
-  post_rpc_event(connection_established and "disconnected" or "connection_failed")
+  post_rpc_event(connection_established and
+                 "disconnected" or "connection_failed")
 
   if not exiting() then
     c:close()
