@@ -8,7 +8,6 @@ local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
 
 
-local FIRST_SYNC_DELAY = 0.2  -- seconds
 local EACH_SYNC_DELAY  = constants.CLUSTERING_PING_INTERVAL   -- 30 seconds
 
 
@@ -81,7 +80,7 @@ function _M:init_worker()
     end
 
     -- sync to CP ASAP
-    assert(self.rpc:sync_once(FIRST_SYNC_DELAY))
+    assert(self.rpc:sync_once())
 
     assert(self.rpc:sync_every(EACH_SYNC_DELAY))
 
