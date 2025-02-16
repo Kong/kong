@@ -191,7 +191,13 @@ function _M:process_rpc_msg(payload, collection)
                                  self.node_id, payload_id or 0, math.random(10^5), payload_method)
       res, err = kong.timer:named_at(name, 0, _M._dispatch, self, dispatch_cb, payload)
 
-      if not res and payload_id then
+      if not res then
+        -- for RPC notify
+        if not payload_id then
+          return nil, "unable to dispatch JSON-RPC notify call: " .. err
+        end
+
+        -- for RPC call
         local reso, erro = self:push_response(new_error(payload_id, jsonrpc.INTERNAL_ERROR),
                                               "unable to send \"INTERNAL_ERROR\" error back to client: ",
                                               collection)
