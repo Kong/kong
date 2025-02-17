@@ -83,7 +83,7 @@ function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
   if not is_delete and dao and entity and entity.ttl then
     -- Replace relative TTL value to absolute TTL value
     local export_options = kong_table.cycle_aware_deep_copy(options, true)
-    export_options["export"] = true
+    export_options.export = true
     local exported_entity = dao:select(entity, export_options)
 
     if exported_entity and exported_entity.ttl then
