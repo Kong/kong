@@ -948,12 +948,8 @@ local function new(self)
     local value, err = get(reference, true)
     if err then
       self.log.warn("error updating secret reference ", reference, ": ", err)
-    end
-
-    if value then
-      record[field] = value
-    elseif is_reference(record[field]) then
-      record[field] = ""
+    else
+      record[field] = value or ""
     end
   end
 
