@@ -231,6 +231,9 @@ return {
 
   -- Any dataplane older than 3.10.0
   [3010000000] = {
+    cors = {
+      "allow_origin_absent",
+    },
     session = {
       "hash_subject",
       "store_metadata",

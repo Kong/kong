@@ -247,6 +247,11 @@ function CorsHandler:header_filter(conf)
     return
   end
 
+  local req_origin = kong.request.get_header("origin")
+  if not req_origin and not conf.allow_origin_absent then
+    return
+  end
+
   local allow_all = configure_origin(conf, true)
   configure_credentials(conf, allow_all, true)
 
