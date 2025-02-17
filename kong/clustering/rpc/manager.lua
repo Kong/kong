@@ -171,7 +171,7 @@ function _M:_handle_meta_call(c, cert)
   end
 
   if typ ~= "binary" then
-    return nil, "wrong frame type: " .. type
+    return nil, "wrong frame type: " .. typ
   end
 
   local payload = cjson_decode(data)
