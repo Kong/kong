@@ -15,6 +15,10 @@ function RpcNotificationTestHandler:init_worker()
       local res, err = kong.rpc:notify(node_id, "kong.test.notification", "world")
       assert(res == true)
       assert(err == nil)
+
+      local res, err = kong.rpc:notify(node_id, "kong.test.not_exists_in_dp")
+      assert(res == true)
+      assert(err == nil)
     end
 
     -- perr should not get this by notification
@@ -30,6 +34,11 @@ function RpcNotificationTestHandler:init_worker()
 
     assert(res == true)
     assert(err == nil)
+
+    local res, err = kong.rpc:notify("control_plane", "kong.test.not_exists_in_cp")
+    assert(res == true)
+    assert(err == nil)
+
   end, "clustering:jsonrpc", "connected")
 end
 

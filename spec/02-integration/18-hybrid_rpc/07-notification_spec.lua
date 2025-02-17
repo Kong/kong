@@ -55,6 +55,8 @@ for _, strategy in helpers.each_strategy() do
           "[rpc] notifying kong.test.notification(node_id:", true, 10)
         assert.logfile(name).has.line(
           "[rpc] notification has no response", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] unable to find RPC notify call: kong.test.not_exists_in_cp", true, 10)
         assert.logfile(name).has.no.line(
           "assertion failed", true, 0)
 
@@ -67,6 +69,8 @@ for _, strategy in helpers.each_strategy() do
           "notification is world", true, 10)
         assert.logfile(name).has.line(
           "[rpc] notification has no response", true, 10)
+        assert.logfile(name).has.line(
+          "[rpc] unable to find RPC notify call: kong.test.not_exists_in_dp", true, 10)
         assert.logfile(name).has.no.line(
           "assertion failed", true, 0)
 
