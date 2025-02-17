@@ -72,8 +72,9 @@ local function new_wasm_filter_directory()
 end
 
 
--- XXX TODO: enable rpc_sync = "on"
-for _, rpc_sync in ipairs { "off"  } do
+for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+  local rpc, rpc_sync = v[1], v[2]
+
 describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
   local cp_prefix = "cp"
   local cp_errlog = cp_prefix .. "/logs/error.log"
@@ -115,7 +116,8 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
       wasm_filters        = "user", -- don't enable bundled filters for this test
       wasm_filters_path   = cp_filter_path,
       nginx_main_worker_processes = 2,
-      cluster_rpc_sync = rpc_sync,
+      cluster_rpc         = rpc,
+      cluster_rpc_sync    = rpc_sync,
     }))
 
     assert.logfile(cp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
@@ -155,7 +157,8 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
         wasm_filters_path     = dp_filter_path,
         node_id               = node_id,
         nginx_main_worker_processes = 2,
-        cluster_rpc_sync = rpc_sync,
+        cluster_rpc           = rpc,
+        cluster_rpc_sync      = rpc_sync,
       }))
 
       assert.logfile(dp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
@@ -293,7 +296,10 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
     end)
   end)
 
-  describe("data planes with wasm disabled", function()
+  -- XXX TODO: currently sync v2 does not support configuration compatibility check
+  local only_sync_v1 = rpc_sync == "on" and pending or describe
+
+  only_sync_v1("data planes with wasm disabled", function()
     local node_id
 
     lazy_setup(function()
@@ -311,7 +317,8 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = "off",
         node_id               = node_id,
-        cluster_rpc_sync = rpc_sync,
+        cluster_rpc           = rpc,
+        cluster_rpc_sync      = rpc_sync,
       }))
     end)
 
@@ -329,7 +336,7 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
     end)
   end)
 
-  describe("data planes missing one or more wasm filter", function()
+  only_sync_v1("data planes missing one or more wasm filter", function()
     local tmp_dir
     local node_id
 
@@ -351,7 +358,8 @@ describe("#wasm - hybrid mode #postgres" .. " rpc_sync=" .. rpc_sync, function()
         wasm_filters          = "user", -- don't enable bundled filters for this test
         wasm_filters_path     = tmp_dir,
         node_id               = node_id,
-        cluster_rpc_sync = rpc_sync,
+        cluster_rpc           = rpc,
+        cluster_rpc_sync      = rpc_sync,
       }))
     end)
 
