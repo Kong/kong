@@ -1,3 +1,3 @@
-message: "**CORS**: add an option to skip return ACAO when request don't have Origin Header"
+message: "**CORS**: Added an option to skip returning the Access-Control-Allow-Origin response headeer when requests don't have the Origin Header"
 type: feature
 scope: Plugin
