@@ -3,7 +3,8 @@ local _MT = { __index = _M, }
 
 
 local hooks = require("kong.hooks")
-local EMPTY = require("kong.tools.table").EMPTY
+local kong_table = require("kong.tools.table")
+local EMPTY = kong_table.EMPTY
 
 
 local ipairs = ipairs
@@ -77,9 +78,13 @@ end
 
 
 function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
-  if not is_delete and entity and entity.ttl then
+  local dao = kong.db[name]
+
+  if not is_delete and dao and entity and entity.ttl then
     -- Replace relative TTL value to absolute TTL value
-    local exported_entity = self.strategy:export_entity(name, entity, options)
+    local export_options = kong_table.cycle_aware_deep_copy(options, true)
+    export_options["export"] = true
+    local exported_entity = dao:select(entity, export_options)
 
     if exported_entity and exported_entity.ttl then
       ngx_log(ngx_DEBUG, "[kong.sync.v2] Update TTL from relative value to absolute value ", exported_entity.ttl, ".")
