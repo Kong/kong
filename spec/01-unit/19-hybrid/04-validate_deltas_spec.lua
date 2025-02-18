@@ -141,6 +141,12 @@ describe("[delta validations]",function()
         delta.entity.ws_id = nil
         delta.ws_id = nil
       end
+
+      if delta.type == "services" then
+        assert(delta.entity.ws_id)
+        delta.entity.ws_id = ngx.null
+        delta.ws_id = ngx.null
+      end
     end
 
     local ok, err, err_t = validate_deltas(deltas)
@@ -148,13 +154,15 @@ describe("[delta validations]",function()
     assert.same(err_t, {
       code = 21,
       fields = {
-        routes = { {
-          ws_id = "required field missing"
-        } }
+        routes = {{
+          ws_id = "required field missing",
+        }},
+        services = {{
+          ws_id = "required field missing",
+        }}
       },
-      flattened_errors = {
-      },
-      message = 'sync deltas is invalid: {routes={{ws_id="required field missing"}}}',
+      flattened_errors = { },
+      message = 'sync deltas is invalid: {routes={{ws_id="required field missing"}},services={{ws_id="required field missing"}}}',
       name = "sync deltas parse failure",
       source = "kong.clustering.services.sync.validate.validate_deltas",
     })
