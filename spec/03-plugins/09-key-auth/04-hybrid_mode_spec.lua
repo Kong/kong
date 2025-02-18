@@ -61,7 +61,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       }))
 
       if rpc_sync == "on" then
-        assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 20)
+        assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 10)
       end
     end)
 
