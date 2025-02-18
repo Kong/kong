@@ -134,7 +134,30 @@ describe("[delta validations]",function()
     for _, delta in ipairs(deltas) do
       local ws_id = delta.ws_id
       assert(ws_id and ws_id ~= ngx.null)
+
+      -- mannually remove routes ws_id, and then validation will report error
+      if delta.type == "routes" then
+        assert(delta.entity.ws_id)
+        delta.entity.ws_id = nil
+        delta.ws_id = nil
+      end
     end
+
+    local ok, err, err_t = validate_deltas(deltas)
+
+    assert.same(err_t, {
+      code = 21,
+      fields = {
+        routes = { {
+          ws_id = "required field missing"
+        } }
+      },
+      flattened_errors = {
+      },
+      message = 'sync deltas is invalid: {routes={{ws_id="required field missing"}}}',
+      name = "sync deltas parse failure",
+      source = "kong.clustering.services.sync.validate.validate_deltas",
+    })
   end)
 
   it("route has no required field, but uses default value", function()
