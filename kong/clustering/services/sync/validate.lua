@@ -51,7 +51,7 @@ local function validate_deltas(deltas, is_full_sync)
         if not errs[delta_type] then
           errs[delta_type] = {}
         end
-        insert(errs[delta_type], { ["ws_id"] = "required field missing", })
+        insert(errs[delta_type], "workspace id not found")
       end
 
       -- table: primary key string -> entity
