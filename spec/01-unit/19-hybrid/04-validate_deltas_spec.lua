@@ -149,7 +149,7 @@ describe("[delta validations]",function()
       end
     end
 
-    local ok, err, err_t = validate_deltas(deltas)
+    local _, _, err_t = validate_deltas(deltas)
 
     assert.same(err_t, {
       code = 21,
