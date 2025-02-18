@@ -3,6 +3,7 @@ local json          = require "pgmoon.json"
 local cjson_safe    = require "cjson.safe"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
+local access = require("kong.plugins.session.access")
 
 
 local kong          = kong
@@ -1254,6 +1255,7 @@ function _M.new(connector, schema, errors)
     }
   })
 
+  -- Add statements for exporting database, avoiding exporting TTL in absolute value.
   add_statement_for_export("select", {
     operation = "read",
     expr = select_expressions,
