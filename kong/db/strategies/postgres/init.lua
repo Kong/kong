@@ -3,7 +3,6 @@ local json          = require "pgmoon.json"
 local cjson_safe    = require "cjson.safe"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
-local access = require("kong.plugins.session.access")
 
 
 local kong          = kong
