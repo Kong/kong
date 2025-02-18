@@ -154,15 +154,11 @@ describe("[delta validations]",function()
     assert.same(err_t, {
       code = 21,
       fields = {
-        routes = {{
-          ws_id = "required field missing",
-        }},
-        services = {{
-          ws_id = "required field missing",
-        }}
+        routes = { "workspace id not found" },
+        services = { "workspace id not found" },
       },
       flattened_errors = { },
-      message = 'sync deltas is invalid: {routes={{ws_id="required field missing"}},services={{ws_id="required field missing"}}}',
+      message = 'sync deltas is invalid: {routes={"workspace id not found"},services={"workspace id not found"}}',
       name = "sync deltas parse failure",
       source = "kong.clustering.services.sync.validate.validate_deltas",
     })
