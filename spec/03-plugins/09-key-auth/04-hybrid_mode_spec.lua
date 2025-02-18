@@ -60,7 +60,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         cluster_rpc_sync = rpc_sync,
       }))
 
-      assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 20)
+      if rpc_sync == "on" then
+        assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 20)
+      end
     end)
 
     lazy_teardown(function()
