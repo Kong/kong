@@ -131,6 +131,8 @@ describe("[delta validations]",function()
 
     local deltas = declarative.export_config_sync()
 
+    ngx.log(ngx.ERR, "xxxxxx ", require("inspect")(deltas))
+
     for _, delta in ipairs(deltas) do
       local ws_id = delta.ws_id
       assert(ws_id and ws_id ~= ngx.null)
