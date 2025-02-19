@@ -183,6 +183,10 @@ describe("[delta validations]",function()
     for _, delta in ipairs(deltas) do
       if delta.type == "routes" then
         delta.entity.protocols = nil
+        delta.entity.path_handling = nil
+        delta.entity.regex_priority = nil
+        delta.entity.https_redirect_status_code = nil
+        delta.entity.strip_path = nil
         break
       end
     end
@@ -194,6 +198,10 @@ describe("[delta validations]",function()
     for _, delta in ipairs(deltas) do
       if delta.type == "routes" then
         assert.equal(type(delta.entity.protocols), "table")
+        assert.equal(delta.entity.path_handling, "v0")
+        assert.equal(delta.entity.regex_priority, 0)
+        assert.equal(delta.entity.https_redirect_status_code, 426)
+        assert.truthy(delta.entity.strip_path)
         break
       end
     end
