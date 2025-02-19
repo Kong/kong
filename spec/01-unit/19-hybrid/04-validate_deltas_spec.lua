@@ -193,7 +193,7 @@ describe("[delta validations]",function()
     -- after validation the entities in deltas should have default values
     for _, delta in ipairs(deltas) do
       if delta.type == "routes" then
-        assert(delta.entity.protocols ~= nil)
+        assert.equal(type(delta.entity.protocols), "table")
         break
       end
     end
