@@ -44,6 +44,16 @@ local function validate_deltas(deltas, is_full_sync)
     local delta_entity = delta.entity
 
     if delta_entity ~= nil and delta_entity ~= null then
+
+      -- validate workspace id
+      local ws_id = delta_entity.ws_id or delta.ws_id
+      if not ws_id or ws_id == null then
+        if not errs[delta_type] then
+          errs[delta_type] = {}
+        end
+        insert(errs[delta_type], "workspace id not found")
+      end
+
       -- table: primary key string -> entity
       local schema = db[delta_type].schema
       local pk = schema:extract_pk_values(delta_entity)

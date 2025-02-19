@@ -134,7 +134,36 @@ describe("[delta validations]",function()
     for _, delta in ipairs(deltas) do
       local ws_id = delta.ws_id
       assert(ws_id and ws_id ~= ngx.null)
+
+      -- XXX EE: kong-ce entities exported from export_config_sync() do not
+      --         contain ws_id field, while kong-ee enntities does.
+      -- assert(delta.entity.ws_id)
+
+      -- mannually remove routes ws_id, and then validation will report error
+      if delta.type == "routes" then
+        delta.entity.ws_id = nil
+        delta.ws_id = nil
+      end
+
+      if delta.type == "services" then
+        delta.entity.ws_id = ngx.null
+        delta.ws_id = ngx.null
+      end
     end
+
+    local _, _, err_t = validate_deltas(deltas)
+
+    assert.same(err_t, {
+      code = 21,
+      fields = {
+        routes = { "workspace id not found" },
+        services = { "workspace id not found" },
+      },
+      flattened_errors = { },
+      message = 'sync deltas is invalid: {routes={"workspace id not found"},services={"workspace id not found"}}',
+      name = "sync deltas parse failure",
+      source = "kong.clustering.services.sync.validate.validate_deltas",
+    })
   end)
 
   it("route has no required field, but uses default value", function()
