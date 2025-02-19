@@ -107,7 +107,7 @@ return {
           end
 
           -- For JWK the `jwk.x5t` must match the `x5t` from the upper level
-          if entity.x5t and json_jwk.kid ~= entity.kid then
+          if entity.x5t and json_jwk.x5t ~= entity.x5t then
             return nil, "x5t in jwk.x5t must be equal to keys.x5t"
           end
 
