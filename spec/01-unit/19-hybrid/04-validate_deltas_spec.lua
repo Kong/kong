@@ -131,21 +131,21 @@ describe("[delta validations]",function()
 
     local deltas = declarative.export_config_sync()
 
-    ngx.log(ngx.ERR, "xxxxxx ", require("inspect")(deltas))
-
     for _, delta in ipairs(deltas) do
       local ws_id = delta.ws_id
       assert(ws_id and ws_id ~= ngx.null)
 
+      -- XXX EE: kong-ce entities exported from export_config_sync() do not
+      --         contain ws_id field, while kong-ee enntities does.
+      -- assert(delta.entity.ws_id)
+
       -- mannually remove routes ws_id, and then validation will report error
       if delta.type == "routes" then
-        assert(delta.entity.ws_id)
         delta.entity.ws_id = nil
         delta.ws_id = nil
       end
 
       if delta.type == "services" then
-        assert(delta.entity.ws_id)
         delta.entity.ws_id = ngx.null
         delta.ws_id = ngx.null
       end
