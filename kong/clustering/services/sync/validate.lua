@@ -90,7 +90,7 @@ local function validate_deltas(deltas, is_full_sync)
         else
           -- we already set the correct default values for entity
           copy.ws_id = delta_entity.ws_id
-          deltas.entity = copy
+          delta.entity = copy
         end -- if not ok
       end -- if dao
     end -- if delta_entity ~= nil and delta_entity ~= null

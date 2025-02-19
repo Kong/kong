@@ -189,6 +189,14 @@ describe("[delta validations]",function()
 
     local ok, err = validate_deltas(deltas)
     assert.is_true(ok, "validate should not fail: " .. tostring(err))
+
+    -- after validation the entities in deltas should have default values
+    for _, delta in ipairs(deltas) do
+      if delta.type == "routes" then
+        assert(delta.entity.protocols ~= nil)
+        break
+      end
+    end
   end)
 
   it("route has unknown field", function()
