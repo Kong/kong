@@ -155,7 +155,11 @@ describe("Tracer PDK", function()
       c_span.parent = nil
       assert.same(tpl, c_span)
 
+      log_spy:clear()
       assert.has_no.error(function () span:finish() end)
+      assert.spy(log_spy).was_not_called_with(
+          ngx.ERR, match.is_string(), match.is_number(), match.is_string(),
+          match.is_string())
     end)
 
     it("set_attribute validation", function ()
@@ -245,8 +249,12 @@ describe("Tracer PDK", function()
 
     it("access span table after finished", function ()
       local span = c_tracer.start_span("meow")
+      log_spy:clear()
       span:finish()
       assert.has_no.error(function () span:finish() end)
+      assert.spy(log_spy).was_not_called_with(
+          ngx.ERR, match.is_string(), match.is_number(), match.is_string(),
+          match.is_string())
     end)
 
     it("ends span", function ()
@@ -261,10 +269,22 @@ describe("Tracer PDK", function()
 
       local active_span = c_tracer.active_span()
       assert.same(span, active_span)
+      log_spy:clear()
       assert.has_no.error(function () active_span:finish() end)
+      assert.spy(log_spy).was_not_called_with(
+          ngx.ERR, match.is_string(), match.is_number(), match.is_string(),
+          match.is_string())
 
       -- span's property is still accessible
       assert.same("meow", active_span.name)
+
+      -- invalid span duration does not throw errors
+      local invalid_span = c_tracer.start_span("invalid")
+      log_spy:clear()
+      assert.has_no.error(function () invalid_span:finish(1) end)
+      assert.spy(log_spy).was_called_with(
+        ngx.ERR, "invalid span duration: ", match.is_number(), " for span: ",
+        match.is_string())
     end)
 
     it("release span", function ()

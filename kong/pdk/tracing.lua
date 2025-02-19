@@ -280,7 +280,9 @@ function span_mt:finish(end_time_ns)
   end
 
   if end_time_ns and end_time_ns < self.start_time_ns then
-    error("invalid span duration", 2)
+    ngx_log(ngx_ERR, "invalid span duration: ",
+        end_time_ns - self.start_time_ns, " for span: ", self.name)
+    return
   end
 
   self.end_time_ns = end_time_ns or ffi_time_unix_nano()
