@@ -326,7 +326,7 @@ local function do_sync()
   end
   assert(type(kong.default_workspace) == "string")
 
-  -- validate deltas
+  -- validate deltas and set the default values
   local ok, err, err_t = validate_deltas(deltas, wipe)
   if not ok then
     notify_error(ns_delta.latest_version, err_t)

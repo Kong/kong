@@ -86,10 +86,15 @@ local function validate_deltas(deltas, is_full_sync)
             errs_entities[delta_type] = {}
           end
           insert(errs_entities[delta_type], delta_entity)
-        end
-      end
-    end
-  end
+
+        else
+          -- we already set the correct default values for entity
+          copy.ws_id = delta_entity.ws_id
+          deltas.entity = copy
+        end -- if not ok
+      end -- if dao
+    end -- if delta_entity ~= nil and delta_entity ~= null
+  end -- for _, delta in ipairs(deltas)
 
   -- validate references
 
