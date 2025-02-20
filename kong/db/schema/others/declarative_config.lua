@@ -516,7 +516,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_
   for _, delta in ipairs(deltas) do
     local item_type = delta.type
     local item = delta.entity
-    local ws_id = delta.ws_id or kong.default_workspace
+    local ws_id = item.ws_id or delta.ws_id or kong.default_workspace
 
     local foreign_refs = foreign_references[item_type]
 
