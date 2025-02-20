@@ -2,6 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
 local cjson = require "cjson.safe"
 local supported_key_formats = require "kong.constants".KEY_FORMATS
+local null = ngx.null
 
 return {
   name          = "keys",
@@ -107,7 +108,7 @@ return {
           end
 
           -- For JWK the `jwk.x5t` must match the `x5t` from the upper level
-          if entity.x5t and json_jwk.x5t ~= entity.x5t then
+          if entity.x5t and entity.x5t ~= null and json_jwk.x5t ~= entity.x5t then
             return nil, "x5t in jwk.x5t must be equal to keys.x5t"
           end
 

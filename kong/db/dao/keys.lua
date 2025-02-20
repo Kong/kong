@@ -137,7 +137,7 @@ function keys:select_by_x5t_set_id(x5t, set_id)
   if x5t_type ~= "string" then
     return nil, "parameter `x5t` must be of type string"
   end
-  if set_id_type ~= "string" or set_id_type ~= "nil" then
+  if set_id_type ~= "string" and set_id_type ~= "nil" then
     return nil, "parameter `set_id` must be of type string or nil"
   end
 
