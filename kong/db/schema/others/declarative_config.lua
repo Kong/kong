@@ -516,13 +516,14 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_
   for _, delta in ipairs(deltas) do
     local item_type = delta.type
     local item = delta.entity
-    local ws_id = delta.ws_id or kong.default_workspace
 
     local foreign_refs = foreign_references[item_type]
 
     if not item or item == null or not foreign_refs then
       goto continue
     end
+
+    local ws_id = item.ws_id or delta.ws_id or kong.default_workspace
 
     for k, v in pairs(item) do
 
@@ -550,7 +551,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_
           errs[item_type] = errs[item_type] or {}
           errs[item_type][foreign_entity] = errs[item_type][foreign_entity] or {}
 
-          local msg = fmt("could not find %s's foreign refrences %s (%s)",
+          local msg = fmt("could not find %s's foreign references %s (%s)",
                           item_type, foreign_entity,
                           type(v) == "string" and v or cjson_encode(v))
 
