@@ -443,6 +443,7 @@ describe("kong.clustering.compat", function()
       local jwk_pub, jwk_priv = helpers.generate_keys("JWK")
       local pem_pub, pem_priv = helpers.generate_keys("PEM")
       local jwk = merge(cjson_decode(jwk_pub), cjson_decode(jwk_priv))
+      jwk.x5t = "x5t1"
 
 
       assert(declarative.load_into_db({
@@ -453,7 +454,7 @@ describe("kong.clustering.compat", function()
             id = "f0383152-a6b4-4351-983b-1844b14170c1",
             kid = jwk.kid,
             name = "key1",
-            x5t = "x5t1",
+            x5t = jwk.x5t,
             jwk = cjson_encode(jwk)
           },
           key2 = {
