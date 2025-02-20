@@ -268,7 +268,7 @@ describe("[delta validations]",function()
     local _, err, err_t = validate_deltas(deltas, false)
 
     assert.matches(
-      "entry 1 of 'services': could not find routes's foreign refrences services",
+      "entry 1 of 'services': could not find routes's foreign references services",
       err)
 
     assert.same(err_t, {
@@ -276,11 +276,11 @@ describe("[delta validations]",function()
       fields = {
         routes = {
           services = {
-            "could not find routes's foreign refrences services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})",
+            "could not find routes's foreign references services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})",
           },
         },
       },
-      message = [[sync deltas is invalid: {routes={services={"could not find routes's foreign refrences services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})"}}}]],
+      message = [[sync deltas is invalid: {routes={services={"could not find routes's foreign references services ({\"id\":\"00000000-0000-0000-0000-000000000000\"})"}}}]],
       flattened_errors = {},
       name = "sync deltas parse failure",
       source = "kong.clustering.services.sync.validate.validate_deltas",
@@ -350,7 +350,7 @@ describe("[delta validations]",function()
     for i = 1, 100 do
       assert.matches(
         "entry " .. i .. " of 'services': " ..
-        "could not find routes's foreign refrences services",
+        "could not find routes's foreign references services",
         err)
     end
   end)
