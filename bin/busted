@@ -2,32 +2,29 @@
 
 setmetatable(_G, nil)
 
-local pl_path = require("pl.path")
-local pl_file = require("pl.file")
+if not os.getenv("KONG_BUSTED_RESPAWNED") then
+  local pl_path = require("pl.path")
+  local pl_file = require("pl.file")
+  local tools_system = require("kong.tools.system")
 
-local tools_system = require("kong.tools.system")
+  local cert_path do
+    local busted_cert_file = pl_path.tmpname()
+    local busted_cert_content = pl_file.read("spec/fixtures/kong_spec.crt")
 
-local emmy_debugger = require("kong.tools.emmy_debugger")
+    local system_cert_path, err = tools_system.get_system_trusted_certs_filepath()
+    if system_cert_path then
+      busted_cert_content = busted_cert_content .. "\n" .. pl_file.read(system_cert_path)
+    end
 
-local cert_path do
-  local busted_cert_file = pl_path.tmpname()
-  local busted_cert_content = pl_file.read("spec/fixtures/kong_spec.crt")
+    local cluster_cert_content = assert(pl_file.read("spec/fixtures/kong_clustering.crt"))
+    busted_cert_content = busted_cert_content .. "\n" .. cluster_cert_content
 
-  local system_cert_path, err = tools_system.get_system_trusted_certs_filepath()
-  if system_cert_path then
-    busted_cert_content = busted_cert_content .. "\n" .. pl_file.read(system_cert_path)
+    pl_file.write(busted_cert_file, busted_cert_content)
+    cert_path = busted_cert_file
   end
 
-  local cluster_cert_content = assert(pl_file.read("spec/fixtures/kong_clustering.crt"))
-  busted_cert_content = busted_cert_content .. "\n" .. cluster_cert_content
+  local DEFAULT_RESTY_FLAGS = string.format(" -c 4096 --http-conf 'lua_ssl_trusted_certificate %s;' ", cert_path)
 
-  pl_file.write(busted_cert_file, busted_cert_content)
-  cert_path = busted_cert_file
-end
-
-local DEFAULT_RESTY_FLAGS=string.format(" -c 4096 --http-conf 'lua_ssl_trusted_certificate %s;' ", cert_path)
-
-if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- initial run, so go update the environment
   local script = {}
   for line in io.popen("set"):lines() do
@@ -80,7 +77,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
 end
 
 if os.getenv("BUSTED_EMMY_DEBUGGER") then
-  emmy_debugger.init({
+  require("kong.tools.emmy_debugger").init({
     debugger = os.getenv("BUSTED_EMMY_DEBUGGER"),
     host = os.getenv("BUSTED_EMMY_DEBUGGER_HOST"),
     port = os.getenv("BUSTED_EMMY_DEBUGGER_PORT"),
