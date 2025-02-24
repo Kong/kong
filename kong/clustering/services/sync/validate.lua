@@ -76,7 +76,12 @@ local function validate_deltas(deltas, is_full_sync)
         copy.ws_id = nil
 
         local ok, err_t = dao.schema:validate(copy)
-        if not ok then
+        if ok then
+          -- we already set the correct default values for entity
+          copy.ws_id = delta_entity.ws_id
+          delta.entity = copy
+
+        else
           if not errs[delta_type] then
             errs[delta_type] = {}
           end
@@ -86,11 +91,6 @@ local function validate_deltas(deltas, is_full_sync)
             errs_entities[delta_type] = {}
           end
           insert(errs_entities[delta_type], delta_entity)
-
-        else
-          -- we already set the correct default values for entity
-          copy.ws_id = delta_entity.ws_id
-          delta.entity = copy
         end -- if not ok
       end -- if dao
     end -- if delta_entity ~= nil and delta_entity ~= null
