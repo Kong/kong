@@ -185,10 +185,12 @@ function targets_M.on_target_event(operation, target)
         renewal_heap:remove(key)
         return true
       else
-        log(ERR, "could not stop DNS renewal for target ", target_entity, " removed from ", upstream_id, ": ", err)
+        log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
         return false
       end
     end
+
+    return true
   end
 
   if not cancel_dns_renewal(target, operation) then
