@@ -274,6 +274,32 @@ local function lmdb_delete(db, t, delta, opts, is_full_sync)
 end
 
 
+local function preprocess_deltas(deltas)
+  local default_ws_changed
+
+  for _, delta in ipairs(deltas) do
+    local delta_type = delta.type
+    local delta_entity = delta.entity
+
+    -- Update default workspace if delta is for workspace update
+    if delta_type == "workspaces" and
+      delta_entity ~= nil and
+      delta_entity ~= ngx_null and
+      delta_entity.name == "default" and
+      kong.default_workspace ~= delta_entity.id
+    then
+      kong.default_workspace = delta_entity.id
+      default_ws_changed = true
+      break
+    end
+  end -- for _, delta
+
+  assert(type(kong.default_workspace) == "string")
+
+  return default_ws_changed
+end
+
+
 local function do_sync()
   if not is_rpc_ready() then
     return nil, "rpc is not ready"
@@ -309,22 +335,7 @@ local function do_sync()
 
   -- we should find the correct default workspace
   -- and replace the old one with it
-  local default_ws_changed
-  for _, delta in ipairs(deltas) do
-    local delta_entity = delta.entity
-    -- Update default workspace if delta is for workspace update
-    if delta.type == "workspaces" and
-      delta_entity ~= nil and
-      delta_entity ~= ngx_null and
-      delta_entity.name == "default" and
-      kong.default_workspace ~= delta_entity.id
-    then
-      kong.default_workspace = delta_entity.id
-      default_ws_changed = true
-      break
-    end
-  end
-  assert(type(kong.default_workspace) == "string")
+  local default_ws_changed = preprocess_deltas(deltas)
 
   -- validate deltas and set the default values
   local ok, err, err_t = validate_deltas(deltas, wipe)
