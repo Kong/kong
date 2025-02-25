@@ -177,25 +177,26 @@ function targets_M.on_target_event(operation, target)
     return
   end
 
-  local function cancel_dns_renewal(target_entity, op)
-    if op ~= "create" then
-      local key, err = get_dns_renewal_key(target_entity)
-      if key then
-        renewal_weak_cache[key] = nil
-        renewal_heap:remove(key)
-        return true
-      else
-        log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
-        return false
-      end
+  local function cancel_dns_renewal(target_entity)
+    local key, err = get_dns_renewal_key(target_entity)
+    if not key then
+      return false, err
     end
 
+    renewal_weak_cache[key] = nil
+    renewal_heap:remove(key)
     return true
   end
 
-  if not cancel_dns_renewal(target, operation) then
-    for _, t in ipairs(targets_list) do
-      cancel_dns_renewal(t, operation)
+  if operation ~= "create" then
+    local ok, err = cancel_dns_renewal(target)
+    if not ok then
+      for _, t in ipairs(targets_list) do
+        ok, err = cancel_dns_renewal(t)
+        if not ok then
+          log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+        end
+      end
     end
   end
 
