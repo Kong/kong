@@ -274,7 +274,7 @@ local function lmdb_delete(db, t, delta, opts, is_full_sync)
 end
 
 
-local function precheck_deltas(deltas)
+local function preprocess_deltas(deltas)
   local default_ws_changed
 
   for _, delta in ipairs(deltas) do
@@ -335,7 +335,7 @@ local function do_sync()
 
   -- we should find the correct default workspace
   -- and replace the old one with it
-  local default_ws_changed = precheck_deltas(deltas)
+  local default_ws_changed = preprocess_deltas(deltas)
 
   -- validate deltas and set the default values
   local ok, err, err_t = validate_deltas(deltas, wipe)
