@@ -189,7 +189,8 @@ function targets_M.on_target_event(operation, target)
   end
 
   if operation ~= "create" then
-    local ok, err = cancel_dns_renewal(target)
+    local ok, err
+    ok = cancel_dns_renewal(target)
     if not ok then
       for _, t in ipairs(targets_list) do
         ok, err = cancel_dns_renewal(t)
