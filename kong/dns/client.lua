@@ -186,7 +186,8 @@ function _M.new(opts)
 
   local r_opts = {
     retrans = opts.retrans or resolv.options.attempts or 5,
-    timeout = opts.timeout or resolv.options.timeout or 2000, -- ms
+    timeout = (opts.timeout and opts.timeout * 1000) or (resolv.options.timeout
+      and resolv.options.timeout * 1000) or 2000, -- ms
     no_random = no_random,
     nameservers = nameservers,
   }
