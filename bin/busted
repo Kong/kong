@@ -3,7 +3,6 @@
 setmetatable(_G, nil)
 
 local pl_path = require("pl.path")
-
 local pl_file = require("pl.file")
 
 local tools_system = require("kong.tools.system")
@@ -47,6 +46,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   end
   -- add cli recursion detection
   table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
+  table.insert(script, "export KONG_IS_TESTING=1")
 
   -- rebuild the invoked commandline, while inserting extra resty-flags
   local resty_flags = DEFAULT_RESTY_FLAGS
@@ -63,6 +63,10 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
 
   -- create shared dict
   resty_flags = resty_flags .. require("spec.fixtures.shared_dict")
+
+  -- create lmdb environment
+  local lmdb_env = os.tmpname()
+  resty_flags = resty_flags .. string.format(' --main-conf "lmdb_environment_path %s;" ', lmdb_env)
 
   if resty_flags then
     table.insert(cmd, cmd_prefix_count+1, resty_flags)

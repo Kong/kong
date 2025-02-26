@@ -32,7 +32,7 @@ function _M:run(_)
     else
       kong.response.clear_header("Content-Encoding")
     end
-  else
+  elseif not get_global_ctx("response_body_sent") then
     kong.response.clear_header("Content-Encoding")
   end
   return true

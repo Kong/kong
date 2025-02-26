@@ -1,0 +1,15 @@
+diff --git a/bundle/lua-cjson-2.1.0.14/lua_cjson.c b/bundle/lua-cjson-2.1.0.14/lua_cjson.c
+index bbd8eff..c39c425 100644
+--- a/bundle/lua-cjson-2.1.0.14/lua_cjson.c
++++ b/bundle/lua-cjson-2.1.0.14/lua_cjson.c
+@@ -1495,6 +1495,10 @@ static int json_decode(lua_State *l)
+     if (token.type != T_END)
+         json_throw_parse_error(l, &json, "the end", &token);
+ 
++    /* Make sure T_END (\x00) doesn't occur at middle of input */
++    if (json.data + json_len > json.ptr)
++        json_throw_parse_error(l, &json, "EOF", &token);
++
+     strbuf_free(json.tmp);
+ 
+     return 1;

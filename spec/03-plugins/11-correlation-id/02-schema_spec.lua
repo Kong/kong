@@ -86,11 +86,33 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
     end)
   end)
 
-  --- XXX FIXME: enable rpc_sync = on
-  for _, rpc_sync in ipairs { "off" } do
+  for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
+    local rpc, rpc_sync = v[1], v[2]
   describe("in hybrid mode" .. " rpc_sync=" .. rpc_sync, function()
     local route
+
     lazy_setup(function()
+      -- if the database is not cleared, the residual RPC connection information 
+      -- between different tests will cause the test to fail.
+      local plugin_name = "correlation-id"
+      bp, db = helpers.get_db_utils(strategy, { "plugins", "workspaces", })
+      ws = db.workspaces:select_by_name("default")
+      plugin_id = uuid.generate_v4()
+      local sql = render([[
+        INSERT INTO plugins (id, name, config, enabled, ws_id) VALUES
+          ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE, '$(WS_ID)');
+        COMMIT;
+      ]], {
+        ID = plugin_id,
+        PLUGIN_NAME = plugin_name,
+        CONFIG = pgmoon_json.encode_json(plugin_config),
+        WS_ID = ws.id,
+      })
+
+      local res, err = db.connector:query(sql)
+      assert.is_nil(err)
+      assert.is_not_nil(res)
+
       route = bp.routes:insert({
         hosts = {"example.com"},
       })
@@ -102,9 +124,9 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         },
       }
       local sql = render([[
-        UPDATE plugins SET route_id='$(ROUTE_ID)', 
-        protocols=ARRAY['grpc','grpcs','http','https'], 
-        cache_key='$(CACHE_KEY)' 
+        UPDATE plugins SET route_id='$(ROUTE_ID)',
+        protocols=ARRAY['grpc','grpcs','http','https'],
+        cache_key='$(CACHE_KEY)'
         WHERE id='$(ID)';
         COMMIT;
       ]], {
@@ -124,6 +146,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         prefix = "servroot",
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_rpc = rpc,
         cluster_rpc_sync = rpc_sync,
       }))
 
@@ -136,8 +159,13 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         status_listen = "127.0.0.1:9100",
+        cluster_rpc = rpc,
         cluster_rpc_sync = rpc_sync,
       }))
+
+      if rpc_sync == "on" then
+        assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 10)
+      end
     end)
 
     before_each(function()
@@ -174,17 +202,20 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       assert.equals("uuid#counter", res.config.generator)
 
       local proxy_client = helpers.proxy_client(20000, 9002, "127.0.0.1")
-      res = assert(proxy_client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          ["Host"] = "example.com",
-        }
-      })
-      assert.res_status(200, res)
-      assert.is_not_nil(res.headers["Kong-Request-ID"])
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "example.com",
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_not_nil(res.headers["Kong-Request-ID"])
+      end, 10)
       proxy_client:close()
+
     end)
   end)
-  end -- for rpc_sync
+  end -- for rpc, rpc_sync
 end)

@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.2.0" "busted-hjtest 0.0.5" "luacheck 1.2.0" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0" "lua-reqwest 0.1.1"
+DEV_ROCKS = "busted 2.2.0" "busted-hjtest 0.0.5" "luacheck 1.2.0" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.16.0" "lua-reqwest 0.1.1"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -44,7 +44,7 @@ endif
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 GRPCURL_VERSION ?= 1.8.5
-BAZLISK_VERSION ?= 1.20.0
+BAZLISK_VERSION ?= 1.25.0
 H2CLIENT_VERSION ?= 0.4.4
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built

@@ -73,6 +73,9 @@ lua_kong_load_var_index default;
 
 upstream kong_upstream {
     server 0.0.0.1;
+> if upstream_keepalive_pool_size > 0 then
+    balancer_keepalive ${{UPSTREAM_KEEPALIVE_POOL_SIZE}};
+> end
 
     # injected nginx_upstream_* directives
 > for _, el in ipairs(nginx_upstream_directives) do
@@ -357,9 +360,11 @@ server {
           -- we need to re-set them here to the new nginx request.
           local ctx = ngx.ctx
           local upstream_ssl = require("kong.runloop.upstream_ssl")
+          local upstream_retry = require("kong.runloop.upstream_retry")
 
           upstream_ssl.set_service_ssl(ctx)
           upstream_ssl.fallback_upstream_client_cert(ctx)
+          upstream_retry.fallback_proxy_next_upstream()
         }
         access_by_lua_block        {;}
         header_filter_by_lua_block {;}

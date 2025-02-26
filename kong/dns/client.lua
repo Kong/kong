@@ -8,7 +8,6 @@ local now = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local NOTICE = ngx.NOTICE
 local DEBUG = ngx.DEBUG
 local ALERT = ngx.ALERT
 local timer_at = ngx.timer.at
@@ -158,8 +157,8 @@ function _M.new(opts)
     end
   end
 
-  log(NOTICE, PREFIX, "supported types: ", enable_srv and "srv " or "",
-              enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
+  log(DEBUG, PREFIX, "supported types: ", enable_srv and "srv " or "",
+             enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
 
   -- parse resolv.conf
   local resolv, err = parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
@@ -338,16 +337,71 @@ local function process_answers(self, qname, qtype, answers)
 end
 
 
+local function set_resolver_for_curr_try(tries, server)
+  if not server or not tries then
+    return
+  end
+
+  -- server is a table with { host, port? }
+  local server_str = #server == 1 and server[1] or server[1] .. ":" .. server[2]
+  tries[#tries].resolver = server_str
+end
+
+
+local function set_for_curr_try(tries, key, value)
+  local current_try = tries[#tries]
+  if not current_try then
+    return
+  end
+
+  current_try[key] = value
+end
+
+
+local function add_for_curr_try(tries, key, value)
+  local current_try = tries[#tries]
+  if not current_try then
+    return
+  end
+
+  if not current_try[key] then
+    current_try[key] = {}
+  end
+
+  table_insert(current_try[key], value)
+end
+
+
 local function resolve_query(self, name, qtype, tries)
   local key = name .. ":" .. qtype
 
   local stats = self.stats
 
   stats:incr(key, "query")
+  -- initialize try
+  table_insert(tries, {
+    qname = name,
+    qtype = qtype,
+    cache_hit = false,
+  })
 
   local r, err = resolver:new(self.r_opts)
   if not r then
     return nil, "failed to instantiate the resolver: " .. err
+  end
+
+  -- set resolver address for current try
+  if r.servers and r.cur then
+    local current = r.cur == 1 and #r.servers or r.cur
+
+    -- validate undocumented fields
+    if type(current) ~= "number" and type(r.servers) ~= "table" then
+      log(ERR, PREFIX, "cannot read resolver info")
+
+    else
+      local current_server = r.servers[current]
+      set_resolver_for_curr_try(tries, current_server)
+    end
   end
 
   local start = now()
@@ -369,7 +423,7 @@ local function resolve_query(self, name, qtype, tries)
 
     -- TODO: make the error more structured, like:
     --       { qname = name, qtype = qtype, error = err, } or something similar
-    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
+    add_for_curr_try(tries, "error", err)
 
     return nil, err
   end
@@ -385,7 +439,8 @@ local function resolve_query(self, name, qtype, tries)
     err = ("dns %s error: %s %s"):format(
             answers.errcode < CACHE_ONLY_ERROR_CODE and "server" or "client",
             answers.errcode, answers.errstr)
-    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
+    add_for_curr_try(tries, "error", err)
+    set_for_curr_try(tries, "errcode", answers.errcode)
   end
 
   return answers
@@ -537,7 +592,7 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
 end
 
 
-local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
+function _M:resolve_all(name, qtype, cache_only, tries, has_timing)
   name = string_lower(name)
   tries = setmetatable(tries or {}, _TRIES_MT)
 
@@ -547,7 +602,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
 
   local key = name .. ":" .. qtype
 
-  log(DEBUG, PREFIX, "resolve_all ", key)
+  --log(DEBUG, PREFIX, "resolve_all ", key)
 
   local stats = self.stats
 
@@ -563,9 +618,18 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
 
   local hit_str = hit_level and HIT_LEVEL_TO_NAME[hit_level] or "fail"
   stats:incr(key, hit_str)
+  if #tries == 0 then
+    -- initialize try
+    table_insert(tries, {
+      qname = name,
+      qtype = qtype,
+      cache_hit = true,
+      resolver = "cache",
+    })
+  end
 
-  log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
-                     " hlv:", hit_str)
+  --log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
+  --                   " hlv:", hit_str)
 
   if has_timing then
     req_dyn_hook_run_hook("timing", "dns:cache_lookup",
@@ -584,7 +648,7 @@ end
 
 
 function _M:resolve(name, qtype, cache_only, tries)
-  return resolve_all(self, name, qtype, cache_only, tries,
+  return self:resolve_all(name, qtype, cache_only, tries,
                      ngx.ctx and ngx.ctx.has_timing)
 end
 
@@ -592,13 +656,13 @@ end
 function _M:resolve_address(name, port, cache_only, tries)
   local has_timing = ngx.ctx and ngx.ctx.has_timing
 
-  local answers, err, tries = resolve_all(self, name, nil, cache_only, tries,
+  local answers, err, tries = self:resolve_all(name, nil, cache_only, tries,
                                           has_timing)
 
   if answers and answers[1] and answers[1].type == TYPE_SRV then
     local answer = get_next_weighted_round_robin_answer(answers)
     port = answer.port ~= 0 and answer.port or port
-    answers, err, tries = resolve_all(self, answer.target, TYPE_A_OR_AAAA,
+    answers, err, tries = self:resolve_all(answer.target, TYPE_A_OR_AAAA,
                                       cache_only, tries, has_timing)
   end
 

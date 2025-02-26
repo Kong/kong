@@ -17,7 +17,7 @@ describe("Plugin: file-log (schema)", function()
     },
     ----------------------------------------
     {
-      name = "rejects invalid filename",
+      name = "rejects invalid filename includes *",
       input = {
         path = "/ovo*",
         reopen = true
@@ -30,6 +30,100 @@ describe("Plugin: file-log (schema)", function()
       }
     },
     ----------------------------------------
+    {
+      name = "rejects invalid filename includes `",
+      input = {
+        path = "/ovo`",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    ----------------------------------------
+    {
+      name = "rejects invalid filename includes &",
+      input = {
+        path = "test&thing",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    ----------------------------------------
+    {
+      name = "rejects invalid filename includes %",
+      input = {
+        path = "test%thing",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    ----------------------------------------
+    {
+      name = "rejects invalid filename includes \\",
+      input = {
+        path = "test\\thing",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    ----------------------------------------
+    {
+      name = "beginning spaces are not allowed",
+      input = {
+        path = " /ovo",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    -- ----------------------------------------
+    {
+      name = "trailing spaces are not allowed",
+      input = {
+        path = "/ovo  ",
+        reopen = true
+      },
+      output = nil,
+      error = {
+        config = {
+          path = "not a valid filename"
+        }
+      }
+    },
+    ----------------------------------------
+    {
+      name = "accept valid filename that includes space",
+      input = {
+        path = "/o vo.loga",
+        reopen = true
+      },
+      output = true,
+      error = nil,
+    },
+    ------------------------------------
     {
       name = "accepts valid filename",
       input = {

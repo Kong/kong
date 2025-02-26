@@ -9,6 +9,7 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local string = string
@@ -126,7 +127,7 @@ function _M:export_deflated_reconfigure_payload()
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. (worker_id() or -1)
   kong_dict:set(shm_key_name, json_encode(self.plugins_configured))
-  ngx_log(ngx_DEBUG, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
+  kong.log.trace(_log_prefix, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
@@ -260,7 +261,7 @@ function _M:handle_cp_websocket(cert)
       labels = data.labels,
       cert_details = dp_cert_details,
       -- only update rpc_capabilities if dp_id is connected
-      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or {},
+      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or EMPTY,
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
@@ -373,7 +374,7 @@ function _M:handle_cp_websocket(cert)
         return nil, "invalid websocket frame received from data plane: " .. typ
       end
 
-      ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
+      kong.log.trace(_log_prefix, "received ping frame from data plane", log_suffix)
 
       config_hash = data
       last_seen = ngx_time()
@@ -419,7 +420,7 @@ function _M:handle_cp_websocket(cert)
           ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
 
         else
-          ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
+          kong.log.trace(_log_prefix, "sent pong frame to data plane", log_suffix)
         end
 
         -- pong ok

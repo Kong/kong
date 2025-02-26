@@ -34,7 +34,6 @@ local now_updated  = require("kong.tools.time").get_updated_now
 
 
 local WARN                          = ngx.WARN
-local DEBUG                         = ngx.DEBUG
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
@@ -373,9 +372,9 @@ ORDER BY %s LIMIT 50000 FOR UPDATE SKIP LOCKED)
         end
 
         local _tracing_cleanup_end_time = now()
-        local time_elapsed = tonumber(fmt("%.3f", _tracing_cleanup_end_time - _tracing_cleanup_start_time))
-        log(DEBUG, "cleaning up expired rows from table '", table_names[i],
-                   "' took ", time_elapsed, " seconds")
+        local time_elapsed =  _tracing_cleanup_end_time - _tracing_cleanup_start_time
+        kong.log.trace(fmt("cleaning up expired rows from table '%s' took %.3f seconds",
+                       table_names[i], time_elapsed))
       end
     end)
   end

@@ -231,6 +231,7 @@ local constants = {
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
   CLUSTERING_DATA_PLANE_ERROR = {
     CONFIG_PARSE     = "declarative configuration parse failure",
+    DELTAS_PARSE     = "sync deltas parse failure",
     RELOAD           = "configuration reload failed",
     GENERIC          = "generic or unknown error",
   },

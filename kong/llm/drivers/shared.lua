@@ -82,6 +82,7 @@ _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
   ["text/event-stream"] = true,
   ["application/vnd.amazon.eventstream"] = true,
   ["application/json"] = true,
+  ["application/stream+json"] = true,
 }
 
 _M.streaming_has_token_counts = {
@@ -93,10 +94,10 @@ _M.streaming_has_token_counts = {
 }
 
 _M.upstream_url_format = {
-  openai        = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
+  openai        = fmt("%s://api.openai.com:%s", openai_override and "http" or "https", openai_override or "443"),
   anthropic     = "https://api.anthropic.com:443",
   cohere        = "https://api.cohere.com:443",
-  azure         = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  azure         = fmt("%s://%%s.openai.azure.com:%s/openai/deployments/%%s", openai_override and "http" or "https", openai_override or "443"),
   gemini        = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
@@ -353,7 +354,7 @@ function _M.frame_to_events(frame, content_type)
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
   local frame_start = frame and frame:sub(1, 1)
-  if frame_start == "," or frame_start == "[" then
+  if (not kong or not kong.ctx.plugin.truncated_frame) and (frame_start == "," or frame_start == "[") then
     local done = false
 
     -- if this is the first frame, it will begin with array opener '['
@@ -416,7 +417,7 @@ function _M.frame_to_events(frame, content_type)
       if #dat > 0 and #event_lines == i then
         ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
         if kong then
-          kong.ctx.plugin.truncated_frame = dat
+          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), dat)
         end
 
         break  -- stop parsing immediately, server has done something wrong
@@ -944,8 +945,12 @@ end
 
 function _M.override_upstream_url(parsed_url, conf)
   if conf.route_type == "preserve" then
-    parsed_url.path = conf.model.options and conf.model.options.upstream_path
-      or kong.request.get_path()
+    -- if `upstream_path` was set, already processes before,
+    -- for some provider, like azure and huggingface, the specific prefix need to prepended to the path.
+    if conf.model.options and conf.model.options.upstream_path then
+      return
+    end
+    parsed_url.path = kong.request.get_path()
   end
 end
 

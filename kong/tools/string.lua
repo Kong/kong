@@ -45,34 +45,26 @@ _M.strip = function(value)
     return ""
   end
 
-  local len = #value
   local s = 1 -- position of the leftmost non-whitespace char
-  for i = 1, len do
-    local b = byte(value, i)
-    if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
-      s = s + 1
-    else
-      break
-    end
-  end
-
-  if s > len then
+  ::spos::
+  local b = byte(value, s)
+  if not b then -- reached the end of the all whitespace string
     return ""
   end
-
-  local e = len -- position of the rightmost non-whitespace char
-  if s < e then
-    for i = e, 1, -1 do
-      local b = byte(value, i)
-      if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
-        e = e - 1
-      else
-        break
-      end
-    end
+  if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
+    s = s + 1
+    goto spos
   end
 
-  if s ~= 1 or e ~= len then
+  local e = -1 -- position of the rightmost non-whitespace char
+  ::epos::
+  b = byte(value, e)
+  if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
+    e = e - 1
+    goto epos
+  end
+
+  if s ~= 1 or e ~= -1 then
     value = sub(value, s, e)
   end
 

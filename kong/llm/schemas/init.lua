@@ -190,7 +190,10 @@ local model_options_schema = {
         description = "Manually specify or override the AI operation path, "
                    .. "used when e.g. using the 'preserve' route_type.",
         type = "string",
-        required = false }},
+        required = false,
+        deprecation = {
+          message = "llm: config.model.options.upstream_path is deprecated, please use config.model.options.upstream_url instead",
+          removal_in_version = "4.0",}, }},
     { gemini = gemini_options_schema },
     { bedrock = bedrock_options_schema },
     { huggingface = huggingface_options_schema},

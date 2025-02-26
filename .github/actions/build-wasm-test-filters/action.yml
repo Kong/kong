@@ -10,79 +10,70 @@ runs:
     - name: Setup env vars
       shell: bash
       run: |
-        WASM_FILTER_PATH=$PWD/spec/fixtures/proxy_wasm_filters
-        echo "WASM_FILTER_PATH=$WASM_FILTER_PATH" >> $GITHUB_ENV
-        echo "WASM_FIXTURE_PATH=$WASM_FILTER_PATH/build" >> $GITHUB_ENV
-        echo "WASM_FILTER_CARGO_LOCK=$WASM_FILTER_PATH/Cargo.lock" >> $GITHUB_ENV
-        echo "WASM_FILTER_TARGET=wasm32-wasip1" >> "$GITHUB_ENV"
+        FILTER_PATH=$PWD/spec/fixtures/proxy_wasm_filters
+        {
+          echo "WASM_FILTER_PATH=$FILTER_PATH"
+          echo "WASM_FIXTURE_PATH=$FILTER_PATH/build"
+          echo "WASM_FILTER_CARGO_LOCK=$FILTER_PATH/Cargo.lock"
+          echo "WASM_FILTER_TARGET=wasm32-wasip1"
+        } >> $GITHUB_ENV
 
     - name: Setup cache key
       shell: bash
       env:
-        FILE_HASH: "${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}"
-        CACHE_VERSION: "4"
+        FILE_HASH: ${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
+        CACHE_VERSION: "6"
+        RUNNER_OS: ${{ runner.os }}
       run: |
-        CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${{ runner.os }}::${WASM_FILTER_TARGET}"
-        echo "CACHE_PREFIX=${CACHE_PREFIX}" >> $GITHUB_ENV
-        echo "CACHE_KEY=${CACHE_PREFIX}::${FILE_HASH}" >> $GITHUB_ENV
+        CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${RUNNER_OS}::${WASM_FILTER_TARGET}::"
+        {
+          echo "WASM_CACHE_PREFIX=${CACHE_PREFIX}"
+          echo "WASM_CACHE_KEY=${CACHE_PREFIX}${FILE_HASH}"
+        } >> $GITHUB_ENV
 
     - name: Restore Cache
       uses: actions/cache/restore@v4
       id: restore-cache
       with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.CACHE_KEY }}
-        restore-keys: ${{ env.CACHE_PREFIX }}
+        path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
+        key: ${{ env.WASM_CACHE_KEY }}
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
       with:
-        profile: minimal
         toolchain: stable
-        override: true
         components: cargo
-        target: ${{ env.WASM_FILTER_TARGET }}
+        targets: ${{ env.WASM_FILTER_TARGET }}
 
-    - name: cargo build
+    - name: Build Test Filters
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
+      shell: bash
+      run: |
         # building in release mode yields smaller library sizes, so it's
         # better for our cacheability
-        args: >
-          --manifest-path "${{ env.WASM_FILTER_PATH }}/Cargo.toml"
-          --workspace
-          --lib
-          --target "${{ env.WASM_FILTER_TARGET }}"
+        cargo build \
+          --manifest-path "${WASM_FILTER_PATH:?}/Cargo.toml" \
+          --workspace \
+          --lib \
+          --target "${WASM_FILTER_TARGET:?}" \
           --release
 
     - name: Save cache
       if: steps.restore-cache.outputs.cache-hit != 'true'
       id: save-cache
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v4
       with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          ${{ env.WASM_FILTER_PATH }}/target
-        key: ${{ env.CACHE_KEY }}
+        path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
+        key: ${{ env.WASM_CACHE_KEY }}
 
     - name: Create a symlink to the target directory
       shell: bash
       run: |
         ln -sfv \
           --no-target-directory \
-          "${{ env.WASM_FILTER_PATH }}"/target/"${{ env.WASM_FILTER_TARGET }}"/release \
-          "${{ env.WASM_FIXTURE_PATH }}"
+          "${WASM_FILTER_PATH:?}"/target/"${WASM_FILTER_TARGET:?}"/release \
+          "${WASM_FIXTURE_PATH:?}"
 
     - name: debug
       shell: bash

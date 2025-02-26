@@ -1,0 +1,17 @@
+diff --git a/bundle/ngx_lua-0.10.27/src/ngx_http_lua_subrequest.c b/bundle/ngx_lua-0.10.27/src/ngx_http_lua_subrequest.c
+index 2ccd271..edb24e9 100644
+--- a/bundle/ngx_lua-0.10.27/src/ngx_http_lua_subrequest.c
++++ b/bundle/ngx_lua-0.10.27/src/ngx_http_lua_subrequest.c
+@@ -173,12 +173,6 @@ ngx_http_lua_ngx_location_capture_multi(lua_State *L)
+         return luaL_error(L, "no request object found");
+     }
+ 
+-#if (NGX_HTTP_V2)
+-    if (r->main->stream) {
+-        return luaL_error(L, "http2 requests not supported yet");
+-    }
+-#endif
+-
+     ctx = ngx_http_get_module_ctx(r, ngx_http_lua_module);
+     if (ctx == NULL) {
+         return luaL_error(L, "no ctx found");

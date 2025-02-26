@@ -2,7 +2,18 @@ local _M = {}
 local _MT = { __index = _M }
 
 
+local type = type
+local sub = string.sub
+local fmt = string.format
 local ngx_null = ngx.null
+
+
+-- version string should look like: "v02_0000"
+local VER_PREFIX = "v02_"
+local VER_PREFIX_LEN = #VER_PREFIX
+local VER_DIGITS = 28
+-- equivalent to "v02_" .. "%028x"
+local VERSION_FMT = VER_PREFIX .. "%0" .. VER_DIGITS .. "x"
 
 
 function _M.new(db)
@@ -44,10 +55,37 @@ function _M:get_latest_version()
 
   local ver = res[1] and res[1].max
   if ver == ngx_null then
-    return 0
+    return fmt(VERSION_FMT, 0)
   end
 
-  return ver
+  return fmt(VERSION_FMT, ver)
+end
+
+
+function _M:is_valid_version(str)
+  if type(str) ~= "string" then
+    return false
+  end
+
+  if #str ~= VER_PREFIX_LEN + VER_DIGITS then
+    return false
+  end
+
+  -- | v02_xxxxxxxxxxxxxxxxxxxxxxxxxx |
+  --   |--|
+  -- Is starts with "v02_"?
+  if sub(str, 1, VER_PREFIX_LEN) ~= VER_PREFIX then
+    return false
+  end
+
+  -- | v02_xxxxxxxxxxxxxxxxxxxxxxxxxx |
+  --       |------------------------|
+  -- Is the rest a valid hex number?
+  if not tonumber(sub(str, VER_PREFIX_LEN + 1), 16) then
+    return false
+  end
+
+  return true
 end
 
 

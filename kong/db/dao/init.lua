@@ -636,7 +636,7 @@ local function check_upsert(self, key, entity, options, name)
 end
 
 
-local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
+local function recursion_over_constraints(self, entity, opts, entries, c)
   local constraints = c and c.schema:get_constraints()
                       or self.schema:get_constraints()
 
@@ -650,7 +650,7 @@ local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
     if constraint.on_delete == "cascade" then
       local dao = self.db.daos[constraint.schema.name]
       local method = "each_for_" .. constraint.field_name
-      for row, err in dao[method](dao, pk, nil, show_ws_id) do
+      for row, err in dao[method](dao, pk, nil, opts) do
         if not row then
           log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
           break
@@ -658,7 +658,7 @@ local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
 
         insert(entries, { dao = dao, entity = row })
 
-        recursion_over_constraints(self, row, show_ws_id, entries, constraint)
+        recursion_over_constraints(self, row, opts, entries, constraint)
       end
     end
   end
@@ -667,10 +667,10 @@ local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
 end
 
 
-local function find_cascade_delete_entities(self, entity, show_ws_id)
+local function find_cascade_delete_entities(self, entity, opts)
   local entries = {}
 
-  recursion_over_constraints(self, entity, show_ws_id, entries)
+  recursion_over_constraints(self, entity, opts, entries)
 
   return entries
 end

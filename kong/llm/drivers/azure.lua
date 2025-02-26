@@ -121,7 +121,7 @@ function _M.configure_request(conf)
   ai_shared.override_upstream_url(parsed_url, conf)
 
   -- if the path is read from a URL capture, 3re that it is valid
-  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+  parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
@@ -143,7 +143,6 @@ function _M.configure_request(conf)
 
   local query_table = kong.request.get_query()
 
-  -- technically min supported version
   query_table["api-version"] = kong.request.get_query_arg("api-version")
                             or (conf.model.options and conf.model.options.azure_api_version)
 

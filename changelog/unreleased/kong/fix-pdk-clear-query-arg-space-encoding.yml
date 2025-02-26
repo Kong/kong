@@ -1,0 +1,6 @@
+message: |
+   **kong.service.request.clear_query_arg**: Changed the encoding of spaces in query arguments from `+`
+   to `%20` as a short-term solution to an issue that some users are reporting. While the `+` is correct
+   encoding of space in querystrings, Kong uses `%20` in many other APIs (inherited from Nginx / OpenResty)
+type: breaking_change
+scope: Plugin

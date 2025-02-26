@@ -2,20 +2,21 @@ local resty_mlcache = require "kong.resty.mlcache"
 local buffer = require "string.buffer"
 
 
-local encode  = buffer.encode
-local type    = type
-local pairs   = pairs
-local error   = error
-local max     = math.max
-local ngx     = ngx
-local shared  = ngx.shared
+local encode = buffer.encode
+local type = type
+local pairs = pairs
+local error = error
+local max = math.max
+local ngx = ngx
+local shared = ngx.shared
 local ngx_log = ngx.log
+local get_phase = ngx.get_phase
 
 
 
-local ERR     = ngx.ERR
-local NOTICE  = ngx.NOTICE
-local DEBUG   = ngx.DEBUG
+local ERR = ngx.ERR
+local NOTICE = ngx.NOTICE
+local DEBUG = ngx.DEBUG
 
 
 local NO_TTL_FLAG = resty_mlcache.NO_TTL_FLAG
@@ -263,7 +264,9 @@ end
 
 
 function _M:purge()
-  log(NOTICE, "purging (local) cache")
+  if get_phase() ~= "timer" then
+    log(NOTICE, "purging (local) cache")
+  end
   local ok, err = self.mlcache:purge(true)
   if not ok then
     log(ERR, "failed to purge cache: ", err)

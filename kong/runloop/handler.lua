@@ -992,8 +992,30 @@ return {
       if strategy ~= "off" or kong.sync then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
+        --[[
+                    +-----------+
+                    |   Start   | <-------------------------------------+
+                    +-----------+                                       |
+                          |                                             |
+                          |                                             |
+                          v                                             |
+                    ***************************           +-------+     |
+                    * Is reconfigure running? * ---Yes--->| Sleep | ----+
+                    ***************************           +-------+
+                          |                                   ^
+                          No                                  |
+                          |                                   |
+                          v                                   |
+                    +---------------+                         |
+                    | rebuild router|-------------------------+
+                    +---------------+
+
+            Since reconfigure will also rebuild the router, we skip this round
+            of rebuilding the router.
+        --]]
         local router_async_opts = {
-          name = "router",
+          name = RECONFIGURE_OPTS and RECONFIGURE_OPTS.name or "router", -- please check the above diagram for the
+                                        -- reason of using the same name as reconfigure
           timeout = 0,
           on_timeout = "return_true",
         }
@@ -1433,8 +1455,9 @@ return {
         return exit(500)
       end
 
+      local header_cache = {}
       -- clear hop-by-hop request headers:
-      local http_connection = get_header("connection", ctx)
+      local http_connection = get_header("connection", header_cache)
       if http_connection ~= "keep-alive" and
          http_connection ~= "close"      and
          http_connection ~= "upgrade"
@@ -1455,7 +1478,7 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      local http_te = get_header("te", ctx)
+      local http_te = get_header("te", header_cache)
       if http_te then
         if http_te == "trailers" then
           var.upstream_te = "trailers"
@@ -1470,11 +1493,11 @@ return {
         end
       end
 
-      if get_header("proxy", ctx) then
+      if get_header("proxy", header_cache) then
         clear_header("Proxy")
       end
 
-      if get_header("proxy_connection", ctx) then
+      if get_header("proxy_connection", header_cache) then
         clear_header("Proxy-Connection")
       end
     end

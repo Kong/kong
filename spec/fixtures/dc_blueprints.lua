@@ -28,7 +28,9 @@ local function remove_nulls(tbl)
 end
 
 
-local function wrap_db(db)
+-- tparam boolean expand_foreigns expand the complete "foreign"-type fields, not
+-- replacing it with "string"-type fields
+local function wrap_db(db, expand_foreigns)
   local dc_as_db = {}
 
   local config = new_config()
@@ -43,7 +45,7 @@ local function wrap_db(db)
         local schema = db.daos[name].schema
         tbl = schema:process_auto_fields(tbl, "insert")
         for fname, field in schema:each_field() do
-          if field.type == "foreign" then
+          if not expand_foreigns and field.type == "foreign" then
             tbl[fname] = type(tbl[fname]) == "table"
                          and tbl[fname].id
                          or nil
@@ -110,8 +112,8 @@ local function wrap_db(db)
 end
 
 
-function dc_blueprints.new(db)
-  local dc_as_db = wrap_db(db)
+function dc_blueprints.new(db, expand_foreigns)
+  local dc_as_db = wrap_db(db, expand_foreigns)
 
   local save_dc = new_config()
 
