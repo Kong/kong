@@ -1,6 +1,7 @@
 local pl_dir    = require("pl.dir")
 local pl_path   = require("pl.path")
 
+
 local MIGRATIONS = {
     {
         dir = "kong/db/migrations/core",
