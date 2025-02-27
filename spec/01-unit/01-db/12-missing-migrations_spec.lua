@@ -6,10 +6,7 @@ local MIGRATIONS = {
   {
     dir = "kong/db/migrations/core",
     index = "kong/db/migrations/core/init.lua",
-    skip = {
-      -- FIXME: KAG-6487
-      ["kong/db/migrations/core/025_390_to_3100.lua"] = true,
-    },
+    skip = {},
   },
 }
 local PLUGIN_DIRS = {
