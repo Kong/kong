@@ -347,6 +347,56 @@ for _, strategy in helpers.all_strategies() do
               end
             }
           }
+
+          location = "/gemini/llm/v1/chat/functions/good" {
+            content_by_lua_block {
+              local _EVENT_CHUNKS = {
+                [1] = '[{\r\n  "candidates": [\r\n    {\r\n      "content": {\r\n        "role": "model",\r\n        "parts": [\r\n          {\r\n            "functionCall": {\r\n              "name": "add",\r\n              "args": {\r\n                "a": 2,\r\n                "b": 12\r\n              }\r\n            }\r\n          }\r\n        ]\r\n      },\r\n',
+                [2] = '      "finishReason": "STOP",\r\n      "safetyRatings": [\r\n        {\r\n          "category": "HARM_CATEGORY_HATE_SPEECH",\r\n          "probability": "NEGLIGIBLE",\r\n          "probabilityScore": 0.10498047,\r\n          "severity": "HARM_SEVERITY_NEGLIGIBLE",\r\n          "severityScore": 0.09423828\r\n        },\r\n        {\r\n          "category": "HARM_CATEGORY_DANGEROUS_CONTENT",\r\n          "probability": "NEGLIGIBLE",\r\n          "probabilityScore": 0.23535156,\r\n          "severity": "HARM_SEVERITY_NEGLIGIBLE",\r\n          "severityScore": 0.13378906\r\n        },\r\n        {\r\n          "category": "HARM_CATEGORY_HARASSMENT",\r\n          "probability": "NEGLIGIBLE",\r\n          "probabilityScore": 0.15917969,\r\n          "severity": "HARM_SEVERITY_NEGLIGIBLE",\r\n          "severityScore": 0.09814453\r\n        },\r\n        {\r\n          "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",\r\n          "probability": "NEGLIGIBLE",\r\n          "probabilityScore": 0.09033203,\r\n          "severity": "HARM_SEVERITY_NEGLIGIBLE",\r\n          "severityScore": 0.087402344\r\n        }\r\n      ]\r\n    }\r\n  ],\r\n  "usageMetadata": {\r\n    "promptTokenCount": 47,\r\n    "candidatesTokenCount": 3,\r\n    "totalTokenCount": 50,\r\n    "promptTokensDetails": [\r\n      {\r\n        "modality": "TEXT",\r\n        "tokenCount": 47\r\n      }\r\n    ],\r\n    "candidatesTokensDetails": [\r\n      {\r\n        "modality": "TEXT",\r\n        "tokenCount": 3\r\n      }\r\n    ]\r\n  },\r\n  "modelVersion": "gemini-1.5-pro-001",\r\n  "createTime": "2025-02-20T21:58:56.381597Z",\r\n  "responseId": "oKW3Z52lF4762PgP4P6i4Ak"\r\n}',
+                [3] = ']',
+              }
+
+              local fmt = string.format
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/json"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(fmt("%s\n\n", EVENT))
+              end
+            }
+          }
+ 
+          location = "/bedrock/llm/v1/chat/functions/good" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local _EVENT_CHUNKS = {}
+
+              for i=1,3 do
+                local encoded = pl_file.read("spec/fixtures/ai-proxy/bedrock/chunks/chunk-" .. i .. ".txt")
+                local decoded = ngx.decode_base64(encoded)
+                _EVENT_CHUNKS[i] = decoded
+              end
+
+              local fmt = string.format
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/vnd.amazon.eventstream"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(fmt("%s", EVENT))
+              end
+            }
+          }
         }
       ]]
 
@@ -553,6 +603,92 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
+      -- 200 chat gemini with functions
+      local gemini_chat_functions_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/gemini/llm/v1/chat/functions/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = gemini_chat_functions_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "gemini-1.5-flash",
+            provider = "gemini",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/gemini/llm/v1/chat/functions/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            header_name = "x-goog-api-key",
+            header_value = "123",
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = gemini_chat_functions_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat gemini with functions
+      local bedrock_chat_functions_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock/llm/v1/chat/functions/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_functions_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "aws-titan-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/functions/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_functions_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      helpers.setenv("AWS_REGION", "us-east-1")
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -567,6 +703,7 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     lazy_teardown(function()
+      helpers.unsetenv("AWS_REGION")
       helpers.stop_kong()
       os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
@@ -913,6 +1050,145 @@ for _, strategy in helpers.all_strategies() do
         assert.equal(#events, 1)
         assert.equal(res.status, 400)
         -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request gemini with function calls", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/gemini/llm/v1/chat/functions/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream-with-functions.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+
+        -- extract event
+        local func_name
+        local func_args
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = string.sub(s,7)
+              s = cjson.decode(s_copy)
+
+              if s and s.choices then
+                func_name = s.choices[1].delta.tool_calls[1]['function'].name
+                func_args = s.choices[1].delta.tool_calls[1]['function'].arguments
+              end
+            end
+          end
+        until not buffer
+
+        assert.equal("add", func_name)
+
+        -- function args ordering can be randomised by kong during cjson.encode
+        local args = cjson.decode(func_args)
+        assert.equal(2, args.a)
+        assert.equal(12, args.b)
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock with function calls", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock/llm/v1/chat/functions/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream-with-functions.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        local func_name
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = string.sub(s,7)
+              s = cjson.decode(s_copy)
+
+              if s
+                 and s.choices
+                 and #s.choices > 0
+                 and s.choices[1].delta
+                 and s.choices[1].delta.tool_calls
+              then
+                if s.choices[1].delta.tool_calls[1]['function'].name then
+                  func_name = s.choices[1].delta.tool_calls[1]['function'].name
+                end
+                if s.choices[1].delta.tool_calls[1]['function'].arguments then
+                  buf:put(s.choices[1].delta.tool_calls[1]['function'].arguments)
+                end
+              end
+            end
+          end
+        until not buffer
+
+        assert.equal("add", func_name)
+
+        -- function args ordering can be randomised by kong during cjson.encode
+        local args = cjson.decode(buf:tostring())
+        assert.equal(2, args.a)
+        assert.equal(12, args.b)
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
