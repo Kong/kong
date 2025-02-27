@@ -73,6 +73,14 @@ local function is_function_call_message(message)
         and #message.tool_calls > 0
 end
 
+local function has_finish_reason(event)
+  return event
+         and event.candidates
+         and #event.candidates > 0
+         and event.candidates[1].finishReason
+         or nil
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
@@ -89,12 +97,11 @@ local function handle_stream_event(event_t, model_info, route_type)
     return nil, "failed to decode stream event frame from gemini", nil
   end
 
+  local finish_reason = has_finish_reason(event)  -- may be nil
+
   if is_response_content(event) then
     local metadata = {}
-    metadata.finished_reason   = event.candidates
-                             and #event.candidates > 0
-                             and event.candidates[1].finishReason
-                             or "STOP"
+    metadata.finish_reason     = finish_reason
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
 
@@ -106,11 +113,50 @@ local function handle_stream_event(event_t, model_info, route_type)
             role = "assistant",
           },
           index = 0,
+          finish_reason = finish_reason
         },
       },
     }
 
     return cjson.encode(new_event), nil, metadata
+  
+  elseif is_tool_content(event) then
+    local metadata = {}
+    metadata.finish_reason     = finish_reason
+    metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
+    metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+
+    if event.candidates and #event.candidates > 0 then
+      local new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {},
+            },
+            index = 0,
+            finish_reason = finish_reason
+          },
+        },
+      }
+
+      local function_call_responses = event.candidates[1].content.parts
+
+      if function_call_responses and #function_call_responses > 0 then
+        for i, v in ipairs(function_call_responses) do
+          new_event.choices[1].delta.tool_calls[i] = {
+            ['function'] = {
+              name = v.functionCall.name,
+              arguments = cjson.encode(v.functionCall.args),
+            },
+            ['type'] = "function",
+          }
+        end
+      end
+
+      return cjson.encode(new_event), nil, metadata
+    end
+
+
   end
 end
 
