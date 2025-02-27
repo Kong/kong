@@ -21,10 +21,6 @@ local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
 end
-
-local function str_rtrim(s) -- remove trailing whitespace from string.
-  return type(s) == "string" and s:match('^(.*%S)%s*$')
-end
 --
 
 local log_entry_keys = {
@@ -76,6 +72,7 @@ end
 _M._CONST = {
   ["SSE_TERMINATOR"] = "[DONE]",
   ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
+  ["GEMINI_STREAM_CONTENT_TYPE"] = "application/json",
 }
 
 _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
@@ -336,6 +333,117 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
   end
 end
 
+
+local function json_array_iterator(input_str, prev_state)
+  local state = prev_state or {
+    started = false,
+    pos = 1,
+    input = input_str,
+    eof = false,
+  }
+
+  if state.eof then
+    error("Iterator has reached end of input")
+  end
+
+  -- If new input provided, append it to existing input
+  if prev_state and input_str then
+    state.input = state.input:sub(state.pos) .. input_str
+    state.pos = 1
+  end
+
+  local len = #state.input
+
+  -- Handle array start
+  if not state.started then
+    -- Skip whitespace
+    while state.pos <= len and state.input:sub(state.pos, state.pos):match("%s") do
+      state.pos = state.pos + 1
+    end
+    if state.pos > len or state.input:sub(state.pos, state.pos) ~= "[" then
+      error("Invalid start: expected '['")
+    end
+    state.started = true
+    state.pos = state.pos + 1
+  end
+
+  -- Skip whitespace
+  while state.pos <= len and state.input:sub(state.pos, state.pos):match("%s") do
+    state.pos = state.pos + 1
+  end
+
+  return function()
+    -- Find next complete element using bracket matching
+    local start_pos = state.pos
+    local brace_count = 0
+    local bracket_count = 0
+    local in_string = false
+    local escape_next = false
+
+    while state.pos <= len do
+      local char = state.input:sub(state.pos, state.pos)
+
+      -- Handle string literals
+      if char == '"' and not escape_next then
+        in_string = not in_string
+      end
+
+      -- Handle escape sequences
+      if char == '\\' and not escape_next then
+        escape_next = true
+      else
+        escape_next = false
+      end
+
+      local delimiter
+
+      -- Count braces and brackets when not in string
+      if not in_string then
+        if char == '{' then
+          brace_count = brace_count + 1
+        elseif char == '}' then
+          brace_count = brace_count - 1
+        elseif char == '[' then
+          bracket_count = bracket_count + 1
+        elseif char == ']' then
+          bracket_count = bracket_count - 1
+          -- Found element delimiter by top level closing bracket
+          if brace_count == 0 and bracket_count == -1 then
+            delimiter = state.pos - 1
+            state.eof = true
+          end
+        elseif char == ',' and brace_count == 0 and bracket_count == 0 then
+          -- Found element delimiter at top level
+          delimiter = state.pos - 1
+          -- if delimiter is at start of string, skip it in next iteration
+          if state.pos == 1 then
+            start_pos = 2
+          end
+        elseif brace_count == 0 and bracket_count == 0 and state.pos == len then
+          -- Found element delimiter at end of string
+          delimiter = state.pos
+        end
+
+        if delimiter and start_pos < len and delimiter >= start_pos then
+          state.pos = state.pos + 1  -- move past delimeter
+          local element = state.input:sub(start_pos, delimiter)
+          -- strip starting and trailing whitespace
+          element = element:gsub("^%s*(.-)%s*$", "%1")
+          if element and element ~= "" then
+            return element, state
+          end
+        end
+      end
+
+      state.pos = state.pos + 1
+    end
+
+    -- If we reach here, we need more data
+    state.pos = start_pos
+    return nil, state
+  end
+end
+
 ---
 -- Splits a HTTPS data chunk or frame into individual
 -- SSE-format messages, see:
@@ -359,31 +467,21 @@ function _M.frame_to_events(frame, content_type)
 
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
-  local frame_start = frame and frame:sub(1, 1)
-  if (not kong or not kong.ctx.plugin.truncated_frame) and (frame_start == "," or frame_start == "[") then
-    local done = false
-
-    -- if this is the first frame, it will begin with array opener '['
-    frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
-
-    -- it may start with ',' which is the start of the new frame
-    frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
-
-    -- it may end with the array terminator ']' indicating the finished stream
-    if string.sub(str_rtrim(frame), -1) == "]" then
-      frame = string.sub(str_rtrim(frame), 1, -2)
-      done = true
-    end
-
-    -- for multiple events that arrive in the same frame, split by top-level comma
-    for _, v in ipairs(split(frame, "\n,")) do
-      events[#events+1] = { data = v }
-    end
-
-    if done then
-      -- add the done signal here
-      -- but we have to retrieve the metadata from a previous filter run
-      events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+  if content_type == _M._CONST.GEMINI_STREAM_CONTENT_TYPE then
+    for element, new_state in json_array_iterator(frame, kong.ctx.plugin.gemini_state) do
+      kong.ctx.plugin.gemini_state = new_state
+      if element then
+        local _, err = cjson.decode(element)
+        if err then
+          kong.log.err("malformed JSON in gemini stream: ", err, ": ", element)
+        end
+        events[#events+1] = { data = element }
+      end
+      if new_state.eof then  -- array end
+        kong.ctx.plugin.gemini_state = nil
+        events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+        return events
+      end
     end
 
   elseif content_type == _M._CONST.AWS_STREAM_CONTENT_TYPE then
@@ -401,7 +499,7 @@ function _M.frame_to_events(frame, content_type)
   -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  elseif (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
+  elseif (not kong or (not kong.ctx.plugin.gemini_state and not kong.ctx.plugin.truncated_frame)) and string.sub(str_ltrim(frame), 1, 1) == "{" then
     for event in frame:gmatch("[^\r\n]+") do
       events[#events + 1] = {
         data = event,
@@ -961,6 +1059,16 @@ function _M.override_upstream_url(parsed_url, conf)
 end
 
 -- for unit tests
-_M._count_words = count_words
+if _G.TEST then
+  _M._count_words = count_words
+  _M._frame_to_events = _M.frame_to_events
+  _M._json_array_iterator = json_array_iterator
+  _M._set_kong = function(this_kong)
+    _G.kong = this_kong
+  end
+  _M._get_kong = function()
+    return kong
+  end
+end
 
 return _M

@@ -130,7 +130,7 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   -- decode and determine the event type
-  local event = cjson.decode(event_t.data)  
+  local event = cjson.decode(event_t.data)
   local event_type = event and event.headers and event.headers[":event-type"]
 
   if not event_type then
@@ -160,23 +160,80 @@ local function handle_stream_event(event_t, model_info, route_type)
       system_fingerprint = cjson.null,
     }
 
-  elseif event_type == "contentBlockDelta" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = (body.delta
-                   and body.delta.text)
-                   or "",
+  elseif event_type == "contentBlockStart" then
+    -- check for tool-usage entrypoint
+    if body.start and body.start.toolUse then
+      local tool_name = body.start.toolUse.name
+      local tool_id = body.start.toolUse.toolUseId
+
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {
+                {
+                  index = body.contentBlockIndex,
+                  id = tool_id,
+                  ['function'] = {
+                    name = tool_name,
+                    arguments = "",
+                  },
+                }
+              }
+            },
+            index = 0,
+            logprobs = cjson.null,
           },
-          index = 0,
-          finish_reason = cjson.null,
-          logprobs = cjson.null,
         },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+    end
+
+  elseif event_type == "contentBlockDelta" then
+    -- check for async streamed tool parameters
+    if body.delta and body.delta.toolUse then
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {
+                {
+                  index = body.contentBlockIndex,
+                  ['function'] = {
+                    arguments = body.delta.toolUse.input,
+                  },
+                }
+              }
+            },
+            index = 0,
+            logprobs = cjson.null,
+          },
+        },
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+
+    else
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = (body.delta
+                     and body.delta.text)
+                     or "",
+            },
+            index = 0,
+            logprobs = cjson.null,
+          },
+        },
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+    end
 
   elseif event_type == "messageStop" then
     new_event = {
@@ -236,9 +293,23 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         system_prompts[#system_prompts+1] = { text = v.content }
 
       elseif v.role and v.role == "tool" then
+        local tool_literal_content
         local tool_execution_content, err = cjson.decode(v.content)
         if err then
           return nil, nil, "failed to decode function response arguments, not JSON format"
+        end
+
+        if type(tool_execution_content) == "table" then
+          tool_literal_content = {
+            json = tool_execution_content
+          }
+
+        else
+          tool_literal_content = {
+            json = {
+              result = tool_execution_content
+            }
+          }
         end
 
         local content = {
@@ -246,9 +317,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
             toolResult = {
               toolUseId = v.tool_call_id,
               content = {
-                {
-                  json = tool_execution_content,
-                },
+                tool_literal_content
               },
               status = v.status,
             },
@@ -265,14 +334,14 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         local content
         if type(v.content) == "table" then
           content = v.content
-        
+
         elseif v.tool_calls and (type(v.tool_calls) == "table") then
           for k, tool in ipairs(v.tool_calls) do
             local inputs, err = cjson.decode(tool['function'].arguments)
             if err then
               return nil, nil, "failed to decode function response arguments from assistant's message, not JSON format"
             end
-              
+
             content = {
               {
                 toolUse = {
@@ -282,7 +351,6 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
                 },
               },
             }
-
           end
 
         else
