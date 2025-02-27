@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed Gemini streaming responses getting truncated and/or missing tokens.
+type: "bugfix"
+scope: "Plugin"

@@ -1,5 +1,5 @@
 local buffer = require("string.buffer")
-local cjson = require("cjson")
+local cjson = require("cjson.safe")
 
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local strip = require("kong.tools.string").strip
@@ -181,7 +181,8 @@ local function handle_streaming_frame(conf, chunk, finished)
       }
     }
 
-    set_global_ctx("response_body", cjson.encode(composite_response_t)) -- to be consumed by other plugins
+    local response, _ = cjson.encode(composite_response_t)
+    set_global_ctx("response_body", response) -- to be consumed by other plugins
 
     ngx.arg[1] = nil
     if body_buffer then

@@ -1,0 +1,57 @@
+{
+  "messages": [
+    {
+      "content": "What is 2 + 12? Then, multiply that result by 10?",
+      "role": "user"
+    }
+  ],
+  "n": 1,
+  "stream": true,
+  "temperature": 0.7,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "add",
+        "description": "Adds a and b.",
+        "parameters": {
+          "properties": {
+            "a": {
+              "type": "integer"
+            },
+            "b": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "a",
+            "b"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "multiply",
+        "description": "Multiplies a and b.",
+        "parameters": {
+          "properties": {
+            "a": {
+              "type": "integer"
+            },
+            "b": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "a",
+            "b"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  ]
+}
