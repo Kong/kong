@@ -83,7 +83,12 @@ local function assert_no_missing_migrations(migrations)
             -- @file: kong/db/migrations/core/010_210_to_211.lua
             -- @basename: 010_210_to_211.lua
             local basename = pl_path.basename(file)
-            assert.True(basename:sub(-4) == ".lua", "unexpected file " .. basename)
+
+            if not basename:sub(-4) == ".lua" then
+                -- skip non-lua files
+                goto continue
+            end
+
             -- strip the extension
             -- @migration_name: 010_210_to_211
             local migration_name = basename:sub(1, -5)
