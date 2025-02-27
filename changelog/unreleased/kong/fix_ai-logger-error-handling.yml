@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed incorrect error thrown when trying to log streaming responses.
+type: "bugfix"
+scope: "Plugin"
