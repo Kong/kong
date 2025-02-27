@@ -140,8 +140,11 @@ local function page_for_prefix(self, prefix, size, offset, options, follow, sche
       return nil, err
     end
 
-    ret_idx = ret_idx + 1
-    ret[ret_idx] = item
+    if item then
+      -- Skip nil value (expired entity detected in construct_entity)
+      ret_idx = ret_idx + 1
+      ret[ret_idx] = item
+    end
   end
 
   -- more need to query

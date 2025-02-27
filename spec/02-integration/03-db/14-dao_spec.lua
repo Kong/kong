@@ -217,6 +217,34 @@ for _, strategy in helpers.all_strategies() do
       expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key, { skip_ttl = true })
       assert.is_nil(expired_keyauth_credentials)
     end)
+
+    it("should not preserve expired entities as nil in the result of page method", function()
+      bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
+        key = uuid(),
+      }, { })
+      bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
+        key = uuid(),
+      }, { ttl = 2 })
+      bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
+        key = uuid(),
+      }, { })
+
+      local res = kong.db.keyauth_credentials:page()
+      assert.equal(3, #res)
+
+      -- wait for 2+1 seconds.
+      ngx.sleep(3)
+
+      res = kong.db.keyauth_credentials:page()
+      assert.equal(2, #res)
+
+      for _, entity in ipairs(res) do
+        assert.is_table(entity)
+      end
+    end)
   end)
 end
 
