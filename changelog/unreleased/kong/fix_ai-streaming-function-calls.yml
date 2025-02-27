@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed tool calls not working in streaming mode for Bedrock and Gemini providers.
+type: "bugfix"
+scope: "Plugin"
