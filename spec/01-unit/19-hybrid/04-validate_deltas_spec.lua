@@ -466,5 +466,35 @@ describe("[delta validations]",function()
     assert_same_validation_error(deltas, config, errs)
   end)
 
+  it("unloaded plugin", function()
+    local bp = setup_bp()
+
+    -- add entities
+    db_insert(bp, "workspaces", { name = "ws-001" })
+
+    -- add the unloaded plugin which will trigger a validation error
+    db_insert(bp, "plugins", { name = "unloaded-plugin", })
+
+    local deltas = declarative.export_config_sync()
+
+    local config = declarative.export_config()
+
+    local errs = {
+      fields = {},
+      flattened_errors = {{
+        entity_id = config.plugins[1].id,
+        entity_name = "unloaded-plugin",
+        entity_type = "plugin",
+        errors = {{
+          field = "name",
+          message = "plugin 'unloaded-plugin' not enabled; add it to the 'plugins' configuration property",
+          type = "field",
+        }},
+      }},
+    }
+
+    assert_same_validation_error(deltas, config, errs)
+  end)
+
   -- TODO: add more test cases
 end)

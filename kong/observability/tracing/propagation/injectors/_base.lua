@@ -2,7 +2,6 @@ local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local to_id_size  = propagation_utils.to_id_size
 local set_header  = kong.service.request.set_header
-local contains    = require("kong.tools.table").table_contains
 local type = type
 local ipairs = ipairs
 
@@ -72,6 +71,11 @@ function _INJECTOR:new(e)
          inst.span_id_size_bytes > 0,
          err .. "invalid span_id_size_bytes variable")
 
+  local allowed_lookup = {}
+  for _, size in ipairs(inst.trace_id_allowed_sizes) do
+    allowed_lookup[size] = true
+  end
+  inst.trace_id_allowed_sizes_lookup = allowed_lookup
   return inst
 end
 
@@ -148,8 +152,9 @@ function _INJECTOR:inject(inj_tracing_ctx)
   -- Extractors automatically set `trace_id_original_size` during extraction.
   local orig_size = inj_tracing_ctx.trace_id_original_size
   local allowed = self.trace_id_allowed_sizes
-  local new_trace_id_size = contains(allowed, orig_size) and orig_size
-      or allowed[1]
+  local lookup = self.trace_id_allowed_sizes_lookup
+
+  local new_trace_id_size = lookup[orig_size] and orig_size or allowed[1]
 
   inj_tracing_ctx.trace_id  = to_id_size(inj_tracing_ctx.trace_id, new_trace_id_size)
   inj_tracing_ctx.span_id   = to_id_size(inj_tracing_ctx.span_id, self.span_id_size_bytes)
