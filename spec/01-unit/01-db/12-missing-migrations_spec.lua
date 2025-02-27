@@ -84,7 +84,7 @@ local function assert_no_missing_migrations(migrations)
             -- @basename: 010_210_to_211.lua
             local basename = pl_path.basename(file)
 
-            if not basename:sub(-4) == ".lua" then
+            if basename:sub(-4) ~= ".lua" then
                 -- skip non-lua files
                 goto continue
             end
