@@ -10,7 +10,7 @@ local MIGRATIONS = {
       -- FIXME: KAG-6487
       ["kong/db/migrations/core/025_390_to_3100.lua"] = true,
     },
-  }
+  },
 }
 local PLUGIN_DIRS = {
   "kong/plugins",
