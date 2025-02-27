@@ -1,5 +1,6 @@
 local pl_dir  = require("pl.dir")
 local pl_path = require("pl.path")
+local pl_tblx = require("pl.tablex")
 
 
 local MIGRATIONS = {
@@ -15,50 +16,6 @@ local PLUGIN_DIRS = {
 
 
 --[[
-  input: {
-    "a",
-    "b",
-    "c",
-  }
-
-  output: {
-    a = true,
-    b = true,
-    c = true,
-  }
---]]
-local function array2map(array)
-  local map = {}
-  for _, value in ipairs(array) do
-    assert(type(value) == "string")
-    map[value] = true
-  end
-  return map
-end
-
-
---[[
-  input: {
-    a = <anything A>,
-    b = <anything B>,
-    c = <anything C>,
-  }
-
-  output: {
-    <anything A>,
-    <anything B>,
-    <anything C>,
-  }
---]]
-local function flatten(map)
-  local array = {}
-  for _, v in pairs(map) do
-    table.insert(array, v)
-  end
-  return array
-end
-
---[[
   This function will fail for the following cases:
   1. An migration file is exists but not listed in the `init.lua` file.
   2. An migration file is marked as skipped but still listed in the `init.lua` file.
@@ -71,7 +28,7 @@ local function assert_no_missing_migrations(migrations)
         ...
       }
     --]]
-    local indexed_migration = array2map(loadfile(migration.index)())
+    local indexed_migration = pl_tblx.makeset(loadfile(migration.index)())
     local files = pl_dir.getfiles(migration.dir)
     for _, file in ipairs(files) do
       if file == migration.index then
@@ -142,7 +99,7 @@ describe("Checking missing entry for migrations", function()
 
     plugin_migrations["pre-function"].skip["kong/plugins/pre-function/migrations/_001_280_to_300.lua"] = true
 
-    plugin_migrations = flatten(migrations)
+    plugin_migrations = pl_tblx.values(migrations)
   end)
 
   it("core migrations", function()
