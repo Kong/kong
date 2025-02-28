@@ -151,6 +151,10 @@ hybrid_helper.run_for_each_deploy({ }, function(helpers, strategy, deploy, rpc, 
     describe("access", function()
       local proxy_client
 
+      before_each(function()
+        helpers.wait_for_all_config_update()
+      end)
+
       lazy_setup(function()
         assert(helpers.start_kong({
           nginx_conf = "spec/fixtures/custom_nginx.template",
