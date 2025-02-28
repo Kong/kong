@@ -154,7 +154,7 @@ function _INJECTOR:inject(inj_tracing_ctx)
   local allowed = self.trace_id_allowed_sizes
   local lookup = self.trace_id_allowed_sizes_lookup
 
-  local new_trace_id_size = (orig_size ~= nil and lookup[orig_size]) and orig_size or allowed[1]
+  local new_trace_id_size = lookup[orig_size] and orig_size or allowed[1]
 
   inj_tracing_ctx.trace_id  = to_id_size(inj_tracing_ctx.trace_id, new_trace_id_size)
   inj_tracing_ctx.span_id   = to_id_size(inj_tracing_ctx.span_id, self.span_id_size_bytes)
