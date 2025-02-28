@@ -1,5 +1,5 @@
 --- XXX CE [[
---- We don't need this in EE because a identical migration step is already existed.
+--- We don't need this in EE because an identical migration step is already existed.
 return {
   postgres = {
     up = [[
