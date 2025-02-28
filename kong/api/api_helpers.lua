@@ -257,6 +257,9 @@ function _M.before_filter(self)
       end
     end
 
+  elseif type(content_type) == "table" then
+    return kong.response.exit(400, "Multiple Content-Type headers not allowed")
+
   elseif sub(content_type, 1, 16) == "application/json"
       or sub(content_type, 1, 19) == "multipart/form-data"
       or sub(content_type, 1, 33) == "application/x-www-form-urlencoded"
