@@ -1,14 +1,15 @@
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local admin_api = require "spec.fixtures.admin_api"
 local cjson = require "cjson"
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: basic-auth (invalidations) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({ }, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: basic-auth (invalidations) [" .. helpers.format_tags() .. "]", function()
     local admin_client
     local proxy_client
     local db
 
     lazy_setup(function()
+      local _
       _, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -69,6 +70,8 @@ for _, strategy in helpers.each_strategy() do
           consumer = { id = consumer.id },
         }
       end
+
+      helpers.wait_for_all_config_update()
     end)
 
     it("#invalidates credentials when the Consumer is deleted", function()
@@ -86,13 +89,19 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      -- ensure cache is populated
-      local cache_key = db.basicauth_credentials:cache_key("bob")
-      res = assert(admin_client:send {
-        method = "GET",
-        path   = "/cache/" .. cache_key
-      })
-      assert.res_status(200, res)
+      if deploy == "traditional" then
+        -- ensure cache is populated, /cache endpoint only available in traditional mode
+        local cache_key = db.basicauth_credentials:cache_key("bob")
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key
+        })
+        assert.res_status(200, res)
+
+      else
+        -- ensure config is up to date
+        helpers.wait_for_all_config_update()
+      end
 
       -- delete Consumer entity
       res = assert(admin_client:send {
@@ -103,8 +112,15 @@ for _, strategy in helpers.each_strategy() do
       consumer = nil
       credential = nil
 
-      -- ensure cache is invalidated
-      helpers.wait_for_invalidation(cache_key)
+      if deploy == "traditional" then
+        -- ensure cache is invalidated
+        local cache_key = db.keyauth_credentials:cache_key("bob")
+        helpers.wait_for_invalidation(cache_key)
+
+      else
+        -- ensure config is up to date
+        helpers.wait_for_all_config_update()
+      end
 
       res = assert(proxy_client:send {
         method  = "GET",
@@ -132,25 +148,45 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      -- ensure cache is populated
-      local cache_key = db.basicauth_credentials:cache_key("bob")
-      res = assert(admin_client:send {
-        method = "GET",
-        path   = "/cache/" .. cache_key
-      })
-      local body = assert.res_status(200, res)
-      local cred = cjson.decode(body)
+      local credential_id
+      if deploy == "traditional" then
+        -- ensure cache is populated, /cache endpoint only available in traditional mode
+        local cache_key = db.basicauth_credentials:cache_key("bob")
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key
+        })
+        local body = assert.res_status(200, res)
+        local cred = cjson.decode(body)
+        credential_id = cred.id
+
+      else
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/consumers/bob/basic-auth"
+        })
+        local body = assert.res_status(200, res)
+        local credential = cjson.decode(body)
+        credential_id = credential.data[1].id
+      end
 
       -- delete credential entity
       res = assert(admin_client:send {
         method = "DELETE",
-        path   = "/consumers/bob/basic-auth/" .. cred.id
+        path   = "/consumers/bob/basic-auth/" .. credential_id
       })
       assert.res_status(204, res)
       credential = nil
 
-      -- ensure cache is invalidated
-      helpers.wait_for_invalidation(cache_key)
+      if deploy == "traditional" then
+        -- ensure cache is invalidated
+        local cache_key = db.keyauth_credentials:cache_key("bob")
+        helpers.wait_for_invalidation(cache_key)
+
+      else
+        -- ensure config is up to date
+        helpers.wait_for_all_config_update()
+      end
 
       res = assert(proxy_client:send {
         method  = "GET",
@@ -178,19 +214,32 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      -- ensure cache is populated
-      local cache_key = db.basicauth_credentials:cache_key("bob")
-      res = assert(admin_client:send {
-        method = "GET",
-        path   = "/cache/" .. cache_key
-      })
-      local body = assert.res_status(200, res)
-      local cred = cjson.decode(body)
+      local credential_id
+      if deploy == "traditional" then
+        -- ensure cache is populated, /cache endpoint only available in traditional mode
+        local cache_key = db.basicauth_credentials:cache_key("bob")
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key
+        })
+        local body = assert.res_status(200, res)
+        local cred = cjson.decode(body)
+        credential_id = cred.id
+
+      else
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/consumers/bob/basic-auth"
+        })
+        local body = assert.res_status(200, res)
+        local credential = cjson.decode(body)
+        credential_id = credential.data[1].id
+      end
 
       -- delete credential entity
       res = assert(admin_client:send {
         method     = "PATCH",
-        path       = "/consumers/bob/basic-auth/" .. cred.id,
+        path       = "/consumers/bob/basic-auth/" .. credential_id,
         body       = {
           username = "bob",
           password = "kong-updated"
@@ -202,8 +251,15 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
       credential = nil
 
-      -- ensure cache is invalidated
-      helpers.wait_for_invalidation(cache_key)
+      if deploy == "traditional" then
+        -- ensure cache is invalidated
+        local cache_key = db.keyauth_credentials:cache_key("bob")
+        helpers.wait_for_invalidation(cache_key)
+
+      else
+        -- ensure config is up to date
+        helpers.wait_for_all_config_update()
+      end
 
       res = assert(proxy_client:send {
         method  = "GET",
@@ -226,4 +282,4 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
     end)
   end)
-end
+end)

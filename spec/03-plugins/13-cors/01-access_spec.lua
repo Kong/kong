@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local cjson = require "cjson"
 local inspect = require "inspect"
 local tablex = require "pl.tablex"
@@ -18,8 +18,8 @@ local function sortedpairs(t)
 end
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: cors (access) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: cors (access) [" .. helpers.format_tags() .. "]", function()
     local proxy_client
 
     local regex_testcases = {
@@ -1188,4 +1188,4 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end)
