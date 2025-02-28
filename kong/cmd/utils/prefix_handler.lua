@@ -441,34 +441,46 @@ local function compile_kong_conf(kong_config, template_env_inject)
 end
 
 local function compile_kong_gui_include_conf(kong_config)
-  -- Build connect-src in the CSP header
-  -- Other parts are defined inside nginx_kong_gui_include.lua
-  local csp_connect_src
+  local csp_header_value
   if kong_config.admin_gui_csp_header then
-    -- TODO: Try bundling buttons.js with frontend assets instead of loading it from a URL
-    csp_connect_src = { "'self'", "https://api.github.com/repos/kong/kong" }
-    if kong_config.admin_gui_api_url then
-      table.insert(csp_connect_src, kong_config.admin_gui_api_url)
-    else
-      -- If admin_gui_api_url is missing, we will add dynamic sources that echoes the requested host
-      -- with ports defined in admin_listeners corresponding to the scheme
-      local api_listen = admin_gui_utils.select_listener(kong_config.admin_listeners, { ssl = false })
-      local api_port = api_listen and api_listen.port
-      if api_port then
-        table.insert(csp_connect_src, "http://$host:" .. api_port)
+    csp_header_value = kong_config.admin_gui_csp_header_value
+    if csp_header_value == nil or csp_header_value == "" then
+      local connect_src = {
+        "'self'",
+        "https://api.github.com/repos/kong/kong", -- Used by buttons.js to show the GitHub star button
+      }
+      if kong_config.admin_gui_api_url then
+        table.insert(connect_src, kong_config.admin_gui_api_url)
+      else
+        -- If admin_gui_api_url is missing, we will add dynamic sources that echoes the requested host
+        -- with ports defined in admin_listeners corresponding to the scheme
+        local api_listen = admin_gui_utils.select_listener(kong_config.admin_listeners, { ssl = false })
+        local api_port = api_listen and api_listen.port
+        if api_port then
+          table.insert(connect_src, "http://$host:" .. api_port)
+        end
+
+        local api_ssl_listen = admin_gui_utils.select_listener(kong_config.admin_listeners, { ssl = true })
+        local api_ssl_port = api_ssl_listen and api_ssl_listen.port
+        if api_ssl_port then
+          table.insert(connect_src, "https://$host:" .. api_ssl_port)
+        end
       end
 
-      local api_ssl_listen = admin_gui_utils.select_listener(kong_config.admin_listeners, { ssl = true })
-      local api_ssl_port = api_ssl_listen and api_ssl_listen.port
-      if api_ssl_port then
-        table.insert(csp_connect_src, "https://$host:" .. api_ssl_port)
-      end
+      local default_csp_directives = {
+        "default-src 'self'",
+        "connect-src " .. table.concat(connect_src, " "),
+        "img-src 'self' data:",
+        "script-src 'self' 'wasm-unsafe-eval'", -- 'wasm-unsafe-eval' in script-src is required for atc-router-wasm
+        "script-src-elem 'self' https://buttons.github.io/buttons.js", -- TODO: Try bundling buttons.js with frontend assets instead of loading it from a URL
+        "style-src 'self' 'unsafe-inline'", -- 'unsafe-inline' is still required for style-src because of monaco-editor. See: https://github.com/microsoft/monaco-editor/issues/271
+      }
+      csp_header_value = table.concat(default_csp_directives, "; ") .. ";"
     end
-    csp_connect_src = table.concat(csp_connect_src, " ")
   end
 
   return compile_conf(kong_config, kong_nginx_gui_include_template, {
-    admin_gui_csp_connect_src = csp_connect_src,
+    _quoted_csp_header_value = csp_header_value and quote(csp_header_value) or nil,
   })
 end
 

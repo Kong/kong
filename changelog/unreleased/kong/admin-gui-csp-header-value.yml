@@ -1,0 +1,5 @@
+message: >-
+  Added a optional configuration parameter `admin_gui_csp_header_value` to Gateway that controls the
+  value of the Content-Security-Policy (CSP) header served with Admin GUI (Kong Manager).
+type: bugfix
+scope: Core

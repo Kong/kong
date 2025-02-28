@@ -61,6 +61,7 @@ describe("Configuration loader", function()
     assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
     assert.equal("/", conf.admin_gui_path)
     assert.equal(false, conf.admin_gui_csp_header)
+    assert.equal(nil, conf.admin_gui_csp_header_value)
     assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
     assert.equal("logs/admin_gui_error.log", conf.admin_gui_error_log)
     assert.same({}, conf.ssl_cert) -- check placeholder value
