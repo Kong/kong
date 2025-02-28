@@ -1,11 +1,11 @@
 local cjson   = require "cjson"
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local random_string = require("kong.tools.rand").random_string
 local uuid = require("kong.tools.uuid").uuid
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: key-auth (API) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: key-auth (API) [" .. helpers.format_tags() .. "]", function()
     local consumer
     local admin_client
     local bp
@@ -604,4 +604,4 @@ for _, strategy in helpers.each_strategy() do
 
     end)
   end)
-end
+end)
