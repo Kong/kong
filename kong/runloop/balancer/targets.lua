@@ -167,6 +167,7 @@ function targets_M.on_target_event(operation, target)
   log(DEBUG, "target ", operation, " for upstream ", upstream_id,
     upstream_name and " (" .. upstream_name ..")" or "")
 
+  local targets_list = targets_by_upstream_id["balancer:targets:" .. upstream_id]
   targets_by_upstream_id["balancer:targets:" .. upstream_id] = nil
 
   local upstream = upstreams.get_upstream_by_id(upstream_id)
@@ -176,14 +177,27 @@ function targets_M.on_target_event(operation, target)
     return
   end
 
-  -- cancel DNS renewal
+  local function cancel_dns_renewal(target_entity)
+    local key, err = get_dns_renewal_key(target_entity)
+    if not key then
+      return false, err
+    end
+
+    renewal_weak_cache[key] = nil
+    renewal_heap:remove(key)
+    return true
+  end
+
   if operation ~= "create" then
-    local key, err = get_dns_renewal_key(target)
-    if key then
-      renewal_weak_cache[key] = nil
-      renewal_heap:remove(key)
-    else
-      log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+    local ok, err
+    ok = cancel_dns_renewal(target)
+    if not ok then
+      for _, t in ipairs(targets_list) do
+        ok, err = cancel_dns_renewal(t)
+        if not ok then
+          log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+        end
+      end
     end
   end
 
