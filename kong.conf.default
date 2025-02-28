@@ -2039,10 +2039,25 @@
 
 #admin_gui_csp_header = off # Enable or disable the `Content-Security-Policy` (CSP) header for Kong Manager
                             #
-                            # This configuration controls the presence of the
-                            # `Content-Security-Policy` header while serving Kong Manager.
+                            # This configuration controls the presence of the CSP header when serving
+                            # Kong Manager. The default CSP header value will be used unless customized.
                             #
-                            # Setting this configuration to `on` to enable the CSP header.
+                            # To modify the value of the served CSP header, refer to the `admin_gui_csp_header_value`
+                            # configuration.
+                            #
+                            # Set this configuration to `on` to enable the CSP header.
+
+#admin_gui_csp_header_value = # The value of the `Content-Security-Policy` (CSP) header for Kong Manager.
+                              #
+                              # This configuration controls the value of the CSP header when serving
+                              # Kong Manager. If omitted or left empty, the default CSP header value
+                              # will be used.
+                              #
+                              # This is an advanced configuration intended for cases where the default
+                              # CSP header value does not meet your requirements. Use with caution.
+                              #
+                              # For more information on the CSP header, see:
+                              # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 
 #admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
                         # with SSL enabled.

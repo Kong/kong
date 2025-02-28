@@ -1623,7 +1623,16 @@ describe("NGINX conf compiler", function()
         assert.not_matches("add_header Content-Security-Policy", gui_include_conf, nil, true)
       end)
 
-      it("should add header with default admin_listen", function()
+      it("should not add header if admin_gui_csp_header is off even if admin_gui_csp_header_value is set", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          admin_gui_csp_header_value = "default-src * data: 'self' 'unsafe-inline' 'unsafe-eval';"
+        }))
+        local gui_include_conf = prefix_handler.compile_kong_gui_include_conf(conf)
+
+        assert.not_matches("add_header Content-Security-Policy", gui_include_conf, nil, true)
+      end)
+
+      it("should add default header with default admin_listen", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           admin_gui_csp_header = "on",
         }))
@@ -1642,7 +1651,27 @@ describe("NGINX conf compiler", function()
         assert.True(found_connect_src)
       end)
 
-      it("should add header with one more secure admin_listen", function()
+      it("should add default header when admin_gui_csp_header_value is empty", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          admin_gui_csp_header = "on",
+          admin_gui_csp_header_value = "",
+        }))
+        local gui_include_conf = assert(prefix_handler.compile_kong_gui_include_conf(conf))
+        local found_connect_src = false
+
+        for line in gui_include_conf:gmatch("(.-)\n") do
+          if line:find("add_header Content-Security-Policy", 1, true) then
+            assert.matches("connect-src 'self' https://api.github.com/repos/kong/kong http://$host:9001;", line, nil,
+              true)
+            found_connect_src = true
+            break
+          end
+        end
+
+        assert.True(found_connect_src)
+      end)
+
+      it("should add default header with one more secure admin_listen", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           admin_gui_csp_header = "on",
           admin_listen = "127.0.0.1:9001, 127.0.0.1:9444 ssl",
@@ -1663,7 +1692,7 @@ describe("NGINX conf compiler", function()
         assert.True(found_connect_src)
       end)
 
-      it("should add header with only secure admin_listen", function()
+      it("should add default header with only secure admin_listen", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           admin_gui_csp_header = "on",
           admin_listen = "127.0.0.1:9444 ssl"
@@ -1684,7 +1713,7 @@ describe("NGINX conf compiler", function()
         assert.True(found_connect_src)
       end)
 
-      it("should add header without admin_listen", function()
+      it("should add default header without admin_listen", function()
         -- Although kong_gui is not served when admin_listeners is off, we are test against the
         -- compile function itself.
         local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -1706,7 +1735,7 @@ describe("NGINX conf compiler", function()
         assert.True(found_connect_src)
       end)
 
-      it("should add header with custom admin_gui_api_url", function()
+      it("should add default header with custom admin_gui_api_url", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           admin_gui_csp_header = "on",
           admin_gui_api_url = "http://admin-api.kong.local:18001"
@@ -1725,6 +1754,72 @@ describe("NGINX conf compiler", function()
         end
 
         assert.True(found_connect_src)
+      end)
+
+      it("should add customized header", function ()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          admin_gui_csp_header = "on",
+          admin_gui_csp_header_value = "default-src * data: 'self' 'unsafe-inline' 'unsafe-eval';"
+        }))
+        local gui_include_conf = assert(prefix_handler.compile_kong_gui_include_conf(conf))
+        local csp_match = false
+
+        for line in gui_include_conf:gmatch("(.-)\n") do
+          if line:find("add_header Content-Security-Policy", 1, true) then
+            assert.matches(
+              [[add_header Content-Security-Policy "default-src * data: 'self' 'unsafe-inline' 'unsafe-eval';"]],
+              line, nil,
+              true)
+            csp_match = true
+            break
+          end
+        end
+
+        assert.True(csp_match)
+      end)
+
+      it("should add customized header with escaped double quotes", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          admin_gui_csp_header = "on",
+          admin_gui_csp_header_value = [[default-src * data: "self" "unsafe-inline" "unsafe-eval";]]
+        }))
+        local gui_include_conf = assert(prefix_handler.compile_kong_gui_include_conf(conf))
+        local csp_match = false
+
+        for line in gui_include_conf:gmatch("(.-)\n") do
+          if line:find("add_header Content-Security-Policy", 1, true) then
+            assert.matches(
+              [[add_header Content-Security-Policy "default-src * data: \"self\" \"unsafe-inline\" \"unsafe-eval\";"]],
+              line, nil,
+              true)
+            csp_match = true
+            break
+          end
+        end
+
+        assert.True(csp_match)
+      end)
+
+      it("should add customized header with attempts to inject", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          admin_gui_csp_header = "on",
+          admin_gui_csp_header_value = [["; gzip off;]]
+        }))
+        local gui_include_conf = assert(prefix_handler.compile_kong_gui_include_conf(conf))
+        local csp_match = false
+
+        for line in gui_include_conf:gmatch("(.-)\n") do
+          if line:find("add_header Content-Security-Policy", 1, true) then
+            assert.matches(
+              [[add_header Content-Security-Policy "\"; gzip off;";]],
+              line, nil,
+              true)
+            csp_match = true
+            break
+          end
+        end
+
+        assert.True(csp_match)
       end)
     end)
   end)

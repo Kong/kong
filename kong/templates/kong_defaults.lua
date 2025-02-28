@@ -212,6 +212,7 @@ admin_gui_url =
 admin_gui_path = /
 admin_gui_api_url = NONE
 admin_gui_csp_header = off
+admin_gui_csp_header_value =
 
 openresty_path =
 
