@@ -1,10 +1,10 @@
 local uuid    = require "kong.tools.uuid"
 local cjson   = require "cjson"
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: acl (API) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: acl (API) [" .. helpers.format_tags() .. "]", function()
     local consumer
     local admin_client
     local bp
@@ -516,4 +516,4 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end)

@@ -1,12 +1,12 @@
-local helpers   = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local cjson     = require "cjson"
 local uuid      = require "kong.tools.uuid"
 local http_mock = require "spec.helpers.http_mock"
 
-local MOCK_PORT = helpers.get_available_port()
+hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, rpc_sync)
+  local MOCK_PORT = helpers.get_available_port()
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
+  describe("Plugin: key-auth (access) [" .. helpers.format_tags() .. "]", function()
     local mock, proxy_client
     local kong_cred
     local nonexisting_anonymous = uuid.uuid()  -- a nonexisting consumer id
@@ -811,7 +811,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 
-  describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
+  describe("Plugin: key-auth (access) [" .. helpers.format_tags() .. "]", function()
     local proxy_client
     local user1
     local user2
@@ -1031,7 +1031,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("auto-expiring keys", function()
       -- Give a bit of time to reduce test flakyness on slow setups
-      local ttl = 10
+      local ttl = 30
       local inserted_at
       local proxy_client
 
@@ -1081,7 +1081,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("authenticate for up to 'ttl'", function()
+      it("authenticate for up to ttl", function()
         proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1114,11 +1114,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end)
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: key-auth (access) [" .. helpers.format_tags() .. "]", function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -1379,4 +1379,4 @@ for _, strategy in helpers.each_strategy() do
       end)
     end
   end)
-end
+end)
