@@ -305,7 +305,8 @@ local function do_sync()
     return nil, "rpc is not ready"
   end
 
-  local msg = { default = { version = get_current_version(), }, }
+  local current_version = get_current_version()
+  local msg = { default = { version = current_version, }, }
 
   local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta", msg)
   if not ns_deltas then
@@ -354,7 +355,8 @@ local function do_sync()
 
   local db = kong.db
 
-  local version = ""
+  -- in case of no deltas, the version should not change
+  local version = current_version
   local opts = {}
   local crud_events = {}
   local crud_events_n = 0
@@ -403,8 +405,8 @@ local function do_sync()
   t:set(DECLARATIVE_HASH_KEY, version)
 
   -- record the default workspace into LMDB for any of the following case:
-  -- * is_full_sync is false, but the default workspace has been changed
-  -- * is_full_sync is true (full sync)
+  -- * the default workspace has been changed
+  -- * full sync
   if default_ws_changed or is_full_sync then
     t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
   end
