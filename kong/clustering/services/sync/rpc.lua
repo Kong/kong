@@ -43,7 +43,7 @@ end
 
 
 local function empty_sync_result()
-  return { default = { deltas = {}, wipe = false, }, }
+  return { default = { deltas = {}, full_sync = false, }, }
 end
 
 
@@ -54,7 +54,7 @@ local function full_sync_result()
   end
 
   -- wipe dp lmdb, full sync
-  return { default = { deltas = deltas, wipe = true, }, }
+  return { default = { deltas = deltas, full_sync = true, }, }
 end
 
 
@@ -314,14 +314,14 @@ local function do_sync()
   end
 
   -- ns_deltas should look like:
-  -- { default = { deltas = { ... }, wipe = true, }, }
+  -- { default = { deltas = { ... }, full_sync = true, }, }
 
   local ns_delta = ns_deltas.default
   if not ns_delta then
     return nil, "default namespace does not exist inside params"
   end
 
-  local wipe = ns_delta.wipe
+  local is_full_sync = ns_delta.full_sync or ns_delta.wipe
   local deltas = ns_delta.deltas
 
   if not deltas then
@@ -338,7 +338,7 @@ local function do_sync()
   local default_ws_changed = preprocess_deltas(deltas)
 
   -- validate deltas and set the default values
-  local ok, err, err_t = validate_deltas(deltas, wipe)
+  local ok, err, err_t = validate_deltas(deltas, is_full_sync)
   if not ok then
     notify_error(ns_delta.latest_version, err_t)
     return nil, err
@@ -346,7 +346,7 @@ local function do_sync()
 
   local t = txn.begin(512)
 
-  if wipe then
+  if is_full_sync then
     ngx_log(ngx_INFO, "[kong.sync.v2] full sync begins")
 
     t:db_drop(false)
@@ -381,7 +381,7 @@ local function do_sync()
             ", version: ", delta_version,
             ", type: ", delta_type)
 
-    local ev, err = operation(db, t, delta, opts, wipe)
+    local ev, err = operation(db, t, delta, opts, is_full_sync)
     if err then
       return nil, err
     end
@@ -403,9 +403,9 @@ local function do_sync()
   t:set(DECLARATIVE_HASH_KEY, version)
 
   -- record the default workspace into LMDB for any of the following case:
-  -- * wipe is false, but the default workspace has been changed
-  -- * wipe is true (full sync)
-  if default_ws_changed or wipe then
+  -- * is_full_sync is false, but the default workspace has been changed
+  -- * is_full_sync is true (full sync)
+  if default_ws_changed or is_full_sync then
     t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, kong.default_workspace)
   end
 
@@ -414,7 +414,7 @@ local function do_sync()
     return nil, err
   end
 
-  if wipe then
+  if is_full_sync then
     ngx_log(ngx_INFO, "[kong.sync.v2] full sync ends")
 
     kong.core_cache:purge()
