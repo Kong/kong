@@ -413,7 +413,7 @@ local function do_sync()
 
   local ok, err = t:commit()
   if not ok then
-    return nil, err
+    return nil, "failed to commit transaction: " .. err
   end
 
   if is_full_sync then
@@ -427,16 +427,12 @@ local function do_sync()
     -- Full sync could rebuild route, plugins and balancer route, so their
     -- hashes are nil.
     local reconfigure_data = { kong.default_workspace, nil, nil, nil, }
-    local ok, err = events.declarative_reconfigure_notify(reconfigure_data)
-    if not ok then
-      return nil, err
-    end
+    return events.declarative_reconfigure_notify(reconfigure_data)
+  end
 
-  else
-    for _, event in ipairs(crud_events) do
-      -- delta_type, crud_event_type, delta.entity, old_entity
-      db[event[1]]:post_crud_event(event[2], event[3], event[4])
-    end
+  for _, event in ipairs(crud_events) do
+    -- delta_type, crud_event_type, delta.entity, old_entity
+    db[event[1]]:post_crud_event(event[2], event[3], event[4])
   end
 
   return true
