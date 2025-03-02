@@ -29,17 +29,32 @@ function _M:run(_)
 
   local t, err
   if response_body then
-    t, err = cjson.decode(response_body)
-    if err then
-      kong.log.warn("failed to decode response body for usage introspection: ", err)
-    end
+    local adapter = get_global_ctx("llm_format_adapter")
+    if adapter then
+      -- native formats
+      local metadata, err = adapter:extract_metadata(response_body)
+      if not metadata then
+        kong.log.info("failed to parse native response format for analytics: ", err)
 
-    if t and t.usage and t.usage.prompt_tokens then
-      ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", t.usage.prompt_tokens)
-    end
+      else
+        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", metadata.prompt_tokens)
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", metadata.completion_tokens)
+      end
 
-    if t and t.usage and t.usage.completion_tokens then
-      ai_plugin_o11y.metrics_set("llm_completion_tokens_count", t.usage.completion_tokens)
+    else
+      -- openai formats
+      t, err = cjson.decode(response_body)
+      if err then
+        kong.log.info("failed to decode response body for usage introspection: ", err)
+      end
+
+      if t and t.usage and t.usage.prompt_tokens then
+        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", t.usage.prompt_tokens)
+      end
+
+      if t and t.usage and t.usage.completion_tokens then
+        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", t.usage.completion_tokens)
+      end
     end
   end
 
