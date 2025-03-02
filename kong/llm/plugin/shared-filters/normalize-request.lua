@@ -34,6 +34,7 @@ local function bail(code, msg)
   end
 end
 
+
 local function copy_request_table(request_table)
   -- only copy the "options", to save memory, as messages are not overriden
   local new_t = {}
@@ -153,26 +154,40 @@ local function validate_and_transform(conf)
     return bail(400, err)
   end
 
-  -- transform the body to Kong-format for this provider/model
-  local parsed_request_body, content_type, err
-  if route_type ~= "preserve" and (not multipart) then
+
+  -- if this is a 'native' request with adapter,
+  -- we need to update all the request/inference parameters as appropriate.
+  -- for performance reasons, only read the raw body now if ABSOLUTELY necessary
+  local adapter = get_global_ctx("llm_format_adapter")
+  if not adapter then
+    -- openai-kong format
+
     -- transform the body to Kong-format for this provider/model
-    parsed_request_body, content_type, err = ai_driver.to_format(request_table, model_t, route_type)
-    if err then
-      return bail(400, err)
+    local parsed_request_body, content_type, err
+    if route_type ~= "preserve" and (not multipart) then
+      -- transform the body to Kong-format for this provider/model
+      parsed_request_body, content_type, err = ai_driver.to_format(request_table, model_t, route_type)
+      if err then
+        return bail(400, err)
+      end
     end
+
+    -- process form/json body auth information
+    local auth_param_name = conf.auth and conf.auth.param_name
+    local auth_param_value = conf.auth and conf.auth.param_value
+    local auth_param_location = conf.auth and conf.auth.param_location
+
+    if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
+      if request_table[auth_param_name] == nil or not conf.auth.allow_override then
+        request_table[auth_param_name] = auth_param_value
+      end
+    end
+
+    if route_type ~= "preserve" then
+      kong.service.request.set_body(parsed_request_body, content_type)
+    end
+
   end
-
-   -- process form/json body auth information
-   local auth_param_name = conf.auth and conf.auth.param_name
-   local auth_param_value = conf.auth and conf.auth.param_value
-   local auth_param_location = conf.auth and conf.auth.param_location
-
-   if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
-     if request_table[auth_param_name] == nil or not conf.auth.allow_override then
-       request_table[auth_param_name] = auth_param_value
-     end
-   end
 
   -- store token cost estimate, on first pass, if the
   -- provider doesn't reply with a prompt token count
@@ -185,10 +200,6 @@ local function validate_and_transform(conf)
     end
 
     ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", prompt_tokens)
-  end
-
-  if route_type ~= "preserve" and ngx.get_phase() ~= "balancer" then
-    kong.service.request.set_body(parsed_request_body, content_type)
   end
 
   -- get the provider's cached identity interface - nil may come back, which is fine

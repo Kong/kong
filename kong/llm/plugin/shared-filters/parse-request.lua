@@ -1,5 +1,6 @@
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_o11y = require("kong.llm.plugin.observability")
+local fmt = string.format
 
 local _M = {
   NAME = "parse-request",
@@ -16,6 +17,7 @@ local FILTER_OUTPUT_SCHEMA = {
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
 local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAME)
+
 
 function _M:run(conf)
   -- Thie might be called again in retry, simply skip it as we already parsed the request
@@ -35,6 +37,8 @@ function _M:run(conf)
 
   -- first, calculate the coordinates of the request
   local content_type = kong.request.get_header("Content-Type") or "application/json"
+  local normalized_content_type = content_type and content_type:sub(1, (content_type:find(";") or 0) - 1)
+  set_global_ctx("request_content_type", normalized_content_type)
 
   local request_table = kong.request.get_body(content_type, nil, conf.max_request_body_size)
 
@@ -50,12 +54,35 @@ function _M:run(conf)
     set_ctx("multipart_request", true)
   end
 
+
+  local adapter
+  local llm_format = conf.llm_format
+  if llm_format and llm_format ~= "openai" then
+    local prev_adapter, source = get_global_ctx("llm_format_adapter")
+    if prev_adapter then
+      if prev_adapter.FORMAT_ID ~= llm_format then
+        kong.log.warn("llm format changed from %s (%s) to %s, this is not supported", prev_adapter.FORMAT_ID, source, llm_format)
+      else
+        adapter = prev_adapter
+      end
+    end
+
+    if not adapter then
+      adapter = require(fmt("kong.llm.adapters.%s", llm_format))
+      request_table = adapter:to_kong_req(request_table, kong)
+      set_global_ctx("llm_format_adapter", adapter)
+    end
+  end
+
+  request_table = ai_plugin_ctx.immutable_table(request_table)
+
   set_ctx("request_body_table", request_table)
   ai_plugin_ctx.set_request_body_table_inuse(request_table, _M.NAME)
 
   local req_model = {
-    provider = "UNSPECIFIED",
+    provider = adapter and adapter.FORMAT_ID or "UNSPECIFIED",
   }
+
   -- copy from the user request if present
   if not multipart and request_table and request_table.model then
     if type(request_table.model) == "string" then

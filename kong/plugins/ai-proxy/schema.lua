@@ -11,18 +11,26 @@ local ai_proxy_only_config = {
         description = "Whether to 'optionally allow', 'deny', or 'always' (force) the streaming of answers via server sent events.",
         required = false,
         default = "allow",
-        one_of = { "allow", "deny", "always" }},
-    },
+        one_of = { "allow", "deny", "always" }
+    }},
     {
       max_request_body_size = {
-      type = "integer",
-      default = 8 * 1024,
-      gt = 0,
-      description = "max allowed body size allowed to be introspected",}
-    },
+        type = "integer",
+        default = 8 * 1024,
+        gt = 0,
+        description = "max allowed body size allowed to be introspected"
+    }},
     { model_name_header = { description = "Display the model name selected in the X-Kong-LLM-Model response header",
-    type = "boolean", default = true, }},
-}
+        type = "boolean", default = true
+    }},
+    { llm_format = {
+        type = "string",
+        default = "openai",
+        required = false,
+        description = "LLM input and output format and schema to use",
+        one_of = { "openai", "bedrock", "gemini" }
+    }},
+  }
 
 for i, v in pairs(ai_proxy_only_config) do
   this_schema.fields[#this_schema.fields+1] = v
