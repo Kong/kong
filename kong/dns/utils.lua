@@ -149,6 +149,7 @@ local function parse_resolv_conf(path, enable_ipv6)
       resolv.options.timeout = 2000 -- 2000ms is lua-resty-dns default
 
     else
+      -- convert resolv.conf timeout from seconds to milliseconds
       resolv.options.timeout = resolv.options.timeout * 1000
     end
   end
