@@ -355,7 +355,6 @@ local function do_sync()
 
   local db = kong.db
 
-  -- in case of no deltas, the version should not change
   local version = current_version
   local opts = {}
   local crud_events = {}
