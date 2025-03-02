@@ -42,6 +42,12 @@ return {
           { prompts = prompts_record },
           { max_request_body_size = { type = "integer", default = 8 * 1024, gt = 0,
                                     description = "max allowed body size allowed to be introspected" } },
+          { llm_format = {
+            type = "string",
+            default = "openai",
+            required = false,
+            description = "LLM input and output format and schema to use",
+            one_of = { "openai", "bedrock", "gemini" } }},
         }
       }
     }
