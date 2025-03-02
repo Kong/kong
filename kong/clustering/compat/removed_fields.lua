@@ -228,4 +228,17 @@ return {
       "queue.concurrency_limit",
     },
   },
+
+  -- Any dataplane older than 3.9.1
+  [3009001000] = {
+    ai_proxy = {
+      "llm_format",
+    },
+    ai_prompt_guard = {
+      "llm_format",
+    },
+    ai_prompt_decorator = {
+      "llm_format",
+    },
+  },
 }
