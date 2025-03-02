@@ -1,0 +1,15 @@
+{
+  "generationConfig": {
+    "maxOutputTokens": 256
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "What is 1 + 1?"
+        }
+      ]
+    }
+  ]
+}

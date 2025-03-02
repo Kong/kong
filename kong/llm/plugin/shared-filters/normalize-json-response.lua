@@ -25,7 +25,11 @@ local function transform_body(conf)
     err = "no response body found when transforming response"
 
   elseif route_type ~= "preserve" then
-    response_body, err = ai_driver.from_format(response_body, conf.model, route_type)
+    local adapter = get_global_ctx("llm_format_adapter")
+    if not adapter then
+      -- openai formats
+      response_body, err = ai_driver.from_format(response_body, conf.model, route_type)
+    end
 
     if err then
       kong.log.err("issue when transforming the response body for analytics: ", err)
