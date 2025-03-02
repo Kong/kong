@@ -547,7 +547,7 @@ describe("[DNS client]", function()
         })
         local cli = assert(client_new())
         assert.same(cli.r_opts.retrans, attempts)
-        assert.same(cli.r_opts.timeout, timeout)
+        assert.same(cli.r_opts.timeout, timeout * 1000)
 
         local start_time = ngx.now()
         local answers = cli:resolve("timeout.test")
