@@ -344,4 +344,168 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
     assert.is_truthy(err)
   end)
+
+  it("native llm_format can only use llm/v1/chat route_type", function()
+    local config = {
+      route_type = "llm/v1/completions",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = false,
+      },
+      model = {
+        name = "gemini",
+        provider = "gemini",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      llm_format = "gemini",
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+    assert.same("native provider options in llm_format can only be used with the 'llm/v1/chat' route_type", err["@entity"][1])
+    assert.same("value must be llm/v1/chat", err["config"]["route_type"])
+
+    config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = false,
+      },
+      model = {
+        name = "gemini",
+        provider = "gemini",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      llm_format = "gemini",
+    }
+
+    ok, err = validate(config)
+
+    assert.is_truthy(ok)
+    assert.is_falsy(err)
+  end)
+
+  it("bedrock llm_format can only use bedrock provider", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = false,
+      },
+      model = {
+        name = "openai",
+        provider = "openai",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      llm_format = "bedrock",
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+    assert.same("native llm_format 'bedrock' can only be used with the 'bedrock' model.provider", err["@entity"][1])
+    assert.same("value must be bedrock", err["config"]["model"]["provider"])
+
+    config = {
+      route_type = "llm/v1/chat",
+      model = {
+        name = "bedrock",
+        provider = "bedrock",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      auth = {
+        allow_override = false,
+      },
+      llm_format = "bedrock",
+    }
+
+    ok, err = validate(config)
+
+    assert.is_truthy(ok)
+    assert.is_falsy(err)
+  end)
+
+  it("gemini llm_format can only use gemini provider", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = false,
+      },
+      model = {
+        name = "openai",
+        provider = "openai",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      llm_format = "gemini",
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+    assert.same("native llm_format 'gemini' can only be used with the 'gemini' model.provider", err["@entity"][1])
+    assert.same("value must be gemini", err["config"]["model"]["provider"])
+
+    config = {
+      route_type = "llm/v1/chat",
+      model = {
+        name = "gemini",
+        provider = "gemini",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+      auth = {
+        allow_override = false,
+      },
+      llm_format = "gemini",
+    }
+
+    ok, err = validate(config)
+
+    assert.is_truthy(ok)
+    assert.is_falsy(err)
+  end)
 end)
