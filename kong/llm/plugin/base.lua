@@ -13,10 +13,10 @@ local STAGES = {
   REQ_POST_PROCESSING = 3,
   RES_INTROSPECTION = 4,
   RES_TRANSFORMATION = 5,
-
+  
   STREAMING = 6,
-
-  RES_POST_PROCESSING = 7,
+  RES_PRE_PROCESSING = 7, -- specially usage for konnect analytics
+  RES_POST_PROCESSING = 8,
 }
 
 -- Filters in those stages are allowed to execute more than one time in a request
@@ -139,6 +139,9 @@ function MetaPlugin:body_filter(sub_plugin, conf)
   -- check if we have generated a full body
   local body, source = get_global_ctx("response_body")
   if body and source ~= ngx.ctx.ai_last_sent_response_source then
+    -- now do anything required before the LOG phase
+    run_stage(STAGES.RES_PRE_PROCESSING, sub_plugin, conf)
+
     assert(source, "response_body source not set")
 
     if get_global_ctx("accept_gzip") then
@@ -155,6 +158,10 @@ function MetaPlugin:body_filter(sub_plugin, conf)
 
   -- else run the streaming handler
   run_stage(STAGES.STREAMING, sub_plugin, conf)
+
+  if ngx.arg[2] then  -- streaming has finished
+    run_stage(STAGES.RES_PRE_PROCESSING, sub_plugin, conf)
+  end
 end
 
 function MetaPlugin:log(sub_plugin, conf)
