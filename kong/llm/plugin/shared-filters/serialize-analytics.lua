@@ -5,7 +5,7 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 
 local _M = {
   NAME = "serialize-analytics",
-  STAGE = "RES_POST_PROCESSING",
+  STAGE = "RES_PRE_PROCESSING",
   DESCRIPTION = "serialize the llm stats",
 }
 
