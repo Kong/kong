@@ -42,4 +42,21 @@ return {
     { protocols = typedefs.protocols_http },
     { config = this_schema },
   },
+  entity_checks = {
+    { conditional = {
+        if_field = "config.llm_format", if_match = { one_of = { "bedrock", "gemini" }},
+        then_field = "config.route_type", then_match = { eq = "llm/v1/chat" },
+        then_err = "native provider options in llm_format can only be used with the 'llm/v1/chat' route_type",
+    }},
+    { conditional = {
+        if_field = "config.llm_format", if_match = { eq = "bedrock" },
+        then_field = "config.model.provider", then_match = { eq = "bedrock" },
+        then_err = "native llm_format 'bedrock' can only be used with the 'bedrock' model.provider",
+    }},
+    { conditional = {
+        if_field = "config.llm_format", if_match = { eq = "gemini" },
+        then_field = "config.model.provider", then_match = { eq = "gemini" },
+        then_err = "native llm_format 'gemini' can only be used with the 'gemini' model.provider",
+    }},
+  },
 }
