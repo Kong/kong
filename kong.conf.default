@@ -353,7 +353,7 @@
 
 #cluster_rpc_sync = off          # The setting to enable or disable the incremental
                                  # synchronization of configuration changes.
-                                 # The valid values are `on` and `off.` To enable, set this
+                                 # The valid values are `on` and `off`. To enable, set this
                                  # value to `on`, and set `cluster_rpc` to `on`.
                                  # This setting will be ignored if `cluster_rpc` is `off`.
                                  #
