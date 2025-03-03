@@ -347,7 +347,7 @@
 
 #cluster_rpc = off               # The setting to enable or disable RPC-based
                                  # communication between control plane and data plane nodes.
-                                 # The valid values are `on` and `off.` Set to `on` to enable.
+                                 # The valid values are `on` and `off`. Set to `on` to enable.
                                  # If `cluster_rpc_sync` is set to `on`, this parameter
                                  # must also be set to `on`.
 
