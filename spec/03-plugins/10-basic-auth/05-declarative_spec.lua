@@ -1,11 +1,11 @@
 local declarative = require "kong.db.declarative"
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local crypto = require "kong.plugins.basic-auth.crypto"
 local cjson   = require "cjson"
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("basic-auth declarative config #" .. strategy, function()
+hybrid_helper.run_for_each_deploy({ }, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("basic-auth declarative config " .. helpers.format_tags(), function()
     local db
     lazy_setup(function()
       local _
@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
       protocols = { "http" },
       methods = ngx.null,
       hosts = ngx.null,
-      paths = { "/" },
+      paths = { "/status/200" },
       regex_priority = 0,
       strip_path = true,
       preserve_host = false,
@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
 
         local route = assert(db.routes:select_by_name("bar"))
         assert.equals(route_def.id, route.id)
-        assert.equals("/", route.paths[1])
+        assert.equals("/status/200", route.paths[1])
         assert.same({ "http" }, route.protocols)
         assert.equals(service_def.id, route.service.id)
 
@@ -150,6 +150,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("access", function()
       local proxy_client
+
+      before_each(function()
+        helpers.wait_for_all_config_update()
+      end)
 
       lazy_setup(function()
         assert(helpers.start_kong({
@@ -224,4 +228,4 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end)

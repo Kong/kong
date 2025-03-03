@@ -1,10 +1,10 @@
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 local cjson   = require "cjson"
 local uuid    = require "kong.tools.uuid"
 
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
+hybrid_helper.run_for_each_deploy({ }, function(helpers, strategy, deploy, rpc, rpc_sync)
+  describe("Plugin: basic-auth (access) [" .. helpers.format_tags() .. "]", function()
     local proxy_client
     local nonexisting_anonymous = uuid.uuid() -- a non-existing consumer id
 
@@ -740,7 +740,11 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(204, res)
 
-      ngx.sleep(1) -- wait for cache invalidation
+      if strategy ~= "off" then
+        helpers.wait_for_all_config_update()
+      else
+        ngx.sleep(1) -- wait for cache invalidation
+      end
 
       local res = assert(proxy_client:send {
         method = "GET",
@@ -753,4 +757,4 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
-end
+end)
