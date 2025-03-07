@@ -511,7 +511,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         header_value = "azure-key",
       },
       model = {
-        name = "gpt-3.5-turbo",
+        name = "$(headers.from_header_1)",
         provider = "azure",
         options = {
           max_tokens = 256,
@@ -519,71 +519,28 @@ describe(PLUGIN_NAME .. ": (unit)", function()
           azure_instance = "$(uri_captures.uri_cap_1)",
           azure_deployment_id = "$(headers.from_header_1)",
           azure_api_version = "$(query_params.arg_1)",
+          upstream_url = "https://$(uri_captures.uri_cap_1).example.com",
+          bedrock = {
+            aws_region = "$(uri_captures.uri_cap_1)",
+          }
         },
       },
     }
 
     local result, err = ai_shared.merge_model_options(fake_request, fake_config)
     assert.is_falsy(err)
+    assert.same(result.model.name, "header_value_here_1")
     assert.same(result.model.options, {
-      ['azure_api_version'] = 'arg_value_here_1',
-      ['azure_deployment_id'] = 'header_value_here_1',
-      ['azure_instance'] = 'cap_value_here_1',
-      ['max_tokens'] = 256,
-      ['temperature'] = 1,
+      azure_api_version = 'arg_value_here_1',
+      azure_deployment_id = 'header_value_here_1',
+      azure_instance = 'cap_value_here_1',
+      max_tokens = 256,
+      temperature = 1,
+      upstream_url = "https://cap_value_here_1.example.com",
+      bedrock = {
+        aws_region = "cap_value_here_1",
+      },
     })
-  end)
-
-  it("resolves referenceable model name from request context", function()
-    local fake_request = {
-      ["get_header"] = function(header_name)
-        local headers = {
-          ["from_header_1"] = "header_value_here_1",
-          ["from_header_2"] = "header_value_here_2",
-        }
-        return headers[header_name]
-      end,
-
-      ["get_uri_captures"] = function()
-        return {
-          ["named"] = {
-            ["uri_cap_1"] = "cap_value_here_1",
-            ["uri_cap_2"] = "cap_value_here_2",
-          },
-        }
-      end,
-
-      ["get_query_arg"] = function(query_arg_name)
-        local query_args = {
-          ["arg_1"] = "arg_value_here_1",
-          ["arg_2"] = "arg_value_here_2",
-        }
-        return query_args[query_arg_name]
-      end,
-    }
-
-    local fake_config = {
-      route_type = "llm/v1/chat",
-      auth = {
-        header_name = "api-key",
-        header_value = "azure-key",
-      },
-      model = {
-        name = "$(uri_captures.uri_cap_2)",
-        provider = "azure",
-        options = {
-          max_tokens = 256,
-          temperature = 1.0,
-          azure_instance = "string-1",
-          azure_deployment_id = "string-2",
-          azure_api_version = "string-3",
-        },
-      },
-    }
-
-    local result, err = ai_shared.merge_model_options(fake_request, fake_config)
-    assert.is_falsy(err)
-    assert.same("cap_value_here_2", result.model.name)
   end)
 
   it("returns appropriate error when referenceable plugin configuration is missing from request context", function()
@@ -635,6 +592,51 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     local _, err = ai_shared.merge_model_options(fake_request, fake_config)
     assert.same("uri_captures key uri_cap_3 was not provided", err)
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "gpt-3.5-turbo",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "$(uri_captures.uri_cap_1)",
+          azure_deployment_id = "$(headers.from_header_1)",
+          azure_api_version = "$(query_params.arg_1)",
+          bedrock = {
+            aws_region = "$(uri_captures.uri_cap_3)",
+          }
+        },
+      },
+    }
+
+    local _, err = ai_shared.merge_model_options(fake_request, fake_config)
+    assert.same("uri_captures key uri_cap_3 was not provided", err)
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "gpt-3.5-turbo",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "$(uri_captures_uri_cap_1)",
+        },
+      },
+    }
+
+    local _, err = ai_shared.merge_model_options(fake_request, fake_config)
+    assert.same("cannot parse expression for field '$(uri_captures_uri_cap_1)'", err)
   end)
 
   it("llm/v1/chat message is compatible with llm/v1/chat route", function()

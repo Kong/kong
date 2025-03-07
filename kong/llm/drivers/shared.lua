@@ -15,10 +15,8 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 local ipairs       = ipairs
 local str_find     = string.find
 local str_sub      = string.sub
-local string_match = string.match
-local splitn = require("kong.tools.string").splitn
-local isplitn = require("kong.tools.string").isplitn
-local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local split        = require("kong.tools.string").split
+local splitn       = require("kong.tools.string").splitn
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
@@ -684,60 +682,47 @@ end
 
 function _M.merge_model_options(kong_request, conf_m)
   if not conf_m then
-    return
+    return conf_m
   end
 
   local err
-  conf_m = cycle_aware_deep_copy(conf_m)
-  conf_m.model = conf_m.model or {}
+  local new_conf_m = {}
 
-  -- handle model name
-  local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
-  if model_m then
-    local splitted, count = splitn(model_m, '.', 3)
-    if count ~= 2 then
-      return nil, "cannot parse expression for field 'model.name'"
-    end
+  -- recursively apply template
+  for k, v in pairs(conf_m) do
+    if type(v) == "table" then
+      new_conf_m[k], err = _M.merge_model_options(kong_request, v)
+      if err then
+        return nil, err
+      end
 
-    -- find the request parameter, with the configured name
-    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-    if err then
-      return nil, err
-    end
-    if not model_m then
-      return nil, "'" .. splitted[1] .. "', key '" .. splitted[2] .. "' was not provided"
-    end
+    elseif type(v) ~= "string" then
+      new_conf_m[k] = v
 
-    -- replace the value
-    conf_m.model.name = model_m
-  end
-
-  -- handle all other options
-  for k, v in pairs(conf_m.model.options or {}) do
-    if type(v) == "string" then
-      local prop_m = string_match(v or "", '%$%((.-)%)')
-      if prop_m then
-        local splitted, count = splitn(prop_m, '.', 3)
-        if count ~= 2 then
+    else -- string values
+      local tmpl_start, tmpl_end = str_find(v or "", '%$%((.-)%)')
+      if tmpl_start then
+        local tmpl = str_sub(v, tmpl_start+2, tmpl_end-1) -- strip surrounding $( and )
+        local splitted = split(tmpl, '.')
+        if #splitted ~= 2 then
           return nil, "cannot parse expression for field '" .. v .. "'"
         end
-
-        -- find the request parameter, with the configured name
-        prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+        local evaluated, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
         if err then
           return nil, err
         end
-        if not prop_m then
+        if not evaluated then
           return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
         end
-
-        -- replace the value
-        conf_m.model.options[k] = prop_m
+        -- replace place holder with evaluated
+        new_conf_m[k] = str_sub(v, 1, tmpl_start - 1) .. evaluated .. str_sub(v, tmpl_end + 1)
+      else -- not a tmplate, just copy
+        new_conf_m[k] = v
       end
     end
   end
 
-  return conf_m
+  return new_conf_m
 end
 
 
