@@ -66,14 +66,16 @@ local function validate_and_transform(conf)
     error("conf.model missing from plugin configuration", 2)
   end
 
-  -- TODO: refactor the ai_shared module to seperate the model options from other plugin conf
-  -- by using the `namespaced_ctx.model`
-  local conf_m, err = ai_shared.merge_model_options(kong.request, conf)
+  local model_t, err = ai_shared.merge_model_options(kong.request, conf and conf.model)
   if err then
     return bail(400, err)
   end
 
-  local model_t = conf_m.model
+  -- TODO: refactor the ai_shared module to seperate the model options from other plugin conf
+  -- by using the `namespaced_ctx.model`
+  local conf_m = conf
+  conf_m.model = model_t
+
   local model_provider = conf.model.provider -- use the one from conf, not the merged one to avoid potential security risk
 
   local request_table, source = ai_plugin_ctx.get_request_body_table_inuse()
