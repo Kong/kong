@@ -2032,7 +2032,9 @@ describe("Configuration loader", function()
     end)
   end)
 
-  describe("#wasm properties", function()
+  -- TODO: replace these test cases with ones that assert the proper behavior
+  -- after the feature is removed
+  pending("#wasm properties", function()
     local temp_dir, cleanup
     local user_filters
     local bundled_filters
