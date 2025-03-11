@@ -644,7 +644,7 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
-      -- 200 chat gemini with functions
+      -- 200 chat bedrock with functions
       local bedrock_chat_functions_good = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http" },
@@ -679,6 +679,92 @@ for _, strategy in helpers.all_strategies() do
       bp.plugins:insert {
         name = "file-log",
         route = { id = bedrock_chat_functions_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat gemini with functions and native format
+      local gemini_chat_functions_good_native = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/gemini-native/llm/v1/chat/functions/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = gemini_chat_functions_good_native.id },
+        config = {
+          route_type = "llm/v1/chat",
+          llm_format = "gemini",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "gemini-1.5-flash",
+            provider = "gemini",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/gemini/llm/v1/chat/functions/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            header_name = "x-goog-api-key",
+            header_value = "123",
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = gemini_chat_functions_good_native.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat bedrock with functions and native format
+      local bedrock_chat_functions_good_native = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock-native/llm/v1/chat/functions/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_functions_good_native.id },
+        config = {
+          route_type = "llm/v1/chat",
+          llm_format = "bedrock",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "aws-titan-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/functions/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_functions_good_native.id },
         config = {
           path = "/dev/stdout",
         },
@@ -1175,6 +1261,115 @@ for _, strategy in helpers.all_strategies() do
         local args = cjson.decode(buf:tostring())
         assert.equal(2, args.a)
         assert.equal(12, args.b)
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request gemini with function calls and native format", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/gemini-native/llm/v1/chat/functions/good/models/gemini-1.5-flash:streamGenerateContent",
+            body = pl_file.read("spec/fixtures/ai-proxy/native/gemini/request/with-functions-and-chatter.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+        assert.same("gemini/gemini-1.5-flash", res.headers["X-Kong-LLM-Model"])
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+
+        -- extract event
+        local found_marker
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              found_marker = found_marker or not not s:match("safetyRatings") -- something openai doesn't have
+            end
+          end
+        until not buffer
+
+        assert.truthy(found_marker, "didn't find gemini native response marker, is it being transformer?")
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock with function calls and native format", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock-native/llm/v1/chat/functions/good/model/aws-titan-v1:0/converse-stream",
+            body = pl_file.read("spec/fixtures/ai-proxy/native/bedrock/request/with-functions-and-chatter.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.same("bedrock/aws-titan-v1:0", res.headers["X-Kong-LLM-Model"])
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+
+        -- extract event
+        local found_marker
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              found_marker = found_marker or not not s:match("contentBlockIndex") -- something openai doesn't have
+            end
+          end
+        until not buffer
+
+        assert.truthy(found_marker, "didn't find bedrock native response marker, is it being transformer?")
 
         -- to verify not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)

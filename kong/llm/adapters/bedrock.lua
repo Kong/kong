@@ -229,6 +229,7 @@ function _BedrockAdapter:extract_model_and_stream(path, uri_captures)
 
   -- otherwise try raw parsing the path,
   --  in case the user has set this up incorrectly
+  -- TODO: also consider upstream_url?
   if (not model_name) or (not operation) then
     local t_model_name, t_operation = path:match("/model/([^/]+)/([^/]+)$")
 
