@@ -130,7 +130,11 @@ local function handle_streaming_frame(conf, chunk, finished)
     response_frame = deflate_gzip(response_frame)
   end
 
-  ngx.arg[1] = response_frame
+  -- only overwrite the response frame if we
+  -- are not handling a "native" format
+  if conf.llm_format and conf.llm_format == "openai" then
+    ngx.arg[1] = response_frame
+  end
 
   if finished then
     local response = body_buffer and body_buffer:get()
