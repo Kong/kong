@@ -30,6 +30,9 @@ local ai_proxy_only_config = {
         description = "LLM input and output format and schema to use",
         one_of = { "openai", "bedrock", "gemini" }
     }},
+    -- addition to this table will also need
+    -- 1) add selected.FIELD = conf.FIELD in ai-proxy-advanced/filters/balance.lua
+    -- 2) add propogation of top level key in monkey patch of spec-ee/03-plugins/44-ai-proxy-advanced/02-proxy_spec.lua
   }
 
 for i, v in pairs(ai_proxy_only_config) do
