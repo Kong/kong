@@ -29,7 +29,7 @@ function _M:run(conf)
     local response_body = get_global_ctx("response_body")
     if response_body then
       local adapter = get_global_ctx("llm_format_adapter")
-      
+
       if adapter then
         -- native formats
         response_model = adapter:extract_response_model(response_body)

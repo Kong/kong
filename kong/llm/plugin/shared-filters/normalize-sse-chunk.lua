@@ -211,12 +211,16 @@ function _M:run(conf)
     return true
   end
 
+  if get_global_ctx("preserve_mode") then
+    return true
+  end
+
   if ai_plugin_ctx.has_namespace("ai-proxy-advanced-balance") then
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
   -- TODO: check if ai-response-transformer let response.source become not service
-  if kong.response.get_source() == "service" and conf.route_type ~= "preserve" then
+  if kong.response.get_source() == "service" then
 
     handle_streaming_frame(conf, ngx.arg[1], ngx.arg[2])
   end

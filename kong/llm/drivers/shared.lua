@@ -1042,6 +1042,7 @@ function _M.override_upstream_url(parsed_url, conf)
     if conf.model.options and conf.model.options.upstream_path then
       return
     end
+    -- why?
     parsed_url.path = kong.request.get_path()
   end
 end
