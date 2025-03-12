@@ -9,7 +9,7 @@ local schemas = {
     sse_body_buffer = "userdata",
     response_body_sent = "boolean",
     llm_format_adapter = "table",
-    request_content_type = "string",
+    preserve_mode = "boolean",
   },
 }
 
