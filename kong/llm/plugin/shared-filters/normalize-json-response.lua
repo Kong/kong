@@ -83,6 +83,16 @@ function _M:run(conf)
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
+  if ngx.var.http_kong_debug or conf.model_name_header then
+    local model_t = ai_plugin_ctx.get_request_model_table_inuse()
+    assert(model_t and model_t.name, "model name is missing")
+    kong.response.set_header("X-Kong-LLM-Model", conf.model.provider .. "/" .. model_t.name)
+  end
+
+  if get_global_ctx("preserve_mode") then
+    return true
+  end
+
   -- if not streaming, prepare the response body buffer
   -- this must be called before sending any response headers so that
   -- we can modify status code if needed
@@ -103,12 +113,6 @@ function _M:run(conf)
   if not get_global_ctx("accept_gzip") and not get_global_ctx("stream_mode") then
     -- otherwise use our transformed body length
     kong.response.set_header("Content-Length", body_length)
-  end
-
-  if ngx.var.http_kong_debug or conf.model_name_header then
-    local model_t = ai_plugin_ctx.get_request_model_table_inuse()
-    assert(model_t and model_t.name, "model name is missing")
-    kong.response.set_header("X-Kong-LLM-Model", conf.model.provider .. "/" .. model_t.name)
   end
 
   return true

@@ -63,7 +63,7 @@ function _M:run(conf)
   end
 
   -- TODO: check if ai-response-transformer let response.source become not service
-  if conf.route_type ~= "preserve" then
+  if not get_global_ctx("preserve_mode") then
 
     handle_streaming_frame(conf, ngx.arg[1], ngx.arg[2])
   end

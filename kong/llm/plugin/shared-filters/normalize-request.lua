@@ -86,8 +86,13 @@ local function validate_and_transform(conf)
 
   kong.log.debug("using request body from source: ", source)
 
-  if not validate_incoming(request_table) then
-    return bail(400, "request body doesn't contain valid prompts")
+  if conf.route_type == "preserve" then
+    set_global_ctx("preserve_mode", true)
+  else
+    set_global_ctx("preserve_mode", false)
+    if not validate_incoming(request_table) then
+      return bail(400, "request body doesn't contain valid prompts")
+    end
   end
 
   -- duplicate it, to avoid our mutation of the table poplute the original parsed request
@@ -110,7 +115,7 @@ local function validate_and_transform(conf)
   end
 
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
-  if not model_t.name then
+  if not model_t.name and conf.route_type ~= "preserve" then
     return bail(400, "model parameter not found in request, nor in gateway configuration")
   end
 

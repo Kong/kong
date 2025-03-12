@@ -37,8 +37,6 @@ function _M:run(conf)
 
   -- first, calculate the coordinates of the request
   local content_type = kong.request.get_header("Content-Type") or "application/json"
-  local normalized_content_type = content_type and content_type:sub(1, (content_type:find(";") or 0) - 1)
-  set_global_ctx("request_content_type", normalized_content_type)
 
   local request_table = kong.request.get_body(content_type, nil, conf.max_request_body_size)
 
