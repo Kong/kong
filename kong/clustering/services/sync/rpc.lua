@@ -379,7 +379,7 @@ local function do_sync()
             ", version: ", delta_version,
             ", type: ", delta_type)
 
-    local ev, err = operation(db, t, delta, opts, is_full_sync)
+    local ev, err = operation(db, t, delta, is_full_sync)
     if err then
       return nil, err
     end
