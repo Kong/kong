@@ -4,7 +4,7 @@ local type         = type
 local pairs        = pairs
 local assert       = assert
 local tostring     = tostring
-local resp_header  = ngx.header
+local set_header   = kong.response.set_header
 
 -- determine the number of pre-allocated fields at runtime
 local max_fields_n = 4
@@ -103,7 +103,7 @@ function _M.apply_response_headers(ngx_ctx)
   local actual_fields_n = 0
 
   for k, v in pairs(rl_ctx) do
-    resp_header[k] = tostring(v)
+    set_header(k, tostring(v))
     actual_fields_n = actual_fields_n + 1
   end
 

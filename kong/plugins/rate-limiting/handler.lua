@@ -19,6 +19,7 @@ local SYNC_RATE_REALTIME = -1
 
 local pdk_rl_store_response_header = pdk_private_rl.store_response_header
 local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
+local clear_header = kong.response.clear_header
 
 
 local EMPTY = require("kong.tools.table").EMPTY
@@ -122,6 +123,29 @@ local function increment(premature, conf, ...)
   policies[conf.policy].increment(conf, ...)
 end
 
+local function clear_response_headers()
+  clear_header(RATELIMIT_LIMIT)
+  clear_header(RATELIMIT_REMAINING)
+  clear_header(RATELIMIT_RESET)
+  clear_header(RETRY_AFTER)
+
+  for _, header in pairs(X_RATELIMIT_LIMIT) do
+    clear_header(header)
+  end
+
+  for _, header in pairs(X_RATELIMIT_REMAINING) do
+    clear_header(header)
+  end
+end
+
+function RateLimitingHandler:header_filter(conf)
+    clear_response_headers()
+    if not conf.hide_client_headers then
+        local ngx_ctx = ngx.ctx
+        pdk_rl_apply_response_headers(ngx_ctx)
+    end
+end
+
 
 function RateLimitingHandler:access(conf)
   local current_timestamp = time() * 1000
@@ -192,16 +216,9 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      if not conf.hide_client_headers then
-        pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
-        pdk_rl_apply_response_headers(ngx_ctx)
-      end
+      pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
 
       return kong.response.error(conf.error_code, conf.error_message)
-    end
-
-    if not conf.hide_client_headers then
-      pdk_rl_apply_response_headers(ngx_ctx)
     end
   end
 
