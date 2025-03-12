@@ -191,6 +191,7 @@ end
 function _M.configure_request(conf)
   local parsed_url
 
+
   if (conf.model.options and conf.model.options.upstream_url) then
     parsed_url = socket_url.parse(conf.model.options.upstream_url)
   else
