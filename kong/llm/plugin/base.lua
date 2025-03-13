@@ -138,7 +138,7 @@ function MetaPlugin:body_filter(sub_plugin, conf)
 
   -- check if we have generated a full body
   local body, source = get_global_ctx("response_body")
-  if body and source ~= ngx.ctx.ai_last_sent_response_source then
+  if not get_global_ctx("stream_mode") and body and source ~= ngx.ctx.ai_last_sent_response_source then
     -- now do anything required before the LOG phase
     run_stage(STAGES.RES_PRE_PROCESSING, sub_plugin, conf)
 
