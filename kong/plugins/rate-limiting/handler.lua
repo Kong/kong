@@ -216,7 +216,9 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
+      if not conf.hide_client_headers then
+        pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
+      end
 
       return kong.response.error(conf.error_code, conf.error_message)
     end
