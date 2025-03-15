@@ -20,6 +20,7 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
+local GLOBAL_QUERY_OPTS = { show_ws_id = true, }
 local MAX_RETRY = 5
 
 
@@ -217,25 +218,25 @@ local function update_status(ver)
 end
 
 
-local function lmdb_update(db, t, delta, opts, is_full_sync)
+local function lmdb_update(db, t, delta, is_full_sync)
   local delta_type = delta.type
   local delta_entity = delta.entity
 
   -- upsert the entity
   -- delete if exists
-  local old_entity, err = db[delta_type]:select(delta_entity)
+  local old_entity, err = db[delta_type]:select(delta_entity, GLOBAL_QUERY_OPTS)
   if err then
     return nil, err
   end
 
   if old_entity and not is_full_sync then
-    local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
+    local res, err = delete_entity_for_txn(t, delta_type, old_entity)
     if not res then
       return nil, err
     end
   end
 
-  local res, err = insert_entity_for_txn(t, delta_type, delta_entity, opts)
+  local res, err = insert_entity_for_txn(t, delta_type, delta_entity)
   if not res then
     return nil, err
   end
@@ -248,8 +249,10 @@ local function lmdb_update(db, t, delta, opts, is_full_sync)
 end
 
 
-local function lmdb_delete(db, t, delta, opts, is_full_sync)
+local function lmdb_delete(db, t, delta, is_full_sync)
   local delta_type = delta.type
+  -- The show_ws_id option ensures that the old_entity contains the ws_id field.
+  local opts = { workspace = delta.ws_id, show_ws_id = true, }
 
   local old_entity, err = db[delta_type]:select(delta.pk, opts)
   if err then
@@ -261,7 +264,7 @@ local function lmdb_delete(db, t, delta, opts, is_full_sync)
     return nil
   end
 
-  local res, err = delete_entity_for_txn(t, delta_type, old_entity, opts)
+  local res, err = delete_entity_for_txn(t, delta_type, old_entity)
   if not res then
     return nil, err
   end
@@ -356,7 +359,6 @@ local function do_sync()
   local db = kong.db
 
   local version = current_version
-  local opts = {}
   local crud_events = {}
   local crud_events_n = 0
 
@@ -366,11 +368,6 @@ local function do_sync()
     local delta_version = delta.version
     local delta_type = delta.type
     local delta_entity = delta.entity
-
-    -- delta should have ws_id to generate the correct lmdb key
-    -- if entity is workspaceable
-    -- set the correct workspace for item
-    opts.workspace = delta.ws_id
 
     local is_update = delta_entity ~= nil and delta_entity ~= ngx_null
     local operation_name = is_update and "update" or "delete"
@@ -382,7 +379,7 @@ local function do_sync()
             ", version: ", delta_version,
             ", type: ", delta_type)
 
-    local ev, err = operation(db, t, delta, opts, is_full_sync)
+    local ev, err = operation(db, t, delta, is_full_sync)
     if err then
       return nil, err
     end
