@@ -527,7 +527,7 @@ _M.init = function(options)
     hosts, err = utils.parseHosts(hostsfile)  -- results will be all lowercase!
     if not hosts then return hosts, err end
   else
-    log(WARN, PREFIX, "Hosts file not found: "..tostring(hostsfile))
+    log(WARN, PREFIX, "Hosts file not found: ", tostring(hostsfile))
     hosts = {}
   end
 
@@ -590,7 +590,7 @@ _M.init = function(options)
     resolv, err = utils.applyEnv(utils.parseResolvConf(resolvconffile))
     if not resolv then return resolv, err end
   else
-    log(WARN, PREFIX, "Resolv.conf file not found: "..tostring(resolvconffile))
+    log(WARN, PREFIX, "Resolv.conf file not found: ", tostring(resolvconffile))
     resolv = {}
   end
   if not resolv.options then resolv.options = {} end

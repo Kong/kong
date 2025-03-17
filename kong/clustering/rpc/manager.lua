@@ -471,8 +471,8 @@ function _M:handle_websocket()
   end
 
   if not meta_v1_supported then
-    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: " ..
-                     tostring(rpc_protocol) ..
+    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: ",
+                     tostring(rpc_protocol),
                      ", doesn't know how to communicate with client")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
