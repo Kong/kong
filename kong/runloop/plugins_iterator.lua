@@ -514,8 +514,12 @@ function PluginsIterator.new(version)
 
   local configurable = {}
   local has_plugins = false
-
   local page_size = kong.db.plugins.pagination.max_page_size
+
+  if kong.configuration.role == "control_plane" then
+    goto done
+  end
+
   for plugin, err in kong.db.plugins:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
@@ -615,6 +619,8 @@ function PluginsIterator.new(version)
       end
     end
   end
+
+::done::
 
   return {
     version = version,
