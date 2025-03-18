@@ -232,6 +232,8 @@ hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, r
       },
     }
 
+    local absent_origin_headers = { nil, "" }
+
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
 
@@ -1161,31 +1163,36 @@ hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, r
         assert.equal("disallowed-domain.test", json.headers["origin"])
       end)
 
-      it("when disable allow_origin_absent, no ACAO", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          headers = {
-            ["Host"]   = "cors15.test",
-          }
-        })
-        assert.res_status(200, res)
-        assert.is_nil(res.headers["Access-Control-Allow-Origin"])
-        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
-        assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      end)
+      for i = 1, 2 do
+        local origin = absent_origin_headers[i]
+        it("when allow_origin_absent is disabled with missing Origin header[" .. i .. "], no ACAO is returned", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            headers = {
+              ["Host"] = "cors15.test",
+              ["Origin"] = origin
+            }
+          })
+          assert.res_status(200, res)
+          assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+          assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+          assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+        end)
 
-      it("when enable allow_origin_absent, ACAO is returned", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          headers = {
-            ["Host"]   = "cors16.test",
-          }
-        })
-        assert.res_status(200, res)
-        assert.equal("foo.bar", res.headers["Access-Control-Allow-Origin"] )
-        assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
-        assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
-      end)
+        it("when allow_origin_absent is enabled with missing Origin header[" .. i .. "], ACAO is returned", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            headers = {
+              ["Host"] = "cors16.test",
+              ["Origin"] = origin
+            }
+          })
+          assert.res_status(200, res)
+          assert.equal("foo.bar", res.headers["Access-Control-Allow-Origin"])
+          assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+          assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+        end)
+      end
     end)
   end)
 end)
