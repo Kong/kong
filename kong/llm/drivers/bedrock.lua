@@ -478,6 +478,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
   identity_interface.interface.config.signatureVersion = "v4"
   identity_interface.interface.config.endpointPrefix = "bedrock"
 
+  -- set the canonical URI for signing and escape the model name (AWS ARN)
   canonicalURI = fmt(
     ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
     ngx.escape_uri(conf.model.name),
@@ -587,6 +588,7 @@ function _M.configure_request(conf, aws_sdk)
   aws_sdk.config.signatureVersion = "v4"
   aws_sdk.config.endpointPrefix = "bedrock"
 
+  -- set the canonical URI for signing and escape the model name (AWS ARN)
   canonicalURI = fmt(
     ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
     ngx.escape_uri(conf.model.name),
@@ -595,7 +597,6 @@ function _M.configure_request(conf, aws_sdk)
   local r = {
     headers = {},
     method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method,
-    -- the path is unescaped as the IAM auth required the unescaped value
     path = parsed_url.path,
     host = parsed_url.host,
     port = tonumber(parsed_url.port) or 443,
