@@ -1,35 +1,44 @@
 {
     "contents": [
         {
+            "role": "system",
+            "parts": [
+                {
+                    "text": "You are an AI assistant designed to help developers work with Kong API Gateway. Provide concise, technical responses focused on API management, microservices, and Kubernetes integrations."
+                }
+            ]
+        },
+        {
             "role": "user",
             "parts": [
                 {
-                    "text": "Hi Gemini"
+                    "text": "Explain how to configure a rate-limiting plugin in Kong Gateway"
                 }
             ]
         }
-    ]
-    , "generationConfig": {
-        "temperature": 1
-        ,"maxOutputTokens": 8192
-        ,"topP": 0.95
+    ],
+    "generationConfig": {
+        "temperature": 0.7,
+        "maxOutputTokens": 1024,
+        "topP": 0.9,
+        "stopSequences": ["##"]
     },
     "safetySettings": [
         {
             "category": "HARM_CATEGORY_HATE_SPEECH",
-            "threshold": "OFF"
+            "threshold": "BLOCK_ONLY_HIGH"
         },
         {
             "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-            "threshold": "OFF"
+            "threshold": "BLOCK_ONLY_HIGH"
         },
         {
             "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "threshold": "OFF"
+            "threshold": "BLOCK_ONLY_HIGH"
         },
         {
             "category": "HARM_CATEGORY_HARASSMENT",
-            "threshold": "OFF"
+            "threshold": "BLOCK_ONLY_HIGH"
         }
     ]
 }
