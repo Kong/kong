@@ -900,7 +900,9 @@ describe("NGINX conf compiler", function()
       assert.matches("resolver%s+1%.2%.3%.4 5%.6%.7%.8 ipv6=off;", nginx_conf)
     end)
 
-    describe("#wasm subsystem", function()
+    -- TODO: replace these test cases with ones that assert the proper behavior
+    -- after the feature is removed
+    pending("#wasm subsystem", function()
       local temp_dir, cleanup
       local filter
 
