@@ -141,7 +141,7 @@ local function handle_huggingface_stream(event_t, model_info, route_type)
   local event, err = cjson.decode(event_t.data)
 
   if err then
-    ngx.log(ngx.WARN, "failed to decode stream event frame from Hugging Face: " .. err)
+    ngx.log(ngx.WARN, "failed to decode stream event frame from Hugging Face: ", err)
     return nil, "failed to decode stream event frame from Hugging Face", nil
   end
 

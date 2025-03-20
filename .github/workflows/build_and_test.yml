@@ -123,6 +123,20 @@ jobs:
     - name: Check labeler configuration
       run: scripts/check-labeler.pl .github/labeler.yml
 
+
+    # XXX: see other install step in .github/workflows/ast-grep.yml
+    - name: install ast-grep
+      run: |
+        sha=$(tail -1 .ci/ast-grep/SHA.txt)
+        if [[ -z ${sha:-} ]]; then
+          echo "failed to extract ast-grep sha/version from .ci/ast-grep/SHA.txt"
+          exit 1
+        fi
+        npm install --global "@ast-grep/cli#${sha}"
+
+    - name: Run ast-grep lints
+      run: ast-grep scan --format github
+
   schedule:
     name: Schedule busted tests to run
     runs-on: ubuntu-22.04

@@ -1,0 +1,59 @@
+id: ngx-log-string-concat
+
+valid:
+  # normal, expected usage
+  - |
+    ngx.log(ngx.ERR, "STRING: ", my_var)
+
+  # string literals can be concatenated to keep line lengths in check
+  - |
+    ngx.log(ngx.ERR, "my very super long line"
+                  .. " my continuation of that line")
+
+  # chained/nested concatenation of string literals is allowed
+  - |
+    ngx.log(ngx.ERR, "my very super long line"
+                  .. " my continuation of that line"
+                  .. " my extra continuation of that line")
+
+  # only ngx.log() calls are checked
+  - |
+    my_other_function(ngx.ERR, "STRING: " .. my_var)
+
+  # saving a local reference ngx.log doesn't affect other function calls
+  - |
+    local ngx_log = ngx.log
+    my_other_function(ngx.ERR, "STRING: " .. my_var)
+
+invalid:
+  # string .. variable
+  - |
+    ngx.log(ngx.INFO, "STRING: " .. my_var)
+
+  # variable .. string
+  - |
+    ngx.log(ngx.INFO, my_var .. ": STRING")
+
+  # variable .. string .. variable
+  - |
+    ngx.log(ngx.INFO, my_var .. ": STRING :" .. my_other_var)
+
+  # string .. variable .. string
+  - |
+    ngx.log(ngx.INFO, "STRING: " .. my_var .. ": STRING")
+
+  # calling ngx.log via local var reference
+  - |
+    local foo = ngx.log
+
+    foo(ngx.NOTICE, b .. c .. ": STRING")
+
+  # calling ngx.log via local var reference (nested)
+  - |
+    local foo = ngx.log
+
+    if true then
+      local function my_log(a, b, c)
+        foo(ngx.NOTICE, b .. c .. ": STRING")
+      end
+    end

@@ -1,0 +1,45 @@
+id: helpers-outside-of-setup
+
+valid:
+  # inside `lazy_setup()`
+  - |
+    lazy_setup(function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+
+  # inside `setup()`
+  - |
+    setup(function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+
+  # inside `it()`
+  - |
+    it(function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+
+
+invalid:
+  # at the outermost scope
+  - |
+    local a = 123
+    local port = helpers.get_available_port()
+
+  # inside some strategy iterator thing
+  - |
+    for , strategy in helpers.each_strategy() do
+      local a = 123
+      local port = helpers.get_available_port()
+    end
+
+  # directly inside `describe()`
+  - |
+    describe(function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+

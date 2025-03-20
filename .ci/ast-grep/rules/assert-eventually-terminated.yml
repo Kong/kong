@@ -1,0 +1,36 @@
+id: assert-eventually-terminated
+language: lua
+message: Unterminated eventual assertion
+severity: error
+note: |
+  `assert.eventually()` does not perform any assertion unless followed
+  by one of its terminator methods:
+    * `is_truthy(message)`
+    * `is_falsy(message)`
+    * `has_error(message)`
+    * `has_no_error(message)`
+
+files:
+  - '**/*_spec.lua'
+
+rule:
+  all:
+    - kind: function_call
+      pattern: $$$.eventually($$$)
+
+    - has:
+        kind: dot_index_expression
+        any:
+          - pattern: assert.$$$
+          - pattern: luassert.$$$
+        stopBy: end
+
+    - not:
+        inside:
+          kind: function_call
+          any:
+            - pattern: $$$.is_truthy($$$)
+            - pattern: $$$.is_falsy($$$)
+            - pattern: $$$.has_error($$$)
+            - pattern: $$$.has_no_error($$$)
+          stopBy: end

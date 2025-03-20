@@ -1,0 +1,49 @@
+id: assert-eventually-terminated
+
+valid:
+  # simple, all terminators
+  - |
+    assert.eventually(function() end).is_truthy()
+    assert.eventually(function() end).is_falsy()
+    assert.eventually(function() end).has_error()
+    assert.eventually(function() end).has_no_error()
+
+  # luassert counts too
+  - |
+    luassert.eventually(function() end).is_truthy()
+    luassert.eventually(function() end).is_falsy()
+    luassert.eventually(function() end).has_error()
+    luassert.eventually(function() end).has_no_error()
+
+  # with modifiers before .eventually()
+  - |
+    assert
+      .with_timeout(1)
+      .eventually(function() end)
+      .is_truthy()
+
+  # with modifiers after .eventually()
+  - |
+    assert
+      .eventually(function() end)
+      .with_timeout(1)
+      .is_truthy()
+
+  # eventually() but unrelated to assert
+  - |
+    local t = {}
+    t.eventually(function() end)
+
+
+invalid:
+  # unterminated assert
+  - assert.eventually(function() end)
+  - assert.with_timeout(1).eventually(function() end)
+  - assert.with_timeout(1).eventually(function() end).with_timeout(1)
+  - assert.eventually(function() end).with_timeout(1)
+
+  # same, but luassert
+  - luassert.eventually(function() end)
+  - luassert.with_timeout(1).eventually(function() end)
+  - luassert.with_timeout(1).eventually(function() end).with_timeout(1)
+  - luassert.eventually(function() end).with_timeout(1)
