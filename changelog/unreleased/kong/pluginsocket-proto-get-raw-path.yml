@@ -1,4 +1,4 @@
 message: |
-  Expose get_raw_query method in kong/include/kong/pluginsocket.proto
+  Expose get_raw_path method in kong/include/kong/pluginsocket.proto
 type: bugfix
 scope: Plugin
