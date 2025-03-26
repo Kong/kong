@@ -1,0 +1,156 @@
+name: ast-grep lint
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/ast-grep.yml # this workflow
+      - sgconfig.yml
+      - .ci/ast-grep/**
+
+      # globs for files that we want to check with ast-grep here
+      - '**/*.lua'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+
+    runs-on: ubuntu-22.04
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v4
+
+      - name: ensure all rules are properly formed and have tests
+        run: |
+          shopt -s failglob
+
+          declare -i failed=0
+          fail() {
+            failed=1
+
+            local -r fname=${1:?}
+            shift
+
+            local entry
+            printf -v entry '::error file=%s' "$fname"
+
+            while (( $# > 0 )); do
+              case $1 in
+                -t|--title)
+                  local title=${2:?}
+                  shift 2
+                  printf -v entry '%s,title=%s' "$entry" "$title"
+                  ;;
+                *)
+                  break
+                  ;;
+              esac
+            done
+
+            local msg
+            printf -v msg "$@"
+            printf '%s::%s\n' "$entry" "$msg"
+          }
+
+          declare -i count=0
+
+          for rule in .ci/ast-grep/rules/*.yml; do
+            count+=1
+
+            name=${rule##*/}
+            name=${name%*.yml}
+
+            printf 'Rule(%s): %s\n' "$name" "$rule"
+
+            id=$(yq -r .id < "$rule")
+
+            if [[ $id != "$name" ]]; then
+              fail "$rule" \
+                --title 'Rule .id/filename mismatch' \
+                'Rule(%s) ${filename}.yml must match its .id (%s)' \
+                "$name" "$id"
+            fi
+
+            test=.ci/ast-grep/tests/${name}-test.yml
+
+            if [[ ! -e $test ]]; then
+              failed=1
+              fail "$rule" \
+                --title 'Rule test required' \
+                'Rule test file (%s) not found' "$test"
+
+              continue
+            fi
+
+            printf 'Rule(%s): test file: %s\n' "$name" "$test"
+
+            test_id=$(yq -r .id < "$test")
+            if [[ $test_id != $id ]]; then
+              fail "$test" \
+                --title 'Rule test file/.id mismatch' \
+                'Rule test file .id (%s) does not match rule .id (%s)' \
+                "$test_id" "$id"
+            fi
+
+            declare -i valid invalid
+            valid=$(yq -r '.valid | length' < "$test")
+            invalid=$(yq -r '.invalid | length' < "$test")
+
+            if (( valid < 1 || invalid < 1 )); then
+              fail "$test" \
+                --title 'Rule tests insufficient' \
+                'Rule test file must contain at least one valid and one invalid test case'
+            fi
+
+            printf 'Rule(%s) test has %s valid and %s invalid test cases\n' \
+              "$name" "$valid" "$invalid"
+          done
+
+          printf 'Checked %s rules\n' "$count"
+
+          if (( failed > 0 )); then
+            printf '::error::Found one or more problems while checking ast-grep rules and tests\n'
+            exit 1
+          fi
+
+      # NOTE: this is basically an inline of the official, public gh action
+      # (https://github.com/ast-grep/action).
+      - name: install ast-grep
+        run: |
+          set -euo pipefail
+
+          readonly VERSION=0.36.2
+          readonly CHECKSUM=7fd693b013447582d8befa1695f00d17301c2cff1763cfb0b52191096309dbef
+          readonly FILENAME=app-x86_64-unknown-linux-gnu.zip
+          readonly BINDIR=$HOME/.local/bin
+
+          readonly URL=https://github.com/ast-grep/ast-grep/releases/download/${VERSION}/${FILENAME}
+
+          curl --fail \
+            --silent \
+            --location \
+            --output "$FILENAME" \
+            "$URL"
+
+          sha256sum --check --strict <<< "${CHECKSUM} ${FILENAME}"
+
+          unzip "$FILENAME" ast-grep
+          ./ast-grep --version
+
+          mkdir -p "$BINDIR"
+          mv ast-grep "$BINDIR"
+          echo "$BINDIR" >> $GITHUB_PATH
+
+      - name: ast-grep test
+        run: ast-grep test
+
+      - name: ast-grep scan
+        run: ast-grep scan --format github
