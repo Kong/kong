@@ -6,11 +6,10 @@ local wasm         = require "kong.runloop.wasm"
 
 
 local kong         = kong
-local unpack       = unpack
 local ipairs       = ipairs
 local tonumber     = tonumber
 local fmt          = string.format
-local split        = require("kong.tools.string").split
+local splitn       = require("kong.tools.string").splitn
 
 
 local ngx   = ngx
@@ -113,10 +112,11 @@ end
 
 -- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
-  local operation, key = unpack(split(data, ":"))
+  local t = splitn(data, ":", 3)
+  local operation, key = t[1], t[2]
 
   local entity = "all"
-  if key ~= "all" then
+  if  key ~= "all" then
     entity = {
       upstream = { id = key },
     }
@@ -151,7 +151,8 @@ end
 
 
 local function cluster_balancer_upstreams_handler(data)
-  local operation, ws_id, id, name = unpack(split(data, ":"))
+  local t = splitn(data, ":", 5)
+  local operation, ws_id, id, name = t[1], t[2], t[3], t[4]
   local entity = {
     id = id,
     name = name,

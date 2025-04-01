@@ -1,5 +1,5 @@
 local pl_path = require "pl.path"
-local split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 
 local env_config = {
   debugger = os.getenv("KONG_EMMY_DEBUGGER"),
@@ -64,7 +64,7 @@ local function init(config_)
   local multi_worker = env_config.multi_worker or env_config.multi_worker
 
   env_prefix = config.env_prefix or "KONG"
-  source_path = split(config.source_path or env_config.source_path or "", ":")
+  source_path = splitn(config.source_path or env_config.source_path or "", ":")
 
   if not debugger then
     return

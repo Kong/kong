@@ -2,7 +2,7 @@ local _M = {}
 
 -- imports
 local cjson = require("cjson.safe")
-local split = require("pl.stringx").split
+local splitn = require("kong.tools.string").splitn
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
@@ -61,11 +61,10 @@ local function from_raw(response_string, model_info, route_type)
 
   elseif (not response_table.data[1].generated_text) then
     return nil, "response data is empty from llama2 endpoint"
-
   end
 
-  local split_response = split(response_table.data[1].generated_text, "[/INST]")
-  if not split_response or #split_response < 1 then
+  local split_response, count = splitn(response_table.data[1].generated_text, "[/INST]")
+  if not split_response or count < 1 then
     return nil, "response did not contain a system reply"
   end
 
@@ -77,7 +76,7 @@ local function from_raw(response_string, model_info, route_type)
       choices = {
         [1] = {
           message = {
-            content = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
+            content = string_gsub(split_response[count], '^%s*(.-)%s*$', '%1'),
             role = "assistant",
           },
           index = 0,
@@ -91,7 +90,7 @@ local function from_raw(response_string, model_info, route_type)
       choices = {
         [1] = {
           index = 0,
-          text = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
+          text = string_gsub(split_response[count], '^%s*(.-)%s*$', '%1'),
         }
       },
       object = "text_completion",
