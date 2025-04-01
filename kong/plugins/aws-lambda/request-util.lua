@@ -10,7 +10,7 @@ local get_request_id = require("kong.observability.tracing.request_id").get
 local EMPTY = {}
 
 local isempty = require "table.isempty"
-local split = require("kong.tools.string").split
+local split_once = require("kong.tools.string").split_once
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_get_http_version = ngx.req.http_version
@@ -219,7 +219,7 @@ local function aws_serializer(ctx, config)
     local protocol = http_version and 'HTTP/'..http_version or nil
     local httpMethod = var.request_method
     local domainName = var.host
-    local domainPrefix = split(domainName, ".")[1]
+    local domainPrefix = split_once(domainName, ".")
     local identity = {
       sourceIp = var.realip_remote_addr or var.remote_addr,
       userAgent = headers["user-agent"],

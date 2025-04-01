@@ -1,4 +1,4 @@
-local pl_stringx = require "pl.stringx"
+local new_tab = require "table.new"
 
 
 local type     = type
@@ -10,6 +10,8 @@ local fmt      = string.format
 local find     = string.find
 local gsub     = string.gsub
 local byte     = string.byte
+local char     = string.char
+local huge     = math.huge
 
 
 local SPACE_BYTE = byte(" ")
@@ -20,18 +22,185 @@ local CR_BYTE    = byte("\r")
 local _M = {}
 
 
-_M.join = pl_stringx.join
+_M.join = require("pl.stringx").join
 
 
---- splits a string.
+--- splits a string (kept for backward compatibility, use splitn instead).
 -- just a placeholder to the penlight `pl.stringx.split` function
 -- @function split
-_M.split = pl_stringx.split
+_M.split = require("pl.stringx").split
+
+
+local function split_once_common(value, pattern, plain)
+  if value == nil then
+    return nil, nil
+  elseif pattern == nil then
+    return value, nil
+  elseif pattern == "" then
+    return "", value
+  elseif value == "" then
+    return "", nil
+  end
+
+  local s, e = find(value, pattern, nil, plain)
+  if not s then
+    return value, nil
+  end
+
+  if s == 1 and e == 1 then
+    return "", (sub(value, e + 1))
+  end
+
+  return (sub(value, 1, s - 1)), (sub(value, e + 1))
+end
+
+
+--- splits a string once with a plain delimiter.
+-- @function split_once
+function _M.split_once(value, delim)
+  local k, v = split_once_common(value, delim, true)
+  return k, v
+end
+
+
+--- splits a string once with a pattern.
+-- @function split_once
+function _M.psplit_once(value, pattern)
+  local k, v = split_once_common(value, pattern, false)
+  return k, v
+end
+
+
+local function splitn_common(value, pattern, n, plain)
+  local limit = n or huge
+  if limit < 1 or value == nil then
+    return {}, 0
+
+  elseif limit == 1 or pattern == nil then
+    return { value }, 1
+
+  elseif pattern == "" then
+    if value == "" then
+      return { "", "" }, 2
+    end
+
+    local size = #value
+    if size == 1 then
+      if limit == 2 then
+        return { "", value }, 2
+      else
+        return { "", value, "" }, 3
+      end
+    end
+
+    size = limit >= size + 2 and size + 2 or limit
+
+    local t
+    if size > 100 then
+      t = new_tab(size, 0)
+      t[1] = ""
+      for i = 2, size do
+        t[i] = sub(value, i - 1, i < size and i - 1 or nil)
+      end
+
+    else
+      t = { "", byte(value, 1, size - 2) }
+      for i = 2, size do
+        t[i] = t[i] and char(t[i]) or sub(value, i - 1)
+      end
+    end
+
+    return t, size
+
+  elseif value == "" then
+    return { "" }, 1
+  end
+
+  local s, e = find(value, pattern, nil, plain)
+  if not s then
+    return { value }, 1
+  end
+
+  local t, i, p = new_tab(n or 10, 0), 1
+  t[1] = sub(value, 1, s - 1)
+
+  ::again::
+  i, p = i + 1, e + 1
+  if i < limit then
+    s, e = find(value, pattern, p, plain)
+    if s then
+      t[i] = sub(value, p, s - 1)
+      goto again
+    end
+  end
+  t[i] = sub(value, p)
+  return t, i
+end
+
+
+local function splitn(value, delim, n)
+  value, n = splitn_common(value, delim, n, true)
+  return value, n
+end
+
+
+local function psplitn(value, pattern, n)
+  value, n = splitn_common(value, pattern, n, false)
+  return value, n
+end
+
+
+--- splits a string with a plain delimiter (much faster than the split above).
+-- @function splitn
+_M.splitn = splitn
+
+
+--- splits a string with a pattern.
+-- @function psplitn
+_M.psplitn = psplitn
+
+
+local function noop_iter() end
+local function once_iter(invariant, control)
+  return invariant ~= control and invariant or nil
+end
+local function split_iter(t)
+  local i = t[0] or 1
+  t[0] = i + 1
+  return t[i]
+end
+
+
+--- string splitting iterator (plain delimiter).
+-- @function isplitn
+function _M.isplitn(value, delim, n)
+  value, n = splitn_common(value, delim, n, true)
+  if n == 0 then
+    return noop_iter
+  elseif n == 1 then
+    return once_iter, value[1]
+  end
+  return split_iter, value
+end
+
+
+--- string splitting iterator (pattern delimiter).
+-- @function ipsplitn
+function _M.ipsplitn(value, pattern, n)
+  value, n = splitn_common(value, pattern, n, false)
+  if n == 0 then
+    return noop_iter
+  elseif n == 1 then
+    return once_iter, value[1]
+  end
+  return split_iter, value
+end
+
 
 
 --- strips whitespace from a string.
 -- @function strip
-_M.strip = function(value)
+function _M.strip(value)
   if value == nil then
     return ""
   end

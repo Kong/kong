@@ -28,7 +28,7 @@ local admin_gui_utils = require "kong.admin_gui.utils"
 
 
 local strip = require("kong.tools.string").strip
-local split = require("kong.tools.string").split
+local isplitn = require("kong.tools.string").isplitn
 local shallow_copy = require("kong.tools.table").shallow_copy
 
 
@@ -793,9 +793,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   local template_env = {}
-  nginx_conf_flags = nginx_conf_flags and split(nginx_conf_flags, ",") or {}
-  for _, flag in ipairs(nginx_conf_flags) do
-    template_env[flag] = true
+  for flag in isplitn(nginx_conf_flags, ",") do
+    template_env[strip(flag)] = true
   end
 
   local nginx_conf, err = compile_nginx_conf(kong_config, nginx_template)

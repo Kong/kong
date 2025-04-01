@@ -13,12 +13,14 @@ local concat        = table.concat
 local fmt           = string.format
 local re_match      = ngx.re.match
 local join          = require("kong.tools.string").join
-local split         = require("kong.tools.string").split
+local isplitn       = require("kong.tools.string").isplitn
+local splitn        = require("kong.tools.string").splitn
+local split_once    = require("kong.tools.string").split_once
 local strip         = require("kong.tools.string").strip
 local parse_http_time = ngx.parse_http_time
 local time          = ngx.time
 local ngx_re_gmatch = ngx.re.gmatch
-local ngx_re_match = ngx.re.match
+local ngx_re_match  = ngx.re.match
 local lower         = string.lower
 local max           = math.max
 local tab_new       = require("table.new")
@@ -449,6 +451,15 @@ do
     end
   })
 
+  local ACCEPT_PATTERN = [[
+    ((?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*) \/ (?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*))
+    (?:
+      \s*;\s*
+      q = ( 1(?:\.0{0,3}|) | 0(?:\.\d{0,3}|) )
+      | \s*;\s* [a-z0-9][a-z0-9-!#$&^_+.]+ (?:=[^;]*|)
+    )*
+  ]]
+
 
   function _M.get_response_type(accept_header)
     local content_type = MIME_TYPES[CONTENT_TYPE_DEFAULT]
@@ -457,25 +468,13 @@ do
     end
 
     if accept_header ~= nil then
-      local pattern = [[
-        ((?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*) \/ (?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*))
-        (?:
-          \s*;\s*
-          q = ( 1(?:\.0{0,3}|) | 0(?:\.\d{0,3}|) )
-          | \s*;\s* [a-z0-9][a-z0-9-!#$&^_+.]+ (?:=[^;]*|)
-        )*
-      ]]
-      local accept_values = split(accept_header, ",")
       local max_quality = 0
-
-      for _, accept_value in ipairs(accept_values) do
+      for accept_value in isplitn(accept_header, ",") do
         accept_value = strip(accept_value)
-        local matches = re_match(accept_value, pattern, "ajoxi")
-
+        local matches = re_match(accept_value, ACCEPT_PATTERN, "ajoxi")
         if matches then
           local media_type = matches[1]
           local q = tonumber(matches[2]) or 1
-
           if q > max_quality then
             max_quality = q
             content_type = _M.get_mime_type(media_type) or content_type
@@ -490,12 +489,11 @@ do
 
   function _M.get_mime_type(content_header, use_default)
     use_default = use_default == nil or use_default
-    content_header = strip(content_header)
-    content_header = split(content_header, ";")[1]
-    local mime_type
+    content_header = split_once(strip(content_header), ";")
 
-    local entries = split(content_header, "/")
-    if #entries > 1 then
+    local mime_type
+    local entries, count = splitn(content_header, "/", 3)
+    if count > 1 then
       if entries[2] == CONTENT_TYPE_ANY then
         if entries[1] == CONTENT_TYPE_ANY then
           mime_type = MIME_TYPES[CONTENT_TYPE_DEFAULT]

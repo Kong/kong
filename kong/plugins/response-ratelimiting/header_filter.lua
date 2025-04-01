@@ -12,7 +12,7 @@ local math_max = math.max
 
 
 local strip = kong_string.strip
-local split = kong_string.split
+local splitn = kong_string.splitn
 local pdk_rl_store_response_header = pdk_private_rl.store_response_header
 local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
@@ -29,15 +29,15 @@ local function parse_header(header_value, limits)
     if type(header_value) == "table" then
       parts = header_value
     else
-      parts = split(header_value, ",")
+      parts = splitn(header_value, ",")
     end
 
     for _, v in ipairs(parts) do
-      local increment_parts = split(v, "=")
-      if #increment_parts == 2 then
+      local increment_parts, count = splitn(v, "=", 3)
+      if count == 2 then
         local limit_name = strip(increment_parts[1])
         if limits[limit_name] then -- Only if the limit exists
-          increments[strip(increment_parts[1])] = tonumber(strip(increment_parts[2]))
+          increments[limit_name] = tonumber(strip(increment_parts[2]), 10)
         end
       end
     end
