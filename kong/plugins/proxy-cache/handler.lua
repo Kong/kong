@@ -3,7 +3,7 @@ local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local kong_meta   = require "kong.meta"
 local mime_type   = require "kong.tools.mime_type"
 local nkeys       = require "table.nkeys"
-local split       = require("kong.tools.string").split
+local splitn      = require("kong.tools.string").splitn
 
 
 local ngx              = ngx
@@ -196,12 +196,11 @@ function ProxyCacheHandler:init_worker()
   -- only need one worker to handle purges like this
   -- if/when we introduce inline LRU caching this needs to involve
   -- worker events as well
-  local unpack = unpack
-
   kong.cluster_events:subscribe("proxy-cache:purge", function(data)
     kong.log.err("handling purge of '", data, "'")
 
-    local plugin_id, cache_key = unpack(split(data, ":"))
+    local t = splitn(data, ":", 3)
+    local plugin_id, cache_key = t[1], t[2]
     local plugin, err = kong.db.plugins:select({ id = plugin_id })
     if err then
       kong.log.err("error in retrieving plugins: ", err)

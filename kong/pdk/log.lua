@@ -12,7 +12,7 @@
 
 local buffer = require("string.buffer")
 local errlog = require("ngx.errlog")
-local ngx_re = require("ngx.re")
+local split = require("ngx.re").split
 local inspect = require("inspect")
 local phase_checker = require("kong.pdk.private.phases")
 local constants = require("kong.constants")
@@ -128,7 +128,7 @@ local _MODIFIERS = {
 
 
 local function parse_modifiers(format)
-  local buf, err = ngx_re.split(format, [==[(?<!%)(%[a-z_]+)]==], nil, nil, 0)
+  local buf, err = split(format, [==[(?<!%)(%[a-z_]+)]==], "jo")
   if not buf then
     return nil, "could not parse format: " .. err
   end

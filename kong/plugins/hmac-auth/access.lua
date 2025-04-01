@@ -3,7 +3,7 @@ local openssl_mac = require "resty.openssl.mac"
 
 
 local sha256_base64 = require("kong.tools.sha256").sha256_base64
-local string_split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 
 
 local ngx = ngx
@@ -116,7 +116,7 @@ local function retrieve_hmac_fields(authorization_header)
     if m and #m >= 4 then
       hmac_params.username = m[1]
       hmac_params.algorithm = m[2]
-      hmac_params.hmac_headers = string_split(m[3], " ")
+      hmac_params.hmac_headers = splitn(m[3], " ")
       hmac_params.signature = m[4]
     end
   end

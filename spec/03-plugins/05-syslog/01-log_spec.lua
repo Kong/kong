@@ -4,7 +4,7 @@ local cjson      = require "cjson"
 
 
 local strip = require("kong.tools.string").strip
-local split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 
 
 for _, strategy in helpers.each_strategy() do
@@ -210,10 +210,10 @@ for _, strategy in helpers.each_strategy() do
           local _, _, stdout = assert(helpers.execute("sudo find /var/log -type f -mmin -5 | grep syslog"))
           assert.True(#stdout > 0)
 
-          local files = split(stdout, "\n")
-          assert.True(#files > 0)
+          local files, count = splitn(stdout, "\n")
+          assert.True(count > 0)
 
-          if files[#files] == "" then
+          if files[count] == "" then
             table.remove(files)
           end
 

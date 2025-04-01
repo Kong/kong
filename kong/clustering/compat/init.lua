@@ -8,7 +8,7 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
-local split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
@@ -223,12 +223,11 @@ do
       return fields
     end
 
-    fields = split(name, ".")
-
-    for _, part in ipairs(fields) do
-      assert(part ~= "", "empty segment in field name: " .. tostring(name))
+    local count
+    fields, count = splitn(name, ".")
+    for i = 1, count do
+      assert(fields[i] ~= "", "empty segment in field name: " .. tostring(name))
     end
-
     cache[name] = fields
     return fields
   end
