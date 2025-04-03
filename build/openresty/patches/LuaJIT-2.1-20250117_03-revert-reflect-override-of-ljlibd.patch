@@ -1,20 +1,20 @@
-diff --git a/bundle/LuaJIT-2.1-20240815/Makefile b/bundle/LuaJIT-2.1-20240815/Makefile
-index cac43c2..6ae2c49 100644
---- a/bundle/LuaJIT-2.1-20240815/Makefile
-+++ b/bundle/LuaJIT-2.1-20240815/Makefile
-@@ -41,7 +41,7 @@ INSTALL_SHARE= $(DPREFIX)/share
+diff --git a/bundle/LuaJIT-2.1-20250117/Makefile b/bundle/LuaJIT-2.1-20250117/Makefile
+index d789e9f..19b6bfa 100644
+--- a/bundle/LuaJIT-2.1-20250117/Makefile
++++ b/bundle/LuaJIT-2.1-20250117/Makefile
+@@ -42,7 +42,7 @@ INSTALL_SHARE= $(DESTDIR)$(INSTALL_SHARE_)
  INSTALL_DEFINC= $(DPREFIX)/include/luajit-$(MMVERSION)
  INSTALL_INC=   $(INSTALL_DEFINC)
  
--export INSTALL_LJLIBD= $(INSTALL_SHARE)/luajit-$(MMVERSION)
+-export INSTALL_LJLIBD= $(INSTALL_SHARE_)/luajit-$(MMVERSION)
 +INSTALL_LJLIBD= $(INSTALL_SHARE)/luajit-$(MMVERSION)
- INSTALL_JITLIB= $(INSTALL_LJLIBD)/jit
+ INSTALL_JITLIB= $(DESTDIR)$(INSTALL_LJLIBD)/jit
  INSTALL_LMODD= $(INSTALL_SHARE)/lua
  INSTALL_LMOD= $(INSTALL_LMODD)/$(ABIVER)
-diff --git a/bundle/LuaJIT-2.1-20240815/src/Makefile b/bundle/LuaJIT-2.1-20240815/src/Makefile
-index 134e7dd..f87762e 100644
---- a/bundle/LuaJIT-2.1-20240815/src/Makefile
-+++ b/bundle/LuaJIT-2.1-20240815/src/Makefile
+diff --git a/bundle/LuaJIT-2.1-20250117/src/Makefile b/bundle/LuaJIT-2.1-20250117/src/Makefile
+index 285082a..346646e 100644
+--- a/bundle/LuaJIT-2.1-20250117/src/Makefile
++++ b/bundle/LuaJIT-2.1-20250117/src/Makefile
 @@ -304,9 +304,6 @@ endif
  ifneq (,$(LMULTILIB))
    TARGET_XCFLAGS+= -DLUA_LMULTILIB=\"$(LMULTILIB)\"
@@ -25,11 +25,19 @@ index 134e7dd..f87762e 100644
  
  ##############################################################################
  # Target system detection.
-diff --git a/bundle/LuaJIT-2.1-20240815/src/luaconf.h b/bundle/LuaJIT-2.1-20240815/src/luaconf.h
-index 0c97c2d..c311a97 100644
---- a/bundle/LuaJIT-2.1-20240815/src/luaconf.h
-+++ b/bundle/LuaJIT-2.1-20240815/src/luaconf.h
-@@ -37,6 +37,7 @@
+diff --git a/bundle/LuaJIT-2.1-20250117/src/luaconf.h b/bundle/LuaJIT-2.1-20250117/src/luaconf.h
+index 71e44d5..a648c5a 100644
+--- a/bundle/LuaJIT-2.1-20250117/src/luaconf.h
++++ b/bundle/LuaJIT-2.1-20250117/src/luaconf.h
+@@ -9,6 +9,7 @@
+ #ifndef WINVER
+ #define WINVER 0x0501
+ #endif
++#include <limits.h>
+ #include <stddef.h>
+ 
+ /* Default path for loading Lua and C modules with require(). */
+@@ -36,6 +37,7 @@
  #endif
  #define LUA_LROOT	"/usr/local"
  #define LUA_LUADIR	"/lua/5.1/"
@@ -37,7 +45,7 @@ index 0c97c2d..c311a97 100644
  
  #ifdef LUA_ROOT
  #define LUA_JROOT	LUA_ROOT
-@@ -50,11 +51,7 @@
+@@ -49,11 +51,7 @@
  #define LUA_RCPATH
  #endif
  
