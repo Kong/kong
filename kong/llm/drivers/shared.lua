@@ -322,6 +322,12 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
       }
 
       aws.config.credentials = creds
+    elseif aws_config.global.AWS_WEB_IDENTITY_TOKEN_FILE 
+      and aws_config.global.AWS_ROLE_ARN then
+      -- Support for EKS IRSA (IAM Roles for Service Accounts)
+      local creds = aws:TokenFileWebIdentityCredentials()
+
+      aws.config.credentials = creds
     end
 
     this_cache[plugin_config] = { interface = aws, error = nil }
