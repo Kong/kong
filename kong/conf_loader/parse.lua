@@ -18,7 +18,7 @@ local normalize_ip = tools_ip.normalize_ip
 local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
 local try_decode_base64 = tools_string.try_decode_base64
 local strip = tools_string.strip
-local split = tools_string.split
+local isplitn = tools_string.isplitn
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
@@ -28,7 +28,6 @@ local pairs = pairs
 local ipairs = ipairs
 local tostring = tostring
 local tonumber = tonumber
-local setmetatable = setmetatable
 local floor = math.floor
 local fmt = string.format
 local find = string.find
@@ -89,13 +88,13 @@ local function parse_value(value, typ)
     value = tonumber(value) -- catch ENV variables (strings) that are numbers
 
   elseif typ == "array" and type(value) == "string" then
-    -- must check type because pl will already convert comma
-    -- separated strings to tables (but not when the arr has
-    -- only one element)
-    value = setmetatable(split(value, ","), nil) -- remove List mt
-
-    for i = 1, #value do
-      value[i] = strip(value[i])
+    local s = value
+    value = {}
+    for v in isplitn(s, ",") do
+      v = strip(v)
+      if v ~= "" then
+        value[#value+1] = v
+      end
     end
   end
 

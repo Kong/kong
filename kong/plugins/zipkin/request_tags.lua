@@ -8,7 +8,7 @@
 -- Will add two tags to the request span in Zipkin
 
 
-local split = require "kong.tools.string".split
+local isplitn = require("kong.tools.string").isplitn
 
 local match = string.match
 
@@ -18,11 +18,7 @@ local request_tags = {}
 -- note that and errors is an output value; we do this instead of
 -- a return in order to be more efficient (allocate less tables)
 local function parse_tags(tags_string, dest, errors)
-  local items = split(tags_string, ";")
-  local item
-
-  for i = 1, #items do
-    item = items[i]
+  for item in isplitn(tags_string, ";") do
     if item ~= "" then
       local name, value = match(item, "^%s*(%S+)%s*=%s*(.*%S)%s*$")
       if name then

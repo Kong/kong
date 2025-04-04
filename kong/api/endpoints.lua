@@ -17,7 +17,7 @@ local type         = type
 local fmt          = string.format
 local concat       = table.concat
 local re_match     = ngx.re.match
-local split        = require("kong.tools.string").split
+local splitn       = require("kong.tools.string").splitn
 local get_default_exit_body = require("kong.tools.http").get_default_exit_body
 
 
@@ -169,11 +169,11 @@ local function extract_options(db, args, schema, context)
       if re_match(tags, TAGS_AND_REGEX, 'jo') then
         -- 'a,b,c' or 'a'
         options.tags_cond = 'and'
-        options.tags = split(tags, ',')
+        options.tags = splitn(tags, ',')
       elseif re_match(tags, TAGS_OR_REGEX, 'jo') then
         -- 'a/b/c'
         options.tags_cond = 'or'
-        options.tags = split(tags, '/')
+        options.tags = splitn(tags, '/')
       else
         options.tags = tags
         -- not setting tags_cond since we can't determine the cond
