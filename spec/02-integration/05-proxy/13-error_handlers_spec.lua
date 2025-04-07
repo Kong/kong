@@ -3,9 +3,9 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
 describe("Proxy error handlers", function()
   local proxy_client
-  helpers.get_db_utils(strategy, {})
 
   lazy_setup(function()
+    helpers.get_db_utils(strategy, {})
     assert(helpers.start_kong {
       nginx_conf = "spec/fixtures/custom_nginx.template",
     })

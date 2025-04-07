@@ -99,9 +99,10 @@ for _, strategy in ipairs(strategies) do
   local KEY_ID = "123"
   local KEY_SET_NAME = "key_set_foo"
 
-  local pem_pub, pem_priv = helpers.generate_keys("PEM")
+  local pem_pub, pem_priv
 
   lazy_setup(function()
+    pem_pub, pem_priv = helpers.generate_keys("PEM")
     client = require("kong.plugins.acme.client")
     account_name = client._account_name(proper_config)
   end)

@@ -1,14 +1,14 @@
 local helpers    = require "spec.helpers"
 local http_mock = require "spec.helpers.http_mock"
 
-local HTTP_SERVER_PORT = helpers.get_available_port()
-
-
 for _, strategy in helpers.each_strategy() do
   describe("queue graceful shutdown [#" .. strategy .. "]", function()
     local proxy_client
+    local HTTP_SERVER_PORT
 
     lazy_setup(function()
+      HTTP_SERVER_PORT = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",

@@ -4,7 +4,6 @@ local cjson = require "cjson"
 local pl_file = require "pl.file"
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = helpers.get_available_port()
 
 for _, strategy in helpers.each_strategy() do
   local admin_client
@@ -12,6 +11,8 @@ for _, strategy in helpers.each_strategy() do
   local reports_server
 
   describe("anonymous reports for ai plugins #" .. strategy, function()
+    local MOCK_PORT
+
     local reports_send_ping = function(port)
       assert.eventually(function()
         admin_client = helpers.admin_client()
@@ -23,6 +24,8 @@ for _, strategy in helpers.each_strategy() do
     end
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
       dns_hostsfile = assert(os.tmpname() .. ".hosts")
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))

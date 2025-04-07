@@ -69,6 +69,29 @@ utils:
         - pattern: before_each($$$)
         - pattern: after_each($$$)
 
+  in-upgrade-helper-setup:
+    pattern: $IDENT.setup($$$)
+    inside:
+      kind: chunk
+      stopBy: end
+      has:
+        any:
+          - pattern: $IDENT = require "spec.upgrade_helpers"
+          - pattern: $IDENT = require("spec.upgrade_helpers")
+        stopBy: end
+
+  in-function-scope:
+    any:
+      # local function my_setup()
+      #   helpers.get_available_port()
+      # end
+      - kind: function_declaration
+
+      # local my_setup = function()
+      #   helpers.get_available_port()
+      # end
+      - pattern: $IDENT = function($$$) $$$ end
+
   busted-describe:
     inside:
       kind: function_call
@@ -77,7 +100,8 @@ utils:
         any:
           - matches: busted-test-case
           - matches: busted-lifecycle
-          - kind: function_declaration
+          - matches: in-function-scope
+          - matches: in-upgrade-helper-setup
 
   non-setup-scope:
     any:

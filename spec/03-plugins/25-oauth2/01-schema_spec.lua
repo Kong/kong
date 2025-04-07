@@ -9,18 +9,24 @@ local fmt = string.format
 for _, strategy in helpers.each_strategy() do
 
   describe(fmt("Plugin: oauth2 [#%s] (schema)", strategy), function()
-    local bp, db = helpers.get_db_utils(strategy, {
-      "routes",
-      "services",
-      "consumers",
-      "plugins",
-      "oauth2_tokens",
-      "oauth2_authorization_codes",
-      "oauth2_credentials",
-    })
+    local bp, db
+    local oauth2_authorization_codes_schema
+    local oauth2_tokens_schema
 
-    local oauth2_authorization_codes_schema = db.oauth2_authorization_codes.schema
-    local oauth2_tokens_schema = db.oauth2_tokens.schema
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "consumers",
+        "plugins",
+        "oauth2_tokens",
+        "oauth2_authorization_codes",
+        "oauth2_credentials",
+      })
+
+      oauth2_authorization_codes_schema = db.oauth2_authorization_codes.schema
+      oauth2_tokens_schema = db.oauth2_tokens.schema
+    end)
 
     it("does not require `scopes` when `mandatory_scope` is false", function()
       local ok, errors = v({enable_authorization_code = true, mandatory_scope = false}, schema_def)

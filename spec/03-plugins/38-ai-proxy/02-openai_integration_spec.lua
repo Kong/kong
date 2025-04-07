@@ -8,8 +8,6 @@ local strip = require("kong.tools.string").strip
 
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = helpers.get_available_port()
-
 
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
 local FILE_LOG_PATH_NO_LOGS = os.tmpname()
@@ -65,8 +63,11 @@ local _EXPECTED_CHAT_STATS = {
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local MOCK_PORT
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME, "ctx-checker-last", "ctx-checker" })
 
       -- set up openai mock fixtures

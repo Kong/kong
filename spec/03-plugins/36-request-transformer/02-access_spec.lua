@@ -4,8 +4,6 @@ local cjson   = require "cjson"
 local pl_file = require "pl.file"
 local http_mock = require "spec.helpers.http_mock"
 
-local MOCK_PORT = helpers.get_available_port()
-
 local fmt = string.format
 
 
@@ -20,8 +18,11 @@ end
 for _, strategy in helpers.each_strategy() do
 describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
   local client, mock_server
+  local MOCK_PORT
 
   lazy_setup(function()
+    MOCK_PORT = helpers.get_available_port()
+
     local bp = helpers.get_db_utils(strategy, {
       "routes",
       "services",
