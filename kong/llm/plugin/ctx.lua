@@ -121,6 +121,11 @@ end
 -- convienient functions
 
 function _M.immutable_table(t)
+  -- fall through
+  if not t then
+    return nil
+  end
+
   return setmetatable({}, {
     __index = t,
     __newindex = function(_, _, v)

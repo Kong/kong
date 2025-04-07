@@ -8,6 +8,7 @@ local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
 local string_gsub = string.gsub
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 --
 
 -- globals
@@ -263,9 +264,14 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
-  local parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  local parsed_url = socket_url.parse(model.options.upstream_url)
+
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
