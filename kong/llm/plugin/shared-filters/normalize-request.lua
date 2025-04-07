@@ -66,15 +66,11 @@ local function validate_and_transform(conf)
     error("conf.model missing from plugin configuration", 2)
   end
 
-  local model_t, err = ai_shared.merge_model_options(kong.request, conf and conf.model)
+  local model_t, err = ai_shared.merge_model_options(kong.request, ai_plugin_ctx.immutable_table(conf and conf.model))
   if err then
     return bail(400, err)
   end
 
-  -- TODO: refactor the ai_shared module to seperate the model options from other plugin conf
-  -- by using the `namespaced_ctx.model`
-  local conf_m = conf
-  conf_m.model = model_t
 
   local model_provider = conf.model.provider -- use the one from conf, not the merged one to avoid potential security risk
 
@@ -156,7 +152,7 @@ local function validate_and_transform(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   -- execute pre-request hooks for this driver
-  local ok, err = ai_driver.pre_request(conf_m, request_table)
+  local ok, err = ai_driver.pre_request(conf, request_table)
   if not ok then
     return bail(400, err)
   end
@@ -218,7 +214,7 @@ local function validate_and_transform(conf)
   end
 
   -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf_m,
+  local ok, err = ai_driver.configure_request(conf,
                identity_interface and identity_interface.interface)
   if not ok then
     kong.log.err("failed to configure request for AI service: ", err)
@@ -234,7 +230,7 @@ function _M:run(conf)
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
-  validate_and_transform(conf)
+  validate_and_transform(ai_plugin_ctx.immutable_table(conf))
 
   return true
 end

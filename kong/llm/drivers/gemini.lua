@@ -630,44 +630,49 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, identity_interface)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local parsed_url
   local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
                                                              or "generateContent"
-  local f_url = conf.model.options and conf.model.options.upstream_url
+  local f_url = model.options and model.options.upstream_url
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
-    if conf.model.options
-        and conf.model.options.gemini
-        and conf.model.options.gemini.api_endpoint
-        and conf.model.options.gemini.project_id
-        and conf.model.options.gemini.location_id
+    if model.options
+        and model.options.gemini
+        and model.options.gemini.api_endpoint
+        and model.options.gemini.project_id
+        and model.options.gemini.location_id
     then
       -- vertex mode
       f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
-                  conf.model.options.gemini.api_endpoint) ..
+                  model.options.gemini.api_endpoint) ..
               fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
-                  conf.model.options.gemini.project_id,
-                  conf.model.options.gemini.location_id,
-                  conf.model.name,
+                  model.options.gemini.project_id,
+                  model.options.gemini.location_id,
+                  model.name,
                   operation)
     else
       -- public mode
       f_url = ai_shared.upstream_url_format["gemini"] ..
               fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
-                  conf.model.name,
+                  model.name,
                   operation)
     end
   end
 
   parsed_url = socket_url.parse(f_url)
 
-  if conf.model.options and conf.model.options.upstream_path then
+  if model.options and model.options.upstream_path then
     -- upstream path override is set (or templated from request params)
-    parsed_url.path = conf.model.options.upstream_path
+    parsed_url.path = model.options.upstream_path
   end
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
 
   -- if the path is read from a URL capture, ensure that it is valid
