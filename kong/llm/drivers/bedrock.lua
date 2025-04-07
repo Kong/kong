@@ -389,7 +389,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
   new_r.toolConfig = request_table.bedrock
                  and request_table.bedrock.toolConfig
                  and to_tool_config(request_table)
-  
+
   if request_table.tools
       and type(request_table.tools) == "table"
       and #request_table.tools > 0 then
@@ -614,15 +614,20 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, aws_sdk)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local operation = get_global_ctx("stream_mode") and "converse-stream"
                                                              or "converse"
 
-  local f_url = conf.model.options and conf.model.options.upstream_url
+  local f_url = model.options and model.options.upstream_url
   if not f_url then  -- upstream_url override is not set
     local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
     local path = fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-      conf.model.name,
+      model.name,
       operation)
 
     f_url = uri ..path
@@ -630,15 +635,15 @@ function _M.configure_request(conf, aws_sdk)
 
   local parsed_url = socket_url.parse(f_url)
 
-  if conf.model.options and conf.model.options.upstream_path then
+  if model.options and model.options.upstream_path then
     -- upstream path override is set (or templated from request params)
-    parsed_url.path = conf.model.options.upstream_path
+    parsed_url.path = model.options.upstream_path
   end
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

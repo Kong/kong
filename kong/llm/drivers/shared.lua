@@ -1034,11 +1034,13 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   return query_cost, nil
 end
 
-function _M.override_upstream_url(parsed_url, conf)
+function _M.override_upstream_url(parsed_url, conf, model)
+  assert(model, "missing model parameter")
+
   if conf.route_type == "preserve" then
     -- if `upstream_path` was set, already processes before,
     -- for some provider, like azure and huggingface, the specific prefix need to prepended to the path.
-    if conf.model.options and conf.model.options.upstream_path then
+    if model.options and model.options.upstream_path then
       return
     end
     -- why?
