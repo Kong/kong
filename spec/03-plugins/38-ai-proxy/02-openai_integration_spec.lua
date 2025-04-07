@@ -1203,6 +1203,41 @@ for _, strategy in helpers.all_strategies() do
         }, json.choices[1].message)
       end)
 
+      -- check that kong.ctx.shared.llm_model_requested is set
+      it("#REGRESSION user defined model doesn't pollute long lived config table", function()
+        local body2 = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json")
+        body2 = cjson.decode(body2)
+
+        for i = 1, 10 do
+          body2.model = "random-model-" .. ngx.now() .. "-" .. i
+
+          local r = client:get("/openai/llm/v1/chat/good-no-model-param", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = cjson.encode(body2)
+          })
+
+          -- validate that the request succeeded, response status 200
+          local body = assert.res_status(200 , r)
+          local json = cjson.decode(body)
+
+          -- check this is in the 'kong' response format
+          assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+          assert.equals(json.model, "gpt-3.5-turbo-0613")
+          assert.equals(json.object, "chat.completion")
+          assert.equals(r.headers["X-Kong-LLM-Model"], "openai/" .. body2.model)
+
+          assert.is_table(json.choices)
+          assert.is_table(json.choices[1].message)
+          assert.same({
+            content = "The sum of 1 + 1 is 2.",
+            role = "assistant",
+          }, json.choices[1].message)
+        end
+      end)
+
     end)
 
     describe("openai llm/v1/completions", function()

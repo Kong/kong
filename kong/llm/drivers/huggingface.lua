@@ -5,6 +5,7 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 --
 
 local DRIVER_NAME = "huggingface"
@@ -227,14 +228,14 @@ local function build_url(base_url, route_type)
   return (route_type == "llm/v1/completions") and base_url or (base_url .. "/v1/chat/completions")
 end
 
-local function huggingface_endpoint(conf)
+local function huggingface_endpoint(conf, model)
   local parsed_url
 
   local base_url
-  if conf.model.options and conf.model.options.upstream_url then
-    base_url = conf.model.options.upstream_url
-  elseif conf.model.name then
-    base_url = fmt(ai_shared.upstream_url_format[DRIVER_NAME], conf.model.name)
+  if model.options and model.options.upstream_url then
+    base_url = model.options.upstream_url
+  elseif model.name then
+    base_url = fmt(ai_shared.upstream_url_format[DRIVER_NAME], model.name)
   else
     return nil
   end
@@ -246,7 +247,12 @@ local function huggingface_endpoint(conf)
 end
 
 function _M.configure_request(conf)
-  local parsed_url = huggingface_endpoint(conf)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
+  local parsed_url = huggingface_endpoint(conf, model)
   if not parsed_url then
     return kong.response.exit(400, "Could not parse the Hugging Face model endponit")
   end
