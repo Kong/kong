@@ -7,6 +7,7 @@ local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
 local string_gsub = string.gsub
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 --
 
 -- globals
@@ -18,14 +19,19 @@ _M.to_format = openai_driver.to_format
 _M.header_filter_hooks = openai_driver.header_filter_hooks
 
 function _M.pre_request(conf)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   kong.service.request.set_header("Accept-Encoding", "gzip, identity")  -- tell server not to send brotli
 
   -- for azure provider, all of these must/will be set by now
   if conf.logging and conf.logging.log_statistics then
     kong.ctx.plugin.ai_extra_meta = {
-      ["azure_instance_id"] = conf.model.options.azure_instance,
-      ["azure_deployment_id"] = conf.model.options.azure_deployment_id,
-      ["azure_api_version"] = conf.model.options.azure_api_version,
+      ["azure_instance_id"] = model.options.azure_instance,
+      ["azure_deployment_id"] = model.options.azure_deployment_id,
+      ["azure_api_version"] = model.options.azure_api_version,
     }
   end
 
@@ -99,17 +105,22 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local parsed_url
 
-  if conf.model.options.upstream_url then
-    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  if model.options.upstream_url then
+    parsed_url = socket_url.parse(model.options.upstream_url)
   else
     -- azure has non-standard URL format
     local url = fmt(
       "%s%s",
-      ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
-          conf.model.options
-      and conf.model.options.upstream_path
+      ai_shared.upstream_url_format[DRIVER_NAME]:format(model.options.azure_instance, model.options.azure_deployment_id),
+          model.options
+      and model.options.upstream_path
       or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
       and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
       or "/"
@@ -118,7 +129,7 @@ function _M.configure_request(conf)
     parsed_url = socket_url.parse(url)
   end
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
   -- if the path is read from a URL capture, 3re that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
@@ -144,7 +155,7 @@ function _M.configure_request(conf)
   local query_table = kong.request.get_query()
 
   query_table["api-version"] = kong.request.get_query_arg("api-version")
-                            or (conf.model.options and conf.model.options.azure_api_version)
+                            or (model.options and model.options.azure_api_version)
 
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     if query_table[auth_param_name] == nil or not conf.auth.allow_override then
