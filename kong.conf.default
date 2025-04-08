@@ -374,11 +374,6 @@
                                  # Each label must be configured as a string in the
                                  # format `key:value`.
                                  #
-                                 # Labels are only compatible with hybrid mode
-                                 # deployments with Kong Konnect (SaaS).
-                                 # This configuration doesn't work with
-                                 # self-hosted deployments.
-                                 #
                                  # Keys and values follow the AIP standards:
                                  # https://kong-aip.netlify.app/aip/129/
                                  #
