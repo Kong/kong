@@ -145,5 +145,9 @@ describe("kong.db[entity]:select_by_ca_certificate() should works [#off]", funct
     matches = db.services:select_by_ca_certificate(CA_2_ID, 2)
     assert.equals(1, #matches)
     assert.equals("svc_2", matches[1].name)
+
+    matches = db.services:select_by_ca_certificate(CA_2_ID, nil)
+    assert.equals(1, #matches)
+    assert.equals("svc_2", matches[1].name)
   end)
 end)

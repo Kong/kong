@@ -11,9 +11,11 @@ function Plugins:select_by_ca_certificate(ca_id, limit, plugin_names)
     error("the arg#1 `ca_id` is invalid")
   end
 
-  typ = type(limit)
-  if typ ~= "number" then
-    error("the arg#2 `limit` is invalid")
+  if limit then
+    typ = type(limit)
+    if typ ~= "number" then
+      error("the arg#2 `limit` is invalid")
+    end
   end
 
   typ = type(plugin_names)
@@ -100,7 +102,7 @@ function Plugins:select_by_ca_certificate(ca_id, limit, plugin_names)
         end
       end
 
-      if matches_n >= limit then
+      if limit and matches_n >= limit then
         break
       end
 

@@ -9,9 +9,11 @@ function Services:select_by_ca_certificate(ca_id, limit)
     error("the arg#1 `ca_id` is invalid")
   end
 
-  typ = type(limit)
-  if typ ~= "number" then
-    error("the arg#2 `limit` is invalid")
+  if limit then
+    typ = type(limit)
+    if typ ~= "number" then
+      error("the arg#2 `limit` is invalid")
+    end
   end
 
   local PAGE_SIZE = 100
@@ -46,7 +48,7 @@ function Services:select_by_ca_certificate(ca_id, limit)
         end
       end
 
-      if matches_n >= limit then
+      if limit and matches_n >= limit then
         break
       end
 
