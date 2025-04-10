@@ -1,5 +1,5 @@
 diff --git a/bundle/nginx-1.27.1/src/stream/ngx_stream_proxy_module.c b/bundle/nginx-1.27.1/src/stream/ngx_stream_proxy_module.c
-index 82dca1e..f12cda2 100644
+index 82dca1e..7956e68 100644
 --- a/bundle/nginx-1.27.1/src/stream/ngx_stream_proxy_module.c
 +++ b/bundle/nginx-1.27.1/src/stream/ngx_stream_proxy_module.c
 @@ -8,6 +8,9 @@
@@ -9,13 +9,13 @@ index 82dca1e..f12cda2 100644
 +#if (NGX_STREAM_LUA_KONG)
 +#include <ngx_stream_lua_kong_module.h>
 +#endif
-
+ 
  
  typedef struct {
 @@ -823,8 +826,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
-
+ 
  #if (NGX_STREAM_SSL)
-
+ 
 +#if (NGX_STREAM_LUA_KONG)
 +
 +    if (pc->type == SOCK_STREAM && pscf->ssl_enable
@@ -25,7 +25,7 @@ index 82dca1e..f12cda2 100644
 +#else
 +
      if (pc->type == SOCK_STREAM && pscf->ssl_enable) {
-
+ 
 +#endif
 +
          if (u->proxy_protocol) {
@@ -34,7 +34,7 @@ index 82dca1e..f12cda2 100644
 @@ -1089,7 +1102,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
          return;
      }
-
+ 
 -    if (pscf->ssl_server_name || pscf->ssl_verify) {
 +#if (NGX_STREAM_LUA_KONG)
 +
@@ -58,12 +58,12 @@ index 82dca1e..f12cda2 100644
 +#endif
 +
      s->connection->log->action = "SSL handshaking to upstream";
-
+ 
      rc = ngx_ssl_handshake(pc);
 @@ -1148,7 +1174,15 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
  
      if (pc->ssl->handshaked) {
-
+ 
 +#if (NGX_STREAM_LUA_KONG)
 +
 +		if (ngx_stream_lua_kong_get_upstream_ssl_verify(s, pscf->ssl_verify)) {
@@ -74,5 +74,5 @@ index 82dca1e..f12cda2 100644
 +
 +#endif
              rc = SSL_get_verify_result(pc->ssl->connection);
-
+ 
              if (rc != X509_V_OK) {
