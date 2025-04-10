@@ -4,27 +4,7 @@ local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
 local pl_path = require "pl.path"
 
-local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-response-transformer"
-
-local OPENAI_INSTRUCTIONAL_RESPONSE = {
-  __key__ = "ai-response-transformer",
-  route_type = "llm/v1/chat",
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/instructions"
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
 local REQUEST_BODY = [[
   {
     "persons": [
@@ -68,7 +48,29 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   local mock_response_file = pl_path.abspath(
     "spec/fixtures/ai-proxy/openai/request-transformer/response-with-instructions.json")
 
+  local MOCK_PORT
+  local OPENAI_INSTRUCTIONAL_RESPONSE
   lazy_setup(function()
+    MOCK_PORT = helpers.get_available_port()
+
+    OPENAI_INSTRUCTIONAL_RESPONSE = {
+      __key__ = "ai-response-transformer",
+      route_type = "llm/v1/chat",
+      model = {
+        name = "gpt-4",
+        provider = "openai",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/instructions"
+        },
+      },
+      auth = {
+        header_name = "Authorization",
+        header_value = "Bearer openai-key",
+      },
+    }
+
     mock = http_mock.new(tostring(MOCK_PORT), {
       ["/instructions"] = {
         content = string.format([[

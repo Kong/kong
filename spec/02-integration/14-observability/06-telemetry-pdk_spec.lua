@@ -1,13 +1,15 @@
 local helpers = require "spec.helpers"
 local pb = require "pb"
 
-local HTTP_SERVER_PORT_LOGS = helpers.get_available_port()
-
-
 for _, strategy in helpers.each_strategy() do
   describe("kong.pdk.telemetry #" .. strategy, function()
     local bp
     local plugin_instance_name = "my-pdk-logger-instance"
+    local HTTP_SERVER_PORT_LOGS
+
+    lazy_setup(function()
+      HTTP_SERVER_PORT_LOGS = helpers.get_available_port()
+    end)
 
     describe("log", function()
       describe("with OpenTelemetry", function()

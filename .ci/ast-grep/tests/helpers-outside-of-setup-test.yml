@@ -22,6 +22,88 @@ valid:
       local port = helpers.get_available_port()
     end)
 
+  # inside a local function (declaration)
+  - |
+    describe("foo", function()
+      local port
+
+      local function my_setup()
+        port = helpers.get_available_port()
+      end
+
+      local function my_setup_with_opts(opts)
+        port = helpers.get_available_port()
+      end
+
+      lazy_setup(function()
+        my_setup()
+        my_setup_with_opts({})
+      end)
+    end)
+
+  # inside a local function (declaration + assignment)
+  - |
+    describe("foo", function()
+      local port
+
+      local my_setup = function()
+        port = helpers.get_available_port()
+      end
+
+      local my_setup_with_opts = function(opts)
+        port = helpers.get_available_port()
+      end
+
+      lazy_setup(function()
+        my_setup()
+        my_setup_with_opts({})
+      end)
+    end)
+
+  # inside a non-local function (declaration + assignment)
+  - |
+    local my_setup, my_setup_with_opts
+
+    describe("foo", function()
+      local port
+
+      my_setup = function()
+        port = helpers.get_available_port()
+      end
+
+      my_setup_with_opts = function(opts)
+        port = helpers.get_available_port()
+      end
+
+      lazy_setup(function()
+        my_setup()
+        my_setup_with_opts({})
+      end)
+    end)
+
+  # inside require"spec.upgrade_helpers".setup
+  - |
+    local uh = require "spec.upgrade_helpers"
+
+    describe("my test", function()
+      local port
+
+      uh.setup(function()
+        port = helpers.get_available_port()
+      end)
+    end)
+
+  # inside require("spec.upgrade_helpers").setup
+  - |
+    local uh = require("spec.upgrade_helpers")
+
+    describe("my test", function()
+      local port
+
+      uh.setup(function()
+        port = helpers.get_available_port()
+      end)
+    end)
 
 invalid:
   # at the outermost scope
@@ -34,12 +116,31 @@ invalid:
     for , strategy in helpers.each_strategy() do
       local a = 123
       local port = helpers.get_available_port()
+
+      describe("my test", function()
+        -- ...
+      end)
     end
 
-  # directly inside `describe()`
+  # inside describe() inside some iterator
+  - |
+    describe("my test", function()
+      for , strategy in helpers.each_strategy() do
+        local a = 123
+        local port = helpers.get_available_port()
+      end
+    end)
+
+  # directly inside `describe()` (no label)
   - |
     describe(function()
       local a = 123
       local port = helpers.get_available_port()
     end)
 
+  # directly inside `describe()` (with label)
+  - |
+    describe("my test", function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
