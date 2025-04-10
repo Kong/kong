@@ -223,4 +223,75 @@ describe("when CP exits before DP" .. " rpc_sync=" .. rpc_sync, function()
     assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
+
+describe("DP config cache", function()
+  it("DP config cache should prioritize over declaritive config #regression", function ()
+    local cjson = require "cjson"
+    local config1 = cjson.encode {
+      _format_version = "1.1",
+      services =  {
+        {
+          name = "my-service",
+          url = "http://127.0.0.1:15555",
+          routes = {
+            {
+              name = "example-route",
+              hosts = { "example.test" }
+            }
+          }
+        }
+      }
+    }
+
+
+    local config2 = cjson.encode {
+      _format_version = "1.1",
+    }
+
+
+    assert.truthy(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      prefix = "servroot2",
+      cluster_rpc = rpc,
+      cluster_rpc_sync = rpc_sync,
+      declarative_config_string = config1,
+      proxy_listen = "0.0.0.0:9002",
+    }))
+
+    -- do not clean the prefix to preserve the config cache
+    helpers.stop_kong("servroot2", true)
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      prefix = "servroot2",
+      cluster_rpc = rpc,
+      cluster_rpc_sync = rpc_sync,
+      declarative_config_string = config2,
+    }))
+
+    finally(function()
+      -- stop the data plane
+      helpers.stop_kong("servroot2")
+    end)
+
+    local proxy_client = assert(helpers.proxy_client({
+      prefix = "servroot2",
+      port = 9002,
+    }))
+
+    -- it should use the config cache
+    assert.res_status(200, proxy_client:send({
+      method = "GET",
+      path = "/",
+      headers = {
+        host = "example.test",
+      },
+    }))
+  end)
+end)
+
 end -- for rpc_sync
