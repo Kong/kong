@@ -921,9 +921,8 @@ function Kong.init_worker()
       return
     end
 
-    if not has_declarative_config(kong.configuration) and
-      declarative.get_current_hash() ~= nil then
-      -- if there is no declarative config set and a config is present in LMDB,
+    if declarative.get_current_hash() ~= nil then
+      -- a config is present in LMDB,
       -- just build the router and plugins iterator
       ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
       local ok, err = declarative_init_build()
