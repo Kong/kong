@@ -1,9 +1,6 @@
 local helpers = require "spec.helpers"
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
-local tcp_status_port = helpers.get_available_port()
-
-
 local function get_metrics(client)
   local res = assert(client:send {
     method = "GET",
@@ -36,6 +33,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: prometheus, on-demond export metrics #" .. strategy, function()
     local http_client, status_client
     local prometheus_id
+    local tcp_status_port
+
+    lazy_setup(function()
+      tcp_status_port = helpers.get_available_port()
+    end)
 
     -- restart the kong every time or the test would be flaky
     before_each(function()

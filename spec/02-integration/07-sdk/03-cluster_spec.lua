@@ -1,45 +1,8 @@
 local helpers = require("spec.helpers")
-local CP_MOCK_PORT = helpers.get_available_port()
-local DP_MOCK_PORT = helpers.get_available_port()
 
 local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                          .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                          .. ("%x"):rep(12) .. "$"
-local fixtures_dp = {
-  http_mock = {},
-}
-
-fixtures_dp.http_mock.my_server_block = [[
-  server {
-      server_name my_server;
-      listen ]] .. DP_MOCK_PORT .. [[;
-
-      location = "/hello" {
-        content_by_lua_block {
-          ngx.print(kong.cluster.get_id())
-        }
-      }
-  }
-]]
-
-
-local fixtures_cp = {
-  http_mock = {},
-}
-
-fixtures_cp.http_mock.my_server_block = [[
-  server {
-      server_name my_server;
-      listen ]] .. CP_MOCK_PORT .. [[;
-
-      location = "/hello" {
-        content_by_lua_block {
-          ngx.print(kong.cluster.get_id())
-        }
-      }
-  }
-]]
-
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
@@ -47,7 +10,47 @@ for _, strategy in helpers.each_strategy() do
   describe("PDK: kong.cluster for #" .. strategy .. " rpc_sync=" .. rpc_sync, function()
     local proxy_client
 
+    local CP_MOCK_PORT
+    local DP_MOCK_PORT
+
     lazy_setup(function()
+      CP_MOCK_PORT = helpers.get_available_port()
+      DP_MOCK_PORT = helpers.get_available_port()
+
+      local fixtures_dp = {
+        http_mock = {
+          my_server_block = [[
+            server {
+                server_name my_server;
+                listen ]] .. DP_MOCK_PORT .. [[;
+
+                location = "/hello" {
+                  content_by_lua_block {
+                    ngx.print(kong.cluster.get_id())
+                  }
+                }
+            }
+          ]]
+        },
+      }
+
+      local fixtures_cp = {
+        http_mock = {
+          my_server_block = [[
+            server {
+                server_name my_server;
+                listen ]] .. CP_MOCK_PORT .. [[;
+
+                location = "/hello" {
+                  content_by_lua_block {
+                    ngx.print(kong.cluster.get_id())
+                  }
+                }
+            }
+          ]]
+        },
+      }
+
       assert(helpers.get_db_utils(strategy, {
         "plugins",
         "routes",
