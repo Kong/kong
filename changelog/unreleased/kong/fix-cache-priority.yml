@@ -1,0 +1,4 @@
+message: |
+  **DBless**: Fixed config cache priority of DBless, where LMDB cache should be of higher priority.
+type: bugfix
+scope: Core
