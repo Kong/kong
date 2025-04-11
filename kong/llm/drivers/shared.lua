@@ -12,10 +12,12 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 --
 
 -- static
+local ipairs       = ipairs
 local str_find     = string.find
 local str_sub      = string.sub
 local string_match = string.match
-local split        = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
+local isplitn = require("kong.tools.string").isplitn
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
@@ -370,7 +372,7 @@ function _M.frame_to_events(frame, content_type)
     end
 
     -- for multiple events that arrive in the same frame, split by top-level comma
-    for _, v in ipairs(split(frame, "\n,")) do
+    for v in isplitn(frame, "\n,") do
       events[#events+1] = { data = v }
     end
 
@@ -404,17 +406,17 @@ function _M.frame_to_events(frame, content_type)
 
   -- standard SSE parser
   else
-    local event_lines = split(frame, "\n")
-    local struct = { event = nil, id = nil, data = nil }
+    local event_lines, count = splitn(frame, "\n")
+    local struct = {} -- { event = nil, id = nil, data = nil }
 
     for i, dat in ipairs(event_lines) do
-      if #dat < 1 then
+      if dat == "" then
         events[#events + 1] = struct
-        struct = { event = nil, id = nil, data = nil }
+        struct = {} -- { event = nil, id = nil, data = nil }
       end
 
       -- test for truncated chunk on the last line (no trailing \r\n\r\n)
-      if #dat > 0 and #event_lines == i then
+      if dat ~= "" and count == i then
         ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
         if kong then
           kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), dat)
@@ -587,8 +589,8 @@ function _M.merge_model_options(kong_request, conf_m)
   -- handle model name
   local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
   if model_m then
-    local splitted = split(model_m, '.')
-    if #splitted ~= 2 then
+    local splitted, count = splitn(model_m, '.', 3)
+    if count ~= 2 then
       return nil, "cannot parse expression for field 'model.name'"
     end
 
@@ -610,8 +612,8 @@ function _M.merge_model_options(kong_request, conf_m)
     if type(v) == "string" then
       local prop_m = string_match(v or "", '%$%((.-)%)')
       if prop_m then
-        local splitted = split(prop_m, '.')
-        if #splitted ~= 2 then
+        local splitted, count = splitn(prop_m, '.', 3)
+        if count ~= 2 then
           return nil, "cannot parse expression for field '" .. v .. "'"
         end
 

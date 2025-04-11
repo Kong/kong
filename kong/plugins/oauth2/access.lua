@@ -12,7 +12,7 @@ local type = type
 local next = next
 local table = table
 local error = error
-local split = require("kong.tools.string").split
+local split_once = require("kong.tools.string").split_once
 local strip = require("kong.tools.string").strip
 local string_find = string.find
 local string_gsub = string.gsub
@@ -453,9 +453,7 @@ local function retrieve_client_credentials(parameters, conf)
     if m and next(m) then
       local decoded_basic = ngx_decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = split(decoded_basic, ":")
-        client_id = basic_parts[1]
-        client_secret = basic_parts[2]
+        client_id, client_secret = split_once(decoded_basic, ":")
       end
     end
 
