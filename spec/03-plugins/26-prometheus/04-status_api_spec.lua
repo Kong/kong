@@ -1,9 +1,6 @@
 local helpers = require "spec.helpers"
 local shell = require "resty.shell"
 
-local tcp_service_port = helpers.get_available_port()
-local tcp_proxy_port = helpers.get_available_port()
-local tcp_status_port = helpers.get_available_port()
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Plugin: prometheus (access via status API)", function()
@@ -11,6 +8,9 @@ describe("Plugin: prometheus (access via status API)", function()
   local status_client
   local proxy_client_grpc
   local proxy_client_grpcs
+  local tcp_service_port
+  local tcp_proxy_port
+  local tcp_status_port
 
   local function get_metrics()
     if not status_client then
@@ -25,6 +25,10 @@ describe("Plugin: prometheus (access via status API)", function()
   end
 
   setup(function()
+    tcp_service_port = helpers.get_available_port()
+    tcp_proxy_port = helpers.get_available_port()
+    tcp_status_port = helpers.get_available_port()
+
     local bp = helpers.get_db_utils()
 
     local upstream_hc_off = bp.upstreams:insert({
@@ -438,7 +442,11 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
 
   local success_scrape = ""
 
+  local tcp_status_port
+
   setup(function()
+    tcp_status_port = helpers.get_available_port()
+
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -534,6 +542,8 @@ describe("CP/DP connectivity state #", function ()
   local status_client
   local cp_running
 
+  local tcp_status_port
+
   local function get_metrics()
     if not status_client then
       status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
@@ -547,6 +557,8 @@ describe("CP/DP connectivity state #", function ()
   end
 
   setup(function()
+    tcp_status_port = helpers.get_available_port()
+
     local bp = helpers.get_db_utils()
 
     bp.plugins:insert {

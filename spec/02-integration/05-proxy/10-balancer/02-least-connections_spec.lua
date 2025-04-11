@@ -4,19 +4,24 @@ local helpers = require "spec.helpers"
 local https_server = helpers.https_server
 
 
-local test_port1 = helpers.get_available_port()
-local test_port2 = helpers.get_available_port()
-
-
--- create two servers, one double the delay of the other
-local server1 = https_server.new(test_port1, "127.0.0.1", "http", false, nil, 100)
-local server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 200)
-
 for _, strategy in helpers.each_strategy() do
   describe("Balancer: least-connections [#" .. strategy .. "]", function()
     local upstream1_id
 
+    local test_port1
+    local test_port2
+
+    local server1
+    local server2
+
     lazy_setup(function()
+      test_port1 = helpers.get_available_port()
+      test_port2 = helpers.get_available_port()
+
+      -- create two servers, one double the delay of the other
+      server1 = https_server.new(test_port1, "127.0.0.1", "http", false, nil, 100)
+      server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 200)
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -214,13 +219,17 @@ for _, strategy in helpers.each_strategy() do
 
         local api_client = helpers.admin_client()
 
+        -- we never send a request to this upstream, so just pick a random
+        -- port number for testing
+        local test_port = math.random(1000, 9000)
+
         -- create a new target
         local res = assert(api_client:post("/upstreams/" .. an_upstream.id .. "/targets", {
           headers = {
             ["Content-Type"] = "application/json",
           },
           body = {
-            target = "127.0.0.1:" .. test_port1,
+            target = "127.0.0.1:" .. test_port,
             weight = 100
           },
         }))
@@ -239,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 100 then
+          if entry.target == "127.0.0.1:" .. test_port and entry.weight == 100 then
             found = true
             break
           end
@@ -250,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         api_client = helpers.admin_client()
         res, err = api_client:send({
           method = "DELETE",
-          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:" .. test_port1,
+          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:" .. test_port,
         })
         assert.is_nil(err)
         assert.same(204, res.status)
@@ -267,7 +276,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 0 then
+          if entry.target == "127.0.0.1:" .. test_port and entry.weight == 0 then
             found = true
             break
           end
