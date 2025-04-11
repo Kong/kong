@@ -10,8 +10,6 @@ local REDIS_SSL_SNI     = helpers.redis_ssl_sni
 local REDIS_PASSWORD    = ""
 local REDIS_DATABASE    = 1
 local UPSTREAM_HOST     = "localhost"
-local UPSTREAM_PORT     = helpers.get_available_port()
-local UPSTREAM_URL      = string.format("http://%s:%d/always_200", UPSTREAM_HOST, UPSTREAM_PORT)
 
 local fmt               = string.format
 local proxy_client      = helpers.proxy_client
@@ -379,7 +377,13 @@ desc = fmt("Plugin: rate-limiting #db (access) [strategy: %s] [policy: %s] [limi
 describe(desc, function()
   local db, https_server, admin_client
 
+  local UPSTREAM_PORT
+  local UPSTREAM_URL
+
   lazy_setup(function()
+    UPSTREAM_PORT = helpers.get_available_port()
+    UPSTREAM_URL = string.format("http://%s:%d/always_200", UPSTREAM_HOST, UPSTREAM_PORT)
+
     _, db = helpers.get_db_utils(strategy, nil, { "rate-limiting", "key-auth" })
 
     if policy == "redis" then
@@ -1031,6 +1035,8 @@ describe(desc, function ()
   local db, https_server, admin_client
   local test_path = "/test"
   local service
+  local UPSTREAM_PORT
+  local UPSTREAM_URL
 
   local function start_kong()
     return helpers.start_kong({
@@ -1045,6 +1051,9 @@ describe(desc, function ()
   local stop_kong = helpers.stop_kong
 
   lazy_setup(function()
+    UPSTREAM_PORT = helpers.get_available_port()
+    UPSTREAM_URL = string.format("http://%s:%d/always_200", UPSTREAM_HOST, UPSTREAM_PORT)
+
     https_server = helpers.https_server.new(UPSTREAM_PORT)
     https_server:start()
   end)
@@ -1247,7 +1256,13 @@ desc = fmt("Plugin: rate-limiting with sync_rate #db (access) [strategy: %s]", s
 describe(desc, function ()
   local https_server, admin_client
 
+  local UPSTREAM_PORT
+  local UPSTREAM_URL
+
   lazy_setup(function()
+    UPSTREAM_PORT = helpers.get_available_port()
+    UPSTREAM_URL = string.format("http://%s:%d/always_200", UPSTREAM_HOST, UPSTREAM_PORT)
+
     helpers.get_db_utils(strategy, nil, {
       "rate-limiting",
     })
@@ -1356,7 +1371,13 @@ desc = fmt("Plugin: rate-limiting enable globally #db (access) [strategy: %s]", 
 describe(desc, function ()
   local https_server, admin_client
 
+  local UPSTREAM_PORT
+  local UPSTREAM_URL
+
   lazy_setup(function()
+    UPSTREAM_PORT = helpers.get_available_port()
+    UPSTREAM_URL = string.format("http://%s:%d/always_200", UPSTREAM_HOST, UPSTREAM_PORT)
+
     helpers.get_db_utils(strategy, nil, {
       "rate-limiting", "key-auth",
     })

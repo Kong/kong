@@ -9,9 +9,6 @@ local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local uuid = require("kong.tools.uuid").uuid
 
 
-local KEY_AUTH_PLUGIN
-
-
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
@@ -50,13 +47,6 @@ describe("CP/DP communication #" .. strategy .. " rpc_sync=" .. rpc_sync, functi
 
     if rpc_sync == "on" then
       assert.logfile("servroot2/logs/error.log").has.line("[kong.sync.v2] full sync ends", true, 10)
-    end
-
-    for _, plugin in ipairs(helpers.get_plugins_list()) do
-      if plugin.name == "key-auth" then
-        KEY_AUTH_PLUGIN = plugin
-        break
-      end
     end
   end)
 
@@ -356,12 +346,27 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
   -- for these tests, we do not need a real DP, but rather use the fake DP
   -- client so we can mock various values (e.g. node_version)
   describe("relaxed compatibility check:", function()
-    local bp = helpers.get_db_utils(strategy) -- runs migrations
+    -- map of current plugins
+    local plugins_map = setmetatable({}, {
+      __index = function(_, name)
+        error("plugin " .. name .. " not found in plugins_map")
+      end,
+    })
 
-    bp.plugins:insert {
-      name = "key-auth",
-    }
+    local plugins_list
+
     lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy) -- runs migrations
+
+      bp.plugins:insert {
+        name = "key-auth",
+      }
+
+      plugins_list = cycle_aware_deep_copy(helpers.get_plugins_list())
+      for _, plugin in pairs(plugins_list) do
+        plugins_map[plugin.name] = plugin.version
+      end
+
       assert(helpers.start_kong({
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -374,52 +379,50 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
         cluster_rpc = rpc,
         cluster_rpc_sync = rpc_sync,
       }))
-
-      for _, plugin in ipairs(helpers.get_plugins_list()) do
-        if plugin.name == "key-auth" then
-          KEY_AUTH_PLUGIN = plugin
-          break
-        end
-      end
     end)
 
     lazy_teardown(function()
       helpers.stop_kong()
     end)
 
-    local plugins_map = {}
-    -- generate a map of current plugins
-    local plugin_list = cycle_aware_deep_copy(helpers.get_plugins_list())
-    for _, plugin in pairs(plugin_list) do
-      plugins_map[plugin.name] = plugin.version
-    end
-
     -- STARTS allowed cases
     local allowed_cases = {
       ["CP and DP version and plugins matches"] = {},
       ["CP configured plugins list matches DP enabled plugins list"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-        plugins_list = {
-          {  name = "key-auth", version = plugins_map["key-auth"] }
-        }
+        plugins_list = function()
+          return {
+            { name = "key-auth", version = plugins_map["key-auth"] },
+          }
+        end,
       },
       ["CP configured plugins list matches DP enabled plugins version"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-        plugins_list = {
-          {  name = "key-auth", version = plugins_map["key-auth"] }
-        }
+        plugins_list = function()
+          return {
+            { name = "key-auth", version = plugins_map["key-auth"] },
+          }
+        end,
       },
       ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-        plugins_list = {
-          {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
-        }
+        plugins_list = function()
+          return {
+            { name = "key-auth",
+              version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0",
+            },
+          }
+        end,
       },
       ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-        plugins_list = {
-          {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
-        }
+        plugins_list = function()
+          return {
+            { name = "key-auth",
+              version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000",
+            }
+          }
+        end,
       },
       ["CP and DP minor version mismatches (older dp)"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, 0, PATCH),
@@ -435,68 +438,78 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
       },
       ["DP sends labels"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-        labels = { some_key = "some_value", b = "aA090).zZ", ["a-._123z"] = "Zz1.-_aA" }
+        labels = { some_key = "some_value", b = "aA090).zZ", ["a-._123z"] = "Zz1.-_aA" },
       },
       ["DP sends process conf"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         process_conf = { foo = "bar" },
       },
-    }
+      ["DP plugin set is a superset of CP"] = {
+        plugins_list = function()
+          local pl1 = cycle_aware_deep_copy(plugins_list)
+          table.insert(pl1, 2, { name = "banana", version = "1.1.1" })
+          table.insert(pl1, { name = "pineapple", version = "1.1.2" })
+          return pl1
+        end,
+      },
+      ["DP plugin set is a subset of CP"] = {
+        plugins_list = function()
+          return {
+            { name = "key-auth", version = plugins_map["key-auth"] }
+          }
+        end,
+      },
+      ["CP and DP plugin version matches to major"] = {
+        plugins_list = function()
+          local pl2 = cycle_aware_deep_copy(plugins_list)
+          for i, _ in ipairs(pl2) do
+            local v = pl2[i].version
+            local minor = v and v:match("%d+%.(%d+)%.%d+")
+            -- find a plugin that has minor version mismatch
+            -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
+            if minor and tonumber(minor) and tonumber(minor) > 2 then
+              pl2[i].version = string.format("%d.%d.%d",
+                                            tonumber(v:match("(%d+)")),
+                                            tonumber(minor - 2),
+                                            tonumber(v:match("%d+%.%d+%.(%d+)"))
 
-    local pl1 = cycle_aware_deep_copy(helpers.get_plugins_list())
-    table.insert(pl1, 2, { name = "banana", version = "1.1.1" })
-    table.insert(pl1, { name = "pineapple", version = "1.1.2" })
-    allowed_cases["DP plugin set is a superset of CP"] = {
-      plugins_list = pl1
-    }
-
-
-    allowed_cases["DP plugin set is a subset of CP"] = {
-      plugins_list = { KEY_AUTH_PLUGIN }
-    }
-
-    local pl2 = cycle_aware_deep_copy(helpers.get_plugins_list())
-    for i, _ in ipairs(pl2) do
-      local v = pl2[i].version
-      local minor = v and v:match("%d+%.(%d+)%.%d+")
-      -- find a plugin that has minor version mismatch
-      -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
-      if minor and tonumber(minor) and tonumber(minor) > 2 then
-        pl2[i].version = string.format("%d.%d.%d",
-                                      tonumber(v:match("(%d+)")),
-                                      tonumber(minor - 2),
-                                      tonumber(v:match("%d+%.%d+%.(%d+)"))
-
-        )
-        break
-      end
-    end
-    allowed_cases["CP and DP plugin version matches to major"] = {
-      plugins_list = pl2
-    }
-
-    local pl3 = cycle_aware_deep_copy(helpers.get_plugins_list())
-    for i, _ in ipairs(pl3) do
-      local v = pl3[i].version
-      local patch = v and v:match("%d+%.%d+%.(%d+)")
-      -- find a plugin that has patch version mismatch
-      -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
-      if patch and tonumber(patch) and tonumber(patch) > 2 then
-        pl3[i].version = string.format("%d.%d.%d",
-                                      tonumber(v:match("(%d+)")),
-                                      tonumber(v:match("%d+%.(%d+)")),
-                                      tonumber(patch - 2)
-        )
-        break
-      end
-    end
-    allowed_cases["CP and DP plugin version matches to major.minor"] = {
-      plugins_list = pl3
+              )
+              break
+            end
+          end
+          return pl2
+        end,
+      },
+      ["CP and DP plugin version matches to major.minor"] = {
+        plugins_list = function()
+          local pl3 = cycle_aware_deep_copy(plugins_list)
+          for i, _ in ipairs(pl3) do
+            local v = pl3[i].version
+            local patch = v and v:match("%d+%.%d+%.(%d+)")
+            -- find a plugin that has patch version mismatch
+            -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
+            if patch and tonumber(patch) and tonumber(patch) > 2 then
+              pl3[i].version = string.format("%d.%d.%d",
+                                            tonumber(v:match("(%d+)")),
+                                            tonumber(v:match("%d+%.(%d+)")),
+                                            tonumber(patch - 2)
+              )
+              break
+            end
+          end
+          return pl3
+        end,
+      }
     }
 
     for desc, harness in pairs(allowed_cases) do
       it(desc .. ", sync is allowed", function()
         local uuid = uuid()
+
+        local node_plugins_list
+        if harness.plugins_list then
+          node_plugins_list = harness.plugins_list()
+        end
 
         local res = assert(helpers.clustering_client({
           host = "127.0.0.1",
@@ -505,7 +518,7 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
           cert_key = "spec/fixtures/kong_clustering.key",
           node_id = uuid,
           node_version = harness.dp_version,
-          node_plugins_list = harness.plugins_list,
+          node_plugins_list = node_plugins_list,
           node_labels = harness.labels,
           node_process_conf = harness.process_conf,
         }))
@@ -541,30 +554,40 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
       ["CP configured plugin list mismatches DP enabled plugins list"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
-        plugins_list = {
-          {  name="banana-plugin", version="1.0.0" }
-        }
+        plugins_list = function()
+          return {
+            {  name = "banana-plugin", version = "1.0.0" },
+          }
+        end,
       },
       ["CP has configured plugin with older major version than in DP enabled plugins"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
-        plugins_list = {
-          {  name="key-auth", version="1.0.0" }
-        }
+        plugins_list = function()
+          return {
+            {  name = "key-auth", version = "1.0.0" },
+          }
+        end,
       },
       ["CP has configured plugin with newer minor version than in DP enabled plugins newer"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
-        plugins_list = {
-          {  name = "key-auth", version = "1000.0.0" }
-        }
+        plugins_list = function()
+          return {
+            {  name = "key-auth", version = "1000.0.0" },
+          }
+        end,
       },
       ["CP has configured plugin with older minor version than in DP enabled plugins"] = {
         dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
         expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
-        plugins_list = {
-          {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
-        }
+        plugins_list = function()
+          return {
+            { name = "key-auth",
+              version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0",
+            },
+          }
+        end,
       },
       ["CP and DP major version mismatches"] = {
         dp_version = "1.0.0",
@@ -585,6 +608,11 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
       it(desc ..", sync is blocked", function()
         local uuid = uuid()
 
+        local node_plugins_list
+        if harness.plugins_list then
+          node_plugins_list = harness.plugins_list()
+        end
+
         local res, err = helpers.clustering_client({
           host = "127.0.0.1",
           port = 9005,
@@ -592,7 +620,7 @@ describe("CP/DP #version check #" .. strategy .. " rpc_sync=" .. rpc_sync, funct
           cert_key = "spec/fixtures/kong_clustering.key",
           node_id = uuid,
           node_version = harness.dp_version,
-          node_plugins_list = harness.plugins_list,
+          node_plugins_list = node_plugins_list,
         })
 
         if not res then

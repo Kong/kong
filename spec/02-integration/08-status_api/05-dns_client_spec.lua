@@ -1,13 +1,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local tcp_status_port = helpers.get_available_port()
-
 for _, strategy in helpers.each_strategy() do
   describe("[#traditional] Status API - DNS client route with [#" .. strategy .. "]" , function()
     local client
+    local tcp_status_port
 
     lazy_setup(function()
+      tcp_status_port = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy, {
         "upstreams",
         "targets",
@@ -69,7 +70,11 @@ for _, strategy in helpers.each_strategy() do
   describe("[#traditional] Status API - DNS client route with [#" .. strategy .. "]" , function()
     local client
 
+    local tcp_status_port
+
     lazy_setup(function()
+      tcp_status_port = helpers.get_available_port()
+
       helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -110,7 +115,11 @@ for _, strategy in helpers.each_strategy() do
   describe("[#hybrid] Status API - DNS client route with [#" .. strategy .. "]" , function()
     local client
 
+    local tcp_status_port
+
     lazy_setup(function()
+      tcp_status_port = helpers.get_available_port()
+
       helpers.get_db_utils(strategy) -- runs migrations
 
       assert(helpers.start_kong({
