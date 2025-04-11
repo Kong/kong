@@ -607,8 +607,8 @@ jobs:
         sep-tags: " "
         tags: |
           type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' && env.latest_sha == needs.metadata.outputs.commit-sha }}
-          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
-          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=^\d+\.\d+,value=${{ github.event.inputs.version }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=^\d+\.\d+,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},${{ github.event.inputs.version }},suffix=
           type=ref,event=branch

@@ -1,5 +1,5 @@
 diff --git a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
-index 2be233c..f364448 100644
+index d04d91e..1c771bc 100644
 --- a/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
 +++ b/bundle/nginx-1.27.1/src/http/ngx_http_upstream.c
 @@ -8,6 +8,9 @@

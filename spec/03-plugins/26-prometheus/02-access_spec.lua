@@ -2,9 +2,6 @@ local helpers = require "spec.helpers"
 local shell = require "resty.shell"
 local pl_file = require "pl.file"
 
-local tcp_service_port = helpers.get_available_port()
-local tcp_proxy_port = helpers.get_available_port()
-local MOCK_PORT = helpers.get_available_port()
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Plugin: prometheus (access)", function()
@@ -13,7 +10,13 @@ describe("Plugin: prometheus (access)", function()
   local proxy_client_grpc
   local proxy_client_grpcs
 
+  local tcp_service_port
+  local tcp_proxy_port
+
   setup(function()
+    tcp_service_port = helpers.get_available_port()
+    tcp_proxy_port = helpers.get_available_port()
+
     local bp = helpers.get_db_utils()
 
     local service = bp.services:insert {
@@ -618,8 +621,11 @@ describe("Plugin: prometheus (access) AI metrics", function()
   local proxy_client
   local admin_client
   local prometheus_plugin
+  local MOCK_PORT
 
   setup(function()
+    MOCK_PORT = helpers.get_available_port()
+
     local bp = helpers.get_db_utils()
 
     local fixtures = {
