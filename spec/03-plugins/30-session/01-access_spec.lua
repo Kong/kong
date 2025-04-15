@@ -269,7 +269,6 @@ for _, strategy in helpers.each_strategy() do
         --    06|U5W4A6VXhvqvBSf4G_v0-Q|DFJMMSR1HbleOSko25kctHZ44oo; Expires=Mon, 06 Jun 2022 08:30:27 GMT;
         --    Max-Age=3600; Path=/; SameSite=Lax; Secure; HttpOnly"
         local cookie_parts = split(cookie[2], "; ")
-        print(cookie[2])
         assert.equal("Path=/", cookie_parts[2])
         assert.equal("SameSite=Strict", cookie_parts[3])
         assert.equal("Secure", cookie_parts[4])
