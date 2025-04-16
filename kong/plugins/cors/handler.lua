@@ -34,6 +34,7 @@ local function is_origin_provided(origin)
   return origin and origin ~= ""
 end
 
+
 local function normalize_origin(domain)
   local parsed_obj = assert(url.parse(domain))
   if not parsed_obj.host then

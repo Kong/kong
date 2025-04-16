@@ -5,6 +5,10 @@ local tablex = require "pl.tablex"
 
 
 local CORS_DEFAULT_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS,TRACE,CONNECT"
+local ABSENT_ORIGIN_HEADERS = { nil, "", }
+-- Using fixed count (2) instead of #ABSENT_ORIGIN_HEADERS because
+-- the length operator (#) is unreliable with the nil element position
+local ABSENT_ORIGIN_HEADERS_COUNT = 2
 
 
 local function sortedpairs(t)
@@ -231,8 +235,6 @@ hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, r
         },
       },
     }
-
-    local absent_origin_headers = { nil, "" }
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
@@ -1163,9 +1165,10 @@ hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, r
         assert.equal("disallowed-domain.test", json.headers["origin"])
       end)
 
-      for i = 1, 2 do
-        local origin = absent_origin_headers[i]
-        it("when allow_origin_absent is disabled with missing Origin header[" .. i .. "], no ACAO is returned", function()
+      for i = 1, ABSENT_ORIGIN_HEADERS_COUNT do
+        local origin = ABSENT_ORIGIN_HEADERS[i]
+        it("when allow_origin_absent is disabled with missing Origin header value:" .. 
+           tostring(origin) .. ", no ACAO is returned", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             headers = {
@@ -1179,7 +1182,8 @@ hybrid_helper.run_for_each_deploy({}, function(helpers, strategy, deploy, rpc, r
           assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         end)
 
-        it("when allow_origin_absent is enabled with missing Origin header[" .. i .. "], ACAO is returned", function()
+        it("when allow_origin_absent is enabled with missing Origin header value:" .. 
+           tostring(origin) .. ", ACAO is returned", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             headers = {
