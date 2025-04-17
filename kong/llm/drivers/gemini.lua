@@ -11,6 +11,8 @@ local table_insert = table.insert
 local string_lower = string.lower
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_base = require("kong.llm.plugin.base")
+local pl_string = require "pl.stringx"
+
 --
 
 -- globals
@@ -71,6 +73,14 @@ local function is_function_call_message(message)
         and #message.tool_calls > 0
 end
 
+local function has_finish_reason(event)
+  return event
+         and event.candidates
+         and #event.candidates > 0
+         and event.candidates[1].finishReason
+         or nil
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
@@ -87,12 +97,11 @@ local function handle_stream_event(event_t, model_info, route_type)
     return nil, "failed to decode stream event frame from gemini", nil
   end
 
+  local finish_reason = has_finish_reason(event)  -- may be nil
+
   if is_response_content(event) then
     local metadata = {}
-    metadata.finished_reason   = event.candidates
-                             and #event.candidates > 0
-                             and event.candidates[1].finishReason
-                             or "STOP"
+    metadata.finish_reason     = finish_reason
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
 
@@ -104,11 +113,50 @@ local function handle_stream_event(event_t, model_info, route_type)
             role = "assistant",
           },
           index = 0,
+          finish_reason = finish_reason
         },
       },
     }
 
     return cjson.encode(new_event), nil, metadata
+  
+  elseif is_tool_content(event) then
+    local metadata = {}
+    metadata.finish_reason     = finish_reason
+    metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
+    metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+
+    if event.candidates and #event.candidates > 0 then
+      local new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {},
+            },
+            index = 0,
+            finish_reason = finish_reason
+          },
+        },
+      }
+
+      local function_call_responses = event.candidates[1].content.parts
+
+      if function_call_responses and #function_call_responses > 0 then
+        for i, v in ipairs(function_call_responses) do
+          new_event.choices[1].delta.tool_calls[i] = {
+            ['function'] = {
+              name = v.functionCall.name,
+              arguments = cjson.encode(v.functionCall.args),
+            },
+            ['type'] = "function",
+          }
+        end
+      end
+
+      return cjson.encode(new_event), nil, metadata
+    end
+
+
   end
 end
 
@@ -132,6 +180,91 @@ local function to_tools(in_tools)
   end
 
   return out_tools
+end
+
+
+local function image_url_to_components(img)
+  -- determine the protocol from the first 10 bytes
+  if #img < 10 then
+    return nil, "image URL is less than 10 bytes, which is not parsable"
+  end
+
+  -- capture only 10 bytes for the 'protocol://' to increase performance
+  local protocol_parts = pl_string.split(img:sub(1, 6), ":")
+
+  if protocol_parts then
+    local protocol = protocol_parts[1]
+
+    -- if the protocol is "data" then we can parse it,
+    -- otherwise just send it as-is, because it's probably
+    -- as GCP bucket or https link.
+    if protocol == "data" then
+      local coordinates_outer = pl_string.split(img:sub(#protocol+2), ";")
+      local coordinates_inner = pl_string.split(coordinates_outer[2], ",")
+
+      return {
+        mimetype = coordinates_outer[1],
+        encoding = coordinates_inner[1],
+        data = coordinates_inner[2],
+      }
+    else
+      return img
+    end
+  end
+
+  return nil, "unable to determine the PROTOCOL from the image url"
+end
+
+-- expects nil return if part does not match expected format or cannot be transformed
+local function openai_part_to_gemini_part(openai_part)
+  if not openai_part then
+    return nil
+  end
+
+  local gemini_part
+
+  if openai_part.type and openai_part.type == "image_url" then
+    if not (openai_part.image_url and openai_part.image_url.url) then
+      return nil, "message part type is 'image_url' but is missing .image_url.url block"
+    end
+
+    local image_components, err = image_url_to_components(openai_part.image_url.url)
+    if err then
+      return nil, "could not decode OpenAI image-part, " .. err
+    end
+
+    if image_components and type(image_components) == "table" then
+      gemini_part = {
+        inlineData = {
+          data = image_components.data,
+          mimeType = image_components.mimetype,
+        }
+      }
+
+    elseif image_components and type(image_components) == "string" then
+      gemini_part = {
+        fileData = {
+          fileUri = image_components,
+          mimeType = "image/generic",
+        }
+      }
+
+    end
+
+  elseif openai_part.type and openai_part.type == "text" then
+    if not openai_part.text then
+      return nil, "message part type is 'text' but is missing .text block"
+    end
+
+    gemini_part = {
+      text = openai_part.text,
+    }
+
+  else
+    return nil, "cannot transform part of type '" .. openai_part.type .. "' to Gemini format"
+  end
+
+  return gemini_part
 end
 
 local function to_gemini_chat_openai(request_table, model_info, route_type)
@@ -183,21 +316,40 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
           })
 
         else
-          -- for any other role, just construct the chat history as 'parts.text' type
+          local this_parts = {}
+
+          -- for any other role, just construct the chat history as 'parts' type
           new_r.contents = new_r.contents or {}
 
-          local part = v.content
           if type(v.content) == "string" then
-            part = {
-              text = v.content
+            this_parts = {
+              {
+                text = v.content,
+              },
             }
+
+          elseif type(v.content) == "table" then
+            if #v.content > 0 then  -- check it has ome kind of array element
+              for j, part in ipairs(v.content) do
+                local this_part, err = openai_part_to_gemini_part(part)
+                
+                if not this_part then
+                  if not err then
+                    err = "message at position " .. i .. ", part at position " .. j .. " does not match expected OpenAI format"
+                  end
+                  return nil, nil, err
+                end
+
+                this_parts[j] = this_part
+              end
+            else
+              return nil, nil, "message at position " .. i .. " does not match expected array format"
+            end
           end
 
           table_insert(new_r.contents, {
             role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-            parts = {
-              part,
-            },
+            parts = this_parts,
           })
         end
 
@@ -478,44 +630,49 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, identity_interface)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local parsed_url
   local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
                                                              or "generateContent"
-  local f_url = conf.model.options and conf.model.options.upstream_url
+  local f_url = model.options and model.options.upstream_url
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
-    if conf.model.options
-        and conf.model.options.gemini
-        and conf.model.options.gemini.api_endpoint
-        and conf.model.options.gemini.project_id
-        and conf.model.options.gemini.location_id
+    if model.options
+        and model.options.gemini
+        and model.options.gemini.api_endpoint
+        and model.options.gemini.project_id
+        and model.options.gemini.location_id
     then
       -- vertex mode
       f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
-                  conf.model.options.gemini.api_endpoint) ..
+                  model.options.gemini.api_endpoint) ..
               fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
-                  conf.model.options.gemini.project_id,
-                  conf.model.options.gemini.location_id,
-                  conf.model.name,
+                  model.options.gemini.project_id,
+                  model.options.gemini.location_id,
+                  model.name,
                   operation)
     else
       -- public mode
       f_url = ai_shared.upstream_url_format["gemini"] ..
               fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
-                  conf.model.name,
+                  model.name,
                   operation)
     end
   end
 
   parsed_url = socket_url.parse(f_url)
 
-  if conf.model.options and conf.model.options.upstream_path then
+  if model.options and model.options.upstream_path then
     -- upstream path override is set (or templated from request params)
-    parsed_url.path = conf.model.options.upstream_path
+    parsed_url.path = model.options.upstream_path
   end
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
 
   -- if the path is read from a URL capture, ensure that it is valid
@@ -569,7 +726,9 @@ end
 if _G._TEST then
   -- export locals for testing
   _M._to_tools = to_tools
+  _M._to_gemini_chat_openai = to_gemini_chat_openai
   _M._from_gemini_chat_openai = from_gemini_chat_openai
+  _M._openai_part_to_gemini_part = openai_part_to_gemini_part
 end
 
 
