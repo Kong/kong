@@ -5,7 +5,6 @@ local tablepool = require "tablepool"
 local tablex = require "pl.tablex"
 local base = require "resty.core.base"
 local cjson = require "cjson"
-local ngx_re = require "ngx.re"
 local tracing_context = require "kong.observability.tracing.tracing_context"
 
 local ngx = ngx
@@ -26,7 +25,7 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local _log_prefix = "[tracing] "
-local split = ngx_re.split
+local splitn = require("kong.tools.string").splitn
 local request_id_get = require "kong.observability.tracing.request_id".get
 
 local _M = {}
@@ -83,7 +82,7 @@ function _M.balancer(ctx)
   local span
   local balancer_tries = balancer_data.tries
   local try_count = balancer_data.try_count
-  local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
+  local upstream_connect_time = splitn(var.upstream_connect_time, ", ")
 
   local last_try_balancer_span
   do

@@ -211,10 +211,10 @@ end
 
 
 if is_http then
-
+  local sub = string.sub
   local fmt = string.format
   local ngx_null = ngx.null
-  local re_split = require("ngx.re").split
+  local splitn = require("kong.tools.string").splitn
 
 
   local PREFIX_LEN = 13 -- #"http.headers."
@@ -227,25 +227,26 @@ if is_http then
   local HTTP_SEGMENTS_OFFSET = 1
 
 
-  local get_http_segments
-  do
-    local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
-
-    get_http_segments = function(params)
-      if not params.segments then
-        HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
-        params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
+  local function get_http_segments(params)
+    if not params.segments then
+      local segments, count = splitn(sub(params.uri, 2), "/") -- skip first '/'
+      for i = count, 1, -1 do
+        -- remove trailing empty segments (aka what original ngx.re.split did)
+        -- TODO: what about other leading and other empty segments?
+        if segments[i] ~= "" then
+          break
+        end
+        segments[i] = nil
       end
-
-      return params.segments
+      params.segments = segments
     end
+    return params.segments
   end
 
 
   FIELDS_FUNCS["http.path.segments.len"] =
   function(params)
     local segments = get_http_segments(params)
-
     return #segments
   end
 

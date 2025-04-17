@@ -1,6 +1,6 @@
 local _M = {}
 
-local split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 
 local header_mt = {
   __index = function(self, name)
@@ -28,12 +28,14 @@ function _M.connect(opts)
   local req_line = req_sock:receive()
   ngx.log(ngx.DEBUG, "request line: ", req_line)
 
-  local method, host_port = unpack(split(req_line, " "))
+  local t = splitn(req_line, " ", 3)
+  local method, host_port = t[1], t[2]
   if method ~= "CONNECT" then
     return ngx.exit(400)
   end
 
-  local upstream_host, upstream_port = unpack(split(host_port, ":"))
+  t = splitn(host_port, ":", 3)
+  local upstream_host, upstream_port = t[1], t[2]
 
   local headers = new_headers()
 

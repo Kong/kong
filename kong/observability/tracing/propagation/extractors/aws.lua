@@ -1,12 +1,12 @@
 local _EXTRACTOR        = require "kong.observability.tracing.propagation.extractors._base"
 local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
-local split = require "kong.tools.string".split
+local isplitn = require "kong.tools.string".isplitn
+local split_once = require "kong.tools.string".split_once
 local strip = require "kong.tools.string".strip
 
 local from_hex = propagation_utils.from_hex
-local match    = string.match
-local ipairs = ipairs
+local match = string.match
 local type = type
 
 local AWS_KV_PAIR_DELIM = ";"
@@ -45,10 +45,10 @@ function AWS_EXTRACTOR:get_context(headers)
   -- id can be deduced by concatenating the timestamp and uniqueid.
   --
   -- https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
-  for _, key_pair in ipairs(split(aws_header, AWS_KV_PAIR_DELIM)) do
-    local key_pair_list = split(key_pair, AWS_KV_DELIM)
-    local key = strip(key_pair_list[1])
-    local value = strip(key_pair_list[2])
+  for key_pair in isplitn(aws_header, AWS_KV_PAIR_DELIM) do
+    local key, value = split_once(key_pair, AWS_KV_DELIM)
+    key = strip(key)
+    value = strip(value)
 
     if key == AWS_TRACE_ID_KEY then
       local version, timestamp_subset, unique_id_subset = match(value, AWS_TRACE_ID_PATTERN)
