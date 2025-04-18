@@ -14,6 +14,7 @@ service Bouncer {
       // HTTP | gRPC
       // -----|-----
       // `GET /v1/messages/123456`  | `HelloRequest(greeting: "123456")`
+      // comment to test CI build
       get: "/v1/messages/{greeting}"
       additional_bindings {
         get: "/v1/messages/legacy/{greeting=**}"
