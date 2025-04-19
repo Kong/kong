@@ -1,8 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
-local stringx = require "pl.stringx"
 local constants = require "kong.constants"
+local isplitn = require("kong.tools.string").isplitn
 local utils = require "spec.helpers.perf.utils"
 
 local NON_BUDLED_PLUGINS = {}
@@ -45,8 +45,7 @@ describe("Plugins conf property" , function()
       local bundled_plugins_list = json.plugins.available_on_server
       local rocks_installed_plugins, err = utils.execute([[luarocks show kong | grep -oP 'kong\.plugins\.\K([\w-]+)' | uniq]])
       assert.is_nil(err)
-      local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
-      for _, plugin in ipairs(rocks_installed_plugins_list) do
+      for plugin in isplitn(rocks_installed_plugins, "\n") do
         if not NON_BUDLED_PLUGINS[plugin] then
           assert(bundled_plugins_list[plugin] ~= nil,
                  "Found installed plugin not in bundled list: " ..
@@ -202,4 +201,3 @@ describe("Plugins conf property" , function()
     end)
   end)
 end)
-

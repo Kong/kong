@@ -1,6 +1,6 @@
 local type = type
 local tonumber = tonumber
-local split = require("kong.tools.string").split
+local isplitn = require("kong.tools.string").isplitn
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 
@@ -32,12 +32,11 @@ end
 function _M.string_to_number(s)
   local base = 1000000000
   local num = 0
-  for _, v in ipairs(split(s, ".", 4)) do
+  for v in isplitn(s, ".", 4) do
     v = v:match("^(%d+)")
     num = num + base * (tonumber(v, 10) or 0)
     base = base / 1000
   end
-
   return num
 end
 

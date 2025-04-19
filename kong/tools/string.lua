@@ -1,4 +1,4 @@
-local pl_stringx = require "pl.stringx"
+local new_tab = require "table.new"
 
 
 local type     = type
@@ -10,6 +10,7 @@ local fmt      = string.format
 local find     = string.find
 local gsub     = string.gsub
 local byte     = string.byte
+local huge     = math.huge
 
 
 local SPACE_BYTE = byte(" ")
@@ -20,18 +21,189 @@ local CR_BYTE    = byte("\r")
 local _M = {}
 
 
-_M.join = pl_stringx.join
+_M.join = require("pl.stringx").join
 
 
---- splits a string.
+--- splits a string (kept for backward compatibility, use splitn instead).
 -- just a placeholder to the penlight `pl.stringx.split` function
 -- @function split
-_M.split = pl_stringx.split
+_M.split = require("pl.stringx").split
+
+
+local function split_once_common(value, pattern, plain)
+  if value == nil then
+    return nil, nil
+  elseif pattern == nil then
+    return value, nil
+  elseif pattern == "" then
+    return "", value
+  elseif value == "" then
+    return "", nil
+  end
+
+  local s, e = find(value, pattern, nil, plain)
+  if not s then
+    return value, nil
+  end
+
+  if s == 1 and e == 1 then
+    return "", (sub(value, e + 1))
+  end
+
+  return (sub(value, 1, s - 1)), (sub(value, e + 1))
+end
+
+
+--- splits a string once with a plain delimiter.
+-- @function split_once
+function _M.split_once(value, delim)
+  return split_once_common(value, delim, true)
+end
+
+
+--- splits a string once with a pattern.
+-- @function split_once
+function _M.psplit_once(value, pattern)
+  return split_once_common(value, pattern, false)
+end
+
+
+-- This code is optimized, you can find microbenchmarks in:
+-- https://github.com/Kong/kong/pull/14388
+--
+-- Note that the results may also vary a bit on different architectures.
+--
+-- Here is a small part of that:
+-- local monotonic_msec = require("resty.core.time").monotonic_msec
+-- local update_time = ngx.update_time
+-- local splitn = require("kong.tools.string").splitn
+-- local TEST_SET = {
+--   "",
+--   ",",
+--   ",,",
+--   "a,,b",
+--   "a,b,c",
+--   "aaa bbb,cccc dddd,eeeeee,ffff,,ggg,hhhhhhh,placeholderplaceholderplaceholderplaceholderplaceholderplaceholderplaceholder,ii",
+--   "aaa bbb,cccc dddd,eeeeee,ffff,,ggg,hhhhhhh,placeholderplaceholderplaceholderplaceholderplaceholderplaceholderplaceholder,ii, jjj",
+-- }
+-- local TEST_COUNT = #TEST_SET
+-- local ITERATIONS = 1000000
+-- update_time()
+-- local s = monotonic_msec()
+-- for _ = 1, ITERATIONS do
+--   for i = 1, TEST_COUNT do
+--     local _ = splitn(TEST_SET[i], ",")
+--   end
+-- end
+-- update_time()
+-- local e = monotonic_msec()
+-- print("took: ", e - s, " ms")
+local function splitn_common(value, pattern, n, plain)
+  local limit = n or huge
+  if limit < 1 or value == nil then
+    return {}, 0
+
+  elseif limit == 1 or pattern == nil then
+    return { value }, 1
+
+  elseif pattern == "" then
+    if value == "" then
+      return { "", "" }, 2
+    end
+
+    local size = #value
+    if size == 1 then
+      if limit == 2 then
+        return { "", value }, 2
+      else
+        return { "", value, "" }, 3
+      end
+    end
+
+    size = limit >= size + 2 and size + 2 or limit
+    local t = new_tab(size, 0)
+    t[1] = ""
+    for i = 2, size do
+      t[i] = sub(value, i - 1, i < size and i - 1 or nil)
+    end
+    return t, size
+
+  elseif value == "" then
+    return { "" }, 1
+  end
+
+  local p = 1
+  local i = 1
+  local t = new_tab(n or 10, 0)
+  ::again::
+  if i < limit then
+    local s, e = find(value, pattern, p, plain)
+    if s then
+      t[i] = sub(value, p, s - 1)
+      i = i + 1
+      p = e + 1
+      goto again
+    end
+  end
+  t[i] = sub(value, p)
+  return t, i
+end
+
+
+local function noop_iter() end
+local function once_iter(invariant, control)
+  return invariant ~= control and invariant or nil
+end
+local function split_iter(t)
+  local i = t[0] or 1
+  t[0] = i + 1
+  return t[i]
+end
+
+
+--- splits a string with a plain delimiter (much faster than the split above).
+-- @function splitn
+function _M.splitn(value, delim, n)
+  return splitn_common(value, delim, n, true)
+end
+
+
+--- splits a string with a pattern.
+-- @function psplitn
+function _M.psplitn(value, pattern, n)
+  return splitn_common(value, pattern, n, false)
+end
+
+
+--- string splitting iterator (plain delimiter).
+-- @function isplitn
+function _M.isplitn(value, delim, n)
+  local res, count = splitn_common(value, delim, n, true)
+  if count == 0 then
+    return noop_iter
+  elseif count == 1 then
+    return once_iter, res[1]
+  end
+  return split_iter, res
+end
+
+
+--- string splitting iterator (pattern delimiter).
+-- @function ipsplitn
+function _M.ipsplitn(value, pattern, n)
+  local res, count = splitn_common(value, pattern, n, false)
+  if count == 0 then
+    return noop_iter
+  elseif count == 1 then
+    return once_iter, res[1]
+  end
+  return split_iter, res
+end
 
 
 --- strips whitespace from a string.
 -- @function strip
-_M.strip = function(value)
+function _M.strip(value)
   if value == nil then
     return ""
   end

@@ -21,7 +21,6 @@ fixtures.dns_mock:A{
   address = "127.0.0.1"
 }
 
-local status_api_port = helpers.get_available_port()
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
@@ -30,8 +29,11 @@ for _, strategy in helpers.each_strategy() do
     local bp
     local admin_ssl_client -- admin_ssl_client (lua-resty-http) does not support h2
     local proxy_ssl_client -- proxy_ssl_client (lua-resty-http) does not support h2
+    local status_api_port
 
     setup(function()
+      status_api_port = helpers.get_available_port()
+
       bp = helpers.get_db_utils(strategy, {"services", "routes", "plugins"})
 
       local mock_ssl_service = bp.services:insert{

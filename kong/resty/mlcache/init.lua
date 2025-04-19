@@ -426,8 +426,8 @@ local function del_shm(self, shm_key, value)
     local ok, err = dict:delete(shm_key)
 
     if not ok then
-        ngx_log(WARN, "could not delete from lua_shared_dict '" .. shm
-                      .. "': " .. err)
+        ngx_log(WARN, "could not delete from lua_shared_dict '", shm,
+                      "': ", err)
         return
     end
 

@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local http = require "resty.http"
 
-local cp_status_port = helpers.get_available_port()
 local dp_status_port = 8100
 
 local function get_status_no_ssl_verify()
@@ -157,17 +156,21 @@ end
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("kong drain in hybrid mode #" .. strategy, function()
-    local bp = helpers.get_db_utils(strategy, {
-      "services",
-    })
-
-    -- insert some data to make sure the control plane is ready and send the configuration to dp
-    -- so that `current_hash` of dp wouldn't be DECLARATIVE_EMPTY_CONFIG_HASH, so that dp would be ready
-    assert(bp.services:insert {
-      name = "example",
-    })
+    local cp_status_port
 
     lazy_setup(function()
+      cp_status_port = helpers.get_available_port()
+
+      local bp = helpers.get_db_utils(strategy, {
+        "services",
+      })
+
+      -- insert some data to make sure the control plane is ready and send the configuration to dp
+      -- so that `current_hash` of dp wouldn't be DECLARATIVE_EMPTY_CONFIG_HASH, so that dp would be ready
+      assert(bp.services:insert {
+        name = "example",
+      })
+
       assert(helpers.start_kong({
         role = "data_plane",
         database = "off",

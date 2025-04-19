@@ -7,11 +7,11 @@ local ipairs   = ipairs
 local tonumber = tonumber
 local tostring = tostring
 local gsub     = string.gsub
-local sub      = string.sub
 local fmt      = string.format
 local lower    = string.lower
 local find     = string.find
-local split    = require("kong.tools.string").split
+local splitn   = require("kong.tools.string").splitn
+local split_once = require("kong.tools.string").split_once
 
 
 local _M = {}
@@ -30,12 +30,12 @@ end
 
 
 local function split_cidr(cidr, prefixes)
-  local p = find(cidr, "/", 3, true)
-  if not p then
+  local ip, prefix = split_once(cidr, "/")
+  if not ip then
     return
   end
 
-  return sub(cidr, 1, p - 1), prefixes[sub(cidr, p + 1)]
+  return ip, prefixes[prefix]
 end
 
 
@@ -240,9 +240,10 @@ function _M.check_hostname(address)
   -- notes:
   --   - punycode allows prefixed dash, if the characters before the dash are escaped
   --   - FQDN can end in dots
-  for index, segment in ipairs(split(name, ".")) do
+  local t, count = splitn(name, ".")
+  for index, segment in ipairs(t) do
     if segment:match("-$") or segment:match("^%.") or segment:match("%.$") or
-       (segment == "" and index ~= #split(name, ".")) then
+       (segment == "" and index ~= count) then
       return nil, "invalid hostname: " .. address
     end
   end
