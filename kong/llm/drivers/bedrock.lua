@@ -459,13 +459,21 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     return nil, nil, "body must be table or string"
   end
 
+  local model_name_processed = conf.model.name
+
+  local is_arn = conf.model.name:find("^arn:aws:bedrock")
+  if is_arn then
+    -- if the model name is an ARN, we need to escape it for the URL
+    model_name_processed = ngx.escape_uri(conf.model.name)
+  end
+
   -- may be overridden
   local f_url = conf.model.options and conf.model.options.upstream_url
   if not f_url then  -- upstream_url override is not set
     local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], identity_interface.interface.config.region)
     local path = fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-      conf.model.name,
+      model_name_processed,
       "converse")
 
     f_url = uri ..path
@@ -478,12 +486,6 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
   identity_interface.interface.config.signatureVersion = "v4"
   identity_interface.interface.config.endpointPrefix = "bedrock"
 
-  -- set the canonical URI for signing and escape the model name (AWS ARN)
-  canonicalURI = fmt(
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-    ngx.escape_uri(conf.model.name),
-    "converse")
-
   local r = {
     headers = {},
     method = method,
@@ -491,9 +493,15 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     host = parsed_url.host,
     port = tonumber(parsed_url.port) or 443,
     body = body_string,
-    canonicalURI = canonicalURI,
-
   }
+
+  if is_arn then
+    -- sigv4 requires the canonical URI to be escaped twice
+    r.canonicalURI = fmt(
+      ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+      ngx.escape_uri(model_name_processed),
+      "converse")
+  end
 
   local signature, err = signer(identity_interface.interface.config, r)
   if not signature then
@@ -558,11 +566,20 @@ function _M.configure_request(conf, aws_sdk)
                                                              or "converse"
 
   local f_url = conf.model.options and conf.model.options.upstream_url
+
+  local model_name_processed = conf.model.name
+
+  local is_arn = conf.model.name:find("^arn:aws:bedrock")
+  if is_arn then
+    -- if the model name is an ARN, we need to escape it for the URL
+    model_name_processed = ngx.escape_uri(conf.model.name)
+  end
+
   if not f_url then  -- upstream_url override is not set
     local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
     local path = fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-      conf.model.name,
+      model_name_processed,
       operation)
 
     f_url = uri ..path
@@ -588,12 +605,6 @@ function _M.configure_request(conf, aws_sdk)
   aws_sdk.config.signatureVersion = "v4"
   aws_sdk.config.endpointPrefix = "bedrock"
 
-  -- set the canonical URI for signing and escape the model name (AWS ARN)
-  canonicalURI = fmt(
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-    ngx.escape_uri(conf.model.name),
-    "converse")
-
   local r = {
     headers = {},
     method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method,
@@ -601,8 +612,15 @@ function _M.configure_request(conf, aws_sdk)
     host = parsed_url.host,
     port = tonumber(parsed_url.port) or 443,
     body = kong.request.get_raw_body()
-    canonicalURI = canonicalURI,
   }
+
+  if is_arn then
+    -- sigv4 requires the canonical URI to be escaped twice
+    r.canonicalURI = fmt(
+      ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+      ngx.escape_uri(model_name_processed),
+      operation)
+  end
 
   local signature, err = signer(aws_sdk.config, r)
   if not signature then
