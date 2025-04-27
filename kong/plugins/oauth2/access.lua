@@ -827,9 +827,11 @@ local function retrieve_token(conf, access_token, realm)
           "plugin is configured without 'global_credentials'",
       },
       {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                                '"invalid_token" error_description=' ..
-                                '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = 'Bearer' 
+          .. realm
+          .. (realm ~= "" and "," or "")
+          .. ' error="invalid_token", error_description='
+          .. '"The access token is invalid or has expired"',
       })
     end
 
@@ -977,9 +979,11 @@ local function do_authentication(conf)
         error_description = "The access token is invalid or has expired"
       },
       headers = {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                               '"invalid_token" error_description=' ..
-                               '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = 'Bearer' 
+          .. realm
+          .. (realm ~= "" and "," or "")
+          .. ' error="invalid_token", error_description='
+          .. '"The access token is invalid or has expired"',
       }
     }
   end
@@ -995,9 +999,11 @@ local function do_authentication(conf)
         error_description = "The access token is invalid or has expired"
       },
       headers = {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                               '"invalid_token" error_description=' ..
-                               '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = 'Bearer'
+          .. realm
+          .. (realm ~= "" and "," or "")
+          .. ' error="invalid_token", error_description='
+          .. '"The access token is invalid or has expired"'
       }
     }
   end
@@ -1013,9 +1019,11 @@ local function do_authentication(conf)
           error_description = "The access token is invalid or has expired"
         },
         headers = {
-          ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                                 '"invalid_token" error_description=' ..
-                                 '"The access token is invalid or has expired"'
+          ["WWW-Authenticate"] = 'Bearer'
+            .. realm
+            .. (realm ~= "" and "," or "")
+            .. ' error="invalid_token", error_description='
+            .. '"The access token is invalid or has expired"'
         }
       }
     end
@@ -1048,20 +1056,25 @@ local function do_authentication(conf)
 end
 
 local function invalid_oauth2_method(endpoint_name, realm)
+  local error_description = "The HTTP method "
+    .. kong.request.get_method()
+    .. " is invalid for the "
+    .. endpoint_name
+    .. " endpoint"
+
   return {
      status = 405,
      message = {
      [ERROR] = "invalid_method",
-       error_description = "The HTTP method " ..
-       kong.request.get_method() ..
-       " is invalid for the " .. endpoint_name .. " endpoint"
+       error_description = error_description
      },
      headers = {
-       ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                              '"invalid_method" error_description=' ..
-                              '"The HTTP method ' .. kong.request.get_method()
-                              .. ' is invalid for the ' ..
-                              endpoint_name .. ' endpoint"'
+       ["WWW-Authenticate"] = 'Bearer'
+        .. realm
+        .. (realm ~= "" and "," or "")
+        .. ' error="invalid_method", error_description="'
+        .. error_description
+        .. '"'
      }
    }
 end
