@@ -157,8 +157,12 @@ local function do_authentication(conf)
     return error(err)
   end
 
-  local www_authenticate_base = conf.realm and fmt('Bearer realm="%s"', conf.realm) or 'Bearer'
-  local www_authenticate_with_error = www_authenticate_base .. ' error="invalid_token"'
+  local realm = conf.realm and fmt(' realm="%s"', conf.realm) or ""
+  local www_authenticate_base = "Bearer" .. realm
+  local www_authenticate_with_error = www_authenticate_base
+    .. (realm ~= "" and "," or "")
+    .. ' error="invalid_token"'
+
   local token_type = type(token)
   if token_type ~= "string" then
     if token_type == "nil" then
