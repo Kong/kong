@@ -1,0 +1,3 @@
+message: "**OAuth2**: correct `WWW-Authenticate` header delimiter to use comma according to RFC 7235.."
+type: bugfix
+scope: Plugin
