@@ -161,6 +161,7 @@ local function do_authentication(conf)
   if conf.realm then
     www_authenticate_base = fmt('Bearer realm="%s"', conf.realm)
     www_authenticate_with_error = www_authenticate_base .. ', error="invalid_token"'
+
   else
     www_authenticate_base = "Bearer"
     www_authenticate_with_error = 'Bearer error="invalid_token"'
