@@ -608,7 +608,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No credentials found for given 'iss'" }, json)
-        assert.equal('Bearer realm="test-jwt" error="invalid_token"', res.headers["WWW-Authenticate"])
+        assert.equal('Bearer realm="test-jwt", error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("returns a 401 if the JWT in the cookie is corrupted", function()
         PAYLOAD.iss = jwt_secret.key
@@ -623,7 +623,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Bad token; invalid JSON"}]], body)
-        assert.equal('Bearer realm="test-jwt" error="invalid_token"', res.headers["WWW-Authenticate"])
+        assert.equal('Bearer realm="test-jwt", error="invalid_token"', res.headers["WWW-Authenticate"])
       end)
       it("reports a 200 without cookies but with a JWT token in the Authorization header", function()
         PAYLOAD.iss = jwt_secret.key
