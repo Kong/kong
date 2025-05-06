@@ -4,7 +4,6 @@ local pl_file = require "pl.file"
 
 local strip = require("kong.tools.string").strip
 
-local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-response-transformer"
 
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
@@ -30,121 +29,6 @@ local function wait_for_json_log_entry(FILE_LOG_PATH)
 
   return json
 end
-
-local OPENAI_INSTRUCTIONAL_RESPONSE = {
-  route_type = "llm/v1/chat",
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/instructions"
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
-local OPENAI_FLAT_RESPONSE = {
-  route_type = "llm/v1/chat",
-  logging = {
-    log_payloads = false,
-    log_statistics = true,
-  },
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat",
-      input_cost = 10.0,
-      output_cost = 10.0,
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
-local GEMINI_GOOD = {
-  route_type = "llm/v1/chat",
-  logging = {
-    log_payloads = false,
-    log_statistics = true,
-  },
-  model = {
-    name = "gemini-1.5-flash",
-    provider = "gemini",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/failssafety",
-      input_cost = 10.0,
-      output_cost = 10.0,
-    },
-  },
-  auth = {
-    header_name = "x-goog-api-key",
-    header_value = "123",
-  },
-}
-
-local OPENAI_BAD_INSTRUCTIONS = {
-  route_type = "llm/v1/chat",
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/badinstructions"
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
-local OPENAI_BAD_REQUEST = {
-  route_type = "llm/v1/chat",
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/badrequest"
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
-local OPENAI_INTERNAL_SERVER_ERROR = {
-  route_type = "llm/v1/chat",
-  model = {
-    name = "gpt-4",
-    provider = "openai",
-    options = {
-      max_tokens = 512,
-      temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/internalservererror"
-    },
-  },
-  auth = {
-    header_name = "Authorization",
-    header_value = "Bearer openai-key",
-  },
-}
-
 
 local REQUEST_BODY = [[
   {
@@ -227,8 +111,131 @@ local client
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
+    local MOCK_PORT
+    local OPENAI_INSTRUCTIONAL_RESPONSE
+    local OPENAI_FLAT_RESPONSE
+    local GEMINI_GOOD
+    local OPENAI_BAD_INSTRUCTIONS
+    local OPENAI_BAD_REQUEST
+    local OPENAI_INTERNAL_SERVER_ERROR
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
+      OPENAI_INSTRUCTIONAL_RESPONSE = {
+        route_type = "llm/v1/chat",
+        model = {
+          name = "gpt-4",
+          provider = "openai",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/instructions"
+          },
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+      }
+
+      OPENAI_FLAT_RESPONSE = {
+        route_type = "llm/v1/chat",
+        logging = {
+          log_payloads = false,
+          log_statistics = true,
+        },
+        model = {
+          name = "gpt-4",
+          provider = "openai",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat",
+            input_cost = 10.0,
+            output_cost = 10.0,
+          },
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+      }
+
+      GEMINI_GOOD = {
+        route_type = "llm/v1/chat",
+        logging = {
+          log_payloads = false,
+          log_statistics = true,
+        },
+        model = {
+          name = "gemini-1.5-flash",
+          provider = "gemini",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/failssafety",
+            input_cost = 10.0,
+            output_cost = 10.0,
+          },
+        },
+        auth = {
+          header_name = "x-goog-api-key",
+          header_value = "123",
+        },
+      }
+
+      OPENAI_BAD_INSTRUCTIONS = {
+        route_type = "llm/v1/chat",
+        model = {
+          name = "gpt-4",
+          provider = "openai",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/badinstructions"
+          },
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+      }
+
+      OPENAI_BAD_REQUEST = {
+        route_type = "llm/v1/chat",
+        model = {
+          name = "gpt-4",
+          provider = "openai",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/badrequest"
+          },
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+      }
+
+      OPENAI_INTERNAL_SERVER_ERROR = {
+        route_type = "llm/v1/chat",
+        model = {
+          name = "gpt-4",
+          provider = "openai",
+          options = {
+            max_tokens = 512,
+            temperature = 0.5,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/internalservererror"
+          },
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+      }
+
       local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
 
       -- set up provider fixtures

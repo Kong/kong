@@ -1,0 +1,3 @@
+message: "**cors**: Fixed an issue where requests with empty `origin` headers would cause empty reply from server."
+type: bugfix
+scope: Plugin

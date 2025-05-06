@@ -1,0 +1,126 @@
+id: helpers-outside-of-setup
+language: lua
+message: Calling test setup helper function in the wrong scope
+severity: warning
+note: |
+  Avoid calling test setup functions outside of `setup()`/`lazy_setup()`.
+
+  ## good
+  ```lua
+  describe("my test", function()
+    local port_a
+    local port_b
+
+    lazy_setup(function()
+      port_a = helpers.get_available_port()
+    end)
+
+    it("my test case", function()
+      port_b = helpers.get_available_port()
+    end)
+  end)
+
+  ## bad
+  ```lua
+  local port_a = helpers.get_available_port()
+  describe("my test", function()
+    local port_b = helpers.get_available_port()
+
+    it("my test case", function()
+    end)
+  end)
+
+
+files:
+  - '**/*_spec.lua'
+
+utils:
+  function-scope:
+    any:
+      - kind: function_call
+      - kind: function_declaration
+      - kind: function_definition
+
+  module-scope:
+    not:
+      inside:
+        matches: function-scope
+        stopBy: end
+
+  busted-test-case:
+    inside:
+      kind: function_call
+      any:
+        - pattern: it($$$)
+        - pattern: pending($$$)
+
+        # aliases for it/pending seen in test files
+        - pattern: do_it($$$)
+        - pattern: postgres_only($$$)
+
+  busted-lifecycle:
+    inside:
+      kind: function_call
+      any:
+        - pattern: setup($$$)
+        - pattern: lazy_setup($$$)
+        - pattern: teardown($$$)
+        - pattern: lazy_teardown($$$)
+        - pattern: before_each($$$)
+        - pattern: after_each($$$)
+
+  in-upgrade-helper-setup:
+    pattern: $IDENT.setup($$$)
+    inside:
+      kind: chunk
+      stopBy: end
+      has:
+        any:
+          - pattern: $IDENT = require "spec.upgrade_helpers"
+          - pattern: $IDENT = require("spec.upgrade_helpers")
+        stopBy: end
+
+  in-function-scope:
+    any:
+      # local function my_setup()
+      #   helpers.get_available_port()
+      # end
+      - kind: function_declaration
+
+      # local my_setup = function()
+      #   helpers.get_available_port()
+      # end
+      - pattern: $IDENT = function($$$) $$$ end
+
+  busted-describe:
+    inside:
+      kind: function_call
+      pattern: describe($$$)
+      stopBy:
+        any:
+          - matches: busted-test-case
+          - matches: busted-lifecycle
+          - matches: in-function-scope
+          - matches: in-upgrade-helper-setup
+
+  non-setup-scope:
+    any:
+      - matches: module-scope
+      - matches: busted-describe
+
+rule:
+  kind: function_call
+  pattern: helpers.$FUNC($$$)
+  matches: non-setup-scope
+
+constraints:
+  FUNC:
+    kind: identifier
+    any:
+      - pattern: admin_client
+      - pattern: generate_keys
+      - pattern: get_available_port
+      - pattern: get_db_utils
+      - pattern: setenv
+      - pattern: start_kong
+      - pattern: tcp_server

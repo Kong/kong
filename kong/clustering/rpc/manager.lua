@@ -15,7 +15,8 @@ local table_isempty = require("table.isempty")
 local table_clone = require("table.clone")
 local table_remove = table.remove
 local cjson = require("cjson.safe")
-local string_tools = require("kong.tools.string")
+local isplitn = require("kong.tools.string").isplitn
+local strip = require("kong.tools.string").strip
 
 
 local ipairs = ipairs
@@ -458,21 +459,19 @@ end
 function _M:handle_websocket()
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
 
-  local meta_v1_supported
-  local protocols = string_tools.split(rpc_protocol, ",")
-
   -- choice a proper protocol
-  for _, v in ipairs(protocols) do
+  local meta_v1_supported
+  for v in isplitn(rpc_protocol, ",") do
     -- now we only support kong.meta.v1
-    if RPC_META_V1 == string_tools.strip(v) then
+    if RPC_META_V1 == strip(v) then
       meta_v1_supported = true
       break
     end
   end
 
   if not meta_v1_supported then
-    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: " ..
-                     tostring(rpc_protocol) ..
+    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: ",
+                     tostring(rpc_protocol),
                      ", doesn't know how to communicate with client")
     return ngx_exit(ngx.HTTP_CLOSE)
   end

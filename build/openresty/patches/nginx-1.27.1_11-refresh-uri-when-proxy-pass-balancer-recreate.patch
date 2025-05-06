@@ -1,5 +1,5 @@
 diff --git a/bundle/nginx-1.27.1/src/http/modules/ngx_http_proxy_module.c b/bundle/nginx-1.27.1/src/http/modules/ngx_http_proxy_module.c
-index 4eb6931..9d38e6b 100644
+index c69a476..c244ceb 100644
 --- a/bundle/nginx-1.27.1/src/http/modules/ngx_http_proxy_module.c
 +++ b/bundle/nginx-1.27.1/src/http/modules/ngx_http_proxy_module.c
 @@ -1277,6 +1277,22 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)

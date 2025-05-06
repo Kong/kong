@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local stringx = require "pl.stringx"
+local splitn = require("kong.tools.string").splitn
 
 
 describe("Plugin: datadog (log)", function()
@@ -544,8 +544,7 @@ describe("Plugin: datadog (log)", function()
 
         for _, g in ipairs(gauges) do
           -- tags start with `#`
-          local tmp = stringx.split(g, '#')
-          local tag_idx = #tmp
+          local tmp, tag_idx = splitn(g, '#')
           assert(tag_idx == 2, "Error: missing tags")
           local tags = tmp[tag_idx]
           assert(tags, "Error: missing tags")

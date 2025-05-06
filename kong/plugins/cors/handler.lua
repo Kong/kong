@@ -30,6 +30,11 @@ local config_cache = setmetatable({}, mt_cache)
 local normalized_req_domains = lrucache.new(10e3)
 
 
+local function is_origin_provided(origin)
+  return origin and origin ~= ""
+end
+
+
 local function normalize_origin(domain)
   local parsed_obj = assert(url.parse(domain))
   if not parsed_obj.host then
@@ -89,7 +94,7 @@ local function configure_origin(conf, header_filter, req_origin)
     end
   end
 
-  if req_origin then
+  if is_origin_provided(req_origin) then
     local cached_domains = config_cache[conf]
     if not cached_domains then
       cached_domains = {}
@@ -180,7 +185,7 @@ local function configure_credentials(conf, allow_all, header_filter, req_origin)
 
   -- Access-Control-Allow-Origin is '*', must change it because ACAC cannot
   -- be 'true' if ACAO is '*'.
-  if req_origin then
+  if is_origin_provided(req_origin) then
     add_vary_header(header_filter)
     set_header("Access-Control-Allow-Origin", req_origin)
     set_header("Access-Control-Allow-Credentials", true)
@@ -191,7 +196,7 @@ end
 function CorsHandler:access(conf)
   local req_origin = kong.request.get_header("Origin")
   if kong.request.get_method() ~= "OPTIONS"
-     or not req_origin
+     or not is_origin_provided(req_origin)
      or not kong.request.get_header("Access-Control-Request-Method")
   then
     return
@@ -247,7 +252,7 @@ function CorsHandler:header_filter(conf)
   end
 
   local req_origin = kong.request.get_header("origin")
-  if not req_origin and not conf.allow_origin_absent then
+  if not is_origin_provided(req_origin) and not conf.allow_origin_absent then
     return
   end
 

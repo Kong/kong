@@ -760,12 +760,12 @@ function Kong.init()
       if not ok then
         error("[wasm]: " .. err)
       end
+    end
 
-      ok, err = runloop.set_init_versions_in_cache()
-      if not ok then
-        error("error setting initial versions for router and plugins iterator in cache: " ..
-              tostring(err))
-      end
+    ok, err = runloop.set_init_versions_in_cache()
+    if not ok then
+      error("error setting initial versions for router and plugins iterator in cache: " ..
+            tostring(err))
     end
   end
 
