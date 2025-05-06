@@ -1,3 +1,5 @@
-message: "**jwt**: correct `WWW-Authenticate` header delimiter to use comma according to RFC 7235."
+message: >
+  **jwt**: Fixed an issue where the WWW-Authenticate header used an incorrect delimiter,
+  now using a comma as specified by RFC 7235.
 type: bugfix
 scope: Plugin
