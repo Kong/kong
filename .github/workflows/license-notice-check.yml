@@ -1,0 +1,34 @@
+name: Check for Enterprise License Notice
+
+on:
+  pull_request:
+
+jobs:
+  check-license:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Find Enterprise License Notice
+        shell: bash
+        run: |
+          set -e
+
+          workflow_file=$(grep -rnl "^name:[[:space:]]*Check for Enterprise License Notice" .github/workflows/*.yml | head -n1)
+          echo "Detected workflow file: $workflow_file"
+
+          all_files=$(grep -r -F -l "This software is copyright Kong Inc. and its licensors." .)
+
+          # ignore this file
+          files=$(echo "$all_files" | grep -v "$workflow_file$" || true)
+
+
+          if [ -n "$files" ]; then
+            echo "Error: Enterprise license notice detected in the following files:"
+            echo "$files"
+            exit 1
+          else
+            echo "No enterprise license notice found."
+          fi
+
