@@ -45,6 +45,7 @@ jobs:
             plugins-ee/**
             kong/enterprise_edition/**
             kong/plugins/*-advanced/**
+            changelog/**/*-ee/**
     
       - name: Detect EE files
         if: steps.changed-ee-files.outputs.any_changed == 'true'
