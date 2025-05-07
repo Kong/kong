@@ -1,21 +1,25 @@
-name: Check for Enterprise Copyright
+name: Detect Unexpected EE Changes
 
 on:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  check-copyright:
+  check-copyright-and-ee-files:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Find Enterprise Copyright
         shell: bash
         run: |
           set -e
 
-          workflow_file=$(grep -rnl "^name:[[:space:]]*Check for Enterprise Copyright" .github/workflows/*.yml | head -n1)
+          workflow_file=$(grep -rnl "^name:[[:space:]]*Detect Unexpected EE Changes" .github/workflows/*.yml | head -n1)
           echo "Detected workflow file: $workflow_file"
 
           all_files=$(grep -r -F -l "This software is copyright Kong Inc. and its licensors." .)
@@ -32,3 +36,19 @@ jobs:
             echo "No enterprise copyright found."
           fi
 
+      - name: Get changed EE files
+        id: changed-ee-files
+        uses: kong/changed-files@4edd678ac3f81e2dc578756871e4d00c19191daf
+        with:
+          files: |
+            spec-ee/**
+            plugins-ee/**
+            kong/enterprise_edition/**
+            kong/plugins/*-advanced/**
+    
+      - name: Detect EE files
+        if: steps.changed-ee-files.outputs.any_changed == 'true'
+        run: |
+          echo "The following unexpected EE files were detected:"
+          echo "${{ steps.changed-ee-files.outputs.all_changed_files }}"
+          exit 1
