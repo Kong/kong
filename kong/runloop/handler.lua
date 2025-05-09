@@ -388,7 +388,8 @@ local function new_router(version)
         end
 
         if new_version ~= version then
-          return nil, "router was changed while rebuilding it"
+          log(INFO, "could not build router: router was changed while rebuilding it")
+          return nil, nil
         end
       end
       counter = counter + 1
@@ -496,7 +497,7 @@ end
 local function get_updated_router()
   if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
     local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
-    if not ok then
+    if not ok and err then
       -- If an error happens while updating, log it and return non-updated
       -- version.
       log(ERR, "could not rebuild router: ", err, " (stale router will be used)")
@@ -1032,7 +1033,7 @@ return {
           -- If the semaphore is locked, that means that the rebuild is
           -- already ongoing.
           local ok, err = rebuild_router(router_async_opts)
-          if not ok then
+          if not ok and err then
             log(ERR, "could not rebuild router via timer: ", err)
           end
         end
