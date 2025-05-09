@@ -1746,18 +1746,35 @@ local function validate_deprecation_exclusiveness(data, shorthand_value, shortha
   if shorthand_value == nil or
       shorthand_value == ngx.null or
       shorthand_definition.deprecation == nil or
-      shorthand_definition.deprecation.replaced_with == nil then
+      (shorthand_definition.deprecation.replaced_with == nil and shorthand_definition.translate_backwards == nil) then
     return true
   end
 
-  for _, replaced_with_element in ipairs(shorthand_definition.deprecation.replaced_with) do
-    local new_field_value = replaced_with_element.reverse_mapping_function and replaced_with_element.reverse_mapping_function(data)
-                                                                            or table_path(data, replaced_with_element.path)
+  if shorthand_definition.deprecation.replaced_with then
+    for _, replaced_with_element in ipairs(shorthand_definition.deprecation.replaced_with) do
+      local new_field_value = replaced_with_element.reverse_mapping_function and replaced_with_element.reverse_mapping_function(data)
+                                                                              or table_path(data, replaced_with_element.path)
+
+      if new_field_value and
+        new_field_value ~= ngx.null and
+        not deepcompare(new_field_value, shorthand_value) then
+        local new_field_name = join_string(".", replaced_with_element.path)
+
+        return nil, string.format(
+          "both deprecated and new field are used but their values mismatch: %s = %s vs %s = %s",
+          shorthand_name, tostring(shorthand_value),
+          new_field_name, tostring(new_field_value)
+        )
+      end
+    end
+  elseif shorthand_definition.translate_backwards then
+    local new_field_value = shorthand_definition.translate_backwards_with and shorthand_definition.translate_backwards_with(data)
+                                                                          or table_path(data, shorthand_definition.translate_backwards)
 
     if new_field_value and
-      new_field_value ~= ngx.null and
-      not deepcompare(new_field_value, shorthand_value) then
-      local new_field_name = join_string(".", replaced_with_element.path)
+        new_field_value ~= ngx.null and
+        not deepcompare(new_field_value, shorthand_value) then
+        local new_field_name = join_string(".", shorthand_definition.translate_backwards)
 
       return nil, string.format(
         "both deprecated and new field are used but their values mismatch: %s = %s vs %s = %s",
@@ -1847,10 +1864,16 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                                                     sdata.deprecation.replaced_with[1]
         if replaced_with then
           if replaced_with.reverse_mapping_function then
-          data[sname] = replaced_with.reverse_mapping_function(data)
+            data[sname] = replaced_with.reverse_mapping_function(data)
           else
             data[sname] = table_path(data, replaced_with.path)
           end
+
+        -- Falling back to processing `translate_backwards` for backwards compatibility
+        -- this might be the case when someone is using `rate-limiting`, `acme`, `response-ratelimiting` plugin
+        -- from version 3.6.x or 3.7.x
+        elseif sdata.translate_backwards then
+          data[sname] = table_path(data, sdata.translate_backwards)
         end
       end
     end
@@ -2000,21 +2023,25 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     elseif not ((key == "ttl"   and self.ttl) or
                 (key == "ws_id" and show_ws)) then
 
-      local should_be_in_ouput = false
+      local should_be_in_output = false
 
       if self.shorthand_fields then
         for _, shorthand_field in ipairs(self.shorthand_fields) do
           if shorthand_field[key] then
             local replaced_with = shorthand_field[key].deprecation and shorthand_field[key].deprecation.replaced_with and
                                                                         #shorthand_field[key].deprecation.replaced_with[1]
-            if replaced_with then
-              should_be_in_ouput = is_select
+
+            -- Either using replaced_with or falling back to processing `translate_backwards` for backwards compatibility
+            -- this might be the case when someone is using `rate-limiting`, `acme`, `response-ratelimiting` plugin
+            -- from version 3.6.x or 3.7.x
+            if replaced_with or shorthand_field[key].translate_backwards then
+              should_be_in_output = is_select
             end
           end
         end
       end
 
-      if not should_be_in_ouput then
+      if not should_be_in_output then
         data[key] = nil
       end
     end
