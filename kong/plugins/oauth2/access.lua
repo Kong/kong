@@ -92,25 +92,32 @@ do
 end
 
 -- Helper function to construct WWW-Authenticate header
-local function make_www_authenticate_header(realm, error_code, error_description)
-  local params = {}
+local make_www_authenticate_header
+do
+  local table_insert = table.insert
+  local table_concat = table.concat
+  local table_isempty = require("table.isempty")
 
-  if realm and realm ~= "" then
-    table_insert(params, fmt('realm="%s"', realm))
-  end
+  make_www_authenticate_header = function(realm, error_code, error_description)
+    local params = {}
 
-  if error_code then
-    table_insert(params, fmt('error="%s"', error_code))
-  end
+    if realm and realm ~= "" then
+      table_insert(params, fmt('realm="%s"', realm))
+    end
 
-  if error_description then
-    table_insert(params, fmt('error_description="%s"', error_description))
-  end
+    if error_code then
+      table_insert(params, fmt('error="%s"', error_code))
+    end
 
-  if #params > 0 then
-    return "Bearer " .. table_concat(params, ", ")
-  else
-    return "Bearer"
+    if error_description then
+      table_insert(params, fmt('error_description="%s"', error_description))
+    end
+
+    if #params > 0 then
+      return "Bearer " .. table_concat(params, ", ")
+    else
+      return "Bearer"
+    end
   end
 end
 
