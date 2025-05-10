@@ -113,7 +113,7 @@ do
       table_insert(params, fmt('error_description="%s"', error_description))
     end
 
-    if #params > 0 then
+    if not table_isempty(params) then
       return "Bearer " .. table_concat(params, ", ")
     else
       return "Bearer"
