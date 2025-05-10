@@ -180,8 +180,8 @@ git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
 Finally, we start the build process:
 
 ```
-# Build the virtual environment for developing Kong
-make build-venv
+# Prepare the environment for developing Kong
+make dev
 ```
 
 [The build guide](https://github.com/Kong/kong/blob/master/build/README.md) contains a troubleshooting section if
@@ -204,8 +204,13 @@ Now you can start Kong:
 # Use the pre-defined docker-compose file to bring up databases etc
 start_services
 
+# Run `kong migrations bootstrap` to setup the database if it's your first run
+
 # Start Kong!
 kong start
+
+# Verify if Kong is started by querying the Admin endpoint
+curl 127.0.0.1:8001 -I
 
 # Stop Kong
 kong stop
