@@ -180,8 +180,8 @@ git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
 Finally, we start the build process:
 
 ```
-# Prepare the environment for developing Kong
-make dev
+# Setup virtual environment, download dependencies and install Kong from source
+make install
 ```
 
 [The build guide](https://github.com/Kong/kong/blob/master/build/README.md) contains a troubleshooting section if
