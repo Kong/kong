@@ -62,7 +62,9 @@ starting point. It contains the proper file structures, configuration files,
 and CI setup to get up and running quickly. This repository seamlessly
 integrates with [Pongo](https://github.com/Kong/kong-pongo).
 
-## Build and Install from source
+## General guide for development
+
+### Prepare development dependencies and build from source
 
 This is the hard way to build a development environment, and also a good start
 for beginners to understand how everything fits together.
@@ -72,7 +74,7 @@ requires some additional third-party dependencies, some of which are compiled
 with tweaked options, and kong runs on a modified version of OpenResty with
 patches.
 
-To install from the source, first, we clone the repository:
+To build from the source, first, we clone the repository:
 
 ```shell
 git clone https://github.com/Kong/kong
@@ -180,8 +182,8 @@ git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
 Finally, we start the build process:
 
 ```
-# Setup virtual environment, download dependencies and install Kong from source
-make install
+# Setup virtual environment, download dependencies and build Kong from source
+make dev
 ```
 
 [The build guide](https://github.com/Kong/kong/blob/master/build/README.md) contains a troubleshooting section if
@@ -219,8 +221,6 @@ kong stop
 deactivate
 ```
 
-### Install Development Dependencies
-
 #### Running for development
 
 By default, the development environment adds current directory to Lua files search path.
@@ -230,16 +230,13 @@ and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_pack
 directives will allow Kong to find your custom plugin's source code wherever it
 might be in your system.
 
-#### Tests
+### Tests
 
-Install the development dependencies ([busted](https://lunarmodules.github.io/busted/),
-[luacheck](https://github.com/mpeterv/luacheck)) with:
+Before running any tests, please ensure the development dependencies are installed via
 
 ```shell
 make dev
 ```
-
-If Rust/Cargo doesn't work, try setting `export KONG_TEST_USER_CARGO_DISABLED=1` first.
 
 Kong relies on three test suites using the [busted](https://lunarmodules.github.io/busted/) testing library:
 
@@ -355,7 +352,7 @@ are available in both versions (i.e. from helpers.lua).  The module
 the new version into the container of the old version and it can be
 used to make new library functionality available to migration tests.
 
-#### Makefile
+### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
 
