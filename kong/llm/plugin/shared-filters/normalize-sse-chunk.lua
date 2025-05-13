@@ -89,8 +89,8 @@ local function handle_streaming_frame(conf, chunk, finished)
 
     if formatted then
       frame_buffer:put("data: ")
-      frame_buffer:put(formatted or "")
-      frame_buffer:put((formatted ~= ai_shared._CONST.SSE_TERMINATOR) and "\n\n" or "")
+      frame_buffer:put(formatted)
+      frame_buffer:put("\n\n")
     end
 
     if formatted and formatted ~= ai_shared._CONST.SSE_TERMINATOR then  -- only stream relevant frames back to the user
