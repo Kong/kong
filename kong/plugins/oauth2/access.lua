@@ -89,6 +89,36 @@ do
   end
 end
 
+-- Helper function to construct WWW-Authenticate header
+local make_www_authenticate_header
+do
+  local table_insert = table.insert
+  local table_concat = table.concat
+  local table_isempty = require("table.isempty")
+
+  make_www_authenticate_header = function(realm, error_code, error_description)
+    local params = {}
+
+    if realm and realm ~= "" then
+      table_insert(params, fmt('realm="%s"', realm))
+    end
+
+    if error_code then
+      table_insert(params, fmt('error="%s"', error_code))
+    end
+
+    if error_description then
+      table_insert(params, fmt('error_description="%s"', error_description))
+    end
+
+    if not table_isempty(params) then
+      return "Bearer " .. table_concat(params, ", ")
+    else
+      return "Bearer"
+    end
+  end
+end
+
 
 local function generate_token(conf, service, credential, authenticated_userid,
                               scope, state, disable_refresh, existing_token)
@@ -809,7 +839,7 @@ local function load_token(access_token)
 end
 
 
-local function retrieve_token(conf, access_token, realm)
+local function retrieve_token(conf, access_token)
   local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
   local token, err = kong.cache:get(token_cache_key, nil, load_token, access_token)
   if err then
@@ -827,9 +857,8 @@ local function retrieve_token(conf, access_token, realm)
           "plugin is configured without 'global_credentials'",
       },
       {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                                '"invalid_token" error_description=' ..
-                                '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = make_www_authenticate_header(conf.realm, "invalid_token",
+          "The access token is invalid or has expired"),
       })
     end
 
@@ -953,8 +982,7 @@ end
 
 
 local function do_authentication(conf)
-  local access_token = parse_access_token(conf);
-  local realm = conf.realm and fmt(' realm="%s"', conf.realm) or ''
+  local access_token = parse_access_token(conf)
   if not access_token or access_token == "" then
     return nil, {
       status = 401,
@@ -963,12 +991,12 @@ local function do_authentication(conf)
         error_description = "The access token is missing"
       },
       headers = {
-        ["WWW-Authenticate"] = 'Bearer' .. realm
+        ["WWW-Authenticate"] = make_www_authenticate_header(conf.realm)
       }
     }
   end
 
-  local token = retrieve_token(conf, access_token, realm)
+  local token = retrieve_token(conf, access_token)
   if not token then
     return nil, {
       status = 401,
@@ -977,9 +1005,8 @@ local function do_authentication(conf)
         error_description = "The access token is invalid or has expired"
       },
       headers = {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                               '"invalid_token" error_description=' ..
-                               '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = make_www_authenticate_header(conf.realm, "invalid_token",
+          "The access token is invalid or has expired")
       }
     }
   end
@@ -995,9 +1022,8 @@ local function do_authentication(conf)
         error_description = "The access token is invalid or has expired"
       },
       headers = {
-        ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                               '"invalid_token" error_description=' ..
-                               '"The access token is invalid or has expired"'
+        ["WWW-Authenticate"] = make_www_authenticate_header(conf.realm, "invalid_token",
+          "The access token is invalid or has expired")
       }
     }
   end
@@ -1013,9 +1039,8 @@ local function do_authentication(conf)
           error_description = "The access token is invalid or has expired"
         },
         headers = {
-          ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                                 '"invalid_token" error_description=' ..
-                                 '"The access token is invalid or has expired"'
+          ["WWW-Authenticate"] = make_www_authenticate_header(conf.realm, "invalid_token",
+            "The access token is invalid or has expired")
         }
       }
     end
@@ -1048,20 +1073,20 @@ local function do_authentication(conf)
 end
 
 local function invalid_oauth2_method(endpoint_name, realm)
+  local error_description = "The HTTP method "
+    .. kong.request.get_method()
+    .. " is invalid for the "
+    .. endpoint_name
+    .. " endpoint"
+
   return {
      status = 405,
      message = {
      [ERROR] = "invalid_method",
-       error_description = "The HTTP method " ..
-       kong.request.get_method() ..
-       " is invalid for the " .. endpoint_name .. " endpoint"
+       error_description = error_description
      },
      headers = {
-       ["WWW-Authenticate"] = 'Bearer' .. realm .. ' error=' ..
-                              '"invalid_method" error_description=' ..
-                              '"The HTTP method ' .. kong.request.get_method()
-                              .. ' is invalid for the ' ..
-                              endpoint_name .. ' endpoint"'
+       ["WWW-Authenticate"] = make_www_authenticate_header(realm, "invalid_method", error_description)
      }
    }
 end
@@ -1116,10 +1141,9 @@ function _M.execute(conf)
   local path = kong.request.get_path()
   local has_end_slash = string_byte(path, -1) == SLASH
 
-  local realm = conf.realm and fmt(' realm="%s"', conf.realm) or ''
   if string_find(path, "/oauth2/token", has_end_slash and -14 or -13, true) then
     if kong.request.get_method() ~= "POST" then
-      local err = invalid_oauth2_method("token", realm)
+      local err = invalid_oauth2_method("token", conf.realm)
       return kong.response.exit(err.status, err.message, err.headers)
     end
 
@@ -1128,7 +1152,7 @@ function _M.execute(conf)
 
   if string_find(path, "/oauth2/authorize", has_end_slash and -18 or -17, true) then
     if kong.request.get_method() ~= "POST" then
-      local err = invalid_oauth2_method("authorization", realm)
+      local err = invalid_oauth2_method("authorization", conf.realm)
       return kong.response.exit(err.status, err.message, err.headers)
     end
 
