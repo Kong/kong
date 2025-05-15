@@ -5,7 +5,7 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 
 local _M = {
   NAME = "serialize-analytics",
-  STAGE = "RES_POST_PROCESSING",
+  STAGE = "RES_PRE_PROCESSING",
   DESCRIPTION = "serialize the llm stats",
 }
 
@@ -28,8 +28,20 @@ function _M:run(conf)
   do
     local response_body = get_global_ctx("response_body")
     if response_body then
-      local response_body_table = cjson.decode(response_body)
-      response_model = response_body_table and response_body_table.model
+      local adapter = get_global_ctx("llm_format_adapter")
+
+      if adapter then
+        -- native formats
+        response_model = adapter:extract_response_model(response_body)
+        if not response_model then
+          kong.log.info("unable to extract model-used from response")
+        end
+
+      else
+        -- openai formats
+        local response_body_table = cjson.decode(response_body)
+        response_model = response_body_table and response_body_table.model
+      end
     end
 
     if not response_model then

@@ -1,0 +1,4 @@
+message: |
+  **AI Plugins**: Fixed issue of template not being resolved correctly and supported nested fields.
+type: "bugfix"
+scope: "Plugin"
