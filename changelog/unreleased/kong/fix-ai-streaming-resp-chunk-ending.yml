@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where the last chunk didn't end wih '\n\n'."
+type: bugfix
+scope: Plugin
