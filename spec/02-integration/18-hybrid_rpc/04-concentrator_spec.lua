@@ -74,7 +74,6 @@ for _, strategy in helpers.each_strategy() do
       -- start a new cp node then call rpc via concentrator
       start_cp(strategy, "cp2",
                helpers.get_available_port(),
-               helpers.get_available_port(),
                helpers.get_available_port())
 
       -- check dp's log
