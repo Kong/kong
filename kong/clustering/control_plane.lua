@@ -242,14 +242,24 @@ function _M:handle_cp_websocket(cert)
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
-    local rpc_peers
+    local pk = { id = dp_id }
+    local rpc_capabilities
 
     if self.conf.cluster_rpc then
-      rpc_peers = kong.rpc:get_peers()
+      -- rpc framework should update rpc_capabilities when connecting
+      local res, err = kong.db.clustering_data_planes:select(pk)
+      if err then
+        ngx_log(ngx_ERR, "unable to update clustering data plane status, select(",
+                dp_id, ") failed: ", err, log_suffix)
+        return
+      end
+
+      -- do not overwrite rpc_capabilities field
+      rpc_capabilities = res and res.rpc_capabilities
     end
 
     local ok
-    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id }, {
+    ok, err = kong.db.clustering_data_planes:upsert(pk, {
       last_seen = last_seen,
       config_hash = config_hash ~= ""
                 and config_hash
@@ -260,8 +270,7 @@ function _M:handle_cp_websocket(cert)
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
       cert_details = dp_cert_details,
-      -- only update rpc_capabilities if dp_id is connected
-      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or EMPTY,
+      rpc_capabilities = rpc_capabilities or EMPTY,  -- should be a list or empty
     }, { ttl = purge_delay, no_broadcast_crud_event = true, })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
