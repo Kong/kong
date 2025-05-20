@@ -13,7 +13,8 @@ local function start_cp(strategy, prefix,
     admin_listen = "127.0.0.1:" .. admin_listen_port,
     nginx_conf = "spec/fixtures/custom_nginx.template",
 
-    nginx_worker_processes = 1,
+    -- it should be multiple workers for concentrator test
+    nginx_worker_processes = 4,
     log_level = "debug",
     cluster_rpc = "on",
     plugins = "bundled,rpc-concentrator-test",
@@ -94,9 +95,9 @@ for _, strategy in helpers.each_strategy() do
       local cp_logfile = "cp2/logs/error.log"
 
       assert.logfile(cp_logfile).has.line(
-        "[kong.test.concentrator] node_id: ", true, 5)
+        "\\[kong.test.concentrator\\] node_id: .{36}")
       assert.logfile(cp_logfile).has.line(
-        "via concentrator", true, 5)
+        "calling kong.test.concentrator\\(node_id: .{36}\\) via concentrator")
       assert.logfile(cp_logfile).has.line(
         "[rpc] kong.test.concentrator succeeded", true, 5)
       assert.logfile(cp_logfile).has.no.line(
