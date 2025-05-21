@@ -800,8 +800,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms text/event-stream type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/input.bin"))
-      local events = ai_shared.frame_to_events(input, "text/event-stream")  -- not "truncated json mode" like Gemini
-
+      events = ai_shared.frame_to_events(input, "text/event-stream")  -- not "truncated json mode" like Gemini
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/expected-output.json"))
       local expected_events = cjson.decode(expected)
 
@@ -875,7 +874,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       package.loaded["kong.llm.drivers.gemini"] = nil
       gemini_driver = require("kong.llm.drivers.gemini")
     end)
-  
+
     teardown(function()
       _G._TEST = nil
     end)
@@ -940,7 +939,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       package.loaded["kong.llm.drivers.bedrock"] = nil
       bedrock_driver = require("kong.llm.drivers.bedrock")
     end)
-  
+
     teardown(function()
       _G._TEST = nil
     end)
