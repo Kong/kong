@@ -419,7 +419,7 @@ function _M.frame_to_events(frame, content_type)
     local start = 1
     while start <= #frame do
       local end_of_msg = str_find(frame, '\n', start, true)
-      if end_of_msg == nil then
+      if not end_of_msg then
         if kong then
           kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), frame)
         end
@@ -431,13 +431,13 @@ function _M.frame_to_events(frame, content_type)
       -- the returned s1 may be larger than the end of msg.
       local s1 = str_find(frame, ":", start, true)
       if s1 and s1 ~= 1 and s1 < end_of_msg then
-        local field = str_sub(frame, start, s1-1) -- returns "data" from data: hello world
-        local j = s1+1
+        local field = str_sub(frame, start, s1 - 1) -- returns "data" from data: hello world
+        local j = s1 + 1
         while j <= end_of_msg - 1 and str_byte(frame, j) == str_byte(" ") do
           -- consume spaces.
-          j = j+1
+          j = j + 1
         end
-        local value = str_sub(frame, j, end_of_msg-1) -- returns "hello world" from data: hello world
+        local value = str_sub(frame, j, end_of_msg - 1) -- returns "hello world" from data: hello world
 
         -- for now not checking if the value is already been set
         if     field == "event" then struct.event = value
@@ -446,7 +446,7 @@ function _M.frame_to_events(frame, content_type)
         end -- if
       end -- if
 
-      start = end_of_msg+1
+      start = end_of_msg + 1
       -- When start > #frame, str_byte returns nil, so we don't need to check out of bound here.
       if str_byte(frame, start) == str_byte('\n') then -- `\n\n`
         -- End of the SSE shunk. This is faster than calling str_find '\n' again.
