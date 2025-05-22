@@ -241,5 +241,14 @@ return {
     prometheus = {
       "wasm_metrics",
     },
+    ai_proxy = {
+      "llm_format",
+    },
+    ai_prompt_guard = {
+      "llm_format",
+    },
+    ai_prompt_decorator = {
+      "llm_format",
+    },
   },
 }
