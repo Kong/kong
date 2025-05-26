@@ -1,0 +1,6 @@
+message: >
+  Added support for reporting whether
+  `new_dns_client` was enabled
+  in anonymous reports.
+type: feature
+scope: Core

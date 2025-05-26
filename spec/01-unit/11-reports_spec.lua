@@ -347,6 +347,25 @@ describe("reports", function()
            "_stream=0"
         })
     end)
+
+    it("sends 'new_dns_client'", function()
+      local conf = assert(conf_loader())
+      conf.new_dns_client = true
+      send_reports_and_check_result(
+        reports,
+        conf,
+        port,
+        {"new_dns_client=true"}
+      )
+
+      conf.new_dns_client = false
+      send_reports_and_check_result(
+        reports,
+        conf,
+        port,
+        {"new_dns_client=false"}
+      )
+    end)
   end)
 
   describe("retrieve_redis_version()", function()
