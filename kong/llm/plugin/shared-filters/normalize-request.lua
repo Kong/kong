@@ -19,10 +19,7 @@ local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_
 local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAME)
 
 
-local _KEYBASTION = setmetatable({}, {
-  __mode = "k",
-  __index = ai_shared.cloud_identity_function,
-})
+local _KEYBASTION = ai_shared.get_key_bastion()
 
 local function bail(code, msg)
   if code == 400 and msg then

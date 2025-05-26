@@ -335,6 +335,15 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
   end
 end
 
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = _M.cloud_identity_function,
+})
+
+_M.get_key_bastion = function()
+  return _KEYBASTION
+end
+
 
 local function json_array_iterator(input_str, prev_state)
   local state = prev_state or {
