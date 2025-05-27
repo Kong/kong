@@ -180,7 +180,7 @@ for _, strategy in helpers.all_strategies() do
                     -- pretend to truncate chunks
                     if _EVENT_CHUNKS[i+1] and _EVENT_CHUNKS[i+1]:sub(1, 5) ~= "data:" then
                       ngx.print(EVENT)
-                    else  
+                    else
                       ngx.print(fmt("%s\n\n", EVENT))
                     end
                   end
@@ -371,7 +371,7 @@ for _, strategy in helpers.all_strategies() do
               end
             }
           }
- 
+
           location = "/bedrock/llm/v1/chat/functions/good" {
             content_by_lua_block {
               local pl_file = require "pl.file"
@@ -675,6 +675,8 @@ for _, strategy in helpers.all_strategies() do
           },
           auth = {
             allow_override = false,
+            aws_access_key_id = "mock-key",
+            aws_secret_access_key = "mock-secret",
           },
         },
       }
@@ -761,6 +763,8 @@ for _, strategy in helpers.all_strategies() do
           },
           auth = {
             allow_override = false,
+            aws_access_key_id = "mock-key",
+            aws_secret_access_key = "mock-secret",
           },
         },
       }
