@@ -17,7 +17,6 @@ local str_find     = string.find
 local str_sub      = string.sub
 local string_match = string.match
 local splitn = require("kong.tools.string").splitn
-local isplitn = require("kong.tools.string").isplitn
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
