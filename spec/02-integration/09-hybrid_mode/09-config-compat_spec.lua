@@ -918,9 +918,12 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- llm_format
         expected.config.llm_format = nil
-        expected.config.model.options.bedrock.aws_assume_role_arn = nil
-        expected.config.model.options.bedrock.aws_role_session_name = nil
-        expected.config.model.options.bedrock.aws_sts_endpoint_url = nil
+        -- bedrock fields may not exist, so check before accessing
+        if expected.config.model.options.bedrock and type(expected.config.model.options.bedrock) == "table" then
+          expected.config.model.options.bedrock.aws_assume_role_arn = nil
+          expected.config.model.options.bedrock.aws_role_session_name = nil
+          expected.config.model.options.bedrock.aws_sts_endpoint_url = nil
+        end
 
         do_assert(uuid(), "3.9.0", expected)
 
