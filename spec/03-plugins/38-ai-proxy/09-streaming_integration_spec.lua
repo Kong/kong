@@ -675,6 +675,8 @@ for _, strategy in helpers.all_strategies() do
           },
           auth = {
             allow_override = false,
+            aws_access_key_id = "mock-key",
+            aws_secret_access_key = "mock-secret",
           },
         },
       }
@@ -761,6 +763,8 @@ for _, strategy in helpers.all_strategies() do
           },
           auth = {
             allow_override = false,
+            aws_access_key_id = "mock-key",
+            aws_secret_access_key = "mock-secret",
           },
         },
       }
