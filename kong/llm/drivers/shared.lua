@@ -99,6 +99,7 @@ _M.upstream_url_format = {
   gemini        = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
+  bedrock_agent = "https://bedrock-agent-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
   huggingface   = "https://api-inference.huggingface.co/models/%s",
 }

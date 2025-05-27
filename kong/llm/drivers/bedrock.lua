@@ -9,6 +9,7 @@ local string_gsub = string.gsub
 local table_insert = table.insert
 local signer = require("resty.aws.request.sign")
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+
 --
 
 -- globals
@@ -619,13 +620,22 @@ function _M.configure_request(conf, aws_sdk)
     return nil, "invalid model parameter"
   end
 
-  local operation = get_global_ctx("stream_mode") and "converse-stream"
-                                                             or "converse"
+  local operation = conf.route_type ~= "llm/v1/embeddings" and (get_global_ctx("stream_mode") and "converse-stream"
+                                                             or "converse") or nil
+  local bedrocks_driver = DRIVER_NAME
+  local llm_format_adapter = get_global_ctx("llm_format_adapter")
+  local forward_path, runtime_name
+  if llm_format_adapter then
+    forward_path, runtime_name = llm_format_adapter:get_forwarded_path(model.name)
+    if runtime_name then
+      bedrocks_driver = runtime_name
+    end
+  end
 
   local f_url = model.options and model.options.upstream_url
   if not f_url then  -- upstream_url override is not set
-    local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
-    local path = fmt(
+    local uri = fmt(ai_shared.upstream_url_format[bedrocks_driver], aws_sdk.config.region)
+    local path = forward_path or fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
       model.name,
       operation)
