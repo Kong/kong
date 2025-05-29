@@ -458,7 +458,7 @@ lua-resty-ada
 https://github.com/bungle/lua-resty-ada
 https://github.com/bungle/lua-resty-ada/blob/master/LICENSE
 
-Copyright (c) 2024 Aapo Talvensaari, 2024 Guilherme Salazar
+Copyright (c) 2024–2025 Aapo Talvensaari, 2024 Guilherme Salazar
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -1710,7 +1710,7 @@ lua-resty-session
 https://github.com/bungle/lua-resty-session
 https://github.com/bungle/lua-resty-session/blob/master/LICENSE
 
-Copyright (c) 2014 – 2023 Aapo Talvensaari, 2022 – 2023 Samuele Illuminati
+Copyright (c) 2014 – 2025 Aapo Talvensaari, 2022 – 2025 Samuele Illuminati
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
