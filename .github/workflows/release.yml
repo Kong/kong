@@ -30,6 +30,7 @@ on:  # yamllint disable-line rule:truthy
 
 env:
   # official release repo
+  DOCKER_ORGANIZATION: kong
   DOCKER_REPOSITORY: kong/kong
   PRERELEASE_DOCKER_REPOSITORY: kong/kong-dev
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.actor == 'dependabot[bot]'}}
@@ -335,8 +336,8 @@ jobs:
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        username: ${{ env.DOCKER_ORGANIZATION }}
+        password: ${{ secrets.DOCKER_OAT_PUSH }}
 
     - name: Docker meta
       id: meta
@@ -464,8 +465,8 @@ jobs:
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
       uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        username: ${{ env.DOCKER_ORGANIZATION }}
+        password: ${{ secrets.DOCKER_OAT_PUSH }}
 
     # TODO: Refactor matrix file to support and parse platforms specific to distro
     # Workaround: Look for specific amd64 and arm64  hardcooded architectures
@@ -590,8 +591,8 @@ jobs:
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        username: ${{ env.DOCKER_ORGANIZATION }}
+        password: ${{ secrets.DOCKER_OAT_PUSH }}
 
     - uses: actions/checkout@v4
 
