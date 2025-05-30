@@ -1,4 +1,4 @@
 message: |
-  **ai-proxy**: Fixed tool calls not working in streaming mode for Bedrock and Gemini providers.
+  **ai-proxy**: Fixed a issue where tool calls weren't working in streaming mode for the Bedrock and Gemini providers.
 type: "bugfix"
 scope: "Plugin"
