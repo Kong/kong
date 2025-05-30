@@ -1,4 +1,4 @@
 message: |
-  **ai**: Added support for boto3 SDKs for Bedrock provider, and for Google GenAI SDKs for Gemini provider.
+  **ai**: Added support for boto3 SDKs for the Bedrock provider, and for Google GenAI SDKs for the Gemini provider.
 type: "feature"
 scope: "Plugin"

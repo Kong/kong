@@ -1,4 +1,4 @@
 message: >
-  Fixed an issue where AI Proxy and AI Proxy Advanced would use corrupted plugin config.
+  *ai-proxy, ai-proxy-advanced**: Fixed an issue where AI Proxy and AI Proxy Advanced would use corrupted plugin config.
 type: bugfix
 scope: Plugin
