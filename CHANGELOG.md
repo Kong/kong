@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.9.1](#391)
 - [3.9.0](#390)
 - [3.8.1](#381)
 - [3.8.0](#380)
@@ -21,6 +22,80 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.9.1
+
+### Kong
+
+
+#### Dependencies
+##### Core
+
+- Bumped libexpat from 2.6.2 to 2.6.4 to fix a crash in the XML_ResumeParser function caused by XML_StopParser stopping an uninitialized parser.
+ [#14208](https://github.com/Kong/kong/issues/14208)
+
+- Bump lua-kong-nginx-module from 0.13.0 to 0.13.2
+ [#14047](https://github.com/Kong/kong/issues/14047)
+
+
+#### Features
+##### Plugin
+
+- **ai**: Added support for boto3 SDKs for the Bedrock provider, and for Google GenAI SDKs for the Gemini provider.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+#### Fixes
+##### Core
+
+- Added support for the new Ollama streaming content type in AI driver.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+##### Plugin
+
+- **ai-proxy**: Fixed a bug in the Azure provider where `model.options.upstream_path` overrides would always return a 404 error.
+ [#14185](https://github.com/Kong/kong/issues/14185)
+
+- **ai-proxy**: Fixed a bug where Azure streaming responses would be missing individual tokens.
+ [#14172](https://github.com/Kong/kong/issues/14172)
+
+- **ai-proxy**: Fixed a bug where response streaming in Gemini and Bedrock providers was returning whole chat responses in one chunk.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **ai-proxy**: Fixed a bug where multimodal requests (in OpenAI format) would not transform properly, when using the Gemini provider.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **ai-proxy**: Fixed Gemini streaming responses getting truncated and/or missing tokens.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **ai-proxy**: Fixed an incorrect error thrown when trying to log streaming responses.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **ai-proxy**: Fixed a issue where tool calls weren't working in streaming mode for the Bedrock and Gemini providers.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- *ai-proxy, ai-proxy-advanced**: Fixed an issue where AI Proxy and AI Proxy Advanced would use corrupted plugin config.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **ai-proxy**: Fixed preserve mode.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+- **AI Plugins**: Fixed AI upstream URL trailing being empty.
+ [#14578](https://github.com/Kong/kong/issues/14578)
+
+
+- **AI Plugins**: Fixed an issue where the template wasn't being resolved correctly and supported nested fields.
+ [#14579](https://github.com/Kong/kong/issues/14579)
+
+
+
 
 ## 3.9.0
 
