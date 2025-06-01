@@ -75,6 +75,9 @@ function prepare_container() {
     docker exec $1 apt-get install -y build-essential curl m4 unzip git
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
+    # the following two lines will not be needed on 3.11+
+    docker exec -u 0 $1 apt-get install -y lua5.1
+    docker cp scripts/upgrade-tests/luarocks-system-lua $1:/usr/local/bin/luarocks
 }
 
 function build_containers() {
