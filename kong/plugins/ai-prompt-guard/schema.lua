@@ -42,7 +42,13 @@ return {
               type = "boolean",
               required = true,
               default = false } },
-        }
+          { llm_format = {
+              type = "string",
+              default = "openai",
+              required = false,
+              description = "LLM input and output format and schema to use",
+              one_of = { "openai", "bedrock", "gemini" } }},
+          }
       }
     }
   },

@@ -6,6 +6,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
 local string_gsub = string.gsub
+local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 --
 
 -- globals
@@ -189,23 +190,29 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local parsed_url
 
-  if (conf.model.options and conf.model.options.upstream_url) then
-    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+
+  if (model.options and model.options.upstream_url) then
+    parsed_url = socket_url.parse(model.options.upstream_url)
   else
     parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-    parsed_url.path = (conf.model.options and
-                        conf.model.options.upstream_path)
+    parsed_url.path = (model.options and
+                        model.options.upstream_path)
                       or (ai_shared.operation_map[DRIVER_NAME][conf.route_type] and
                         ai_shared.operation_map[DRIVER_NAME][conf.route_type].path)
                       or "/"
   end
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
   -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
+  parsed_url.path = string_gsub(parsed_url.path or "/", "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

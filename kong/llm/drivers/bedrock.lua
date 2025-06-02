@@ -130,7 +130,7 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   -- decode and determine the event type
-  local event = cjson.decode(event_t.data)  
+  local event = cjson.decode(event_t.data)
   local event_type = event and event.headers and event.headers[":event-type"]
 
   if not event_type then
@@ -160,23 +160,80 @@ local function handle_stream_event(event_t, model_info, route_type)
       system_fingerprint = cjson.null,
     }
 
-  elseif event_type == "contentBlockDelta" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = (body.delta
-                   and body.delta.text)
-                   or "",
+  elseif event_type == "contentBlockStart" then
+    -- check for tool-usage entrypoint
+    if body.start and body.start.toolUse then
+      local tool_name = body.start.toolUse.name
+      local tool_id = body.start.toolUse.toolUseId
+
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {
+                {
+                  index = body.contentBlockIndex,
+                  id = tool_id,
+                  ['function'] = {
+                    name = tool_name,
+                    arguments = "",
+                  },
+                }
+              }
+            },
+            index = 0,
+            logprobs = cjson.null,
           },
-          index = 0,
-          finish_reason = cjson.null,
-          logprobs = cjson.null,
         },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+    end
+
+  elseif event_type == "contentBlockDelta" then
+    -- check for async streamed tool parameters
+    if body.delta and body.delta.toolUse then
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              tool_calls = {
+                {
+                  index = body.contentBlockIndex,
+                  ['function'] = {
+                    arguments = body.delta.toolUse.input,
+                  },
+                }
+              }
+            },
+            index = 0,
+            logprobs = cjson.null,
+          },
+        },
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+
+    else
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = (body.delta
+                     and body.delta.text)
+                     or "",
+            },
+            index = 0,
+            logprobs = cjson.null,
+          },
+        },
+        model = model_info.name,
+        object = "chat.completion.chunk",
+        system_fingerprint = cjson.null,
+      }
+    end
 
   elseif event_type == "messageStop" then
     new_event = {
@@ -236,9 +293,23 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         system_prompts[#system_prompts+1] = { text = v.content }
 
       elseif v.role and v.role == "tool" then
+        local tool_literal_content
         local tool_execution_content, err = cjson.decode(v.content)
         if err then
           return nil, nil, "failed to decode function response arguments, not JSON format"
+        end
+
+        if type(tool_execution_content) == "table" then
+          tool_literal_content = {
+            json = tool_execution_content
+          }
+
+        else
+          tool_literal_content = {
+            json = {
+              result = tool_execution_content
+            }
+          }
         end
 
         local content = {
@@ -246,9 +317,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
             toolResult = {
               toolUseId = v.tool_call_id,
               content = {
-                {
-                  json = tool_execution_content,
-                },
+                tool_literal_content
               },
               status = v.status,
             },
@@ -265,14 +334,14 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         local content
         if type(v.content) == "table" then
           content = v.content
-        
+
         elseif v.tool_calls and (type(v.tool_calls) == "table") then
           for k, tool in ipairs(v.tool_calls) do
             local inputs, err = cjson.decode(tool['function'].arguments)
             if err then
               return nil, nil, "failed to decode function response arguments from assistant's message, not JSON format"
             end
-              
+
             content = {
               {
                 toolUse = {
@@ -282,7 +351,6 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
                 },
               },
             }
-
           end
 
         else
@@ -321,7 +389,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
   new_r.toolConfig = request_table.bedrock
                  and request_table.bedrock.toolConfig
                  and to_tool_config(request_table)
-  
+
   if request_table.tools
       and type(request_table.tools) == "table"
       and #request_table.tools > 0 then
@@ -546,15 +614,20 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, aws_sdk)
+  local model = ai_plugin_ctx.get_request_model_table_inuse()
+  if not model or type(model) ~= "table" or model.provider ~= DRIVER_NAME then
+    return nil, "invalid model parameter"
+  end
+
   local operation = get_global_ctx("stream_mode") and "converse-stream"
                                                              or "converse"
 
-  local f_url = conf.model.options and conf.model.options.upstream_url
+  local f_url = model.options and model.options.upstream_url
   if not f_url then  -- upstream_url override is not set
     local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
     local path = fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-      conf.model.name,
+      model.name,
       operation)
 
     f_url = uri ..path
@@ -562,15 +635,15 @@ function _M.configure_request(conf, aws_sdk)
 
   local parsed_url = socket_url.parse(f_url)
 
-  if conf.model.options and conf.model.options.upstream_path then
+  if model.options and model.options.upstream_path then
     -- upstream path override is set (or templated from request params)
-    parsed_url.path = conf.model.options.upstream_path
+    parsed_url.path = model.options.upstream_path
   end
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
 
-  ai_shared.override_upstream_url(parsed_url, conf)
+  ai_shared.override_upstream_url(parsed_url, conf, model)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

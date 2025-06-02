@@ -164,6 +164,51 @@ function _M:_find_node_and_check_capability(node_id, cap)
 end
 
 
+-- only run for sync v1
+-- sync v2 will always have correct status
+function _M:_update_dp_status(node_id, capabilities_list)
+  if kong.sync then
+    return
+  end
+
+  local pk = { id = node_id }
+  local clustering_data_planes = kong.db.clustering_data_planes
+
+  -- check if we already have some data
+  local res, err = clustering_data_planes:select(pk)
+  if err then
+    ngx_log(ngx_ERR, "unable to query clustering data plane status, select(",
+            node_id, ") failed: ", err)
+    return
+  end
+
+  -- do not overwrite some fields
+  local sync_status = res and res.sync_status or
+                      constants.CLUSTERING_SYNC_STATUS.NORMAL
+  local config_hash = res and res.config_hash or
+                      constants.DECLARATIVE_EMPTY_CONFIG_HASH
+
+  local info = self.client_info[node_id]
+  local purge_delay = self.conf.cluster_data_plane_purge_delay
+
+  -- follow update_sync_status() in control_plane.lua
+  local ok, err = clustering_data_planes:upsert(pk, {
+    last_seen = ngx.time(),
+    hostname = node_id,
+    ip = info.ip,
+    version = info.version,
+    labels = info.labels,
+    cert_details = info.cert_details,
+    sync_status = sync_status,
+    config_hash = config_hash,
+    rpc_capabilities = capabilities_list, -- for concentrator to find node
+  }, { ttl = purge_delay, no_broadcast_crud_event = true, })
+  if not ok then
+    ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
+  end
+end
+
+
 -- CP => DP
 function _M:_handle_meta_call(c, cert)
   local data, typ, err = c:recv_frame()
@@ -283,6 +328,9 @@ function _M:_handle_meta_call(c, cert)
     labels = labels,
     cert_details = cert_details,
   }
+
+  -- only update dp status for sync v1
+  self:_update_dp_status(node_id, capabilities_list)
 
   return node_id
 end
