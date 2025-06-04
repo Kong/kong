@@ -110,6 +110,7 @@ function MetaPlugin:body_filter(sub_plugin, conf)
   -- check if a response is already sent in access phase by any filter
   local sent, source = get_global_ctx("response_body_sent")
   if sent then
+    run_stage(STAGES.RES_PRE_PROCESSING, sub_plugin, conf)
     kong.log.debug("response already sent from source: ", source, " skipping body_filter")
     return
   end
