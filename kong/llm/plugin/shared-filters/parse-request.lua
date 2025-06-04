@@ -20,7 +20,7 @@ local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAM
 
 
 function _M:run(conf)
-  -- Thie might be called again in retry, simply skip it as we already parsed the request
+  -- This might be called again in retry, simply skip it as we already parsed the request
   if ngx.get_phase() == "balancer" then
     return true
   end
