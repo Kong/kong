@@ -88,12 +88,6 @@ local function handle_streaming_frame(conf, chunk, finished)
     local model_t = ai_plugin_ctx.get_request_model_table_inuse()
     local formatted, _, metadata = ai_driver.from_format(event, model_t, "stream/" .. conf.route_type)
 
-    if formatted then
-      frame_buffer:put("data: ")
-      frame_buffer:put(formatted or "")
-      frame_buffer:put((formatted ~= ai_shared._CONST.SSE_TERMINATOR) and "\n\n" or "")
-    end
-
     if formatted and formatted ~= ai_shared._CONST.SSE_TERMINATOR then  -- only stream relevant frames back to the user
       -- append the "choice" to the buffer, for logging later. this actually works!
       local event_t, err = cjson.decode(formatted)
@@ -103,7 +97,12 @@ local function handle_streaming_frame(conf, chunk, finished)
           finish_reason = event_t.choices[1].finish_reason
         end
 
-        local token_t = get_token_text(event_t)
+    if formatted then
+      if not blocked_msg
+        or (formatted == ai_shared._CONST.SSE_TERMINATOR and not get_global_ctx("sample_event"))then
+        frame_buffer:put("data: ")
+        frame_buffer:put(formatted)
+        frame_buffer:put("\n\n")
 
         -- either enabled in ai-proxy plugin, or required by other plugin
         if body_buffer then

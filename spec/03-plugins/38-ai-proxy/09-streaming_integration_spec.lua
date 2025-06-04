@@ -848,6 +848,8 @@ for _, strategy in helpers.all_strategies() do
           end
 
           if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
             -- we need to rip each message from this chunk
             for s in buffer:gmatch("[^\r\n]+") do
               local s_copy = s
