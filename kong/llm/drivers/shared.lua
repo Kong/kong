@@ -14,9 +14,13 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 -- static
 local ipairs       = ipairs
 local str_find     = string.find
+local str_byte     = string.byte
 local str_sub      = string.sub
 local split        = require("kong.tools.string").split
 local splitn       = require("kong.tools.string").splitn
+
+local NEWLINE = str_byte("\n")
+local SPACE = str_byte(" ")
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
@@ -218,7 +222,7 @@ _M.clear_response_headers = {
 function _M.merge_config_defaults(request, options, request_format)
   if options then
     request.temperature = options.temperature or request.temperature
-    request.max_tokens = options.max_tokens or request.max_tokens 
+    request.max_tokens = options.max_tokens or request.max_tokens
     request.top_p = options.top_p or request.top_p
     request.top_k = options.top_k or request.top_k
   end
@@ -519,38 +523,39 @@ function _M.frame_to_events(frame, content_type)
 
   -- standard SSE parser
   else
-    local event_lines, count = splitn(frame, "\n")
+    -- test for previous abnormal start-of-frame (truncation tail)
+    if kong and kong.ctx.plugin.truncated_frame then
+      -- this is the tail of a previous incomplete chunk
+      ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
+      frame = fmt("%s%s", kong.ctx.plugin.truncated_frame, frame)
+      kong.ctx.plugin.truncated_frame = nil
+    end
+
     local struct = {} -- { event = nil, id = nil, data = nil }
-
-    for i, dat in ipairs(event_lines) do
-      if dat == "" then
-        events[#events + 1] = struct
-        struct = {} -- { event = nil, id = nil, data = nil }
-      end
-
-      -- test for truncated chunk on the last line (no trailing \r\n\r\n)
-      if dat ~= "" and count == i then
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
+    local start = 1
+    local n_events = 1
+    while start <= #frame do
+      -- SSE chunks end with `\n\n` or `\r\n`
+      local end_of_msg = str_find(frame, "[\r\n]", start, false)
+      if not end_of_msg then
         if kong then
-          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), dat)
+          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), frame)
         end
 
-        break  -- stop parsing immediately, server has done something wrong
+        break
       end
 
-      -- test for abnormal start-of-frame (truncation tail)
-      if kong and kong.ctx.plugin.truncated_frame then
-        -- this is the tail of a previous incomplete chunk
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
-        dat = fmt("%s%s", kong.ctx.plugin.truncated_frame, dat)
-        kong.ctx.plugin.truncated_frame = nil
-      end
-
-      local s1, _ = str_find(dat, ":") -- find where the cut point is
-
-      if s1 and s1 ~= 1 then
-        local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
-        local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
+      -- find where the cut point is. As str_find cannot specify the end of the search range,
+      -- the returned s1 may be larger than the end of msg.
+      local s1 = str_find(frame, ":", start, true)
+      if s1 and s1 ~= 1 and s1 < end_of_msg then
+        local field = str_sub(frame, start, s1 - 1) -- returns "data" from data: hello world
+        local j = s1 + 1
+        while j <= end_of_msg - 1 and str_byte(frame, j) == SPACE do
+          -- consume spaces.
+          j = j + 1
+        end
+        local value = str_sub(frame, j, end_of_msg - 1) -- returns "hello world" from data: hello world
 
         -- for now not checking if the value is already been set
         if     field == "event" then struct.event = value
@@ -558,8 +563,19 @@ function _M.frame_to_events(frame, content_type)
         elseif field == "data"  then struct.data = value
         end -- if
       end -- if
+
+      start = end_of_msg + 1
+      -- When start > #frame, str_byte returns nil, so we don't need to check out of bound here.
+      if str_byte(frame, start) == NEWLINE then
+        -- End of the SSE shunk. This is faster than calling str_find '\n' again.
+        events[n_events] = struct
+        n_events = n_events + 1
+        struct = {}
+        start = start + 1
+      end
+
     end
-  end
+  end -- else
 
   return events
 end
@@ -640,7 +656,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     output.usage = {
       completion_tokens = response_table.eval_count or 0,
       prompt_tokens = response_table.prompt_eval_count or 0,
-      total_tokens = (response_table.eval_count or 0) + 
+      total_tokens = (response_table.eval_count or 0) +
                     (response_table.prompt_eval_count or 0),
     }
 
@@ -1003,7 +1019,7 @@ local function count_prompt(content, tokens_factor)
           return nil, "Invalid request format"
       end
     end
-  else 
+  else
     return nil, "Invalid request format"
   end
   return count, nil
@@ -1020,9 +1036,9 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   if query_body.choices then
     -- Calculate the cost based on the content type
     for _, choice in ipairs(query_body.choices) do
-      if choice.message and choice.message.content then 
+      if choice.message and choice.message.content then
         query_cost = query_cost + (count_words(choice.message.content) * tokens_factor)
-      elseif choice.text then 
+      elseif choice.text then
         query_cost = query_cost + (count_words(choice.text) * tokens_factor)
       end
     end
