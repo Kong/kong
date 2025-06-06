@@ -15,7 +15,6 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 -- globals
 local DRIVER_NAME = "bedrock"
 local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
-local _TITAN_EMBED_PATTERN = "amazon.titan.-embed.-text.-.*"
 --
 
 local _OPENAI_ROLE_MAPPING = {

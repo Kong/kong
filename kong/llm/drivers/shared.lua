@@ -230,7 +230,7 @@ function _M.merge_config_defaults(request, options, request_format)
   return request, nil
 end
 
-local function handle_stream_event(event_table, model_info, route_type)
+local function handle_ollama_stream_event(event_table, model_info, route_type)
   if event_table.done then
     -- return analytics table
     return "[DONE]", nil, {
@@ -459,6 +459,32 @@ local function json_array_iterator(input_str, prev_state)
   end
 end
 
+_M.json_array_iterator = json_array_iterator
+
+local function ollama_message_has_tools(message)
+  return message
+          and type(message) == "table"
+          and message['tool_calls']
+          and type(message['tool_calls']) == "table"
+          and #message['tool_calls'] > 0
+end
+
+---
+-- Converts a JSON-format (ISO 8601) Timestamp into seconds since UNIX EPOCH.
+-- Input only supports UTC timezone (suffix 'Z').
+--
+-- @param {string} ISO 8601 UTC input time, example '2025-04-22T13:40:31.926503Z'
+-- @return {number} Seconds count since UNIX EPOCH.
+function _M.iso_8601_to_epoch(timestamp)
+  local year, month, day, hour, min, sec, _ =
+    string.match(timestamp, "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+).(%d+)Z")
+
+  return os.time(
+    {
+      ["day"]=day, ["month"]=month, ["year"]=year, ["hour"]=hour, ["min"]=min, ["sec"]=sec
+    })
+end
+
 ---
 -- Splits a HTTPS data chunk or frame into individual
 -- SSE-format messages, see:
@@ -594,6 +620,28 @@ function _M.to_ollama(request_table, model)
 
   end
 
+  -- If tools are an actual JSON object,
+  -- flatten to a raw string.
+  -- Ollama is inconsistent in its response formats.
+  if request_table.messages then
+    for _, message in ipairs(request_table.messages) do
+      if message["tool_calls"] and type(message["tool_calls"]) == "table" then
+        for _, tool in ipairs(message["tool_calls"]) do
+          if tool['function']
+            and tool['function']['arguments']
+            and type(tool['function']['arguments']) == "string" then
+            
+            tool['function']['arguments'] = cjson.decode(tool['function']['arguments'])
+          end
+        end
+      end
+    end
+  end
+
+
+  -- handle tools
+  input.tools = request_table.tools
+
   -- common parameters
   input.stream = request_table.stream or false -- for future capability
   input.model = model.name or request_table.name
@@ -623,7 +671,7 @@ function _M.from_ollama(response_string, model_info, route_type)
       return nil, "failed to decode ollama response"
     end
 
-    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
+    output, _, analytics = handle_ollama_stream_event(response_table, model_info, route_type)
 
   elseif route_type == "stream/llm/v1/completions" then
     local response_table, err = cjson.decode(response_string.data)
@@ -631,7 +679,7 @@ function _M.from_ollama(response_string, model_info, route_type)
       return nil, "failed to decode ollama response"
     end
 
-    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
+    output, _, analytics = handle_ollama_stream_event(response_table, model_info, route_type)
 
   else
     local response_table, err = cjson.decode(response_string)
@@ -650,7 +698,7 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     -- common fields
     output.model = response_table.model
-    output.created = response_table.created_at
+    output.created = _M.iso_8601_to_epoch(response_table.created_at)
 
     -- analytics
     output.usage = {
@@ -662,6 +710,24 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     if route_type == "llm/v1/chat" then
       output.object = "chat.completion"
+
+      -- handle tools conversion
+      if ollama_message_has_tools(response_table.message) then
+
+        -- If tools are an actual JSON object,
+        -- flatten to a raw string.
+        -- Ollama is inconsistent in its response formats.
+        for _, tool in ipairs(response_table.message['tool_calls']) do
+          if tool['function']
+            and tool['function']['arguments']
+            and type(tool['function']['arguments']) == "table" then
+            
+            tool['function']['arguments'] = cjson.encode(tool['function']['arguments'])
+          end
+        end
+
+      end
+
       output.choices = {
         {
           finish_reason = response_table.finish_reason or stop_reason,
