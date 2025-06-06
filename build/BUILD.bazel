@@ -55,7 +55,6 @@ kong_rules_group(
         "@brotli",
         "@pcre",
         "@openresty",
-        "@lua",
     ],
     visibility = ["//visibility:public"],
 )
@@ -234,12 +233,6 @@ kong_rules_group(
     visibility = ["//visibility:public"],
 )
 
-kong_install(
-    name = "install-lua",
-    src = "@lua",
-    exclude = ["include"],  # skip install headers
-)
-
 # Wrap up : )
 
 kong_rules_group(
@@ -251,7 +244,6 @@ kong_rules_group(
         ":install-openresty",
         ":install-static-assets",
         ":install-tools",
-        ":install-lua",
     ],
     visibility = ["//visibility:public"],
 )
@@ -273,10 +265,8 @@ kong_genrule(
         rm -rf ${BUILD_DESTDIR}/share ${BUILD_DESTDIR}/lib ${BUILD_DESTDIR}/etc
         LUAROCKS=$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/share ${LUAROCKS}/lib ${LUAROCKS}/etc ${BUILD_DESTDIR}/.
-
-        TARGET_LUAROCKS=$(dirname '$(location @luarocks//:luarocks_target)')/luarocks_tree
-        cp ${TARGET_LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
-        cp ${TARGET_LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
+        cp ${LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
+        cp ${LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
 
         mkdir -p ${BUILD_DESTDIR}/etc/kong/
         cp ${WORKSPACE_PATH}/kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
