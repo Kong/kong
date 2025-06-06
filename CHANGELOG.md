@@ -79,7 +79,7 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
  [#14579](https://github.com/Kong/kong/issues/14579)
 
 
-- *ai-proxy, ai-proxy-advanced**: Fixed an issue where AI Proxy and AI Proxy Advanced would use corrupted plugin config.
+- **ai-proxy**: Fixed an issue where AI Proxy would use corrupted plugin config.
  [#14579](https://github.com/Kong/kong/issues/14579)
 
 
