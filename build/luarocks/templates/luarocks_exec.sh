@@ -6,7 +6,6 @@ libxml2_path="invalid"
 openssl_path="{{@@openssl//:openssl}}"
 luarocks_host_path="{{@@luarocks//:luarocks_host}}"
 luajit_path="{{@@openresty//:luajit}}"
-lua_path="{{@@lua//:lua}}"
 kongrocks_path="invalid"
 cross_deps_libyaml_path="{{@@cross_deps_libyaml//:libyaml}}"
 CC={{CC}}
@@ -73,28 +72,23 @@ if [[ $CC != /* ]]; then
     LD=$root_path/$LD
 fi
 
-cat << EOF > $ROCKS_CONFIG
+echo "
 rocks_trees = {
     { name = [[system]], root = [[$ROCKS_DIR]] }
 }
-lua_version = "5.1";
-lua_interpreter = "${luajit_path}/bin/luajit";
-local_cache = '$CACHE_DIR';
-show_downloads = true;
+local_cache = '$CACHE_DIR'
+show_downloads = true
 gcc_rpath = false -- disable default rpath, add our own
 variables = {
     CC = '$CC',
     LD = '$LD',
     LDFLAGS = '-Wl,-rpath,$LIB_RPATH',
-    LUA_DIR = [[$root_path/$luajit_path]],
-    LUA_INCDIR = [[$root_path/$luajit_path/include/luajit-2.1]],
-    LUA_BINDIR = [[$root_path/$luajit_path/bin]]
 }
-EOF
+" > $ROCKS_CONFIG
 
 LUAROCKS_HOST=$luarocks_host_path
 
-host_lua=$root_path/$lua_path/bin/lua
+host_luajit=$root_path/$luajit_path/bin/luajit
 
 cat << EOF > $@
 LIB_RPATH=$LIB_RPATH
@@ -120,7 +114,7 @@ fi
 # force the interpreter here instead of invoking luarocks directly,
 # some distros has BINPRM_BUF_SIZE smaller than the shebang generated,
 # which is usually more than 160 bytes
-$host_lua $root_path/$LUAROCKS_HOST/bin/luarocks \$private_rocks_args \$@ \\
+$host_luajit $root_path/$LUAROCKS_HOST/bin/luarocks \$private_rocks_args \$@ \\
     OPENSSL_DIR=$OPENSSL_DIR \\
     CRYPTO_DIR=$OPENSSL_DIR \\
     EXPAT_DIR=$EXPAT_DIR \\

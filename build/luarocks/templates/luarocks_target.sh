@@ -7,7 +7,6 @@ build_destdir="{{build_destdir}}"
 
 luarocks_exec="{{@@luarocks//:luarocks_exec}}"
 luajit_path="{{@@openresty//:luajit}}"
-lua_path="{{@@lua//:lua}}"
 luarocks_host_path="{{@@luarocks//:luarocks_host}}"
 luarocks_wrap_script="{{@@//build/luarocks:luarocks_wrap_script.lua}}"
 # template variables ends
@@ -41,12 +40,11 @@ mkdir -p $rocks_tree/etc/luarocks
 cat << EOF > $rocks_tree/etc/luarocks/config-5.1.lua
 -- LuaRocks configuration
 rocks_trees = {
-    { name = "user", root = home .. "/.luarocks" };
-    { name = "system", root = "$install_destdir" };
-}
-lua_version = "5.1";
-lua_interpreter = "luajit";
-variables = {
+        { name = "user", root = home .. "/.luarocks" };
+        { name = "system", root = "$install_destdir" };
+    }
+    lua_interpreter = "luajit";
+    variables = {
     LUA_DIR = "$install_destdir/openresty/luajit";
     LUA_INCDIR = "$install_destdir/openresty/luajit/include/luajit-2.1";
     LUA_BINDIR = "$install_destdir/openresty/luajit/bin";
@@ -55,7 +53,6 @@ EOF
 
 sed -i -e "s|$build_destdir|$install_destdir|g" $rocks_tree/bin/luarocks
 sed -i -e "s|$rocks_tree|$install_destdir|g" $rocks_tree/bin/luarocks
-sed -i -e "s|openresty/luajit/bin/luajit|kong/bin/lua|" $rocks_tree/bin/luarocks
 
 # only generate the output when the command succeeds
 mv $@.tmp $@
