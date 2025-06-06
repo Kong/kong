@@ -401,15 +401,15 @@ local function log(message, serialized)
         metrics.ai_llm_cost:inc(ai_metrics.usage.cost, labels_table_ai_llm_status)
       end
 
-      if ai_metrics.meta and ai_metrics.meta.llm_latency and ai_metrics.meta.llm_latency > 0 then
+      if ai_metrics.meta and ai_metrics.meta.llm_latency and ai_metrics.meta.llm_latency >= 0 then
         metrics.ai_llm_provider_latency:observe(ai_metrics.meta.llm_latency, labels_table_ai_llm_status)
       end
 
-      if ai_metrics.cache and ai_metrics.cache.fetch_latency and ai_metrics.cache.fetch_latency > 0 then
+      if ai_metrics.cache and ai_metrics.cache.fetch_latency and ai_metrics.cache.fetch_latency >= 0 then
         metrics.ai_cache_fetch_latency:observe(ai_metrics.cache.fetch_latency, labels_table_ai_llm_status)
       end
 
-      if ai_metrics.cache and ai_metrics.cache.embeddings_latency and ai_metrics.cache.embeddings_latency > 0 then
+      if ai_metrics.cache and ai_metrics.cache.embeddings_latency and ai_metrics.cache.embeddings_latency >= 0 then
         metrics.ai_cache_embeddings_latency:observe(ai_metrics.cache.embeddings_latency, labels_table_ai_llm_status)
       end
 
