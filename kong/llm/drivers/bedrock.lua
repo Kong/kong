@@ -15,6 +15,7 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 -- globals
 local DRIVER_NAME = "bedrock"
 local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
+local _TITAN_EMBED_PATTERN = "amazon.titan.-embed.-text.-.*"
 --
 
 local _OPENAI_ROLE_MAPPING = {
@@ -294,23 +295,43 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         system_prompts[#system_prompts+1] = { text = v.content }
 
       elseif v.role and v.role == "tool" then
-        local tool_literal_content
-        local tool_execution_content, err = cjson.decode(v.content)
-        if err then
-          return nil, nil, "failed to decode function response arguments, not JSON format"
-        end
+        -- To mimic OpenAI behaviour, but also support Bedrock, here's what we do:
+        ---- If it's a string, and JSON decode fails, just treat as a literal reply in "text" field.
+        ---- If it's a string, and JSON decode succeeds, set that object as "json" field, and let Kong re-encode it later.
+        ---- If it's already a deep JSON object from the caller, set that straight to "json" as well, and let Kong re-encode it later.
+        -- https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use-inference-call.html#tool-calllng-make-tool-request
+        local tool_content
+        local tool_literal_content = v.content
+        if type(tool_literal_content) == "string" then
+          -- try
+          local tool_decoded_content, err = cjson.decode(tool_literal_content)
+          if err then
+            -- catch
+            tool_content = {
+              text = tool_literal_content
+            }
 
-        if type(tool_execution_content) == "table" then
-          tool_literal_content = {
-            json = tool_execution_content
+          else
+            -- Lua bug? Catch if it decoded a single number from JSON for some reason
+            if type(tool_decoded_content) == "number" then
+              tool_content = {
+                text = tool_literal_content
+              }
+            else
+              tool_content = {
+                json = tool_decoded_content
+              }
+            end
+
+          end
+
+        elseif type(tool_literal_content) == "table" then
+          tool_content = {
+            json = tool_literal_content
           }
 
         else
-          tool_literal_content = {
-            json = {
-              result = tool_execution_content
-            }
-          }
+          return nil, nil, "failed to decode function response arguments: expecting string or nested-JSON"
         end
 
         local content = {
@@ -318,7 +339,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
             toolResult = {
               toolUseId = v.tool_call_id,
               content = {
-                tool_literal_content
+                tool_content
               },
               status = v.status,
             },
@@ -454,6 +475,7 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
 
   return cjson.encode(client_response)
 end
+
 
 local transformers_to = {
   ["llm/v1/chat"] = to_bedrock_chat_openai,
