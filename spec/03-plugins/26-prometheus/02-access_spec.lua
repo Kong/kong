@@ -822,6 +822,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.res_status(200, res)
 
     local body
+    -- wait until the histogram observe finished and get the correct metrics.
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method  = "GET",
