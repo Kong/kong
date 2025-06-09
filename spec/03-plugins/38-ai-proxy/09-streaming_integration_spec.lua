@@ -19,10 +19,10 @@ local _EXPECTED_CHAT_STATS = {
   },
   usage = {
     prompt_tokens = 18,
-    completion_tokens = 13, -- this was from estimation
-    total_tokens = 31,
+    completion_tokens = 7, -- this was from estimation
+    total_tokens = 25,
     time_per_token = 1,
-    cost = 0.00031,
+    cost = 0.00025,
   },
 }
 
@@ -960,7 +960,8 @@ for _, strategy in helpers.all_strategies() do
         assert.is_true(actual_llm_latency >= 0)
         assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
         assert.match_re(actual_request_log, [[.*content.*What is 1 \+ 1.*]])
-        assert.match_re(actual_response_log, [[.*content.*The answer.*]])
+        -- include the quotes to match the whole string
+        assert.match_re(actual_response_log, [[.*"The answer to 1 \+ 1 is 2\.".*]])
         -- to verifiy not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
