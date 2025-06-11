@@ -566,10 +566,18 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
 
+  local auth_param_name = conf.auth and conf.auth.param_name
+  local auth_param_value = conf.auth and conf.auth.param_value
+  local auth_param_location = conf.auth and conf.auth.param_location
+
   local headers = {
     ["Accept"] = "application/json",
     ["Content-Type"] = "application/json",
   }
+
+  if auth_param_name and auth_param_value and auth_param_location == "query" then
+    f_url = fmt("%s?%s=%s", f_url, auth_param_name, auth_param_value)
+  end
 
   if identity_interface and identity_interface.interface then
     if identity_interface.interface:needsRefresh() then

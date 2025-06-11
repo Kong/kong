@@ -90,6 +90,27 @@ for _, strategy in helpers.all_strategies() do
                 end
               }
             }
+
+            location = "/v1/chat/completions/query-auth" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+
+                -- Check for query parameter authentication
+                local args = ngx.req.get_uri_args()
+                if args.key == "gemini-query-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+
+                  ngx.status = 200
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-chat/responses/good.json"))
+                else
+                  ngx.status = 401
+                  ngx.print('{"error": "Unauthorized"}')
+                end
+              }
+            }
           }
         ]]
 
@@ -171,6 +192,92 @@ for _, strategy in helpers.all_strategies() do
             },
           },
         })
+        bp.plugins:insert {
+          name = "file-log",
+          route = { id = chat_good_with_var.id },
+          config = {
+            path = FILE_LOG_PATH_WITH_PAYLOADS,
+          },
+        }
+
+        -- 200 chat good with query param auth using ai-proxy-advanced and ai-response-transformer
+        local chat_query_auth = assert(bp.routes:insert({
+          service = empty_service,
+          protocols = { "http" },
+          strip_path = true,
+          paths = { "/gemini/llm/v1/chat/query-auth" },
+        }))
+        bp.plugins:insert({
+          name = "ai-proxy-advanced",
+          id = "27544c15-3c8c-5c3f-c98a-69990644a4d2",
+          route = { id = chat_query_auth.id },
+          config = {
+            targets = {
+              {
+                route_type = "llm/v1/chat",
+                auth = {
+                  param_name = "key",
+                  param_value = "gemini-query-key",
+                  param_location = "query",
+                },
+                logging = {
+                  log_payloads = true,
+                  log_statistics = true,
+                },
+                model = {
+                  name = "gemini-1.5-flash",
+                  provider = "gemini",
+                  options = {
+                    max_tokens = 256,
+                    temperature = 1.0,
+                    upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/v1/chat/completions/query-auth",
+                    input_cost = 15.0,
+                    output_cost = 15.0,
+                  },
+                },
+              },
+            },
+          },
+        })
+        bp.plugins:insert({
+          name = "ai-response-transformer",
+          id = "37655d26-4d9d-6d4f-d09b-70001755b5e3",
+          route = { id = chat_query_auth.id },
+          config = {
+            prompt = "Mask all emails and phone numbers in my JSON message with '*'. Return me ONLY the resulting JSON.",
+            parse_llm_response_json_instructions = false,
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                param_name = "key",
+                param_value = "gemini-query-key",
+                param_location = "query",
+              },
+              logging = {
+                log_payloads = true,
+                log_statistics = true,
+              },
+              model = {
+                provider = "gemini",
+                name = "gemini-1.5-flash",
+                options = {
+                  upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/v1/chat/completions/query-auth",
+                  input_cost = 15.0,
+                  output_cost = 15.0,
+                },
+              },
+            },
+          },
+        })
+        bp.plugins:insert {
+          name = "file-log",
+          route = { id = chat_query_auth.id },
+          config = {
+            path = FILE_LOG_PATH_WITH_PAYLOADS,
+          },
+        }
+
+        -- TODO: mock gcp client to test vertex mode
 
         -- start kong
         assert(helpers.start_kong({
@@ -261,6 +368,21 @@ for _, strategy in helpers.all_strategies() do
           local body = assert.res_status(200, r)
           local json = cjson.decode(body)
           assert.equals("gemni-2.0-flash", json.model)
+        end)
+      end)
+
+      describe("gemini llm/v1/chat with query param auth", function()
+        it("good request with query parameter authentication", function()
+          local r = client:get("/gemini/llm/v1/chat/query-auth", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+          })
+          -- validate that the request succeeded, response status 200
+          local body = assert.res_status(200, r)
+          assert.same("Everything is okay.", body)
         end)
       end)
     end)
