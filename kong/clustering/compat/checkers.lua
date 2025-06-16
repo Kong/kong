@@ -21,6 +21,9 @@ do
   end
 
   local _AI_PROVIDERS_ADDED = {
+    [3009000000] = {
+      "huggingface",
+    },
     [3008000000] = {
       "gemini",
       "bedrock",
@@ -28,9 +31,14 @@ do
   }
 
   _AI_PROVIDER_INCOMPATIBLE = function(provider, ver)
-    for _, v in ipairs(_AI_PROVIDERS_ADDED[ver]) do
-      if v == provider then
-        return true
+    -- Check all versions >= ver to see if provider was added in any of them
+    for version, providers in pairs(_AI_PROVIDERS_ADDED) do
+      if version >= ver then
+        for _, v in ipairs(providers) do
+          if v == provider then
+            return true
+          end
+        end
       end
     end
 
@@ -39,6 +47,72 @@ do
 end
 
 local compatible_checkers = {
+  { 3009000000, --[[ 3.9.0.0 ]]
+    function (config_table, dp_version, log_suffix)
+      local has_update
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3009000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.model.provider = "openai"
+            config.route_type = "preserve"
+            
+            -- Remove provider-specific options for huggingface
+            if config.model.options and config.model.options.huggingface then
+              config.model.options.huggingface = nil
+            end
+
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'ai-request-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3009000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+            
+            -- Remove provider-specific options for huggingface
+            if config.llm.model.options and config.llm.model.options.huggingface then
+              config.llm.model.options.huggingface = nil
+            end
+
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'ai-response-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3009000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+            
+            -- Remove provider-specific options for huggingface
+            if config.llm.model.options and config.llm.model.options.huggingface then
+              config.llm.model.options.huggingface = nil
+            end
+
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
   { 3008000000, --[[ 3.8.0.0 ]]
     function (config_table, dp_version, log_suffix)
       local has_update

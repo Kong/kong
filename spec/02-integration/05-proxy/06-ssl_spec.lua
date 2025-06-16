@@ -13,25 +13,7 @@ local function get_cert(server_name)
   return stdout
 end
 
-local mock_tls_server_port = helpers.get_available_port()
-
-local fixtures = {
-  http_mock = {
-    test_upstream_tls_server = fmt([[
-      server {
-          server_name example2.com;
-          listen %s ssl;
-
-          ssl_certificate        ../spec/fixtures/mtls_certs/example2.com.crt;
-          ssl_certificate_key    ../spec/fixtures/mtls_certs/example2.com.key;
-
-          location = / {
-              echo 'it works';
-          }
-      }
-    ]], mock_tls_server_port)
-  },
-}
+local fixtures = {}
 
 local function reload_router(flavor)
   helpers = require("spec.internal.module").reload_helpers(flavor)
@@ -59,6 +41,24 @@ for _, strategy in helpers.each_strategy() do
     reload_router(flavor)
 
     lazy_setup(function()
+      local mock_tls_server_port = helpers.get_available_port()
+
+      fixtures.http_mock = {
+        test_upstream_tls_server = fmt([[
+          server {
+              server_name example2.com;
+              listen %s ssl;
+
+              ssl_certificate        ../spec/fixtures/mtls_certs/example2.com.crt;
+              ssl_certificate_key    ../spec/fixtures/mtls_certs/example2.com.key;
+
+              location = / {
+                  echo 'it works';
+              }
+          }
+        ]], mock_tls_server_port)
+      }
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",

@@ -3,7 +3,6 @@ local cjson   = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
 
 local md5 = ngx.md5
-local TCP_PORT = helpers.get_available_port()
 
 
 for _, client_protocol in ipairs({ "http", "https", "http2" }) do
@@ -14,9 +13,13 @@ for _, strategy in helpers.each_strategy() do
     -- ngx.location.capture that buffered proxying uses
 
     describe("[http]", function()
+      local TCP_PORT
       local proxy_client
       local proxy_ssl_client
+
       lazy_setup(function()
+        TCP_PORT = helpers.get_available_port()
+
         local bp = helpers.get_db_utils(strategy, {
           "routes",
           "services",

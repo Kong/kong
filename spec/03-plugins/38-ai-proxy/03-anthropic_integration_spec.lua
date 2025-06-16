@@ -4,13 +4,15 @@ local pl_file = require "pl.file"
 local deepcompare  = require("pl.tablex").deepcompare
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = helpers.get_available_port()
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local MOCK_PORT
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
 
       -- set up anthropic mock fixtures

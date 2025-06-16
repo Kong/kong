@@ -9,7 +9,7 @@ local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local strip = require("kong.tools.string").strip
-local split = require("kong.tools.string").split
+local splitn = require("kong.tools.string").splitn
 local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 
@@ -39,15 +39,13 @@ end
 
 
 local function parse_phc(phc)
-  local parts = split(phc, "$")
-  local count = #parts
+  local parts, count = splitn(phc, "$", 6)
   if count < 2 or count > 5 then
     return nil, "invalid phc string format"
   end
 
   local id = parts[2]
-  local id_parts = split(id, "-")
-  local id_count = #id_parts
+  local id_parts, id_count = splitn(id, "-")
 
   local prefix
   local digest
@@ -62,11 +60,10 @@ local function parse_phc(phc)
   local params = {}
   local prms = parts[3]
   if prms then
-    local prm_parts = split(prms, ",")
-    for i = 1, #prm_parts do
+    local prm_parts, prm_parts_count = splitn(prms, ",")
+    for i = 1, prm_parts_count do
       local param = prm_parts[i]
-      local kv = split(param, "=")
-      local kv_count = #kv
+      local kv, kv_count = splitn(param, "=", 3)
       if kv_count == 1 then
         params[#params + 1] = infer(kv[1])
       elseif kv_count == 2 then
@@ -132,7 +129,7 @@ if ENABLED_ALGORITHMS.ARGON2 then
     }
     do
       local hash = argon2.hash_encoded("", get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
-      local parts = split(hash, "$")
+      local parts = splitn(hash, "$")
       remove(parts)
       remove(parts)
       ARGON2_PREFIX = concat(parts, "$")
@@ -170,7 +167,7 @@ if ENABLED_ALGORITHMS.BCRYPT then
 
     do
       local hash = bcrypt.digest("", BCRYPT_ROUNDS)
-      local parts = split(hash, "$")
+      local parts = splitn(hash, "$")
       remove(parts)
       BCRYPT_PREFIX = concat(parts, "$")
     end
@@ -252,7 +249,7 @@ if ENABLED_ALGORITHMS.PBKDF2 then
 
     do
       local hash = derive("")
-      local parts = split(hash, "$")
+      local parts = splitn(hash, "$")
       remove(parts)
       remove(parts)
       PBKDF2_PREFIX = concat(parts, "$")

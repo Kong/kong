@@ -312,6 +312,8 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
+    ["kong.db.strategies.off.plugins"] = "kong/db/strategies/off/plugins.lua",
+    ["kong.db.strategies.off.services"] = "kong/db/strategies/off/services.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
@@ -663,6 +665,9 @@ build = {
     ["kong.llm.plugin.shared-filters.parse-request"] = "kong/llm/plugin/shared-filters/parse-request.lua",
     ["kong.llm.plugin.shared-filters.parse-sse-chunk"] = "kong/llm/plugin/shared-filters/parse-sse-chunk.lua",
     ["kong.llm.plugin.shared-filters.serialize-analytics"] = "kong/llm/plugin/shared-filters/serialize-analytics.lua",
+
+    ["kong.llm.adapters.bedrock"] = "kong/llm/adapters/bedrock.lua",
+    ["kong.llm.adapters.gemini"] = "kong/llm/adapters/gemini.lua",
 
     ["kong.plugins.ai-prompt-template.handler"] = "kong/plugins/ai-prompt-template/handler.lua",
     ["kong.plugins.ai-prompt-template.filters.render-prompt-template"] = "kong/plugins/ai-prompt-template/filters/render-prompt-template.lua",

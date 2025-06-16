@@ -88,7 +88,8 @@ function _M:entity_delta_writer(entity, name, options, ws_id, is_delete)
     return nil, err
   end
 
-  self:notify_all_nodes()
+  -- event "dao:crud" => handle_dao_crud_event() =>
+  --   post_push_config_event() => self:notify_all_nodes()
 
   return entity -- for other hooks
 end

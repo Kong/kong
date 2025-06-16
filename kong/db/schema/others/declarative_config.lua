@@ -523,7 +523,7 @@ function DeclarativeConfig.validate_references_sync(deltas, deltas_map, is_full_
       goto continue
     end
 
-    local ws_id = item.ws_id or delta.ws_id or kong.default_workspace
+    local ws_id = item.ws_id or kong.default_workspace
 
     for k, v in pairs(item) do
 

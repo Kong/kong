@@ -13,7 +13,6 @@ local _M = {
 local FILTER_OUTPUT_SCHEMA = {
   model = "table",
   route_type = "string",
-  request_body_table = "table",
 }
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
@@ -34,6 +33,7 @@ local function bail(code, msg)
     return kong.response.exit(code, msg and { error = { message = msg } } or nil)
   end
 end
+
 
 local function copy_request_table(request_table)
   -- only copy the "options", to save memory, as messages are not overriden
@@ -66,36 +66,35 @@ local function validate_and_transform(conf)
     error("conf.model missing from plugin configuration", 2)
   end
 
-  -- TODO: refactor the ai_shared module to seperate the model options from other plugin conf
-  -- by using the `namespaced_ctx.model`
-  local conf_m, err = ai_shared.merge_model_options(kong.request, conf)
+  local model_t, err = ai_shared.merge_model_options(kong.request, ai_plugin_ctx.immutable_table(conf and conf.model))
   if err then
     return bail(400, err)
   end
 
-  local model_t = conf_m.model
+
   local model_provider = conf.model.provider -- use the one from conf, not the merged one to avoid potential security risk
 
-  local request_table
-  if ai_plugin_ctx.has_namespace("decorate-prompt") and
-     ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "decorated") then
-    request_table = ai_plugin_ctx.get_namespaced_ctx("decorate-prompt", "request_body_table")
-  else
-    request_table = ai_plugin_ctx.get_namespaced_ctx("parse-request", "request_body_table")
-  end
+  local request_table, source = ai_plugin_ctx.get_request_body_table_inuse()
 
   if not request_table then
     return bail(400, "content-type header does not match request body, or bad JSON formatting")
   end
 
-  if not validate_incoming(request_table) then
-    return bail(400, "request body doesn't contain valid prompts")
+  kong.log.debug("using request body from source: ", source)
+
+  if conf.route_type == "preserve" then
+    set_global_ctx("preserve_mode", true)
+  else
+    set_global_ctx("preserve_mode", false)
+    if not validate_incoming(request_table) then
+      return bail(400, "request body doesn't contain valid prompts")
+    end
   end
 
   -- duplicate it, to avoid our mutation of the table poplute the original parsed request
   -- TODO: a proper func to skip copying request_table.messages but keep others
   request_table = copy_request_table(request_table)
-  set_ctx("request_body_table", request_table)
+  ai_plugin_ctx.set_request_body_table_inuse(request_table, _M.NAME)
 
   -- copy from the user request if present
   if (not model_t.name) and (request_table.model) then
@@ -112,7 +111,7 @@ local function validate_and_transform(conf)
   end
 
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
-  if not model_t.name then
+  if not model_t.name and conf.route_type ~= "preserve" then
     return bail(400, "model parameter not found in request, nor in gateway configuration")
   end
 
@@ -153,31 +152,45 @@ local function validate_and_transform(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   -- execute pre-request hooks for this driver
-  local ok, err = ai_driver.pre_request(conf_m, request_table)
+  local ok, err = ai_driver.pre_request(conf, request_table)
   if not ok then
     return bail(400, err)
   end
 
-  -- transform the body to Kong-format for this provider/model
-  local parsed_request_body, content_type, err
-  if route_type ~= "preserve" and (not multipart) then
+
+  -- if this is a 'native' request with adapter,
+  -- we need to update all the request/inference parameters as appropriate.
+  -- for performance reasons, only read the raw body now if ABSOLUTELY necessary
+  local adapter = get_global_ctx("llm_format_adapter")
+  if not adapter then
+    -- openai-kong format
+
     -- transform the body to Kong-format for this provider/model
-    parsed_request_body, content_type, err = ai_driver.to_format(request_table, model_t, route_type)
-    if err then
-      return bail(400, err)
+    local parsed_request_body, content_type, err
+    if route_type ~= "preserve" and (not multipart) then
+      -- transform the body to Kong-format for this provider/model
+      parsed_request_body, content_type, err = ai_driver.to_format(request_table, model_t, route_type)
+      if err then
+        return bail(400, err)
+      end
     end
+
+    -- process form/json body auth information
+    local auth_param_name = conf.auth and conf.auth.param_name
+    local auth_param_value = conf.auth and conf.auth.param_value
+    local auth_param_location = conf.auth and conf.auth.param_location
+
+    if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
+      if request_table[auth_param_name] == nil or not conf.auth.allow_override then
+        request_table[auth_param_name] = auth_param_value
+      end
+    end
+
+    if route_type ~= "preserve" then
+      kong.service.request.set_body(parsed_request_body, content_type)
+    end
+
   end
-
-   -- process form/json body auth information
-   local auth_param_name = conf.auth and conf.auth.param_name
-   local auth_param_value = conf.auth and conf.auth.param_value
-   local auth_param_location = conf.auth and conf.auth.param_location
-
-   if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
-     if request_table[auth_param_name] == nil or not conf.auth.allow_override then
-       request_table[auth_param_name] = auth_param_value
-     end
-   end
 
   -- store token cost estimate, on first pass, if the
   -- provider doesn't reply with a prompt token count
@@ -192,10 +205,6 @@ local function validate_and_transform(conf)
     ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", prompt_tokens)
   end
 
-  if route_type ~= "preserve" and ngx.get_phase() ~= "balancer" then
-    kong.service.request.set_body(parsed_request_body, content_type)
-  end
-
   -- get the provider's cached identity interface - nil may come back, which is fine
   local identity_interface = _KEYBASTION[conf]
 
@@ -205,7 +214,7 @@ local function validate_and_transform(conf)
   end
 
   -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf_m,
+  local ok, err = ai_driver.configure_request(conf,
                identity_interface and identity_interface.interface)
   if not ok then
     kong.log.err("failed to configure request for AI service: ", err)
@@ -221,7 +230,7 @@ function _M:run(conf)
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
-  validate_and_transform(conf)
+  validate_and_transform(ai_plugin_ctx.immutable_table(conf))
 
   return true
 end

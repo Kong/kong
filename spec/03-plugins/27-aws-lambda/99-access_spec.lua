@@ -16,21 +16,25 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: AWS Lambda (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
-    local mock_http_server_port = helpers.get_available_port()
 
-    local mock = http_mock.new(mock_http_server_port, [[
-      ngx.print('hello world')
-    ]],  {
-      prefix = "mockserver",
-      log_opts = {
-        req = true,
-        req_body = true,
-        req_large_body = true,
-      },
-      tls = false,
-    })
+    local mock_http_server_port
+    local mock
 
     lazy_setup(function()
+      mock_http_server_port = helpers.get_available_port()
+
+      mock = http_mock.new(mock_http_server_port, [[
+        ngx.print('hello world')
+      ]],  {
+        prefix = "mockserver",
+        log_opts = {
+          req = true,
+          req_body = true,
+          req_large_body = true,
+        },
+        tls = false,
+      })
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",

@@ -645,6 +645,45 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
     describe("ai plugins supported providers", function()
       it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.9.x ]] --
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "header",
+              header_value = "value",
+            },
+            model = {
+              name = "any-model-name",
+              provider = "huggingface",
+              options = {
+                max_tokens = 512,
+                temperature = 0.5,
+                huggingface = {
+                  use_cache = true,
+                  wait_for_model = true,
+                },
+              },
+            },
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_proxy)
+        -- llm_format
+        expected.config.llm_format = nil
+        -- 'ai fallback' field sets
+        expected.config.route_type = "preserve"
+        expected.config.model.provider = "openai"
+        expected.config.model.options.huggingface = nil
+
+        do_assert(uuid(), "3.8.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+
         -- [[ 3.8.x ]] --
         local ai_proxy = admin.plugins:insert {
           name = "ai-proxy",
@@ -679,6 +718,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- ]]
 
         local expected = cycle_aware_deep_copy(ai_proxy)
+
+        -- llm_format
+        expected.config.llm_format = nil
 
         -- max body size
         expected.config.max_request_body_size = nil
@@ -874,6 +916,17 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_proxy)
 
+        -- llm_format
+        expected.config.llm_format = nil
+        -- bedrock fields may not exist, so check before accessing
+        if expected.config.model.options.bedrock and type(expected.config.model.options.bedrock) == "table" then
+          expected.config.model.options.bedrock.aws_assume_role_arn = nil
+          expected.config.model.options.bedrock.aws_role_session_name = nil
+          expected.config.model.options.bedrock.aws_sts_endpoint_url = nil
+        end
+
+        do_assert(uuid(), "3.9.0", expected)
+
         -- max body size
         expected.config.max_request_body_size = nil
 
@@ -997,6 +1050,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected.config.max_request_body_size = nil
         expected.config.llm.auth.allow_override = nil
 
+        -- llm_format
+        expected.config.llm_format = nil
+
         -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
         expected.config.llm.auth.gcp_use_service_account = nil
@@ -1034,6 +1090,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected = cycle_aware_deep_copy(ai_prompt_guard)
         expected.config.match_all_roles = nil
         expected.config.max_request_body_size = nil
+
+        -- llm_format
+        expected.config.llm_format = nil
 
         do_assert(uuid(), "3.7.0", expected)
 

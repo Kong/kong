@@ -388,7 +388,8 @@ local function new_router(version)
         end
 
         if new_version ~= version then
-          return nil, "router was changed while rebuilding it"
+          log(INFO, "could not build router: router was changed while rebuilding it")
+          return nil, nil
         end
       end
       counter = counter + 1
@@ -496,7 +497,7 @@ end
 local function get_updated_router()
   if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
     local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
-    if not ok then
+    if not ok and err then
       -- If an error happens while updating, log it and return non-updated
       -- version.
       log(ERR, "could not rebuild router: ", err, " (stale router will be used)")
@@ -870,27 +871,29 @@ end
 local function set_init_versions_in_cache()
   -- because of worker events, kong.cache can not be initialized in `init` phase
   -- therefore, we need to use the shdict API directly to set the initial value
-  assert(kong.configuration.role ~= "control_plane")
   assert(ngx.get_phase() == "init")
+
   local core_cache_shm = ngx.shared["kong_core_db_cache"]
 
   -- ttl = forever is okay as "*:versions" keys are always manually invalidated
   local marshalled_value = encode("init")
 
   -- see kong.cache.safe_set function
-  local ok, err = core_cache_shm:safe_set("kong_core_db_cacherouter:version", marshalled_value)
-  if not ok then
-    return nil, "failed to set initial router version in cache: " .. tostring(err)
-  end
-
-  ok, err = core_cache_shm:safe_set("kong_core_db_cacheplugins_iterator:version", marshalled_value)
+  local ok, err = core_cache_shm:safe_set("kong_core_db_cacheplugins_iterator:version", marshalled_value)
   if not ok then
     return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
   end
 
-  ok, err = core_cache_shm:safe_set("kong_core_db_cachefilter_chains:version", marshalled_value)
-  if not ok then
-    return nil, "failed to set initial wasm filter chains version in cache: " .. tostring(err)
+  if kong.configuration.role ~= "control_plane" then
+    ok, err = core_cache_shm:safe_set("kong_core_db_cacherouter:version", marshalled_value)
+    if not ok then
+      return nil, "failed to set initial router version in cache: " .. tostring(err)
+    end
+
+    ok, err = core_cache_shm:safe_set("kong_core_db_cachefilter_chains:version", marshalled_value)
+    if not ok then
+      return nil, "failed to set initial wasm filter chains version in cache: " .. tostring(err)
+    end
   end
 
 
@@ -1030,7 +1033,7 @@ return {
           -- If the semaphore is locked, that means that the rebuild is
           -- already ongoing.
           local ok, err = rebuild_router(router_async_opts)
-          if not ok then
+          if not ok and err then
             log(ERR, "could not rebuild router via timer: ", err)
           end
         end

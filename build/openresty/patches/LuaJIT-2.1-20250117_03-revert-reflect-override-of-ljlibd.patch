@@ -1,0 +1,60 @@
+diff --git a/bundle/LuaJIT-2.1-20250117/Makefile b/bundle/LuaJIT-2.1-20250117/Makefile
+index d789e9f..19b6bfa 100644
+--- a/bundle/LuaJIT-2.1-20250117/Makefile
++++ b/bundle/LuaJIT-2.1-20250117/Makefile
+@@ -42,7 +42,7 @@ INSTALL_SHARE= $(DESTDIR)$(INSTALL_SHARE_)
+ INSTALL_DEFINC= $(DPREFIX)/include/luajit-$(MMVERSION)
+ INSTALL_INC=   $(INSTALL_DEFINC)
+ 
+-export INSTALL_LJLIBD= $(INSTALL_SHARE_)/luajit-$(MMVERSION)
++INSTALL_LJLIBD= $(INSTALL_SHARE)/luajit-$(MMVERSION)
+ INSTALL_JITLIB= $(DESTDIR)$(INSTALL_LJLIBD)/jit
+ INSTALL_LMODD= $(INSTALL_SHARE)/lua
+ INSTALL_LMOD= $(INSTALL_LMODD)/$(ABIVER)
+diff --git a/bundle/LuaJIT-2.1-20250117/src/Makefile b/bundle/LuaJIT-2.1-20250117/src/Makefile
+index 285082a..346646e 100644
+--- a/bundle/LuaJIT-2.1-20250117/src/Makefile
++++ b/bundle/LuaJIT-2.1-20250117/src/Makefile
+@@ -304,9 +304,6 @@ endif
+ ifneq (,$(LMULTILIB))
+   TARGET_XCFLAGS+= -DLUA_LMULTILIB=\"$(LMULTILIB)\"
+ endif
+-ifneq (,$(INSTALL_LJLIBD))
+-  TARGET_XCFLAGS+= -DLUA_LJDIR=\"$(INSTALL_LJLIBD)\"
+-endif
+ 
+ ##############################################################################
+ # Target system detection.
+diff --git a/bundle/LuaJIT-2.1-20250117/src/luaconf.h b/bundle/LuaJIT-2.1-20250117/src/luaconf.h
+index 71e44d5..a648c5a 100644
+--- a/bundle/LuaJIT-2.1-20250117/src/luaconf.h
++++ b/bundle/LuaJIT-2.1-20250117/src/luaconf.h
+@@ -9,6 +9,7 @@
+ #ifndef WINVER
+ #define WINVER 0x0501
+ #endif
++#include <limits.h>
+ #include <stddef.h>
+ 
+ /* Default path for loading Lua and C modules with require(). */
+@@ -36,6 +37,7 @@
+ #endif
+ #define LUA_LROOT	"/usr/local"
+ #define LUA_LUADIR	"/lua/5.1/"
++#define LUA_LJDIR	"/luajit-2.1/"
+ 
+ #ifdef LUA_ROOT
+ #define LUA_JROOT	LUA_ROOT
+@@ -49,11 +51,7 @@
+ #define LUA_RCPATH
+ #endif
+ 
+-#ifndef LUA_LJDIR
+-#define LUA_LJDIR	LUA_JROOT "/share/luajit-2.1"
+-#endif
+-
+-#define LUA_JPATH	";" LUA_LJDIR "/?.lua"
++#define LUA_JPATH	";" LUA_JROOT "/share" LUA_LJDIR "?.lua"
+ #define LUA_LLDIR	LUA_LROOT "/share" LUA_LUADIR
+ #define LUA_LCDIR	LUA_LROOT "/" LUA_LMULTILIB LUA_LUADIR
+ #define LUA_LLPATH	";" LUA_LLDIR "?.lua;" LUA_LLDIR "?/init.lua"

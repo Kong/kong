@@ -15,7 +15,8 @@ local table_isempty = require("table.isempty")
 local table_clone = require("table.clone")
 local table_remove = table.remove
 local cjson = require("cjson.safe")
-local string_tools = require("kong.tools.string")
+local isplitn = require("kong.tools.string").isplitn
+local strip = require("kong.tools.string").strip
 
 
 local ipairs = ipairs
@@ -163,6 +164,51 @@ function _M:_find_node_and_check_capability(node_id, cap)
 end
 
 
+-- only run for sync v1
+-- sync v2 will always have correct status
+function _M:_update_dp_status(node_id, capabilities_list)
+  if kong.sync then
+    return
+  end
+
+  local pk = { id = node_id }
+  local clustering_data_planes = kong.db.clustering_data_planes
+
+  -- check if we already have some data
+  local res, err = clustering_data_planes:select(pk)
+  if err then
+    ngx_log(ngx_ERR, "unable to query clustering data plane status, select(",
+            node_id, ") failed: ", err)
+    return
+  end
+
+  -- do not overwrite some fields
+  local sync_status = res and res.sync_status or
+                      constants.CLUSTERING_SYNC_STATUS.NORMAL
+  local config_hash = res and res.config_hash or
+                      constants.DECLARATIVE_EMPTY_CONFIG_HASH
+
+  local info = self.client_info[node_id]
+  local purge_delay = self.conf.cluster_data_plane_purge_delay
+
+  -- follow update_sync_status() in control_plane.lua
+  local ok, err = clustering_data_planes:upsert(pk, {
+    last_seen = ngx.time(),
+    hostname = node_id,
+    ip = info.ip,
+    version = info.version,
+    labels = info.labels,
+    cert_details = info.cert_details,
+    sync_status = sync_status,
+    config_hash = config_hash,
+    rpc_capabilities = capabilities_list, -- for concentrator to find node
+  }, { ttl = purge_delay, no_broadcast_crud_event = true, })
+  if not ok then
+    ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
+  end
+end
+
+
 -- CP => DP
 function _M:_handle_meta_call(c, cert)
   local data, typ, err = c:recv_frame()
@@ -282,6 +328,9 @@ function _M:_handle_meta_call(c, cert)
     labels = labels,
     cert_details = cert_details,
   }
+
+  -- only update dp status for sync v1
+  self:_update_dp_status(node_id, capabilities_list)
 
   return node_id
 end
@@ -458,21 +507,19 @@ end
 function _M:handle_websocket()
   local rpc_protocol = ngx_var.http_sec_websocket_protocol
 
-  local meta_v1_supported
-  local protocols = string_tools.split(rpc_protocol, ",")
-
   -- choice a proper protocol
-  for _, v in ipairs(protocols) do
+  local meta_v1_supported
+  for v in isplitn(rpc_protocol, ",") do
     -- now we only support kong.meta.v1
-    if RPC_META_V1 == string_tools.strip(v) then
+    if RPC_META_V1 == strip(v) then
       meta_v1_supported = true
       break
     end
   end
 
   if not meta_v1_supported then
-    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: " ..
-                     tostring(rpc_protocol) ..
+    ngx_log(ngx_ERR, _log_prefix, "unknown RPC protocol: ",
+                     tostring(rpc_protocol),
                      ", doesn't know how to communicate with client")
     return ngx_exit(ngx.HTTP_CLOSE)
   end

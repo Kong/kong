@@ -1,5 +1,5 @@
 local perf = require "spec.helpers.perf"
-local split = require "ngx.re".split
+local splitn = require("kong.tools.string").splitn
 local utils = require "spec.helpers.perf.utils"
 local workspaces = require "kong.workspaces"
 local stringx = require "pl.stringx"
@@ -31,7 +31,7 @@ local versions = {}
 
 local env_versions = os.getenv("PERF_TEST_VERSIONS")
 if env_versions then
-  versions = split(env_versions, ",")
+  versions = splitn(env_versions, ",")
 end
 
 local REPEAT_PER_TEST = 0

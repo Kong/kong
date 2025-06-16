@@ -1,16 +1,14 @@
 local isempty = require "table.isempty"
 local mime_type = require "kong.tools.mime_type"
-local ngx_re = require "ngx.re"
 
 
 local kong = kong
 local type = type
 local match = string.match
 local noop = function() end
-local ipairs = ipairs
 local parse_mime_type = mime_type.parse_mime_type
 local mime_type_includes = mime_type.includes
-local re_split = ngx_re.split
+local isplitn = require("kong.tools.string").isplitn
 local strip = require("kong.tools.string").strip
 
 
@@ -44,10 +42,9 @@ local function is_json_body(content_type)
   if not content_type then
     return false
   end
-  local content_types = re_split(content_type, ",")
   local expected_media_type = { type = "application", subtype = "json" }
-  for _, content_type in ipairs(content_types) do
-    local t, subtype = parse_mime_type(strip(content_type))
+  for ct in isplitn(content_type, ",") do
+    local t, subtype = parse_mime_type(strip(ct))
     if not t or not subtype then
       goto continue
     end

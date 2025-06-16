@@ -8,8 +8,6 @@ local strip = require("kong.tools.string").strip
 
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = helpers.get_available_port()
-
 
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
 local FILE_LOG_PATH_NO_LOGS = os.tmpname()
@@ -65,8 +63,11 @@ local _EXPECTED_CHAT_STATS = {
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local MOCK_PORT
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME, "ctx-checker-last", "ctx-checker" })
 
       -- set up openai mock fixtures
@@ -540,16 +541,16 @@ for _, strategy in helpers.all_strategies() do
       --
 
       -- 200 embeddings (preserve route mode) good
-      local chat_good = assert(bp.routes:insert {
+      local preserve_good = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http", "https" },
-        strip_path = true,
-        paths = { "/openai/llm/v1/embeddings/good" },
+        --strip_path = true,
+        paths = { "/llm/v1/embeddings/good" },
         snis = { "example.test" },
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
-        route = { id = chat_good.id },
+        route = { id = preserve_good.id },
         config = {
           route_type = "preserve",
           auth = {
@@ -559,14 +560,14 @@ for _, strategy in helpers.all_strategies() do
           model = {
             provider = "openai",
             options = {
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/embeddings/good"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/whatever/doesnt/matter"
             },
           },
         },
       }
       bp.plugins:insert {
         name = "file-log",
-        route = { id = chat_good.id },
+        route = { id = preserve_good.id },
         config = {
           path = "/dev/stdout",
         },
@@ -1202,6 +1203,41 @@ for _, strategy in helpers.all_strategies() do
         }, json.choices[1].message)
       end)
 
+      -- check that kong.ctx.shared.llm_model_requested is set
+      it("#REGRESSION user defined model doesn't pollute long lived config table", function()
+        local body2 = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json")
+        body2 = cjson.decode(body2)
+
+        for i = 1, 10 do
+          body2.model = "random-model-" .. ngx.now() .. "-" .. i
+
+          local r = client:get("/openai/llm/v1/chat/good-no-model-param", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = cjson.encode(body2)
+          })
+
+          -- validate that the request succeeded, response status 200
+          local body = assert.res_status(200 , r)
+          local json = cjson.decode(body)
+
+          -- check this is in the 'kong' response format
+          assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+          assert.equals(json.model, "gpt-3.5-turbo-0613")
+          assert.equals(json.object, "chat.completion")
+          assert.equals(r.headers["X-Kong-LLM-Model"], "openai/" .. body2.model)
+
+          assert.is_table(json.choices)
+          assert.is_table(json.choices[1].message)
+          assert.same({
+            content = "The sum of 1 + 1 is 2.",
+            role = "assistant",
+          }, json.choices[1].message)
+        end
+      end)
+
     end)
 
     describe("openai llm/v1/completions", function()
@@ -1245,6 +1281,32 @@ for _, strategy in helpers.all_strategies() do
         assert.equals("request body doesn't contain valid prompts", json.error.message)
       end)
     end)
+
+    describe("openai preserve mode", function()
+      -- preserve mode
+      it("embeddings", function()
+      local r = client:get("/llm/v1/embeddings/good", {
+        headers = {
+          ["content-type"] = "application/json",
+          ["accept"] = "application/json",
+        },
+        body = cjson.encode({
+          model = "text-embedding-ada-002",
+          input = "The food was delicious and the waiter",
+          encoding_format = "float",
+        }),
+      })
+
+      -- validate that the request succeeded, response status 200
+      local body = assert.res_status(200 , r)
+      local json = cjson.decode(body)
+
+       -- check this is in the 'kong' response format
+       assert.not_nil(json.data and json.data[1])
+       assert.equals("text-embedding-3-large", json.model)
+       assert.equals("openai/text-embedding-ada-002", r.headers["X-Kong-LLM-Model"])
+    end)
+  end)
 
     describe("openai different auth methods", function()
       it("works with query param auth", function()

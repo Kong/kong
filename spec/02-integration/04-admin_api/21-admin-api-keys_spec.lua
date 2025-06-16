@@ -8,9 +8,9 @@ local KEY_SET_NAME = "test"
 for _, strategy in helpers.all_strategies() do
   describe("Admin API - keys #" .. strategy, function()
     local pem_pub, pem_priv, jwk
-    helpers.setenv("SECRET_JWK", '{"alg": "RSA-OAEP", "kid": "test"}')
     local client
     lazy_setup(function()
+      helpers.setenv("SECRET_JWK", '{"alg": "RSA-OAEP", "kid": "test"}')
       helpers.get_db_utils(strategy, {
         "keys",
         "key_sets"})

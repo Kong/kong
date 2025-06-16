@@ -26,8 +26,6 @@ local function sort_by_key(tbl)
   end)
 end
 
-local HTTP_SERVER_PORT_TRACES = helpers.get_available_port()
-local HTTP_SERVER_PORT_LOGS = helpers.get_available_port()
 local PROXY_PORT = 9000
 
 local post_function_access_body =
@@ -37,8 +35,13 @@ local post_function_access_body =
 for _, strategy in helpers.each_strategy() do
   describe("opentelemetry exporter #" .. strategy, function()
     local bp
+    local HTTP_SERVER_PORT_TRACES
+    local HTTP_SERVER_PORT_LOGS
 
     lazy_setup(function ()
+      HTTP_SERVER_PORT_TRACES = helpers.get_available_port()
+      HTTP_SERVER_PORT_LOGS = helpers.get_available_port()
+
       -- overwrite for testing
       pb.option("enum_as_value")
       pb.option("auto_default_values")

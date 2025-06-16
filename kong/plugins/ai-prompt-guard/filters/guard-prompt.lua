@@ -1,10 +1,3 @@
--- This software is copyright Kong Inc. and its licensors.
--- Use of the software is subject to the agreement between your organization
--- and Kong Inc. If there is no such agreement, use is governed by and
--- subject to the terms of the Kong Master Software License Agreement found
--- at https://konghq.com/enterprisesoftwarelicense/.
--- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
-
 local buffer = require("string.buffer")
 local ngx_re_find = ngx.re.find
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
@@ -131,10 +124,12 @@ end
 
 function _M:run(conf)
   -- if plugin ordering was altered, receive the "decorated" request
-  local request_body_table = ai_plugin_ctx.get_request_body_table_inuse()
+  local request_body_table, source = ai_plugin_ctx.get_request_body_table_inuse()
   if not request_body_table then
     return bad_request("this LLM route only supports application/json requests")
   end
+
+  kong.log.debug("using request body from source: ", source)
 
   -- run access handler
   local ok, err = execute(request_body_table, conf)

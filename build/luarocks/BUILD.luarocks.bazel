@@ -18,9 +18,8 @@ configure_make(
     configure_command = "configure",
     configure_in_place = True,
     configure_options = [
-        "--lua-suffix=jit",
-        "--with-lua=$$EXT_BUILD_DEPS/luajit",
-        "--with-lua-include=$$EXT_BUILD_DEPS/luajit/include/luajit-2.1",
+        "--with-lua=$$EXT_BUILD_DEPS/lua",
+        "--with-lua-include=$$EXT_BUILD_DEPS/lua/include",
     ],
     lib_source = ":all_srcs",
     out_bin_dir = "",
@@ -32,7 +31,7 @@ configure_make(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "@openresty//:luajit",
+        "@lua",
     ],
 )
 
@@ -46,6 +45,7 @@ kong_template_genrule(
         "//conditions:default": [
             "@luarocks//:luarocks_host",
             "@openresty//:luajit",
+            "@lua//:lua",
         ],
     }),
     is_executable = True,
@@ -58,6 +58,7 @@ kong_template_genrule(
         "@kong//:any-cross": [
             "@luarocks//:luarocks_host",
             "@openresty//:luajit",
+            "@lua//:lua",
         ],
         "//conditions:default": [],
     }),
@@ -86,6 +87,7 @@ kong_template_genrule(
         "//conditions:default": [
             "@luarocks//:luarocks_host",
             "@openresty//:luajit",
+            "@lua//:lua",
         ],
     }),
     is_executable = True,
@@ -102,6 +104,7 @@ kong_template_genrule(
         "@//:any-cross": [
             "@luarocks//:luarocks_host",
             "@openresty//:luajit",
+            "@lua//:lua",
         ],
         "//conditions:default": [],
     }),

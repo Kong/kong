@@ -3,7 +3,6 @@ local cjson = require "cjson"
 local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = helpers.get_available_port()
 
 local openai_driver = require("kong.llm.drivers.openai")
 
@@ -113,8 +112,11 @@ local plugin_conf = {
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy  .. "]", function()
     local client
+    local MOCK_PORT
 
     lazy_setup(function()
+      MOCK_PORT = helpers.get_available_port()
+
       local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
 
       -- set up openai mock fixtures

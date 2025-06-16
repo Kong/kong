@@ -1,0 +1,3 @@
+message: "Improved the performance of string splitting functions in Kong's core."
+type: performance
+scope: Core

@@ -3,7 +3,6 @@ local cjson   = require "cjson"
 local join    = require "pl.stringx".join
 
 
-local TCP_PORT = helpers.get_available_port()
 local tcp_trace_plugin_name = "tcp-trace-exporter"
 
 
@@ -19,6 +18,11 @@ for _, strategy in helpers.each_strategy() do
   local proxy_client
 
   describe("tracer pdk spec #" .. strategy, function()
+    local TCP_PORT
+
+    lazy_setup(function()
+      TCP_PORT = helpers.get_available_port()
+    end)
 
     local function setup_instrumentations(types, custom_spans, sampling_rate)
       local bp, _ = assert(helpers.get_db_utils(strategy, {

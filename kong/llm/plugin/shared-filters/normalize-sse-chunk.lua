@@ -1,5 +1,5 @@
 local buffer = require("string.buffer")
-local cjson = require("cjson")
+local cjson = require("cjson.safe")
 
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local strip = require("kong.tools.string").strip
@@ -130,7 +130,11 @@ local function handle_streaming_frame(conf, chunk, finished)
     response_frame = deflate_gzip(response_frame)
   end
 
-  ngx.arg[1] = response_frame
+  -- only overwrite the response frame if we
+  -- are not handling a "native" format
+  if conf.llm_format and conf.llm_format == "openai" then
+    ngx.arg[1] = response_frame
+  end
 
   if finished then
     local response = body_buffer and body_buffer:get()
@@ -181,7 +185,8 @@ local function handle_streaming_frame(conf, chunk, finished)
       }
     }
 
-    set_global_ctx("response_body", cjson.encode(composite_response_t)) -- to be consumed by other plugins
+    local response, _ = cjson.encode(composite_response_t)
+    set_global_ctx("response_body", response) -- to be consumed by other plugins
 
     ngx.arg[1] = nil
     if body_buffer then
@@ -206,12 +211,16 @@ function _M:run(conf)
     return true
   end
 
+  if get_global_ctx("preserve_mode") then
+    return true
+  end
+
   if ai_plugin_ctx.has_namespace("ai-proxy-advanced-balance") then
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
   -- TODO: check if ai-response-transformer let response.source become not service
-  if kong.response.get_source() == "service" and conf.route_type ~= "preserve" then
+  if kong.response.get_source() == "service" then
 
     handle_streaming_frame(conf, ngx.arg[1], ngx.arg[2])
   end

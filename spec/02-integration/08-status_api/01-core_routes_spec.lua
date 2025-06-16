@@ -176,13 +176,16 @@ for _, strategy in helpers.each_strategy() do
   describe("#db Status API DB-mode [#" .. strategy .. "#] with DB down", function()
     local custom_prefix = helpers.test_conf.prefix.."2"
 
-    local status_api_port = helpers.get_available_port()
-    local stream_proxy_port = helpers.get_available_port()
+    local status_api_port
+    local stream_proxy_port
 
     local bp
     local status_client
 
     lazy_setup(function()
+      status_api_port = helpers.get_available_port()
+      stream_proxy_port = helpers.get_available_port()
+
       bp = helpers.get_db_utils(strategy, nil, {'prometheus'})
 
       local db_service = bp.services:insert{

@@ -1,7 +1,7 @@
-local helpers = require "spec.helpers"
+local hybrid_helper = require "spec.hybrid"
 
-for _, strategy in helpers.each_strategy() do
-  describe("upstream timeouts with DB: #" .. strategy, function()
+hybrid_helper.run_for_each_deploy({ }, function(helpers, strategy, _deploy, _rpc, _rpc_sync)
+  describe("upstream timeouts [" .. helpers.format_tags() .. "]", function()
     local proxy_client
     local bp
 
@@ -205,4 +205,4 @@ for _, strategy in helpers.each_strategy() do
 
 
   end)
-end
+end)

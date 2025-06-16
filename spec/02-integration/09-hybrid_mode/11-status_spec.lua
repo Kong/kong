@@ -1,17 +1,20 @@
 -- 09-hybrid_mode/11-status_ready.lua
 local helpers = require "spec.helpers"
 
-local cp_status_port = helpers.get_available_port()
-local dp_status_port = 8100
-
 for _, v in ipairs({ {"off", "off"}, {"on", "off"}, {"on", "on"}, }) do
   local rpc, rpc_sync = v[1], v[2]
 
 for _, strategy in helpers.each_strategy() do
 
   describe("Hybrid Mode - status ready #" .. strategy .. " rpc_sync=" .. rpc_sync, function()
+    local cp_status_port
+    local dp_status_port
 
-    helpers.get_db_utils(strategy, {})
+    lazy_setup(function()
+      cp_status_port = helpers.get_available_port()
+      dp_status_port = helpers.get_available_port()
+      helpers.get_db_utils(strategy, {})
+    end)
 
     local function start_kong_dp()
       return helpers.start_kong({

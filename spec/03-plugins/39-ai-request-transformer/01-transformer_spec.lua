@@ -4,7 +4,6 @@ local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
 local pl_path = require "pl.path"
 
-local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-request-transformer"
 
 local FORMATS = {
@@ -17,7 +16,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/openai"
+        __upstream_path = "/chat/openai",
       },
     },
     auth = {
@@ -34,7 +33,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/cohere"
+        __upstream_path = "/chat/cohere",
       },
     },
     auth = {
@@ -51,7 +50,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/anthropic"
+        __upstream_path = "/chat/anthropic",
       },
     },
     auth = {
@@ -68,7 +67,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure",
+        __upstream_path = "/chat/azure",
       },
     },
     auth = {
@@ -85,7 +84,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/llama2",
+        __upstream_path = "/chat/llama2",
         llama2_format = "raw",
       },
     },
@@ -103,7 +102,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/mistral",
+        __upstream_path = "/chat/mistral",
         mistral_format = "ollama",
       },
     },
@@ -123,7 +122,7 @@ local OPENAI_NOT_JSON = {
     options = {
       max_tokens = 512,
       temperature = 0.5,
-      upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/not-json"
+      __upstream_path = "/not-json",
     },
   },
   auth = {
@@ -160,6 +159,16 @@ local EXPECTED_RESULT = {
   }
 }
 
+-- patches model.options.upstream_url once the base_url is
+-- known at setup time
+local function set_upstream_url(conf, base_url)
+  local options = conf.model and conf.model.options
+  if options and options.__upstream_path then
+    options.upstream_url = base_url .. options.__upstream_path
+    options.__upstream_path = nil
+  end
+end
+
 local SYSTEM_PROMPT = "You are a mathematician. "
     .. "Multiply all numbers in my JSON request, by 2. Return me the JSON output only"
 
@@ -169,7 +178,15 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   local ai_proxy_fixtures_dir = pl_path.abspath("spec/fixtures/ai-proxy/")
 
   lazy_setup(function()
-    mock = http_mock.new(MOCK_PORT, {
+    local mock_port = helpers.get_available_port()
+
+    local mock_base_url = "http://" .. helpers.mock_upstream_host .. ":" .. mock_port
+    set_upstream_url(OPENAI_NOT_JSON, mock_base_url)
+    for _, conf in pairs(FORMATS) do
+      set_upstream_url(conf, mock_base_url)
+    end
+
+    mock = http_mock.new(mock_port, {
       ["~/chat/(?<provider>[a-z0-9]+)"] = {
         content = string.format([[
               local base_dir = "%s/"

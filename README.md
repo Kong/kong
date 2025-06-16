@@ -117,7 +117,7 @@ limitations under the License.
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-master-builds]: https://hub.docker.com/r/kong/kong/tags
 [badge-action-url]: https://github.com/Kong/kong/actions
-[badge-action-image]: https://github.com/Kong/kong/workflows/Build%20&%20Test/badge.svg
+[badge-action-image]: https://github.com/Kong/kong/actions/workflows/build_and_test.yml/badge.svg?branch=master&event=push
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck

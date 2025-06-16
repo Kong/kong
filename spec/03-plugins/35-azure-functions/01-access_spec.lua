@@ -10,43 +10,45 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: Azure Functions (access) [#" .. strategy .. "]", function()
     local mock
     local proxy_client
-    local mock_http_server_port = helpers.get_available_port()
-
-    mock = http_mock.new("127.0.0.1:" .. mock_http_server_port, {
-      ["/"] = {
-        access = [[
-          local json = require "cjson"
-          local method = ngx.req.get_method()
-          local uri = ngx.var.request_uri
-          local headers = ngx.req.get_headers(nil, true)
-          local query_args = ngx.req.get_uri_args()
-          ngx.req.read_body()
-          local body
-          -- collect body
-          body = ngx.req.get_body_data()
-          if not body then
-            local file = ngx.req.get_body_file()
-            if file then
-              local f = io.open(file, "r")
-              if f then
-                body = f:read("*a")
-                f:close()
-              end
-            end
-          end
-          ngx.say(json.encode({
-            query_args = query_args,
-            uri = uri,
-            method = method,
-            headers = headers,
-            body = body,
-            status = 200,
-          }))
-        ]]
-      },
-    })
+    local mock_http_server_port
 
     setup(function()
+      mock_http_server_port = helpers.get_available_port()
+
+      mock = http_mock.new("127.0.0.1:" .. mock_http_server_port, {
+        ["/"] = {
+          access = [[
+            local json = require "cjson"
+            local method = ngx.req.get_method()
+            local uri = ngx.var.request_uri
+            local headers = ngx.req.get_headers(nil, true)
+            local query_args = ngx.req.get_uri_args()
+            ngx.req.read_body()
+            local body
+            -- collect body
+            body = ngx.req.get_body_data()
+            if not body then
+              local file = ngx.req.get_body_file()
+              if file then
+                local f = io.open(file, "r")
+                if f then
+                  body = f:read("*a")
+                  f:close()
+                end
+              end
+            end
+            ngx.say(json.encode({
+              query_args = query_args,
+              uri = uri,
+              method = method,
+              headers = headers,
+              body = body,
+              status = 200,
+            }))
+          ]]
+        },
+      })
+
       local _, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
