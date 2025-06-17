@@ -331,6 +331,11 @@ jobs:
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
 
+    - name: Lock Go version to 1.21
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
     - name: Run Tests
       env:
         KONG_TEST_PG_DATABASE: kong
