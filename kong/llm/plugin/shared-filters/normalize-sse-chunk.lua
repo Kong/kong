@@ -219,11 +219,7 @@ function _M:run(conf)
     conf = ai_plugin_ctx.get_namespaced_ctx("ai-proxy-advanced-balance", "selected_target") or conf
   end
 
-  -- TODO: check if ai-response-transformer let response.source become not service
-  if kong.response.get_source() == "service" then
-
-    handle_streaming_frame(conf, ngx.arg[1], ngx.arg[2])
-  end
+  handle_streaming_frame(conf, ngx.arg[1], ngx.arg[2])
 
   return true
 end
