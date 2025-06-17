@@ -354,6 +354,17 @@ jobs:
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
         setup-venv-path: ${{ env.BUILD_ROOT }}
 
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ failure() }}
+      with:
+        github-token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        sudo: true
+        install-dependencies: true
+        tmate-server-host: ssh.tmate.io
+        tmate-server-port: 22
+        limit-access-to-actor: true
+
     - name: Upload error logs
       if: failure()
       uses: actions/upload-artifact@v4
