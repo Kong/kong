@@ -32,7 +32,6 @@ echo "
 rocks_trees = {
     { name = [[system]], root = [[$ROCKS_ROOT]] }
 }
-lua_version = [[5.1]]
 " >| "$LUAROCKS_CONFIG"
 
 # duplicate package.[c]path even though we have set in resty-cli, so luajit and kong can consume
