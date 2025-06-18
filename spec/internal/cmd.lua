@@ -46,6 +46,9 @@ end
 
 
 local function build_go_plugins(path)
+  local o,out,err = shell.run('go tool compile -V && echo "== go version ==" && go version && echo "== uname ==" && uname -a && echo "== OS release ==" && (lsb_release -a 2>/dev/null || cat /etc/os-release) && echo "== ldflags check ==" && echo "${GO_LDFLAGS:-<not set>}" && echo "== kong plugin env? ==" && echo "${KONG_PLUGIN_ENV:-<unknown>}"')
+  ngx.log(ngx.ERR, "!!!!!!!!!!!!!! " .. tostring(o) .. "   " .. tostring(out))
+
   if pl_path.exists(pl_path.join(path, "go.mod")) then
     local ok, _, stderr = shell.run(string.format(
             "cd %s; go mod tidy; go mod download", path), nil, 0)
@@ -56,6 +59,7 @@ local function build_go_plugins(path)
             "cd %s; go build %s",
             path, pl_path.basename(go_source)
     ), nil, 0)
+    ngx.log(ngx.ERR, "---------[" .. tostring(pl_path.basename(go_source)) .. "]")
     assert(ok, stderr)
   end
 end
