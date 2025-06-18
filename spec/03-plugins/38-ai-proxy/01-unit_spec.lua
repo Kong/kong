@@ -2503,4 +2503,286 @@ describe("json_array_iterator", function()
       elements[2]
     )
   end)
+
+  it("#jsonl should handle complex nested jsonl structures", function()
+    local input = '{"users": [{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]}\n{"status": "active"}'
+    local elements = collect_elements(input, true)
+    assert.are.same(
+      '{\"users\": [{\"id\": 1, \"name\": \"John\"}, {\"id\": 2, \"name\": \"Jane\"}]}',
+      elements[1]
+    )
+    assert.are.same(
+      '{\"status\": \"active\"}',
+      elements[2]
+    )
+  end)
+
+  describe("#jsonl incremental parsing", function()
+    it("should handle split between object braces", function()
+      local state = {
+        started = false,
+        pos = 1,
+        input = '',
+        eof = false,
+      }
+      local iter
+
+      -- Split between object definition
+      iter = json_array_iterator('{"name": "Jo', state, true)
+      local element, new_state = iter()
+      assert.is_nil(element)
+      state = new_state
+
+      iter = json_array_iterator('hn"}\n{"age": 30}', state, true)
+      element = iter()
+      assert.are.same('{"name": "John"}', element)
+
+      element = iter()
+      assert.are.same('{"age": 30}', element)
+    end)
+
+    it("should handle split between array brackets", function()
+      local state = {
+        started = false,
+        pos = 1,
+        input = '',
+        eof = false,
+      }
+      local iter
+
+      -- Split between nested array
+      iter = json_array_iterator('[1, 2', state, true)
+      local element, new_state = iter()
+      assert.is_nil(element)
+      state = new_state
+
+      iter = json_array_iterator(']\n[3, 4]', state, true)
+      element = iter()
+      assert.are.same('[1, 2]', element)
+
+      element = iter()
+      assert.are.same('[3, 4]', element)
+    end)
+
+    it("should not split between literal \n", function()
+      local state = {
+        started = false,
+        pos = 1,
+        input = '',
+        eof = false,
+      }
+      local iter
+
+      -- Split at comma
+      iter = json_array_iterator('{"message":"hello world"}\n{"message":"goodbye\\n', state, true)
+      local element, _ = iter()
+      assert.are.same('{"message":"hello world"}',element)
+      local element, _ = iter()
+      assert.is_nil(element)
+
+      iter = json_array_iterator(' world"}', state, true)
+      element = iter()
+      assert.are.same('{"message":"goodbye\\n world"}', element)
+    end)
+
+    it("should handle split within complex nested structure", function()
+      local state = {
+        started = false,
+        pos = 1,
+        input = '',
+        eof = false,
+      }
+      local iter
+
+      -- Complex nested structure split
+      iter = json_array_iterator('{"users": [{"id": 1', state, true)
+      local element, new_state = iter()
+      assert.is_nil(element)
+      state = new_state
+
+      iter = json_array_iterator(', "name": "John"}]}\n{"status": "', state, true)
+      local element, new_state = iter()
+      assert.are.same('{"users": [{"id": 1, "name": "John"}]}', element)
+      state = new_state
+
+      iter = json_array_iterator('active"}', state, true)
+      element = iter()
+      assert.are.same('{"status": "active"}', element)
+    end)
+  end)
+end)
+
+describe("upstream_url capture groups", function()
+  local mock_request
+
+  lazy_setup(function()
+  end)
+
+  before_each(function()
+    -- Mock Kong request object for testing capture groups
+    mock_request = {
+      get_uri_captures = function()
+        return {
+          named = {
+            api = "api",
+            chat = "chat",
+            completions = "completions"
+          },
+          unnamed = {
+            [0] = "/api/chat",
+            [1] = "api",
+            [2] = "chat"
+          }
+        }
+      end,
+      get_header = function(key)
+        if key == "x-test-header" then
+          return "test-value"
+        end
+        return nil
+      end,
+      get_query_arg = function(key)
+        if key == "test_param" then
+          return "param-value"
+        end
+        return nil
+      end
+    }
+  end)
+
+  describe("merge_model_options function", function()
+    local shared = require "kong.llm.drivers.shared"
+
+    it("resolves capture group templates in upstream_url", function()
+      local conf_m = {
+        upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)"
+      }
+
+      local result, err = shared.merge_model_options(mock_request, conf_m)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/api/chat", result.upstream_url)
+    end)
+
+    it("resolves multiple capture groups in same string", function()
+      local conf_m = {
+        upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)",
+        custom_path = "/$(uri_captures.api)-$(uri_captures.chat)-endpoint"
+      }
+
+      local result, err = shared.merge_model_options(mock_request, conf_m)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/api/chat", result.upstream_url)
+      assert.equal("/api-chat-endpoint", result.custom_path)
+    end)
+
+    it("resolves capture groups in nested tables", function()
+      local conf_m = {
+        model = {
+          options = {
+            upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)",
+            custom_endpoint = "/$(uri_captures.api)/v1"
+          }
+        }
+      }
+
+      local result, err = shared.merge_model_options(mock_request, conf_m)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/api/chat", result.model.options.upstream_url)
+      assert.equal("/api/v1", result.model.options.custom_endpoint)
+    end)
+
+  end)
+
+  describe("real route scenario tests", function()
+    local shared = require "kong.llm.drivers.shared"
+
+    it("simulates llama2-chat route with capture groups", function()
+      -- Simulate the actual route configuration from the user's example
+      local targets_config = {
+        {
+          model = {
+            options = {
+              upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)",
+              llama2_format = "ollama"
+            },
+            provider = "llama2"
+          }
+        }
+      }
+
+      -- Process the first target's model options
+      local result, err = shared.merge_model_options(mock_request, targets_config[1].model.options)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/api/chat", result.upstream_url)
+      assert.equal("ollama", result.llama2_format)
+    end)
+
+    it("handles route path ~/(?<api>[a-z]+)/(?<chat>[a-z]+)$ correctly", function()
+      -- Mock a request that would match the route pattern ~/(?<api>[a-z]+)/(?<chat>[a-z]+)$
+      -- For request path "/api/chat"
+      local request_with_captures = {
+        get_uri_captures = function()
+          return {
+            named = {
+              api = "api",
+              chat = "chat"
+            },
+            unnamed = {
+              [0] = "/api/chat",
+              [1] = "api",
+              [2] = "chat"
+            }
+          }
+        end
+      }
+
+      local conf_m = {
+        upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)"
+      }
+
+      local result, err = shared.merge_model_options(request_with_captures, conf_m)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/api/chat", result.upstream_url)
+    end)
+
+    it("handles different capture group values dynamically", function()
+      -- Test with different capture values that could match the regex pattern
+      local request_with_v1_completions = {
+        get_uri_captures = function()
+          return {
+            named = {
+              api = "v1",
+              chat = "completions"
+            },
+            unnamed = {
+              [0] = "/v1/completions",
+              [1] = "v1",
+              [2] = "completions"
+            }
+          }
+        end
+      }
+
+      local conf_m = {
+        upstream_url = "http://127.0.0.1:11434/$(uri_captures.api)/$(uri_captures.chat)"
+      }
+
+      local result, err = shared.merge_model_options(request_with_v1_completions, conf_m)
+
+      assert.is_nil(err)
+      assert.not_nil(result)
+      assert.equal("http://127.0.0.1:11434/v1/completions", result.upstream_url)
+    end)
+  end)
+
 end)

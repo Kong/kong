@@ -792,25 +792,40 @@ function _M.merge_model_options(kong_request, conf_m)
       new_conf_m[k] = v
 
     else -- string values
-      local tmpl_start, tmpl_end = str_find(v or "", '%$%((.-)%)')
-      if tmpl_start then
-        local tmpl = str_sub(v, tmpl_start+2, tmpl_end-1) -- strip surrounding $( and )
-        local splitted = split(tmpl, '.')
-        if #splitted ~= 2 then
-          return nil, "cannot parse expression for field '" .. v .. "'"
+      local result = v
+      local has_error = false
+
+      -- Use gsub to replace all template variables in one pass
+      result = result:gsub("%$%((.-)%)", function(tmpl)
+        if has_error then return "" end
+
+        local splitted, count = splitn(tmpl, '.', 3)
+        if count ~= 2 then
+          has_error = true
+          err = "cannot parse expression for field '" .. v .. "'"
+          return ""
         end
-        local evaluated, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-        if err then
-          return nil, err
+
+        local evaluated, eval_err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+        if eval_err then
+          has_error = true
+          err = eval_err
+          return ""
         end
         if not evaluated then
-          return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+          has_error = true
+          err = splitted[1] .. " key " .. splitted[2] .. " was not provided"
+          return ""
         end
-        -- replace place holder with evaluated
-        new_conf_m[k] = str_sub(v, 1, tmpl_start - 1) .. evaluated .. str_sub(v, tmpl_end + 1)
-      else -- not a tmplate, just copy
-        new_conf_m[k] = v
+
+        return evaluated
+      end)
+
+      if has_error then
+        return nil, err
       end
+
+      new_conf_m[k] = result
     end
   end
 
