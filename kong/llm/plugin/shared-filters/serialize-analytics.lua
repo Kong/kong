@@ -17,6 +17,8 @@ function _M:run(conf)
     return true
   end
 
+  ai_plugin_o11y.record_request_end()
+
   local provider_name, request_model
   do
     local model_t = ai_plugin_ctx.get_request_model_table_inuse()

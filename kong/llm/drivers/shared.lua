@@ -16,7 +16,6 @@ local ipairs       = ipairs
 local str_find     = string.find
 local str_byte     = string.byte
 local str_sub      = string.sub
-local split        = require("kong.tools.string").split
 local splitn       = require("kong.tools.string").splitn
 
 local NEWLINE = str_byte("\n")

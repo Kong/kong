@@ -130,6 +130,8 @@ for _, strategy in helpers.all_strategies() do
 
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n\n", EVENT))
+                    ngx.sleep(0.01) -- simulate delay for latency assertion
+                    ngx.flush(true)
                   end
                 end
               else
@@ -423,6 +425,10 @@ for _, strategy in helpers.all_strategies() do
             header_name = "Authorization",
             header_value = "Bearer openai-key",
           },
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
           model = {
             name = "gpt-3.5-turbo",
             provider = "openai",
@@ -440,7 +446,7 @@ for _, strategy in helpers.all_strategies() do
         name = "file-log",
         route = { id = openai_chat_good.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -873,6 +879,11 @@ for _, strategy in helpers.all_strategies() do
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
         -- to verifiy not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        local actual_stats = log_message.ai.proxy
+        local actual_llm_latency = actual_stats.meta.llm_latency
+        assert.is_true(actual_llm_latency > 60) -- 6 events, each with 10ms latency
       end)
 
       it("good stream request openai with partial split chunks", function()
