@@ -81,6 +81,7 @@ for _, strategy in helpers.all_strategies() do
             listen ]]..MOCK_PORT..[[;
 
             default_type 'application/json';
+            client_body_buffer_size 64k; # ensure we can test with larger payloads
 
 
             location = "/llm/v1/chat/good" {
@@ -111,6 +112,17 @@ for _, strategy in helpers.all_strategies() do
                   ngx.status = 401
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
                 end
+              }
+            }
+
+            location = "/llm/v1/chat/good-with-payloads-preserved" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+
+                ngx.req.read_body()
+
+                ngx.status = 200
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/good.json"))
               }
             }
 
@@ -410,6 +422,48 @@ for _, strategy in helpers.all_strategies() do
       bp.plugins:insert {
         name = "file-log",
         route = { id = chat_good_log_payloads.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
+        },
+      }
+      --
+
+      -- 200 chat good with all logging enabled, perserved without transformation
+      local chat_good_log_payloads_preserved = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http", "https" },
+        strip_path = true,
+        paths = { "/llm/v1/chat/good-with-payloads-preserved" },
+        snis = { "example.test" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_log_payloads_preserved.id },
+        config = {
+          route_type = "preserve",
+          max_request_body_size = 64 * 1024, -- 64KB, ensure we can test with larger payloads
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_log_payloads_preserved.id },
         config = {
           path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
@@ -1047,7 +1101,6 @@ for _, strategy in helpers.all_strategies() do
 
         assert.res_status(200 , r)
       end)
-
     end)
 
     describe("openai llm/v1/chat", function()
@@ -1643,6 +1696,25 @@ for _, strategy in helpers.all_strategies() do
         assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
         assert.matches('"role": "assistant"', message.payload.response, nil, true)
         assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', message.payload.response, nil, true)
+      end)
+
+      it("logs huge payloads", function()
+        local request_body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_multi_modal.json")
+        local obj = cjson.decode(request_body)
+        local padding = string.rep("x", 32 * 1024) -- make it larger than 32k
+        obj.messages[1].content = obj.messages[1].content .. " " .. padding
+        request_body = cjson.encode(obj)
+        local r = client:post("/llm/v1/chat/good-with-payloads-preserved", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = request_body,
+        })
+        assert.res_status(200, r)
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        local _, message = next(log_message.ai)
+        assert.matches(padding, message.payload.request, nil, true)
       end)
     end)
 
