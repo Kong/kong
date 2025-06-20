@@ -1,0 +1,61 @@
+server {
+  server_name gemini;
+  listen %s;
+
+  default_type 'application/json';
+
+  location = "/v1/chat/completions" {
+    content_by_lua_block {
+      local pl_file = require "pl.file"
+      local json = require("cjson.safe")
+
+      local token = ngx.req.get_headers()["authorization"]
+      if token == "Bearer gemini-key" then
+        ngx.req.read_body()
+        local body, err = ngx.req.get_body_data()
+        body, err = json.decode(body)
+        
+        ngx.status = 200
+        ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-chat/responses/good.json"))
+      end
+    }
+  }
+  
+  location = "/v1/embeddings" {
+    content_by_lua_block {
+      local pl_file = require "pl.file"
+      local json = require("cjson.safe")
+
+      local token = ngx.req.get_headers()["authorization"]
+      if token == "Bearer gemini-key" then
+        ngx.req.read_body()
+        local body, err = ngx.req.get_body_data()
+        body, err = json.decode(body)
+        
+        ngx.status = 200
+        ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-embeddings/responses/good.json"))
+      end
+    }
+  }
+
+  location = "/v1/chat/completions/query-auth" {
+    content_by_lua_block {
+      local pl_file = require "pl.file"
+      local json = require("cjson.safe")
+
+      -- Check for query parameter authentication
+      local args = ngx.req.get_uri_args()
+      if args.key == "gemini-query-key" then
+        ngx.req.read_body()
+        local body, err = ngx.req.get_body_data()
+        body, err = json.decode(body)
+
+        ngx.status = 200
+        ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-chat/responses/good.json"))
+      else
+        ngx.status = 401
+        ngx.print('{"error": "Unauthorized"}')
+      end
+    }
+  }
+}

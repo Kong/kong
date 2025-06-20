@@ -3,6 +3,7 @@ local _M = {}
 -- imports
 local cjson = require("cjson.safe")
 local fmt = string.format
+local anthropic = require("kong.llm.drivers.anthropic")
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
 local string_gsub = string.gsub
@@ -12,7 +13,6 @@ local string_lower = string.lower
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_base = require("kong.llm.plugin.base")
 local pl_string = require "pl.stringx"
-
 --
 
 -- globals
@@ -79,6 +79,62 @@ local function has_finish_reason(event)
          and #event.candidates > 0
          and event.candidates[1].finishReason
          or nil
+end
+
+local function get_model_coordinates(model_name, stream_mode)
+  if model_name then
+    if model_name:sub(1, 7) == "gemini-" then
+      return {
+        publisher = "google",
+        name = model_name,
+        operation = stream_mode and "streamGenerateContent" or "generateContent",
+      }
+    end
+
+    if model_name:sub(1, 7) == "claude-" then
+      return {
+        publisher = "anthropic",
+        name = model_name,
+        operation = stream_mode and "streamRawPredict" or "rawPredict",
+      }
+    end
+
+    return nil, "not able to transform requests for model name '" .. model_name .. "'"
+  end
+end
+
+-- assume 'not vertex mode' if the model options are not set properly
+-- the plugin schema will prevent misconfugiration
+local function is_vertex_mode(model)
+  return model 
+         and model.options
+         and model.options.gemini
+         and model.options.gemini.api_endpoint
+         and model.options.gemini.project_id
+         and model.options.gemini.location_id
+         and true
+end
+
+-- this will never be called unless is_vertex_mode(model) above is true
+-- so the deep table checks are not needed
+local function get_gemini_vertex_url(model, route_type, stream_mode)
+  if not model.options or not model.options.gemini then
+    return nil, "model.options.gemini.* options must be set for vertex mode"
+  end
+ 
+  local coordinates, err = get_model_coordinates(model.name, stream_mode)
+  if err then
+    return nil, err
+  end
+
+  return fmt(ai_shared.upstream_url_format["gemini_vertex"],
+             model.options.gemini.api_endpoint) ..
+         fmt(ai_shared.operation_map["gemini_vertex"][route_type].path,
+             model.options.gemini.project_id,
+             model.options.gemini.location_id,
+             coordinates.publisher,
+             coordinates.name,
+             (route_type ~= "llm/v1/embeddings" and coordinates.operation) or nil)
 end
 
 local function handle_stream_event(event_t, model_info, route_type)
@@ -479,6 +535,22 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
 
+  -- try to get the ACTUAL model in use
+  -- this is gemini-specific, as it supports many different drivers in one package
+  local ok, model_t = pcall(ai_plugin_ctx.get_request_model_table_inuse)
+  if not ok then
+    -- set back to the plugin config's passed in object
+    model_t = model_info
+  end
+
+  local coordinates = get_model_coordinates(model_t.name)
+
+  if coordinates and coordinates.publisher == "anthropic" then
+    -- use anthropic's transformer
+    return anthropic.from_format(response_string, model_info, route_type)
+  end
+  -- otherwise, use the Gemini transformer
+
   local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok then
     err = response_string
@@ -508,6 +580,20 @@ function _M.to_format(request_table, model_info, route_type)
 
   request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
+  local coordinates, err = get_model_coordinates(model_info.name)
+  if err then
+    return nil, nil, err
+  end
+
+  if coordinates and coordinates.publisher == "anthropic" then
+    -- use anthropic transformer
+    request_table.anthropic_version = (model_info.options and model_info.options.anthropic_version) or (request_table.anthropic_version) or "vertex-2023-10-16"
+    assert(request_table.anthropic_version, "anthropic_version must be set for anthropic models")
+    request_table.model = nil
+    return anthropic.to_format(request_table, model_info, route_type)
+  end
+  -- otherwise, use the Gemini transformer
+
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
     request_table,
@@ -535,32 +621,23 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     return nil, nil, "body must be table or string"
   end
 
-  local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
-                                                             or "generateContent"
   local f_url = conf.model.options and conf.model.options.upstream_url
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
-    if conf.model.options
-        and conf.model.options.gemini
-        and conf.model.options.gemini.api_endpoint
-        and conf.model.options.gemini.project_id
-        and conf.model.options.gemini.location_id
-    then
-      -- vertex mode
-      f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
-                  conf.model.options.gemini.api_endpoint) ..
-              fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
-                  conf.model.options.gemini.project_id,
-                  conf.model.options.gemini.location_id,
-                  conf.model.name,
-                  operation)
+    if is_vertex_mode(conf.model) then
+      local err
+      f_url, err = get_gemini_vertex_url(conf.model, conf.route_type, get_global_ctx("stream_mode"))
+      if err then
+        return nil, "failed to calculate vertex URL: " .. err
+      end
+
     else
-      -- public mode
+      -- 'consumer' Gemini mode
       f_url = ai_shared.upstream_url_format["gemini"] ..
               fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
                   conf.model.name,
-                  operation)
+                  (get_global_ctx("stream_mode") and "streamGenerateContent" or "generateContent"))
     end
   end
 
@@ -647,32 +724,23 @@ function _M.configure_request(conf, identity_interface)
   end
 
   local parsed_url
-  local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
-                                                             or "generateContent"
   local f_url = model.options and model.options.upstream_url
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
-    if model.options
-        and model.options.gemini
-        and model.options.gemini.api_endpoint
-        and model.options.gemini.project_id
-        and model.options.gemini.location_id
-    then
-      -- vertex mode
-      f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
-                  model.options.gemini.api_endpoint) ..
-              fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
-                  model.options.gemini.project_id,
-                  model.options.gemini.location_id,
-                  model.name,
-                  operation)
+    if is_vertex_mode(model) then
+      local err
+      f_url, err = get_gemini_vertex_url(model, conf.route_type, get_global_ctx("stream_mode"))
+      if err then
+        return nil, "failed to calculate vertex URL: " .. err
+      end
+
     else
-      -- public mode
+      -- 'consumer' Gemini mode
       f_url = ai_shared.upstream_url_format["gemini"] ..
               fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
                   model.name,
-                  operation)
+                  (get_global_ctx("stream_mode") and "streamGenerateContent" or "generateContent"))
     end
   end
 
@@ -740,6 +808,9 @@ if _G._TEST then
   _M._to_gemini_chat_openai = to_gemini_chat_openai
   _M._from_gemini_chat_openai = from_gemini_chat_openai
   _M._openai_part_to_gemini_part = openai_part_to_gemini_part
+  _M._get_model_coordinates = get_model_coordinates
+  _M._is_vertex_mode = is_vertex_mode
+  _M._get_gemini_vertex_url = get_gemini_vertex_url
 end
 
 

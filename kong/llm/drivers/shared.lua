@@ -156,7 +156,7 @@ _M.operation_map = {
   },
   gemini_vertex = {
     ["llm/v1/chat"] = {
-      path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
+      path = "/v1/projects/%s/locations/%s/publishers/%s/models/%s:%s",
     },
   },
   mistral = {

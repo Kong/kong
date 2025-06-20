@@ -18,6 +18,13 @@ local function kong_prompt_to_claude_prompt(prompt)
   return fmt("Human: %s\n\nAssistant:", prompt)
 end
 
+local _OPENAI_STOP_REASON_MAPPING = {
+  ["max_tokens"] = "length",
+  ["end_turn"] = "stop",
+  ["tool_use"] = "tool_calls",
+  ["guardrail_intervened"] = "guardrail_intervened",
+}
+
 local function kong_messages_to_claude_prompt(messages)
   local buf = buffer.new()
 
@@ -174,6 +181,12 @@ local transformers_to = {
     messages.tools = request_table.tools and to_tools(request_table.tools)
     messages.tool_choice = request_table.tool_choice and to_tool_choice(request_table.tool_choice)
 
+    -- these are specific customizations for when another provider calls this transformer
+    if model.provider == "gemini" then
+      messages.anthropic_version = request_table.anthropic_version
+      messages.model = nil  -- gemini throws an error for some reason if model is in the body (it's in the URL)
+    end
+
     return messages, "application/json", nil
   end,
 
@@ -231,7 +244,7 @@ local function start_to_event(event_data, model_info)
     completion_tokens = meta.usage
                     and meta.usage.output_tokens,
     model = meta.model,
-    stop_reason = meta.stop_reason,
+    stop_reason = _OPENAI_STOP_REASON_MAPPING[meta.stop_reason or "end_turn"],
     stop_sequence = meta.stop_sequence,
   }
 
@@ -284,7 +297,8 @@ local function handle_stream_event(event_t, model_info, route_type)
         prompt_tokens = nil,
         completion_tokens = event_data.usage.output_tokens,
         stop_reason = event_data.delta
-                  and event_data.delta.stop_reason,
+                  and event_data.delta.stop_reason and 
+                  _OPENAI_STOP_REASON_MAPPING[event_data.delta.stop_reason or "end_turn"],
         stop_sequence = event_data.delta
                     and event_data.delta.stop_sequence,
       }
@@ -374,7 +388,7 @@ local transformers_from = {
               content = extract_text_from_content(response_table.content),
               tool_calls = extract_tools_from_content(response_table.content)
             },
-            finish_reason = response_table.stop_reason,
+            finish_reason = _OPENAI_STOP_REASON_MAPPING[response_table.stop_reason or "end_turn"],
           },
         },
         usage = usage,
@@ -401,7 +415,7 @@ local transformers_from = {
           {
             index = 0,
             text = response_table.completion,
-            finish_reason = response_table.stop_reason,
+            finish_reason = _OPENAI_STOP_REASON_MAPPING[response_table.stop_reason or "end_turn"],
           },
         },
         model = response_table.model,
@@ -568,8 +582,6 @@ function _M.configure_request(conf)
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
   kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
-
-
 
   kong.service.request.set_header("anthropic-version", model.options.anthropic_version)
 
