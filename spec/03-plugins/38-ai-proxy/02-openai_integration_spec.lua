@@ -1006,8 +1006,8 @@ for _, strategy in helpers.all_strategies() do
         local _, message = next(log_message.ai)
 
         -- test request bodies
-        assert.matches('"content":"What is 1 + 1?"', message.payload.request, nil, true)
-        assert.matches('"role":"user"', message.payload.request, nil, true)
+        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
+        assert.matches('"role": "user"', message.payload.request, nil, true)
 
         -- test response bodies
         assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
@@ -1689,8 +1689,8 @@ for _, strategy in helpers.all_strategies() do
         local _, message = next(log_message.ai)
 
         -- test request bodies
-        assert.matches('"text":"What\'s in this image?"', message.payload.request, nil, true)
-        assert.matches('"role":"user"', message.payload.request, nil, true)
+        assert.matches('"text": "What\'s in this image?"', message.payload.request, nil, true)
+        assert.matches('"role": "user"', message.payload.request, nil, true)
 
         -- test response bodies
         assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)

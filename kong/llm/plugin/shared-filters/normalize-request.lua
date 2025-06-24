@@ -212,7 +212,7 @@ local function validate_and_transform(conf)
     return bail(500, "LLM request failed before proxying")
   end
 
-  -- now re-configure the request for this operation type
+  -- now configure the request for this operation type
   local ok, err = ai_driver.configure_request(conf,
                identity_interface and identity_interface.interface)
   if not ok then

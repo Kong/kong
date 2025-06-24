@@ -690,7 +690,7 @@ function _M.configure_request(conf, aws_sdk)
     path = parsed_url.path,
     host = parsed_url.host,
     port = tonumber(parsed_url.port) or 443,
-    body = kong.request.get_raw_body()
+    body = kong.request.get_raw_body(),
   }
 
   local signature, err = signer(aws_sdk.config, r)

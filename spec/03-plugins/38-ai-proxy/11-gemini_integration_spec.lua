@@ -491,7 +491,7 @@ for _, strategy in helpers.all_strategies() do
     
             assert.is_true(actual_llm_latency >= 0)
             assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
-            assert.match_re(actual_request_log, [[.*messages.*What is 1 \+ 1.*]])
+            assert.match_re(actual_request_log, [[.*content".*What is 1 \+ 1.*]])
             assert.match_re(actual_response_log, [[.*content.*The sum of 1 \+ 1 is 2.*]])
           end)
         end)
