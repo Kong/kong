@@ -82,24 +82,36 @@ local function has_finish_reason(event)
 end
 
 local function get_model_coordinates(model_name, stream_mode)
-  if model_name then
-    if model_name:sub(1, 7) == "gemini-" then
-      return {
-        publisher = "google",
-        name = model_name,
-        operation = stream_mode and "streamGenerateContent" or "generateContent",
-      }
-    end
+  if not model_name then
+    return nil, "model_name must be set to get model coordinates"
+  end
 
-    if model_name:sub(1, 7) == "claude-" then
-      return {
-        publisher = "anthropic",
-        name = model_name,
-        operation = stream_mode and "streamRawPredict" or "rawPredict",
-      }
-    end
+  -- anthropic
+  if model_name:sub(1, 7) == "claude-" then
+    return {
+      publisher = "anthropic",
+      operation = stream_mode and "streamRawPredict" or "rawPredict",
+    }
 
-    return nil, "not able to transform requests for model name '" .. model_name .. "'"
+  -- mistral
+  elseif model_name:sub(1, 8) == "mistral-" then
+    return {
+      publisher = "mistral",
+      operation = stream_mode and "streamRawPredict" or "rawPredict",
+    }
+
+  -- ai21 (jamba)
+  elseif model_name:sub(1, 6) == "jamba-" then
+    return {
+      publisher = "ai21",
+      operation = stream_mode and "streamRawPredict" or "rawPredict",
+    }
+
+  else
+    return {
+      publisher = "google",
+      operation = stream_mode and "streamGenerateContent" or "generateContent",
+    }
   end
 end
 
@@ -121,7 +133,7 @@ local function get_gemini_vertex_url(model, route_type, stream_mode)
   if not model.options or not model.options.gemini then
     return nil, "model.options.gemini.* options must be set for vertex mode"
   end
- 
+
   local coordinates, err = get_model_coordinates(model.name, stream_mode)
   if err then
     return nil, err
@@ -133,8 +145,8 @@ local function get_gemini_vertex_url(model, route_type, stream_mode)
              model.options.gemini.project_id,
              model.options.gemini.location_id,
              coordinates.publisher,
-             coordinates.name,
-             (route_type ~= "llm/v1/embeddings" and coordinates.operation) or nil)
+             model.name,
+             coordinates.operation)
 end
 
 local function handle_stream_event(event_t, model_info, route_type)

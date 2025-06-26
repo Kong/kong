@@ -497,45 +497,73 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-      describe("utilities", function()
+      describe("#utilities", function()
 
         it("should parse gemini model names into coordinates", function()
-          -- gemini/gemini no stream
+          -- gemini no stream
           local model_name = "gemini-1.5-pro"
           local coordinates = gemini_driver._get_model_coordinates(model_name, false)
 
           assert.same({
             publisher = "google",
-            name = model_name,
             operation = "generateContent",
           }, coordinates)
 
-          -- gemini/gemini stream
+          -- gemini stream
           model_name = "gemini-1.5-pro"
           coordinates = gemini_driver._get_model_coordinates(model_name, true)
           assert.same({
             publisher = "google",
-            name = model_name,
             operation = "streamGenerateContent",
           }, coordinates)
 
-          -- gemini/anthropic no stream
+          -- claude no stream
           model_name = "claude-3.5-sonnet-20240229"
           coordinates = gemini_driver._get_model_coordinates(model_name, false)
           assert.same({
             publisher = "anthropic",
-            name = model_name,
             operation = "rawPredict",
           }, coordinates)
 
-          -- gemini/anthropic stream
+          -- claude stream
           model_name = "claude-3.5-sonnet-20240229"
           coordinates = gemini_driver._get_model_coordinates(model_name, true)
           assert.same({
             publisher = "anthropic",
-            name = model_name,
             operation = "streamRawPredict",
           }, coordinates)
+
+          -- ai21/jamba
+          model_name = "jamba-1.0"
+          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          assert.same({
+            publisher = "ai21",
+            operation = "rawPredict",
+          }, coordinates)
+
+          -- mistral
+          model_name = "mistral-large-2407"
+          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          assert.same({
+            publisher = "mistral",
+            operation = "rawPredict",
+          }, coordinates)
+
+          -- non-text model
+          model_name = "text-embedding-004"
+          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          assert.same({
+            publisher = "google",
+            operation = "generateContent", -- doesn't matter, not used
+          }, coordinates)
+
+          model_name = "imagen-4.0-generate-preview-06-06"
+          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          assert.same({
+            publisher = "google",
+            operation = "generateContent", -- doesn't matter, not used
+          }, coordinates)
+
         end)
 
         it("should provide correct gemini (vertex) URL pattern", function()
@@ -547,50 +575,40 @@ for _, strategy in helpers.all_strategies() do
 
           assert.equals("model.options.gemini.* options must be set for vertex mode", err)
 
-          -- gemini/gemini no stream
-          local url = gemini_driver._get_gemini_vertex_url({
-            provider = "gemini",
-            name = "gemini-1.5-pro",
-            options = {
+          local gemini_options = {
               gemini = {
                 api_endpoint = "gemini.local",
                 project_id = "test-project",
                 location_id = "us-central1",
               },
-            },
+            }
+
+          -- gemini no stream
+          local url = gemini_driver._get_gemini_vertex_url({
+            provider = "gemini",
+            name = "gemini-1.5-pro",
+            options = gemini_options,
           }, "llm/v1/chat", false)
 
           assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-pro:generateContent", url)
 
-          -- gemini/gemini stream
+          -- gemini stream
           url = gemini_driver._get_gemini_vertex_url({
             provider = "gemini",
             name = "gemini-1.5-pro",
-            options = {
-              gemini = {
-                api_endpoint = "gemini.local",
-                project_id = "test-project",
-                location_id = "us-central1",
-              },
-            },
+            options = gemini_options,
           }, "llm/v1/chat", true)
           assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-pro:streamGenerateContent", url)
 
-          -- gemini/anthropic no stream
+          -- claude no stream
           url = gemini_driver._get_gemini_vertex_url({
             provider = "anthropic",
             name = "claude-3.5-sonnet-20240229",
-            options = {
-              gemini = {
-                api_endpoint = "gemini.local",
-                project_id = "test-project",
-                location_id = "us-central1",
-              },
-            },
+            options = gemini_options,
           }, "llm/v1/chat", false)
           assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/anthropic/models/claude-3.5-sonnet-20240229:rawPredict", url)
 
-          -- gemini/anthropic stream
+          -- claude stream
           url = gemini_driver._get_gemini_vertex_url({
             provider = "anthropic",
             name = "claude-3.5-sonnet-20240229",
@@ -603,6 +621,45 @@ for _, strategy in helpers.all_strategies() do
             },
           }, "llm/v1/chat", true)
           assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/anthropic/models/claude-3.5-sonnet-20240229:streamRawPredict", url)
+
+          -- ai21/jamba
+          url = gemini_driver._get_gemini_vertex_url({
+            provider = "ai21",
+            name = "jamba-1.0",
+            options = gemini_options,
+          }, "llm/v1/chat", false)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/ai21/models/jamba-1.0:rawPredict", url)
+
+          -- mistral
+          url = gemini_driver._get_gemini_vertex_url({
+            provider = "mistral",
+            name = "mistral-large-2407",
+            options = gemini_options,
+          }, "llm/v1/chat", false)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/mistral/models/mistral-large-2407:rawPredict", url)
+
+          -- non-text model
+          url = gemini_driver._get_gemini_vertex_url({
+            provider = "google",
+            name = "text-embedding-004",
+            options = gemini_options,
+          }, "llm/v1/embeddings", false)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/text-embedding-004:predict", url)
+
+          url = gemini_driver._get_gemini_vertex_url({
+            provider = "google",
+            name = "imagen-4.0-generate-preview-06-06",
+            options = gemini_options,
+          }, "image/v1/images/generations", false)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/imagen-4.0-generate-preview-06-06:generateContent", url)
+
+          url = gemini_driver._get_gemini_vertex_url({
+            provider = "google",
+            name = "imagen-4.0-generate-preview-06-06",
+            options = gemini_options,
+          }, "image/v1/images/edits", false)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/imagen-4.0-generate-preview-06-06:generateContent", url)
+
         end)
 
         it("should detect vertex mode automatically", function()
