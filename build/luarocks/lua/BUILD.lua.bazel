@@ -11,13 +11,6 @@ filegroup(
 
 make(
     name = "lua",
-    args = select({
-        "@platforms//os:macos": [
-            "AR=/usr/bin/ar",
-        ],
-        "//conditions:default": [
-        ],
-    }),
     lib_source = ":all_srcs",
     out_binaries = [
         "lua",
