@@ -1,0 +1,3 @@
+message: Bumped luarocks from 3.11.1 to 3.12.2. This fixes the error `main function has more than 65536 constants`, which was preventing rocks from being published or installed.
+type: dependency
+scope: Core
