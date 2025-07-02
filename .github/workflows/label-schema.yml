@@ -7,6 +7,10 @@ jobs:
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
     runs-on: ubuntu-latest
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Schema change label found
       uses: Kong/action-slack-notify@bd750854aaf93c5c6f69799bf813c40e7786368a # v2_node20
       continue-on-error: true

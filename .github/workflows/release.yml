@@ -58,6 +58,10 @@ jobs:
       commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
     - name: Build Info
       id: build-info
@@ -117,6 +121,10 @@ jobs:
       options: --privileged
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Early Rpm Setup
       if: matrix.package == 'rpm' && matrix.image != ''
       run: |
@@ -281,6 +289,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
 
     - name: Download artifact
@@ -317,6 +329,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
 
     - name: Download artifact
@@ -418,6 +434,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
 
     - name: Install Python
@@ -458,6 +478,10 @@ jobs:
     env:
       IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Install regctl
       uses: regclient/actions/regctl-installer@ce5fd131e371ffcdd7508b478cb223b3511a9183
 
@@ -524,6 +548,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-packages'] }}"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
 
     - name: Download artifact
@@ -587,6 +615,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-images'] }}"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
