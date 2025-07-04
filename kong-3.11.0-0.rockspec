@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.10.0-0"
+version = "3.11.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git+https://github.com/Kong/kong.git",
-  tag = "3.10.0"
+  url = "git+https://github.com/fekitibi/kong.git",
+  tag = "3.11.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -30,16 +30,16 @@ dependencies = {
   "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.5.2",
+  "lua-protobuf == 0.5.3",
   "lua-resty-healthcheck == 3.1.0",
   "lua-messagepack == 0.5.4",
-  "lua-resty-aws == 1.5.4",
-  "lua-resty-openssl == 1.5.1",
+  "lua-resty-aws == 1.6.0",
+  "lua-resty-openssl == 1.6.1",
   "lua-resty-gcp == 0.0.13",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.15.0",
-  "lua-resty-session == 4.0.5",
+  "lua-resty-session == 4.1.2",
   "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.2.0",
