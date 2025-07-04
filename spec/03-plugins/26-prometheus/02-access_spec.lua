@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local shell = require "resty.shell"
 local pl_file = require "pl.file"
+local timeout = 10
+local step = 1
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
@@ -820,14 +822,16 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.res_status(200, res)
 
     local body
+    -- wait until the histogram observe finished and get the correct metrics.
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method  = "GET",
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return res.status == 200
-    end)
+      return body:find('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 1',
+          nil, true)
+    end, timeout, step)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
@@ -864,8 +868,9 @@ describe("Plugin: prometheus (access) AI metrics", function()
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return res.status == 200
-    end)
+      return body:find('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 2',
+          nil, true)
+    end, timeout, step)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 3', body, nil, true)
@@ -898,8 +903,9 @@ describe("Plugin: prometheus (access) AI metrics", function()
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return res.status == 200
-    end)
+      return body:find('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 2',
+          nil, true)
+    end, timeout, step)
 
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
