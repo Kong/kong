@@ -1,4 +1,3 @@
-local cjson = require("cjson.safe")
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_o11y = require("kong.llm.plugin.observability")
 local fmt = string.format
@@ -12,7 +11,6 @@ local _M = {
 local FILTER_OUTPUT_SCHEMA = {
   accept_gzip = "boolean",
   multipart_request = "boolean",
-  raw_request_body = "string",
   request_body_table = "table",
   request_model = "table",
 }
@@ -52,17 +50,6 @@ function _M:run(conf)
 
     -- this may be a large file upload, so we have to proxy it directly
     set_ctx("multipart_request", true)
-  end
-
-  local log_request_body = false
-  if conf.logging then
-    log_request_body = not not conf.logging.log_payloads
-  end
-
-  if log_request_body then
-    -- This is the raw request body which is sent by the client. The request_body_table key is similar to this,
-    -- but it is in openai format which is converted from other LLM vendors' format in parse_xxx_request.
-    set_ctx("raw_request_body", cjson.encode(request_table))
   end
 
   local adapter
