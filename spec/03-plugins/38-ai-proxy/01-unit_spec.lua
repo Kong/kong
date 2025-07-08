@@ -649,8 +649,518 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     assert.same("cannot parse expression for field '$(uri_captures_uri_cap_1)'", err)
   end)
 
+<<<<<<< HEAD
   it("llm/v1/chat message is compatible with llm/v1/chat route", function()
     local compatible, err = llm.is_compatible(SAMPLE_LLM_V1_CHAT, "llm/v1/chat")
+=======
+  -- generic tests
+  it("throws correct error when format is not supported", function()
+    local driver = require("kong.llm.drivers.mistral")  -- one-shot, random example of provider with only prompt support
+
+    local model_config = {
+      route_type = "llm/v1/chatnopenotsupported",
+      name = "mistral-tiny",
+      provider = "mistral",
+      options = {
+        max_tokens = 512,
+        temperature = 0.5,
+        mistral_format = "ollama",
+      },
+    }
+
+    local request_json = pl_file.read("spec/fixtures/ai-proxy/unit/requests/llm-v1-chat.json")
+    local request_table, err = cjson.decode(request_json)
+    assert.is_falsy(err)
+
+    -- send it
+    local actual_request_table, content_type, err = driver.to_format(request_table, model_config, model_config.route_type)
+    assert.is_nil(actual_request_table)
+    assert.is_nil(content_type)
+    assert.equal(err, "no transformer available to format mistral://llm/v1/chatnopenotsupported/ollama")
+  end)
+
+
+  it("produces a correct default config merge", function()
+    local formatted, err = ai_shared.merge_config_defaults(
+      SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS,
+      {
+        max_tokens = 1024,
+        top_p = 0.5,
+      },
+      "llm/v1/chat"
+    )
+
+    formatted.messages = nil  -- not needed for config merge
+
+    assert.is_nil(err)
+    assert.same({
+      max_tokens          = 1024,
+      temperature         = 0.1,
+      top_p               = 0.5,
+      some_extra_param    = "string_val",
+      another_extra_param = 0.5,
+    }, formatted)
+  end)
+
+  describe("count_words", function()
+    local c = ai_shared._count_words
+
+    it("normal prompts", function()
+      assert.same(10, c(string.rep("apple ", 10)))
+    end)
+
+    it("multi-modal prompts", function()
+      assert.same(10, c({
+        {
+          type = "text",
+          text = string.rep("apple ", 10),
+        },
+      }))
+
+      assert.same(20, c({
+        {
+          type = "text",
+          text = string.rep("apple ", 10),
+        },
+        {
+          type = "text",
+          text = string.rep("banana ", 10),
+        },
+      }))
+
+      assert.same(10, c({
+        {
+          type = "not_text",
+          text = string.rep("apple ", 10),
+        },
+        {
+          type = "text",
+          text = string.rep("banana ", 10),
+        },
+        {
+          type = "text",
+          -- somehow malformed
+        },
+      }))
+    end)
+  end)
+
+  describe("gemini multimodal", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("transforms a text type prompt to gemini GOOD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "text",
+          ["text"] = "What is in this picture?",
+        })
+
+      assert.not_nil(gemini_prompt)
+      assert.is_nil(err)
+
+      assert.same(gemini_prompt,
+        {
+          ["text"] = "What is in this picture?",
+        })
+    end)
+
+    it("transforms a text type prompt to gemini BAD MISSING TEXT FIELD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "text",
+          ["bad_text_field"] = "What is in this picture?",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("message part type is 'text' but is missing .text block", err)
+    end)
+
+    it("transforms an image_url type prompt when data is a URL to gemini GOOD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "image_url",
+          ["image_url"] = {
+            ["url"] = "https://example.local/image.jpg",
+          },
+        })
+
+      assert.not_nil(gemini_prompt)
+      assert.is_nil(err)
+
+      assert.same(gemini_prompt,
+        {
+          ["fileData"] = {
+            ["fileUri"] = "https://example.local/image.jpg",
+            ["mimeType"] = "image/generic",
+          },
+        })
+    end)
+
+    it("transforms an image_url type prompt when data is a URL to gemini BAD MISSING IMAGE FIELD", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "image_url",
+          ["image_url"] = "https://example.local/image.jpg",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("message part type is 'image_url' but is missing .image_url.url block", err)
+    end)
+
+    it("fails to transform a non-mapped multimodal entity type", function()
+      local gemini_prompt, err = gemini_driver._openai_part_to_gemini_part(
+        {
+          ["type"] = "doesnt_exist",
+          ["doesnt_exist"] = "https://example.local/video.mp4",
+        })
+
+      assert.is_nil(gemini_prompt)
+      assert.not_nil(err)
+
+      assert.same("cannot transform part of type 'doesnt_exist' to Gemini format", err)
+    end)
+
+    it("transforms 'describe this image' via URL from openai to gemini", function()
+      local gemini_prompt, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_URL)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+
+      gemini_prompt.generationConfig = nil  -- not needed for comparison
+
+      assert.same({
+        ["contents"] = {
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "What is in this picture?",
+              },
+              {
+                ["fileData"] = {
+                  ["fileUri"] = "https://example.local/image.jpg",
+                  ["mimeType"] = "image/generic",
+                },
+              }
+            },
+          },
+          {
+            ["role"] = "model",
+            ["parts"] = {
+              {
+                ["text"] = "A picture of a cat.",
+              },
+            },
+          },
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "Now draw it wearing a party-hat.",
+              },
+            },
+          },
+        }
+      }, gemini_prompt)
+    end)
+
+    it("transforms 'describe this image' via base64 from openai to gemini", function()
+      local gemini_prompt, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_B64)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+
+      gemini_prompt.generationConfig = nil  -- not needed for comparison
+
+      assert.same({
+        ["contents"] = {
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "What is in this picture?",
+              },
+              {
+                ["inlineData"] = {
+                  ["data"] = "Y2F0X3BuZ19oZXJlX2xvbAo=",
+                  ["mimeType"] = "image/png",
+                },
+              }
+            },
+          },
+          {
+            ["role"] = "model",
+            ["parts"] = {
+              {
+                ["text"] = "A picture of a cat.",
+              },
+            },
+          },
+          {
+            ["role"] = "user",
+            ["parts"] = {
+              {
+                ["text"] = "Now draw it wearing a party-hat.",
+              },
+            },
+          },
+        }
+      }, gemini_prompt)
+    end)
+
+  end)
+
+
+  describe("gemini tools", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("transforms openai tools to gemini tools GOOD", function()
+      local gemini_tools = gemini_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools)
+
+      assert.not_nil(gemini_tools)
+      assert.same(gemini_tools, {
+        {
+          function_declarations = {
+            {
+              description = "Check a product is in stock.",
+              name = "check_stock",
+              parameters = {
+                properties = {
+                  product_name = {
+                    type = "string"
+                  }
+                },
+                required = {
+                  "product_name"
+                },
+                type = "object"
+              }
+            }
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tools to gemini tools NO_TOOLS", function()
+      local gemini_tools = gemini_driver._to_tools(SAMPLE_LLM_V1_CHAT)
+
+      assert.is_nil(gemini_tools)
+    end)
+
+    it("transforms openai tools to gemini tools NIL", function()
+      local gemini_tools = gemini_driver._to_tools(nil)
+
+      assert.is_nil(gemini_tools)
+    end)
+
+    it("transforms gemini tools to openai tools GOOD", function()
+      local openai_tools = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_tools)
+
+      openai_tools = cjson.decode(openai_tools)
+      assert.same(openai_tools.choices[1].message.tool_calls[1]['function'], {
+        name = "sql_execute",
+        arguments = "{\"product_name\":\"NewPhone\"}"
+      })
+    end)
+  end)
+
+  describe("bedrock tools", function()
+    local bedrock_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.bedrock"] = nil
+      bedrock_driver = require("kong.llm.drivers.bedrock")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("transforms openai tools to bedrock tools GOOD", function()
+      local bedrock_tools = bedrock_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools)
+
+      assert.not_nil(bedrock_tools)
+      assert.same(bedrock_tools, {
+        {
+          toolSpec = {
+            description = "Check a product is in stock.",
+            inputSchema = {
+              json = {
+                properties = {
+                  product_name = {
+                    type = "string"
+                  }
+                },
+                required = {
+                  "product_name"
+                },
+                type = "object"
+              }
+            },
+            name = "check_stock"
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tools to bedrock tools NO_TOOLS", function()
+      local bedrock_tools = bedrock_driver._to_tools(SAMPLE_LLM_V1_CHAT)
+
+      assert.is_nil(bedrock_tools)
+    end)
+
+    it("transforms openai tools to bedrock tools NIL", function()
+      local bedrock_tools = bedrock_driver._to_tools(nil)
+
+      assert.is_nil(bedrock_tools)
+    end)
+
+    it("transforms bedrock tools to openai tools GOOD", function()
+      local openai_tools = bedrock_driver._from_tool_call_response(SAMPLE_BEDROCK_TOOLS_RESPONSE.output.message.content)
+
+      assert.not_nil(openai_tools)
+
+      assert.same(openai_tools[1]['function'], {
+        name = "sumArea",
+        arguments = "{\"areas\":[121,212,313]}"
+      })
+    end)
+
+    it("transforms guardrails into bedrock generation config", function()
+      local model_info = {
+        route_type = "llm/v1/chat",
+        name = "some-model",
+        provider = "bedrock",
+      }
+      local bedrock_guardrails = bedrock_driver._to_bedrock_chat_openai(SAMPLE_LLM_V1_CHAT_WITH_GUARDRAILS, model_info, "llm/v1/chat")
+
+      assert.not_nil(bedrock_guardrails)
+
+      assert.same(bedrock_guardrails.guardrailConfig, {
+        ['guardrailIdentifier'] = 'yu5xwvfp4sud',
+        ['guardrailVersion'] = '1',
+        ['trace'] = 'enabled',
+      })
+    end)
+  end)
+end)
+
+
+describe(PLUGIN_NAME .. ": (unit)", function()
+  setup(function()
+    package.loaded["kong.llm.drivers.shared"] = nil
+    _G.TEST = true
+    ai_shared = require("kong.llm.drivers.shared")
+  end)
+
+  before_each(function()
+    _G.kong = {}
+    kong.log = pdk_log.new(kong)
+    -- provide clean context for each test
+    kong.ctx = {
+      plugin = {},
+    }
+  end)
+
+  teardown(function()
+    _G.TEST = nil
+  end)
+
+  it("resolves referenceable plugin configuration from request context", function()
+    local fake_request = {
+      ["get_header"] = function(header_name)
+        local headers = {
+          ["from_header_1"] = "header_value_here_1",
+          ["from_header_2"] = "header_value_here_2",
+        }
+        return headers[header_name]
+      end,
+
+      ["get_uri_captures"] = function()
+        return {
+          ["named"] = {
+            ["uri_cap_1"] = "cap_value_here_1",
+            ["uri_cap_2"] = "cap_value_here_2",
+          },
+        }
+      end,
+
+      ["get_query_arg"] = function(query_arg_name)
+        local query_args = {
+          ["arg_1"] = "arg_value_here_1",
+          ["arg_2"] = "arg_value_here_2",
+        }
+        return query_args[query_arg_name]
+      end,
+    }
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "gpt-3.5-turbo",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "$(uri_captures.uri_cap_1)",
+          azure_deployment_id = "$(headers.from_header_1)",
+          azure_api_version = "$(query_params.arg_1)",
+        },
+      },
+    }
+
+    local result, err = ai_shared.merge_model_options(fake_request, fake_config)
+    assert.is_falsy(err)
+    assert.same(result.model.options, {
+      ['azure_api_version'] = 'arg_value_here_1',
+      ['azure_deployment_id'] = 'header_value_here_1',
+      ['azure_instance'] = 'cap_value_here_1',
+      ['max_tokens'] = 256,
+      ['temperature'] = 1,
+    })
+  end)
+
+  it("resolves referenceable model name from request context", function()
+    local fake_request = {
+      ["get_header"] = function(header_name)
+        local headers = {
+          ["from_header_1"] = "header_value_here_1",
+          ["from_header_2"] = "header_value_here_2",
+        }
+        return headers[header_name]
+      end,
+>>>>>>> fe1af6739e (fix(tests): ai tests move to compare whole object)
 
     assert.is_truthy(compatible)
     assert.is_nil(err)
@@ -771,8 +1281,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
 
             -- compare the tables
-            assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
-            assert.same(actual_response_table.model, expected_response_table.model)
+            assert.same(expected_response_table, actual_response_table)
           end)
         end)
       end

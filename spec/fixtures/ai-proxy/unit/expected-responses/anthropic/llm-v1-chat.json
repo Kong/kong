@@ -10,5 +10,10 @@
     }
   ],
   "model": "claude-2.1",
-  "object": "chat.completion"
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 16,
+    "prompt_tokens": 12,
+    "total_tokens": 28
+  }
 }
