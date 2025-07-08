@@ -10,6 +10,7 @@
         "role": "model"
       },
       "finishReason": "STOP",
+      "avgLogprobs": -0.16819870471954346,
       "index": 0,
       "safetyRatings": [
         {
@@ -32,8 +33,24 @@
     }
   ],
   "usageMetadata": {
-    "promptTokenCount": 14,
-    "candidatesTokenCount": 128,
-    "totalTokenCount": 142
-  }
+    "promptTokenCount": 223,
+    "candidatesTokenCount": 12,
+    "totalTokenCount": 235,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 223
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 12
+      }
+    ]
+  },
+  "modelVersion": "gemini-1.5-pro-002",
+  "createTime": "2025-07-07T22:16:33.098690Z",
+  "responseId": "QUdsaIKDBs-u3NoP5Iyb8QY"
 }

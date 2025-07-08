@@ -9,7 +9,6 @@ local socket_url = require("socket.url")
 local string_gsub = string.gsub
 local buffer = require("string.buffer")
 local table_insert = table.insert
-local string_lower = string.lower
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_base = require("kong.llm.plugin.base")
 local pl_string = require "pl.stringx"
@@ -24,6 +23,11 @@ local _OPENAI_ROLE_MAPPING = {
   ["system"] = "system",
   ["user"] = "user",
   ["assistant"] = "model",
+}
+
+local _OPENAI_STOP_REASON_MAPPING = {
+  ["MAX_TOKENS"] = "length",
+  ["STOP"] = "stop",
 }
 
 local function to_gemini_generation_config(request_table)
@@ -169,9 +173,11 @@ local function handle_stream_event(event_t, model_info, route_type)
 
   if is_response_content(event) then
     local metadata = {}
-    metadata.finish_reason     = finish_reason
+    metadata.finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason])
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+    metadata.created = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    metadata.id = event.responseId
 
     local new_event = {
       model = model_info.name,
@@ -182,7 +188,7 @@ local function handle_stream_event(event_t, model_info, route_type)
             role = "assistant",
           },
           index = 0,
-          finish_reason = finish_reason
+          finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason])
         },
       },
     }
@@ -191,9 +197,11 @@ local function handle_stream_event(event_t, model_info, route_type)
   
   elseif is_tool_content(event) then
     local metadata = {}
-    metadata.finish_reason     = finish_reason
+    metadata.finish_reason     = _OPENAI_STOP_REASON_MAPPING[finish_reason or "STOP"]
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+    metadata.created = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    metadata.id = event.responseId
 
     if event.candidates and #event.candidates > 0 then
       local new_event = {
@@ -226,6 +234,8 @@ local function handle_stream_event(event_t, model_info, route_type)
       return cjson.encode(new_event), nil, metadata
     end
 
+  -- elseif has_early_finish_reason(event) then
+    -- JTODO
 
   end
 end
@@ -485,10 +495,12 @@ local function from_gemini_chat_openai(response, model_info, route_type)
           role = "assistant",
           content = response.candidates[1].content.parts[1].text,
         },
-        finish_reason = string_lower(response.candidates[1].finishReason),
+        finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
       }
       messages.object = "chat.completion"
       messages.model = model_info.name
+      messages.created = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      messages.id = response.responseId
 
     elseif is_tool_content(response) then
       messages.choices[1] = {
@@ -509,6 +521,15 @@ local function from_gemini_chat_openai(response, model_info, route_type)
             },
           }
       end
+
+    elseif has_finish_reason(response) then
+      messages.choices[1] = {
+        finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
+      }
+
+      messages.created = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      messages.id = response.responseId
+
     end
 
     -- process analytics

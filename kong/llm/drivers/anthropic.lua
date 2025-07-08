@@ -23,6 +23,7 @@ local _OPENAI_STOP_REASON_MAPPING = {
   ["end_turn"] = "stop",
   ["tool_use"] = "tool_calls",
   ["guardrail_intervened"] = "guardrail_intervened",
+  ["stop_sequence"] = "stop"
 }
 
 local function kong_messages_to_claude_prompt(messages)

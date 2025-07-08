@@ -679,7 +679,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   for i, j in pairs(FORMATS) do
 
-    describe(i .. " format tests", function()
+    describe("#" .. i .. " format tests", function()
 
       for k, l in pairs(j) do
 

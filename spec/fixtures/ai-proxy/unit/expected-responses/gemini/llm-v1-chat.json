@@ -9,6 +9,13 @@
       }
     }
   ],
+  "created": 1751926593,
   "model": "gemini-pro",
-  "object": "chat.completion"
+  "object": "chat.completion",
+  "id": "QUdsaIKDBs-u3NoP5Iyb8QY",
+  "usage": {
+    "prompt_tokens": 223,
+    "completion_tokens": 12,
+    "total_tokens": 235
+  }
 }

@@ -77,6 +77,7 @@ _M._CONST = {
   ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
   ["GEMINI_STREAM_CONTENT_TYPE"] = "application/json",
   ["SSE_CONTENT_TYPE"] = "text/event-stream",
+  ["UNIX_EPOCH"] = "1970-01-01T00:00:00.000000Z",
 }
 
 _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
@@ -500,6 +501,11 @@ local function ollama_message_has_tools(message)
           and #message['tool_calls'] > 0
 end
 
+-- Check for leap year
+local function is_leap(y)
+  return (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
+end
+
 ---
 -- Converts a JSON-format (ISO 8601) Timestamp into seconds since UNIX EPOCH.
 -- Input only supports UTC timezone (suffix 'Z').
@@ -510,10 +516,38 @@ function _M.iso_8601_to_epoch(timestamp)
   local year, month, day, hour, min, sec, _ =
     string.match(timestamp, "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+).(%d+)Z")
 
-  return os.time(
-    {
-      ["day"]=day, ["month"]=month, ["year"]=year, ["hour"]=hour, ["min"]=min, ["sec"]=sec
-    })
+
+  -- we can't use os.time as it relys on the system timezone setup and won't always be UTC
+
+  -- Convert to numbers
+  year, month, day = tonumber(year), tonumber(month), tonumber(day)
+  hour, min, sec = tonumber(hour), tonumber(min), tonumber(sec)
+
+  -- Days in each month (non-leap year)
+  local days_in_month = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+  if is_leap(year) then
+    days_in_month[2] = 29
+  end
+
+  -- Calculate days since Unix epoch (1970-01-01)
+  local days = 0
+
+  -- Add days for complete years
+  for y = 1970, year - 1 do
+    days = days + (is_leap(y) and 366 or 365)
+  end
+
+  -- Add days for complete months in current year
+  for m = 1, month - 1 do
+    days = days + days_in_month[m]
+  end
+
+  -- Add remaining days
+  days = days + day - 1
+
+  -- Convert to seconds and add time components
+  return days * 86400 + hour * 3600 + min * 60 + sec
 end
 
 ---
