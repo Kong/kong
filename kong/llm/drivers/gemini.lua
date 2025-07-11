@@ -814,13 +814,15 @@ function _M.configure_request(conf, identity_interface)
 end
 
 
+_M.get_model_coordinates = get_model_coordinates
+
+
 if _G._TEST then
   -- export locals for testing
   _M._to_tools = to_tools
   _M._to_gemini_chat_openai = to_gemini_chat_openai
   _M._from_gemini_chat_openai = from_gemini_chat_openai
   _M._openai_part_to_gemini_part = openai_part_to_gemini_part
-  _M._get_model_coordinates = get_model_coordinates
   _M._is_vertex_mode = is_vertex_mode
   _M._get_gemini_vertex_url = get_gemini_vertex_url
 end

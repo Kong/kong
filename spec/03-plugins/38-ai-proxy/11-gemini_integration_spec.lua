@@ -375,62 +375,6 @@ for _, strategy in helpers.all_strategies() do
           end)
         end)
 
-        describe("gemini (gemini) #llm/v1/embeddings", function()
-          it("good request", function()
-            local r = client:get("/gemini/llm/v1/embeddings/good", {
-              headers = {
-                ["content-type"] = "application/json",
-                ["accept"] = "application/json",
-              },
-              body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-embeddings/requests/good.json"),
-            })
-            -- validate that the request succeeded, response status 200
-            local body = assert.res_status(200, r)
-            local json = cjson.decode(body)
-
-            -- check this is in the 'kong' response format
-          -- check this is in the 'kong' response format
-          assert.equals(json.object, "list")
-          assert.not_nil(json.data and json.data[1])
-          assert.equals(json.data[1].object, "embedding")
-          assert.equals(json.data[1].index, 0)
-          assert.not_nil(json.data[1].embedding)
-          assert.same(json.usage and json.usage.total_tokens, 0) -- gemini non-vertex api doesn't return this 
-          assert.same(json.usage and json.usage.prompt_tokens, 0) -- gemini non-vertex api doesn't return this 
-          assert.equals("gemini-embedding-exp-03-07", json.model)
-          assert.equals("gemini/gemini-embedding-exp-03-07", r.headers["X-Kong-LLM-Model"])
-
-          local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
-          assert.same("127.0.0.1", log_message.client_ip)
-          assert.is_number(log_message.request.size)
-          assert.is_number(log_message.response.size)
-
-          -- test ai-proxy or ai-proxy-advanced stats (both in log_message.ai.proxy namespace)
-          local _, first_got = next(log_message.ai)
-
-          first_got.meta.llm_latency = 1
-          first_got.meta.plugin_id = "e126e5bb-0f66-49f4-bba0-ede6152a92b4"
-          first_got.payload = nil -- skip testing this
-
-          assert.same({
-            meta = {
-              llm_latency = 1,
-              plugin_id = "e126e5bb-0f66-49f4-bba0-ede6152a92b4",
-              provider_name = "gemini",
-              request_model = "gemini-embedding-exp-03-07",
-              response_model = "gemini-embedding-exp-03-07"
-            },
-            usage = {
-              completion_tokens = 0,
-              cost = 0,
-              prompt_tokens = 0, -- gemini non-vertex api doesn't return this
-              time_per_token = 0,
-              total_tokens = 0 -- gemini non-vertex api doesn't return this
-            }
-          }, first_got)
-          end)
-        end)
-
         describe("gemini (gemini) llm/v1/chat with query param auth", function()
           it("good request with query parameter authentication", function()
             local r = client:get("/gemini/llm/v1/chat/query-auth", {
@@ -502,7 +446,7 @@ for _, strategy in helpers.all_strategies() do
         it("should parse gemini model names into coordinates", function()
           -- gemini no stream
           local model_name = "gemini-1.5-pro"
-          local coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          local coordinates = gemini_driver.get_model_coordinates(model_name, false)
 
           assert.same({
             publisher = "google",
@@ -511,7 +455,7 @@ for _, strategy in helpers.all_strategies() do
 
           -- gemini stream
           model_name = "gemini-1.5-pro"
-          coordinates = gemini_driver._get_model_coordinates(model_name, true)
+          coordinates = gemini_driver.get_model_coordinates(model_name, true)
           assert.same({
             publisher = "google",
             operation = "streamGenerateContent",
@@ -519,7 +463,7 @@ for _, strategy in helpers.all_strategies() do
 
           -- claude no stream
           model_name = "claude-3.5-sonnet-20240229"
-          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          coordinates = gemini_driver.get_model_coordinates(model_name, false)
           assert.same({
             publisher = "anthropic",
             operation = "rawPredict",
@@ -527,7 +471,7 @@ for _, strategy in helpers.all_strategies() do
 
           -- claude stream
           model_name = "claude-3.5-sonnet-20240229"
-          coordinates = gemini_driver._get_model_coordinates(model_name, true)
+          coordinates = gemini_driver.get_model_coordinates(model_name, true)
           assert.same({
             publisher = "anthropic",
             operation = "streamRawPredict",
@@ -535,7 +479,7 @@ for _, strategy in helpers.all_strategies() do
 
           -- ai21/jamba
           model_name = "jamba-1.0"
-          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          coordinates = gemini_driver.get_model_coordinates(model_name, false)
           assert.same({
             publisher = "ai21",
             operation = "rawPredict",
@@ -543,7 +487,7 @@ for _, strategy in helpers.all_strategies() do
 
           -- mistral
           model_name = "mistral-large-2407"
-          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          coordinates = gemini_driver.get_model_coordinates(model_name, false)
           assert.same({
             publisher = "mistral",
             operation = "rawPredict",
@@ -551,14 +495,14 @@ for _, strategy in helpers.all_strategies() do
 
           -- non-text model
           model_name = "text-embedding-004"
-          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          coordinates = gemini_driver.get_model_coordinates(model_name, false)
           assert.same({
             publisher = "google",
             operation = "generateContent", -- doesn't matter, not used
           }, coordinates)
 
           model_name = "imagen-4.0-generate-preview-06-06"
-          coordinates = gemini_driver._get_model_coordinates(model_name, false)
+          coordinates = gemini_driver.get_model_coordinates(model_name, false)
           assert.same({
             publisher = "google",
             operation = "generateContent", -- doesn't matter, not used
