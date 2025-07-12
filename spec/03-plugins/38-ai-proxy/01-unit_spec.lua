@@ -1870,6 +1870,25 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       local expected_events = cjson.decode(expected)
 
       assert.same(expected_events, events)
+
+      local len = #input
+      -- fuzz with random truncations
+      for i = 1, len / 2, 10 do
+        local events = {}
+
+        for j = 0, 2 do
+          local stop = i * j + i
+          if j == 2 then
+            -- the last truncated frame
+            stop = len
+          end
+          local output = ai_shared._frame_to_events(input:sub(i * j + 1, stop), "text/event-stream")
+          for _, event in ipairs(output or {}) do
+            table.insert(events, event)
+          end
+        end
+        assert.same(expected_events, events, "failed when the frame is truncated at " .. i)
+      end
     end)
 
     it("transforms application/vnd.amazon.eventstream (AWS) type", function()

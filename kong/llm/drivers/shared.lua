@@ -564,7 +564,7 @@ function _M.frame_to_events(frame, content_type)
       local end_of_msg = str_find(frame, "[\r\n]", start, false)
       if not end_of_msg then
         if kong then
-          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), frame)
+          kong.ctx.plugin.truncated_frame = frame:sub(start)
         end
 
         break
