@@ -62,11 +62,6 @@ describe("rockspec/meta", function()
     assert.equal(meta._NAME, rock.package)
   end)
 
-  it("has correct version in filename", function()
-    local pattern = meta._VERSION:gsub("%-.*", ""):gsub("%.", "%%."):gsub("-", "%%-")
-    assert.matches(pattern, rock_filename)
-  end)
-
   describe("modules", function()
 
     it("all modules named as their path", function()

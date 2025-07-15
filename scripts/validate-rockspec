@@ -93,6 +93,12 @@ main() {
         spec=${files[0]}
     fi
 
+    if [ "$spec" = "kong-latest-0.rockspec" ]; then
+        version=$(awk -F'"' '/^version *=/ { print $2 }' "$spec")
+        mv "$spec" "kong-$version.rockspec"
+	spec=kong-$version.rockspec
+    fi
+
     echo "Found rockspec file to validate: $spec"
 
     lint "$spec"
