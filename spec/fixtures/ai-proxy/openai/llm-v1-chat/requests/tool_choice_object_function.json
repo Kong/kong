@@ -1,0 +1,28 @@
+{
+  "model": "gpt-4-0613",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an AI assistant."
+    },
+    {
+      "role": "user",
+      "content": "Tell me a joke."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "my_function",
+        "parameters": {}
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "my_function"
+    }
+  }
+}
