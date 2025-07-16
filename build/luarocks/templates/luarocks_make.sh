@@ -15,9 +15,9 @@ mkdir -p $(dirname $@)
 # alias LDOC command to true(1) command
 export LDOC=true
 
-version=$(awk -F'"' '/^version *=/ { print $2 }' kong-latest-0.rockspec)
+version=$(awk -F'"' '/^version *=/ { print $2 }' kong-latest.rockspec)
 
-mv kong-latest-0.rockspec kong-$version.rockspec
+mv kong-latest.rockspec kong-$version.rockspec
 
 $luarocks_exec make --no-doc >$@.tmp 2>&1
 
