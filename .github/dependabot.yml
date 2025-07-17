@@ -1,10 +1,27 @@
-# Set update schedule for GitHub Actions
-
 version: 2
 updates:
-
+  # GitHub Actions ecosystem for workflow dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every week
-      interval: "weekly"
+      interval: daily
+    rebase-strategy: auto
+    # Disable Dependabot version updates
+    # We are only interested in security updates
+    open-pull-requests-limit: 0
+    groups:
+      all-security:
+        applies-to: security-updates
+
+  # Docker ecosystem for container dependencies
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: daily
+    rebase-strategy: auto
+    # Disable Dependabot version updates
+    # We are only interested in security updates
+    open-pull-requests-limit: 0
+    groups:
+      all-security:
+        applies-to: security-updates
