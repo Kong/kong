@@ -3,7 +3,11 @@
 # unofficial strict mode
 set -euo pipefail
 
-kong_version=$(awk -F'"' '/^version *=/ { print $2 }' kong-latest.rockspec)
+if [ -f kong-latest.rockspec ]; then
+  kong_version=$(awk -F'"' '/^version *=/ { print $2 }' kong-latest.rockspec)
+else
+  kong_version=$(echo kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2)
+fi
 
 if test -f "kong/enterprise_edition/meta.lua"; then
     ee_patch=$(grep -o -E 'ee_patch[ \t]+=[ \t]+[0-9]+' kong/enterprise_edition/meta.lua | awk '{print $3}')
