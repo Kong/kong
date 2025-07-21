@@ -94,9 +94,12 @@ main() {
     fi
 
     if [ "$spec" = "kong-latest.rockspec" ]; then
-        version=$(awk -F'"' '/^version *=/ { print $2 }' "$spec")
-        mv "$spec" "kong-$version.rockspec"
-	spec=kong-$version.rockspec
+        version=$(grep -E '^\s*(major|minor|patch)\s*=' kong/meta.lua \
+            | sed -E 's/[^0-9]*([0-9]+).*/\1/' \
+            | paste -sd. -)
+        cp "$spec" "kong-$version-0.rockspec"
+        sed -i "s/^version *= *\".*\"/version = \"$version-0\"/" "kong-$version-0.rockspec"
+        spec=kong-$version-0.rockspec
     fi
 
     echo "Found rockspec file to validate: $spec"
