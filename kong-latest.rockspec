@@ -1,5 +1,5 @@
 package = "kong"
-version = "3.10.0-0"
+version = "latest"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
