@@ -1872,22 +1872,24 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.same(expected_events, events)
 
       local len = #input
-      -- fuzz with random truncations
-      for i = 1, len / 2, 10 do
-        local events = {}
-
-        for j = 0, 2 do
-          local stop = i * j + i
-          if j == 2 then
-            -- the last truncated frame
-            stop = len
+      -- Fuzz with possible truncations. We choose to truncate into three parts, so we can test
+      -- a case that the frame is truncated into more than two parts, to avoid unexpected cleanup
+      -- of the truncation state.
+      for i = 2, len - 1 do
+        for j = i + 1, len do
+          local events = {}
+          local delimiters = {}
+          delimiters[1] = {1, i - 1}
+          delimiters[2] = {i, j - 1}
+          delimiters[3] = {j, len}
+          for k = 1, #delimiters do
+            local output = ai_shared._frame_to_events(input:sub(delimiters[k][1], delimiters[k][2]), "text/event-stream")
+            for _, event in ipairs(output or {}) do
+              table.insert(events, event)
+            end
           end
-          local output = ai_shared._frame_to_events(input:sub(i * j + 1, stop), "text/event-stream")
-          for _, event in ipairs(output or {}) do
-            table.insert(events, event)
-          end
+          assert.same(expected_events, events, "failed when the frame is truncated in " .. cjson.encode(delimiters))
         end
-        assert.same(expected_events, events, "failed when the frame is truncated at " .. i)
       end
     end)
 

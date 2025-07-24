@@ -562,7 +562,7 @@ function _M.frame_to_events(frame, content_type)
     while start <= #frame do
       -- SSE chunks end with `\n\n` or `\r\n`
       local end_of_msg = str_find(frame, "[\r\n]", start, false)
-      if not end_of_msg then
+      if not end_of_msg or end_of_msg == #frame then
         if kong then
           kong.ctx.plugin.truncated_frame = frame:sub(start)
         end
