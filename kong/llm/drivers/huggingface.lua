@@ -94,9 +94,9 @@ local function set_default_parameters(request_table)
   end
   if parameters.max_tokens == nil then
     if request_table.messages then
-      -- conversational model use the max_lenght param
+      -- conversational model use the max_length param
       -- https://huggingface.co/docs/api-inference/en/detailed_parameters?code=curl#conversational-task
-      parameters.max_lenght = request_table.max_tokens
+      parameters.max_length = request_table.max_tokens
     else
       parameters.max_new_tokens = request_table.max_tokens
     end
