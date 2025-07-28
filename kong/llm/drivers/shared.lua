@@ -525,16 +525,27 @@ function _M.frame_to_events(frame, content_type)
     end
 
   elseif content_type == _M._CONST.AWS_STREAM_CONTENT_TYPE then
-    local parser = aws_stream:new(frame)
-    while true do
-      local msg = parser:next_message()
+    local parser = kong.ctx.plugin.aws_stream_parser
+    if not parser then
+      kong.ctx.plugin.aws_stream_parser = aws_stream:new(frame)
+      parser = kong.ctx.plugin.aws_stream_parser
+    else
+      -- add the new frame to the existing parser
+      parser:add(frame)
+    end
+
+    while parser:has_complete_message() do
+      -- We need to call `has_complete_message` first, as `next_message` will consume the data
+      local msg, err = parser:next_message()
 
       if not msg then
+        kong.log.err("failed to parse AWS stream message: ", err)
         break
       end
 
       events[#events+1] = { data = cjson.encode(msg) }
     end
+    -- there may be remained data in the stream, we will parse it with the next frame
 
   -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser

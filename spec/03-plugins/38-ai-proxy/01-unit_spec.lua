@@ -1905,6 +1905,27 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         -- tables are random ordered, so we need to compare each serialized event
         assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data))
       end
+
+      local len = #input
+      -- fuzz with random truncations
+      for i = 1, len / 2, 10 do
+        local events = {}
+
+        for j = 0, 2 do
+          local stop = i * j + i
+          if j == 2 then
+            -- the last truncated frame
+            stop = len
+          end
+          local output = ai_shared._frame_to_events(input:sub(i * j + 1, stop), "application/vnd.amazon.eventstream")
+          for _, event in ipairs(output or {}) do
+            table.insert(events, event)
+          end
+        end
+        for i, _ in ipairs(expected_events) do
+          assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data), "failed when the frame is truncated at " .. i)
+        end
+      end
     end)
 
   end)

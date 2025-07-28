@@ -399,6 +399,67 @@ for _, strategy in helpers.all_strategies() do
               end
             }
           }
+
+          location = "/bedrock/llm/v1/chat/streaming/good" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local _EVENT_CHUNKS = {}
+
+              for i=1,4 do
+                local encoded = pl_file.read("spec/fixtures/ai-proxy/bedrock/chunks-normal/chunk-" .. i .. ".bin")
+                local decoded = ngx.decode_base64(encoded)
+                _EVENT_CHUNKS[i] = decoded
+              end
+
+              local fmt = string.format
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/vnd.amazon.eventstream"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(fmt("%s", EVENT))
+              end
+            }
+          }
+
+          location = "/bedrock/llm/v1/chat/streaming/incomplete" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local all_chunks = ""
+
+              for i=1,4 do
+                local encoded = pl_file.read("spec/fixtures/ai-proxy/bedrock/chunks-normal/chunk-" .. i .. ".bin")
+                local decoded = ngx.decode_base64(encoded)
+                all_chunks = all_chunks .. decoded
+              end
+
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/vnd.amazon.eventstream"
+
+              local len = #all_chunks
+              local i = math.floor(len / 3)
+              for j = 0, 2 do
+                local stop = i * j + i
+                if j == 2 then
+                  -- the last truncated frame
+                  stop = len
+                end
+                local to_send = all_chunks:sub(i * j + 1, stop)
+                ngx.print(to_send)
+                ngx.flush(true)
+                ngx.sleep(0.1) -- simulate delay
+              end
+            }
+          }
         }
       ]]
 
@@ -779,6 +840,88 @@ for _, strategy in helpers.all_strategies() do
         route = { id = bedrock_chat_functions_good_native.id },
         config = {
           path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat bedrock streaming
+      local bedrock_chat_streaming_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock/llm/v1/chat/streaming/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_streaming_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
+          model = {
+            name = "anthropic.claude-3-sonnet-20240229-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.7,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/streaming/good",
+              input_cost = 15.0,
+              output_cost = 15.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_streaming_good.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
+        },
+      }
+      --
+
+      -- 200 chat bedrock streaming with incomplete events
+      local bedrock_chat_streaming_incomplete = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock/llm/v1/chat/streaming/incomplete" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_streaming_incomplete.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
+          model = {
+            name = "anthropic.claude-3-sonnet-20240229-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.7,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/streaming/incomplete",
+              input_cost = 15.0,
+              output_cost = 15.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_streaming_incomplete.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -1403,6 +1546,153 @@ for _, strategy in helpers.all_strategies() do
 
         -- to verify not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock streaming", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock/llm/v1/chat/streaming/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(#events, 17) -- 16 data events + [DONE]
+        assert.equal(buf:tostring(), "1 + 1 = 2\n\nThis is one of the most basic arithmetic equations. It represents the addition of two units, resulting in a sum of two.")
+
+        -- test analytics on this item
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock streaming with incomplete events", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock/llm/v1/chat/streaming/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(#events, 17) -- 16 data events + [DONE]
+        assert.equal(buf:tostring(), "1 + 1 = 2\n\nThis is one of the most basic arithmetic equations. It represents the addition of two units, resulting in a sum of two.")
+
+        -- test analytics on this item
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
       end)
 
     end)
