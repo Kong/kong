@@ -649,10 +649,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     assert.same("cannot parse expression for field '$(uri_captures_uri_cap_1)'", err)
   end)
 
-<<<<<<< HEAD
-  it("llm/v1/chat message is compatible with llm/v1/chat route", function()
-    local compatible, err = llm.is_compatible(SAMPLE_LLM_V1_CHAT, "llm/v1/chat")
-=======
   -- generic tests
   it("throws correct error when format is not supported", function()
     local driver = require("kong.llm.drivers.mistral")  -- one-shot, random example of provider with only prompt support
@@ -1160,7 +1156,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         }
         return headers[header_name]
       end,
->>>>>>> fe1af6739e (fix(tests): ai tests move to compare whole object)
 
     assert.is_truthy(compatible)
     assert.is_nil(err)

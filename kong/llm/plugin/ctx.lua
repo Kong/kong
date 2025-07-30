@@ -10,6 +10,7 @@ local schemas = {
     response_body_sent = "boolean",
     llm_format_adapter = "table",
     preserve_mode = "boolean",
+    structured_output_mode = "boolean", -- set by request phases to modify certain response transformations
   },
 }
 

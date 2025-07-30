@@ -16,7 +16,7 @@ local pl_string = require "pl.stringx"
 
 -- globals
 local DRIVER_NAME = "gemini"
-local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local _OPENAI_ROLE_MAPPING = {
@@ -28,6 +28,10 @@ local _OPENAI_ROLE_MAPPING = {
 local _OPENAI_STOP_REASON_MAPPING = {
   ["MAX_TOKENS"] = "length",
   ["STOP"] = "stop",
+}
+
+local _OPENAI_STRUCTURED_OUTPUT_TYPE_MAP = {
+  ["json_schema"] = "application/json",
 }
 
 local function to_gemini_generation_config(request_table)
@@ -84,6 +88,25 @@ local function has_finish_reason(event)
          and event.candidates[1].finishReason
          or nil
 end
+
+local function extract_structured_content(request_table)
+  -- bounds check EVERYTHING first
+  if not request_table
+    or not request_table.response_format
+    or type(request_table.response_format.type) ~= "string"
+    or type(request_table.response_format.json_schema) ~= "table"
+    or type(request_table.response_format.json_schema.schema) ~= "table"
+  then
+    return nil
+  end
+
+  -- transform
+  ---- no transformations for OpenAI-to-Gemini
+
+  -- return
+  return _OPENAI_STRUCTURED_OUTPUT_TYPE_MAP[request_table.response_format.type], request_table.response_format.json_schema.schema
+end
+
 
 local function get_model_coordinates(model_name, stream_mode)
   if not model_name then
@@ -173,7 +196,7 @@ local function handle_stream_event(event_t, model_info, route_type)
 
   if is_response_content(event) then
     local metadata = {}
-    metadata.finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason])
+    metadata.finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason or "STOP"])
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
     metadata.created = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
@@ -188,10 +211,18 @@ local function handle_stream_event(event_t, model_info, route_type)
             role = "assistant",
           },
           index = 0,
-          finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason])
+          finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason or "STOP"])
         },
       },
     }
+
+    if get_global_ctx("structured_output_mode")
+       and #event.candidates[1].content.parts[1].text > 2
+       and event.candidates[1].content.parts[1].text == "[]" then
+        -- simulate OpenAI "refusal" where the question/answer doesn't fit the structured output schema
+        new_event.choices[1].delta.content = nil
+        new_event.choices[1].delta.refusal = "Kong: Vertex refused to answer the question, because it did not fit the structured output schema"
+    end
 
     return cjson.encode(new_event), nil, metadata
   
@@ -233,10 +264,6 @@ local function handle_stream_event(event_t, model_info, route_type)
 
       return cjson.encode(new_event), nil, metadata
     end
-
-  -- elseif has_early_finish_reason(event) then
-    -- JTODO
-
   end
 end
 
@@ -452,6 +479,15 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
 
     new_r.generationConfig = to_gemini_generation_config(request_table)
 
+    -- convert OpenAI structured output to Gemini, if it is specified
+    local response_mime_type, response_schema = extract_structured_content(request_table)
+    if response_mime_type and response_schema then
+      set_global_ctx("structured_output_mode", true)
+      new_r.generationConfig = new_r.generationConfig or {}
+      new_r.generationConfig.response_mime_type = response_mime_type
+      new_r.generationConfig.response_json_schema = response_schema
+    end
+
     -- handle function calling translation from OpenAI format
     new_r.tools = request_table.tools and to_tools(request_table.tools)
     new_r.tool_config = request_table.tool_config
@@ -497,6 +533,15 @@ local function from_gemini_chat_openai(response, model_info, route_type)
         },
         finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
       }
+
+      if get_global_ctx("structured_output_mode")
+       and #response.candidates[1].content.parts[1].text > 2
+       and response.candidates[1].content.parts[1].text == "[]" then
+        -- simulate OpenAI "refusal" where the question/answer doesn't fit the structured output schema
+        messages.choices[1].message.content = nil
+        messages.choices[1].message.refusal = "Kong: Vertex refused to answer the question, because it did not fit the structured output schema"
+      end
+
       messages.object = "chat.completion"
       messages.model = model_info.name
       messages.created = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
