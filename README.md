@@ -50,6 +50,7 @@ Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/
 By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most.
 
 The top Kong features include:
+
 - Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
 - Authentication and authorization for APIs using methods like JWT, basic auth, OAuth, ACLs and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
@@ -61,6 +62,7 @@ The top Kong features include:
 [![][kong-benefits]][kong-url]
 
 ### Plugin Hub
+
 Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/).
 
 Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
@@ -68,6 +70,7 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 ## Contributing
 
 We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+
 - Community Pledge ([COMMUNITY_PLEDGE.md](COMMUNITY_PLEDGE.md)) for our pledge to interact with you, the open source community.
 - Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
 - Development Guide ([DEVELOPER.md](DEVELOPER.md)): Setting up your development environment.
@@ -97,7 +100,7 @@ Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a
 ## License
 
 ```
-Copyright 2016-2024 Kong Inc.
+Copyright 2016-2025 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
