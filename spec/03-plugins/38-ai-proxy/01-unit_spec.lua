@@ -1157,8 +1157,46 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         return headers[header_name]
       end,
 
-    assert.is_truthy(compatible)
-    assert.is_nil(err)
+      ["get_uri_captures"] = function()
+        return {
+          ["named"] = {
+            ["uri_cap_1"] = "cap_value_here_1",
+            ["uri_cap_2"] = "cap_value_here_2",
+          },
+        }
+      end,
+
+      ["get_query_arg"] = function(query_arg_name)
+        local query_args = {
+          ["arg_1"] = "arg_value_here_1",
+          ["arg_2"] = "arg_value_here_2",
+        }
+        return query_args[query_arg_name]
+      end,
+    }
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "$(uri_captures.uri_cap_2)",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "string-1",
+          azure_deployment_id = "string-2",
+          azure_api_version = "string-3",
+        },
+      },
+    }
+
+    local result, err = ai_shared.merge_model_options(fake_request, fake_config)
+    assert.is_falsy(err)
+    assert.same("cap_value_here_2", result.model.name)
   end)
 
   it("llm/v1/chat message is not compatible with llm/v1/completions route", function()

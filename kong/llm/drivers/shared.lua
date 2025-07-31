@@ -17,6 +17,7 @@ local str_find     = string.find
 local str_byte     = string.byte
 local str_sub      = string.sub
 local splitn       = require("kong.tools.string").splitn
+local table_remove = table.remove
 
 local NEWLINE = str_byte("\n")
 local SPACE = str_byte(" ")
@@ -78,6 +79,7 @@ _M._CONST = {
   ["GEMINI_STREAM_CONTENT_TYPE"] = "application/json",
   ["SSE_CONTENT_TYPE"] = "text/event-stream",
   ["UNIX_EPOCH"] = "1970-01-01T00:00:00.000000Z",
+  ["STRUCTURED_OUTPUT_TOOL_NAME"] = "kong_inc_to_structured_output",
 }
 
 _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
@@ -1254,6 +1256,39 @@ function _M.override_upstream_url(parsed_url, conf, model)
     -- why?
     parsed_url.path = kong.request.get_path()
   end
+end
+
+function _M.convert_structured_output_tool(response)
+  -- bounds check
+  if not response
+    or not response.choices
+    or not response.choices[1]
+    or not response.choices[1].message
+    or not response.choices[1].message.tool_calls
+  then
+    return nil
+  end
+
+  local tool_calls = response.choices[1].message.tool_calls
+
+  for i, tool_call in ipairs(tool_calls) do
+    if tool_call['function']
+        and tool_call['function'].name == _M._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+    then
+      -- delete the tool and move it to the message params
+      table_remove(response.choices[1].message.tool_calls, i)
+      response.choices[1].message.content = tool_call['function'].arguments or '[]'
+      response.choices[1].finish_reason = "stop"
+
+      if #response.choices[1].message.tool_calls == 0 then
+        response.choices[1].message.tool_calls = nil
+      end
+
+      return response
+    end
+  end
+
+  return nil
 end
 
 -- for unit tests

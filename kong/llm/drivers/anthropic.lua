@@ -12,6 +12,7 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
 -- globals
 local DRIVER_NAME = "anthropic"
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local function kong_prompt_to_claude_prompt(prompt)
@@ -128,6 +129,7 @@ local function to_tools(in_tools)
     if v['function'] then
       v['function'].input_schema = v['function'].parameters
       v['function'].parameters = nil
+      v['function'].strict = nil  -- unsupported
 
       table.insert(out_tools, v['function'])
     end
@@ -163,6 +165,21 @@ local function to_tool_choice(openai_tool_choice)
   return nil
 end
 
+local function extract_structured_content_schema(request_table)
+  -- bounds check EVERYTHING first
+  if not request_table
+    or not request_table.response_format
+    or type(request_table.response_format.type) ~= "string"
+    or type(request_table.response_format.json_schema) ~= "table"
+    or type(request_table.response_format.json_schema.schema) ~= "table"
+  then
+    return nil
+  end
+
+  -- return
+  return request_table.response_format.json_schema.schema
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     local messages = {}
@@ -181,6 +198,26 @@ local transformers_to = {
     -- handle function calling translation from OpenAI format
     messages.tools = request_table.tools and to_tools(request_table.tools)
     messages.tool_choice = request_table.tool_choice and to_tool_choice(request_table.tool_choice)
+
+    local structured_content_schema = extract_structured_content_schema(request_table)
+    if structured_content_schema then
+      set_global_ctx("structured_output_mode", true)
+
+      -- make a tool call that covers all responses, adhering to specific json schema
+      -- we will extract this tool call into the OpenAI "response content" later
+      messages.tools = messages.tools or {}
+      messages.tools[#messages.tools + 1] = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+        description = "Responds with strict structured output.",
+        input_schema = structured_content_schema
+      }
+
+      -- force the json tool use
+      messages.tool_choice = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+        type = "tool",
+      }
+    end
 
     -- these are specific customizations for when another provider calls this transformer
     if model.provider == "gemini" then
@@ -294,14 +331,23 @@ local function handle_stream_event(event_t, model_info, route_type)
     -- last few frames / iterations
     if event_data
     and event_data.usage then
+      local completion_tokens = event_data.usage.output_tokens or 0
+      local stop_reason = event_data.delta
+        and event_data.delta.stop_reason
+        and _OPENAI_STOP_REASON_MAPPING[event_data.delta.stop_reason or "end_turn"]
+      
+      if get_global_ctx("structured_output_mode") then
+        stop_reason = _OPENAI_STOP_REASON_MAPPING["end_turn"]
+      end
+
+      local stop_sequence = event_data.delta
+        and event_data.delta.stop_sequence
+
       return nil, nil, {
         prompt_tokens = nil,
-        completion_tokens = event_data.usage.output_tokens,
-        stop_reason = event_data.delta
-                  and event_data.delta.stop_reason and 
-                  _OPENAI_STOP_REASON_MAPPING[event_data.delta.stop_reason or "end_turn"],
-        stop_sequence = event_data.delta
-                    and event_data.delta.stop_sequence,
+        completion_tokens = completion_tokens,
+        stop_reason = stop_reason,
+        stop_sequence = stop_sequence,
       }
     else
       return nil, "message_delta is missing the metadata block", nil
@@ -310,9 +356,49 @@ local function handle_stream_event(event_t, model_info, route_type)
   elseif event_id == "content_block_start" then
     -- content_block_start is just an empty string and indicates
     -- that we're getting an actual answer
+
+    -- if this content block is starting a structure output tool call,
+    -- we convert it into a standard text block start marker
+    if get_global_ctx("structured_output_mode") then
+      if event_data.content_block
+          and event_data.content_block.type == "tool_use"
+          and event_data.content_block.name == ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+      then
+        return delta_to_event(
+          {
+            content_block = {
+              text = "",
+              type = "text",
+            },
+            index = 0,
+            type = "content_block_start",
+          }
+        , model_info)
+      end
+    end
+
     return delta_to_event(event_data, model_info)
 
   elseif event_id == "content_block_delta" then
+    -- if this content block is continuing a structure output tool call,
+    -- we convert it into a standard text block
+    if get_global_ctx("structured_output_mode") then
+      if event_data.delta
+          and event_data.delta.type == "input_json_delta"
+      then
+        return delta_to_event(
+          {
+            delta = {
+              text = event_data.delta.partial_json or "",
+              type = "text",
+            },
+            index = 0,
+            type = "content_block_delta",
+          }
+        , model_info)
+      end
+    end
+
     return delta_to_event(event_data, model_info)
 
   elseif event_id == "message_stop" then
@@ -396,6 +482,13 @@ local transformers_from = {
         model = response_table.model,
         object = "chat.completion",
       }
+
+      -- check for structured output tool call
+      if get_global_ctx("structured_output_mode") then
+        -- if we have a structured output tool call, we need to convert it to a message
+        -- this is a workaround for the fact that Anthropic does not return structured output
+        res = ai_shared.convert_structured_output_tool(res) or res
+      end
 
       return cjson.encode(res)
     else
