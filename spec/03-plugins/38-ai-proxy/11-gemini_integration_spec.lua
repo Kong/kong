@@ -134,16 +134,16 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-        -- 200 chat good with variable
-        local chat_good_with_var = assert(bp.routes:insert({
+        local chat_good_with_no_upstream_port = assert(bp.routes:insert({
           service = empty_service,
           protocols = { "http" },
           strip_path = true,
-          paths = { "~/gemini/llm/v1/chat/good/(?<model>[^/]+)" },
+          paths = { "/gemini/llm/v1/chat/good_with_no_upstream_port" },
         }))
         bp.plugins:insert({
           name = PLUGIN_NAME,
-          route = { id = chat_good_with_var.id },
+          id = "17434c15-2c7c-4c2f-b87a-58880533a3ca",
+          route = { id = chat_good_with_no_upstream_port.id },
           config = {
             route_type = "llm/v1/chat",
             auth = {
@@ -155,12 +155,12 @@ for _, strategy in helpers.all_strategies() do
               log_statistics = true,
             },
             model = {
-              name = "$(uri_captures.model)",
+              name = "gemini-1.5-pro",
               provider = "gemini",
               options = {
                 max_tokens = 256,
                 temperature = 1.0,
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORTS._GEMINI .. "/v1/embeddings",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. "/v1/chat/completions",
                 input_cost = 15.0,
                 output_cost = 15.0,
               },
@@ -169,7 +169,7 @@ for _, strategy in helpers.all_strategies() do
         })
         bp.plugins:insert {
           name = "file-log",
-          route = { id = chat_good_with_var.id },
+          route = { id = chat_good_with_no_upstream_port.id },
           config = {
             path = FILE_LOG_PATH_WITH_PAYLOADS,
           },
@@ -373,6 +373,24 @@ for _, strategy in helpers.all_strategies() do
             assert.match_re(actual_request_log, [[.*content.*What is 1 \+ 1.*]])
             assert.match_re(actual_response_log, [[.*content.*Everything is okay.*]])
           end)
+          it("good request with no upstream port", function()
+            local r = client:get("/gemini/llm/v1/chat/good_with_no_upstream_port", {
+              headers = {
+                ["content-type"] = "application/json",
+                ["accept"] = "application/json",
+              },
+              body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+            })
+            -- validate that the request succeeded, response status 200
+            assert.res_status(502, r)
+
+            -- test stats from file-log
+            local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+            assert.same("127.0.0.1", log_message.client_ip)
+            local tries = log_message.tries
+            assert.is_table(tries)
+            assert.equal(tries[1].port, 80)
+              end)
         end)
 
         describe("gemini (gemini) llm/v1/chat with query param auth", function()

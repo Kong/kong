@@ -346,6 +346,52 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
+      -- 200 chat good with one option
+      local chat_good_with_no_upstream_port = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http", "https" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/chat/good_with_no_upstream_port" },
+        snis = { "example.test" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        id = "6e7c40f6-ce96-48e4-a366-d109c169e44a",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+            allow_override = true,
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host .."/llm/v1/chat/good",
+              input_cost = 10.0,
+              output_cost = 10.0,
+            },
+          },
+        },
+      }
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          path = FILE_LOG_PATH_NO_LOGS,
+        },
+      }
+
+
       -- 200 chat good with statistics disabled
       local chat_good_no_stats = assert(bp.routes:insert {
         service = empty_service,
@@ -1074,6 +1120,24 @@ for _, strategy in helpers.all_strategies() do
         })
 
         assert.res_status(200 , r)
+      end)
+
+      it("authorized request with client header auth and no self upstream port", function()
+        local r = client:post("/openai/llm/v1/chat/good_with_no_upstream_port", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer openai-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+        })
+
+        assert.res_status(502 , r)
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        local tries = log_message.tries
+        assert.is_table(tries)
+        assert.equal(tries[1].port, 80)
       end)
 
       it("authorized request with client right header auth with no allow_override", function()

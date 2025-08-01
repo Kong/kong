@@ -678,7 +678,8 @@ function _M.configure_request(conf, aws_sdk)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
+  local default_port = (parsed_url.scheme == "https" or parsed_url.scheme == "wss") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
 
   -- do the IAM auth and signature headers
   aws_sdk.config.signatureVersion = "v4"

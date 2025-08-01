@@ -260,7 +260,8 @@ function _M.configure_request(conf)
     kong.service.request.set_path(parsed_url.path)
   end
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, tonumber(parsed_url.port) or 443)
+  local default_port = (parsed_url.scheme == "https" or parsed_url.scheme == "wss") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

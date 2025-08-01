@@ -581,7 +581,8 @@ function _M.configure_request(conf)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
+  local default_port = (parsed_url.scheme == "https") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
 
   kong.service.request.set_header("anthropic-version", model.options.anthropic_version)
 
