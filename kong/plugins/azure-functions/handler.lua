@@ -79,7 +79,7 @@ function azure:access(conf)
   end
 
   if kong.configuration.enabled_headers[VIA_HEADER] then
-    local outbound_via = (var.http2 and "2 " or "1.1 ") .. server_tokens
+    local outbound_via = (var.http2 and "2 " or "1.1 ") .. fmt("kong (%s)", server_tokens)
     response_headers[VIA_HEADER] = response_headers[VIA_HEADER] and response_headers[VIA_HEADER] .. ", " .. outbound_via
                                    or outbound_via
  end
