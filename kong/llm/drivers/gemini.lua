@@ -119,7 +119,7 @@ local function handle_stream_event(event_t, model_info, route_type)
     }
 
     return cjson.encode(new_event), nil, metadata
-  
+
   elseif is_tool_content(event) then
     local metadata = {}
     metadata.finish_reason     = finish_reason
@@ -332,7 +332,7 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
             if #v.content > 0 then  -- check it has ome kind of array element
               for j, part in ipairs(v.content) do
                 local this_part, err = openai_part_to_gemini_part(part)
-                
+
                 if not this_part then
                   if not err then
                     err = "message at position " .. i .. ", part at position " .. j .. " does not match expected OpenAI format"
@@ -536,6 +536,11 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
                                                              or "generateContent"
   local f_url = conf.model.options and conf.model.options.upstream_url
 
+  -- Update the operation in the custom upstream_url to match the current mode (streaming or non-streaming)
+  if f_url then
+    f_url = f_url:gsub(":(streamGenerateContent)$", ":" .. operation)
+                 :gsub(":(generateContent)$", ":" .. operation)
+
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
     if conf.model.options
@@ -639,6 +644,11 @@ function _M.configure_request(conf, identity_interface)
   local operation = get_global_ctx("stream_mode") and "streamGenerateContent"
                                                              or "generateContent"
   local f_url = model.options and model.options.upstream_url
+
+  --
+  if f_url then
+    f_url = f_url:gsub(":(streamGenerateContent)$", ":" .. operation)
+                 :gsub(":(generateContent)$", ":" .. operation)
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
