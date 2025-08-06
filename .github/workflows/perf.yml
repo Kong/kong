@@ -31,6 +31,10 @@ jobs:
       cache-key: ${{ steps.cache-key.outputs.cache-key }}
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
@@ -101,6 +105,10 @@ jobs:
       group: perf-ce
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     # set up mutex across CE and EE to avoid resource race
     - name: Set up mutex
       uses: ben-z/gh-action-mutex@9709ba4d8596ad4f9f8bbe8e0f626ae249b1b3ac # v1.0-alpha-6
