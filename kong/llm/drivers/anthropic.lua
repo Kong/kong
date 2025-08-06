@@ -128,6 +128,33 @@ local function to_tools(in_tools)
   return out_tools
 end
 
+local function to_tool_choice(openai_tool_choice)
+  -- See https://docs.anthropic.com/en/api/messages#body-tool-choice and
+  -- https://platform.openai.com/docs/api-reference/chat/create#chat-create-tool_choice
+  if type(openai_tool_choice) == "string" then
+    if openai_tool_choice == "required" then
+      return {type = "any"}
+    elseif openai_tool_choice == "none" or openai_tool_choice == "auto" then
+      return {type = openai_tool_choice}
+    else
+      kong.log.warn("invalid tool choice string: ", openai_tool_choice, ", expected 'required', 'none', or 'auto'")
+      return nil
+    end
+  end
+
+  if type(openai_tool_choice) == "table" then
+    if openai_tool_choice.type == "function" and openai_tool_choice["function"].name then
+      return {type = "tool", name = openai_tool_choice["function"].name}
+    end
+
+    kong.log.warn("invalid tool choice table: ", cjson.encode(openai_tool_choice))
+    return nil
+  end
+
+  kong.log.warn("invalid tool choice type: ", type(openai_tool_choice), ", expected string or table")
+  return nil
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     local messages = {}
@@ -145,7 +172,7 @@ local transformers_to = {
 
     -- handle function calling translation from OpenAI format
     messages.tools = request_table.tools and to_tools(request_table.tools)
-    messages.tool_choice = request_table.tool_choice
+    messages.tool_choice = request_table.tool_choice and to_tool_choice(request_table.tool_choice)
 
     return messages, "application/json", nil
   end,
