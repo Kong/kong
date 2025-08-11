@@ -15,6 +15,18 @@ mkdir -p $(dirname $@)
 # alias LDOC command to true(1) command
 export LDOC=true
 
+if [ -f kong-latest.rockspec ]; then
+    version=$(grep -E '^\s*(major|minor|patch)\s*=' kong/meta.lua \
+        | sed -E 's/[^0-9]*([0-9]+).*/\1/' \
+        | paste -sd. -)
+
+    tmpfile=$(mktemp kong-rockspec.XXXX)
+    sed "s/^version *= *\".*\"/version = \"$version-0\"/" kong-latest.rockspec > "$tmpfile"
+    mv "$tmpfile" kong-latest.rockspec
+
+    mv kong-latest.rockspec kong-$version-0.rockspec
+fi
+
 $luarocks_exec make --no-doc >$@.tmp 2>&1
 
 # only generate the output when the command succeeds

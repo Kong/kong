@@ -94,6 +94,19 @@ function build_containers() {
     $COMPOSE up --wait
     prepare_container $OLD_CONTAINER
     docker exec -w /kong $OLD_CONTAINER make $old_make_target CRYPTO_DIR=/usr/local/kong
+
+    if [ -f kong-latest.rockspec ]; then
+        version=$(grep -E '^\s*(major|minor|patch)\s*=' kong/meta.lua \
+            | sed -E 's/[^0-9]*([0-9]+).*/\1/' \
+            | paste -sd. -)
+    
+        tmpfile=$(mktemp kong-rockspec.XXXX)
+        sed "s/^version *= *\".*\"/version = \"$version-0\"/" kong-latest.rockspec > "$tmpfile"
+        mv "$tmpfile" kong-latest.rockspec
+    
+        mv kong-latest.rockspec kong-$version-0.rockspec
+    fi
+
     make dev-legacy CRYPTO_DIR=/usr/local/kong
 }
 
