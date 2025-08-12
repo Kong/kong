@@ -1,3 +1,0 @@
-message: "refactored request content type constants to be shared via kong.constants."
-type: refactor
-scope: Core

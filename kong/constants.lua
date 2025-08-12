@@ -297,11 +297,6 @@ local constants = {
     STREAM_TLS_PASSTHROUGH = "sp",
     STREAM_RPC = "rp",
   },
-
-  CONTENT_TYPE = "Content-Type",
-  CONTENT_TYPE_POST = "application/x-www-form-urlencoded",
-  CONTENT_TYPE_JSON = "application/json",
-  CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
