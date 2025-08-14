@@ -9,12 +9,11 @@ local string_gsub = string.gsub
 local table_insert = table.insert
 local signer = require("resty.aws.request.sign")
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
-
 --
 
 -- globals
 local DRIVER_NAME = "bedrock"
-local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local _OPENAI_ROLE_MAPPING = {
@@ -79,7 +78,7 @@ local function to_tools(in_tools)
     if v['function'] then
       out_tools = out_tools or {}
 
-      out_tools[i] = {
+      table_insert(out_tools, {
         toolSpec = {
           name = v['function'].name,
           description = v['function'].description,
@@ -87,7 +86,7 @@ local function to_tools(in_tools)
             json = v['function'].parameters,
           },
         },
-      }
+      })
     end
   end
 
@@ -272,6 +271,33 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 end
 
+local function extract_structured_content_schema(request_table)
+  -- bounds check EVERYTHING first
+  if not request_table
+    or not request_table.response_format
+    or type(request_table.response_format.type) ~= "string"
+    or type(request_table.response_format.json_schema) ~= "table"
+    or type(request_table.response_format.json_schema.schema) ~= "table"
+  then
+    return nil
+  end
+
+  -- return
+  return request_table.response_format.json_schema.schema
+end
+
+local function schema_to_toolspec(structured_content_schema)
+  return {
+    toolSpec = {
+      name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+      description = "Responds with strict structured output.",
+      inputSchema = {
+        json = structured_content_schema
+      }
+    }
+  }
+end
+
 local function to_bedrock_chat_openai(request_table, model_info, route_type)
   if not request_table then
     local err = "empty request table received for transformation"
@@ -419,6 +445,26 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
     new_r.toolConfig.tools = to_tools(request_table.tools)
   end
 
+  -- check for "structured output" mode
+  -- https://docs.aws.amazon.com/nova/latest/userguide/prompting-structured-output.html "Example 3"
+  local structured_content_schema = extract_structured_content_schema(request_table)
+  if structured_content_schema then
+    set_global_ctx("structured_output_mode", true)
+
+    -- set the output schema as an available tool
+    new_r.toolConfig = new_r.toolConfig or {}
+    new_r.toolConfig.tools = new_r.toolConfig.tools or {}
+
+    table_insert(new_r.toolConfig.tools, schema_to_toolspec(structured_content_schema))
+
+    -- force the use of that tool
+    new_r.toolChoice = {
+      tool = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+      }
+    }
+  end
+
   new_r.additionalModelRequestFields = request_table.bedrock
                                    and request_table.bedrock.additionalModelRequestFields
                                    and to_additional_request_fields(request_table)
@@ -454,6 +500,13 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
     }
     client_response.object = "chat.completion"
     client_response.model = model_info.name
+
+    -- check for structured output tool call
+    if get_global_ctx("structured_output_mode") then
+      -- if we have a structured output tool call, we need to convert it to a message
+      -- this is a workaround for the fact that Bedrock-Converse does not support structured output
+      client_response = ai_shared.convert_structured_output_tool(client_response) or client_response
+    end
 
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Bedrock, or max_tokens too short"
@@ -527,6 +580,7 @@ function _M.to_format(request_table, model_info, route_type)
     request_table,
     model_info
   )
+
   if err or (not ok) then
     return nil, nil, fmt("error transforming to %s://%s: %s", model_info.provider, route_type, err)
   end
