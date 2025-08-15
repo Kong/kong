@@ -508,6 +508,8 @@ local function is_leap(y)
   return (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
 end
 
+local ISO_8601_PATTERN = "^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)%.(%d+)Z$"
+
 ---
 -- Converts a JSON-format (ISO 8601) Timestamp into seconds since UNIX EPOCH.
 -- Input only supports UTC timezone (suffix 'Z').
@@ -515,9 +517,12 @@ end
 -- @param {string} ISO 8601 UTC input time, example '2025-04-22T13:40:31.926503Z'
 -- @return {number} Seconds count since UNIX EPOCH.
 function _M.iso_8601_to_epoch(timestamp)
-  local year, month, day, hour, min, sec, _ =
-    string.match(timestamp, "(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+).(%d+)Z")
+  if not string.match(timestamp, ISO_8601_PATTERN) then
+    return nil, "Invalid ISO 8601 timestamp format"
+  end
 
+  local year, month, day, hour, min, sec, _ =
+    string.match(timestamp, ISO_8601_PATTERN)
 
   -- we can't use os.time as it relys on the system timezone setup and won't always be UTC
 
@@ -525,11 +530,20 @@ function _M.iso_8601_to_epoch(timestamp)
   year, month, day = tonumber(year), tonumber(month), tonumber(day)
   hour, min, sec = tonumber(hour), tonumber(min), tonumber(sec)
 
+  if year < 1970 or month < 1 or month > 12 or day < 1 or day > 31
+      or hour < 0 or hour > 23 or min < 0 or min > 59 or sec < 0 or sec > 59 then
+    return nil, "Invalid date/time components"
+  end
+
   -- Days in each month (non-leap year)
   local days_in_month = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 
   if is_leap(year) then
     days_in_month[2] = 29
+  end
+
+  if day > days_in_month[month] then
+    return nil, "Invalid day for the given month"
   end
 
   -- Calculate days since Unix epoch (1970-01-01)
@@ -800,7 +814,11 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     -- common fields
     output.model = response_table.model
-    output.created = _M.iso_8601_to_epoch(response_table.created_at)
+    output.created, err = _M.iso_8601_to_epoch(response_table.created_at)
+    if err then
+      ngx.log(ngx.WARN, "failed to convert created_at to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+      output.created = 0
+    end
 
     -- analytics
     output.usage = {

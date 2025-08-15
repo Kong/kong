@@ -199,7 +199,12 @@ local function handle_stream_event(event_t, model_info, route_type)
     metadata.finish_reason = (finish_reason and _OPENAI_STOP_REASON_MAPPING[finish_reason or "STOP"])
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
-    metadata.created = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    metadata.created, err = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    if err then
+      ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+      metadata.created = 0
+    end
+
     metadata.id = event.responseId
 
     local new_event = {
@@ -231,7 +236,11 @@ local function handle_stream_event(event_t, model_info, route_type)
     metadata.finish_reason     = _OPENAI_STOP_REASON_MAPPING[finish_reason or "STOP"]
     metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
-    metadata.created = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    metadata.created, err = ai_shared.iso_8601_to_epoch(event.createTime or ai_shared._CONST.UNIX_EPOCH)
+    if err then
+      ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+      metadata.created = 0
+    end
     metadata.id = event.responseId
 
     if event.candidates and #event.candidates > 0 then
@@ -544,7 +553,11 @@ local function from_gemini_chat_openai(response, model_info, route_type)
 
       messages.object = "chat.completion"
       messages.model = model_info.name
-      messages.created = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      messages.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      if err then
+        ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+        messages.created = 0
+      end
       messages.id = response.responseId
 
     elseif is_tool_content(response) then
@@ -572,7 +585,11 @@ local function from_gemini_chat_openai(response, model_info, route_type)
         finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
       }
 
-      messages.created = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      messages.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      if err then
+        ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+        messages.created = 0
+      end
       messages.id = response.responseId
 
     end

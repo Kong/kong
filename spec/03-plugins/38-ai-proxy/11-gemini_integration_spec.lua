@@ -411,7 +411,7 @@ for _, strategy in helpers.all_strategies() do
 
       describe("anthropic models", function()
         describe("gemini (anthropic) llm/v1/chat", function()
-          it("good request", function()
+          it("good request #tt", function()
             local r = client:get("/anthropic/llm/v1/chat/good", {
               headers = {
                 ["content-type"] = "application/json",

@@ -3232,6 +3232,170 @@ describe("json_array_iterator", function()
   end)
 end)
 
+describe("iso_8601_to_epoch", function()
+  local shared = require "kong.llm.drivers.shared"
+
+  describe("Basic functionality", function()
+    it("should convert Unix epoch start correctly", function()
+      local result = shared.iso_8601_to_epoch("1970-01-01T00:00:00.000Z")
+      assert.are.equal(0, result)
+    end)
+
+    it("should convert a simple timestamp correctly", function()
+      -- 2000-01-01T00:00:00.000Z should be 946684800
+      local result = shared.iso_8601_to_epoch("2000-01-01T00:00:00.000Z")
+      assert.are.equal(946684800, result)
+    end)
+
+    it("should handle time components correctly", function()
+      -- 1970-01-01T01:00:00.000Z should be 3600 (1 hour)
+      local result = shared.iso_8601_to_epoch("1970-01-01T01:00:00.000Z")
+      assert.are.equal(3600, result)
+    end)
+
+    it("should handle full time specification", function()
+      -- 1970-01-01T12:34:56.000Z should be 12*3600 + 34*60 + 56 = 45296
+      local result = shared.iso_8601_to_epoch("1970-01-01T12:34:56.000Z")
+      assert.are.equal(45296, result)
+    end)
+  end)
+
+  describe("Leap year handling", function()
+    it("should handle leap year correctly", function()
+      -- 2000 is a leap year, Feb 29th should exist
+      -- 2000-02-29T00:00:00.000Z should be 951782400
+      local result = shared.iso_8601_to_epoch("2000-02-29T00:00:00.000Z")
+      assert.are.equal(951782400, result)
+    end)
+
+    it("should handle century year that is not leap year", function()
+      -- 2100 is not a leap year (divisible by 100 but not 400)
+      -- 2100-02-01T00:00:00.000Z should account for Feb having only 28 days
+      local result = shared.iso_8601_to_epoch("2100-02-01T00:00:00.000Z")
+      local non_leap_year = shared.iso_8601_to_epoch("2101-02-01T00:00:00.000Z")
+      -- The difference should be exactly one year
+      local diff = non_leap_year - result
+      assert.are.equal(365 * 86400, diff) -- 366 days in seconds
+    end)
+
+    it("should handle year 2000 leap year edge case", function()
+      -- Year 2000 is divisible by 400, so it IS a leap year
+      -- Test March 1st in a leap year vs non-leap year
+      local leap_year = shared.iso_8601_to_epoch("2000-02-01T00:00:00.000Z")
+      local non_leap_year = shared.iso_8601_to_epoch("2001-02-01T00:00:00.000Z")
+
+      -- The difference should be exactly one year plus one day (leap day)
+      local diff = non_leap_year - leap_year
+      assert.are.equal(366 * 86400, diff) -- 366 days in seconds
+    end)
+  end)
+
+  describe("Month boundaries", function()
+    it("should handle month transitions correctly", function()
+      local jan31 = shared.iso_8601_to_epoch("2000-01-31T00:00:00.000Z")
+      local feb01 = shared.iso_8601_to_epoch("2000-02-01T00:00:00.000Z")
+
+      -- Should be exactly 1 day difference
+      assert.are.equal(86400, feb01 - jan31)
+    end)
+
+    it("should handle December to January transition", function()
+      local dec31 = shared.iso_8601_to_epoch("1999-12-31T00:00:00.000Z")
+      local jan01 = shared.iso_8601_to_epoch("2000-01-01T00:00:00.000Z")
+
+      -- Should be exactly 1 day difference
+      assert.are.equal(86400, jan01 - dec31)
+    end)
+  end)
+
+  describe("Known timestamps", function()
+    it("should convert Y2K timestamp correctly", function()
+      -- Y2K: 2000-01-01T00:00:00.000Z = 946684800
+      local result = shared.iso_8601_to_epoch("2000-01-01T00:00:00.000Z")
+      assert.are.equal(946684800, result)
+    end)
+
+    it("should convert a recent timestamp correctly", function()
+      -- 2024-01-01T00:00:00.000Z = 1704067200
+      local result = shared.iso_8601_to_epoch("2024-01-01T00:00:00.000Z")
+      assert.are.equal(1704067200, result)
+    end)
+
+    it("should handle timestamps with various time components", function()
+      -- 2020-06-15T14:30:45.000Z
+      local result = shared.iso_8601_to_epoch("2020-06-15T14:30:45.000Z")
+      -- Expected: 1592231445
+      assert.are.equal(1592231445, result)
+    end)
+  end)
+
+  describe("Edge cases", function()
+    it("should handle single digit months and days", function()
+      local result = shared.iso_8601_to_epoch("2020-01-01T01:01:01.000Z")
+      assert.is_true(result > 0)
+    end)
+
+    it("should handle end of month correctly", function()
+      -- Test various month endings
+      local results = {}
+      results[1] = shared.iso_8601_to_epoch("2020-01-31T23:59:59.000Z")
+      results[2] = shared.iso_8601_to_epoch("2020-02-29T23:59:59.000Z") -- Leap year
+      results[3] = shared.iso_8601_to_epoch("2020-04-30T23:59:59.000Z")
+
+      -- Each should be valid positive numbers
+      for i, result in ipairs(results) do
+        assert.is_true(result > 0, "Result " .. i .. " should be positive")
+      end
+    end)
+  end)
+
+  describe("Input validation behavior", function()
+    it("should handle malformed input gracefully", function()
+      -- This will return nil values from string.match, causing tonumber to return nil
+      -- The function should handle this or we should add validation
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("invalid-timestamp"))
+      end, "Invalid ISO 8601 timestamp format")
+    end)
+
+    it("should handle missing Z suffix", function()
+      -- Test what happens with timestamp without Z
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-01-01T00:00:00.000"))
+      end, "Invalid ISO 8601 timestamp format")
+    end)
+
+    it("should account for invalid mday", function()
+      -- Invalid date like 2020-02-30 should not be accepted
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-02-30T00:00:00.000Z"))
+      end, "Invalid day for the given month")
+    end)
+
+    it("should handle invalid month, year and day", function()
+      -- Invalid month like 2020-13-01 should not be accepted
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-13-01T00:00:00.000Z"))
+      end, "Invalid date/time components")
+
+      -- Invalid year like 2020-01-32 should not be accepted
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-01-32T00:00:00.000Z"))
+      end, "Invalid date/time components")
+      -- Invalid year like 2020-00-01 should not be accepted
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-00-01T00:00:00.000Z"))
+      end, "Invalid date/time components")
+
+      -- Invalid year like 2020-01-00 should not be accepted
+      assert.error_matches(function()
+        assert(shared.iso_8601_to_epoch("2020-01-00T00:00:00.000Z"))
+      end, "Invalid date/time components")
+
+    end)
+  end)
+end)
+
 describe("upstream_url capture groups", function()
   local mock_request
 
