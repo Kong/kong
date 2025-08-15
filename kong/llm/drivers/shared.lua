@@ -76,6 +76,7 @@ _M._CONST = {
   ["SSE_TERMINATOR"] = "[DONE]",
   ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
   ["GEMINI_STREAM_CONTENT_TYPE"] = "application/json",
+  ["SSE_CONTENT_TYPE"] = "text/event-stream",
 }
 
 _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
@@ -348,13 +349,39 @@ _M.get_key_bastion = function()
 end
 
 
-local function json_array_iterator(input_str, prev_state)
+local JSON_ARRAY_TYPE = {
+  JSONL = "jsonl", -- JSON Lines format
+  GEMINI = "gemini", -- Gemini [{}, {}] format
+  FLAT_JSON = "flat_json", -- Like JSON Lines format, but the lines may be separated by '\n' or '\r'
+}
+
+-- json_array_iterator is an iterator that parses a JSON array from a string input.
+-- @param input_str The input string containing the JSON array.
+-- @param prev_state The previous state of the iterator, if any.
+-- @param json_array_type The type of JSON array format to parse. See the JSON_ARRAY_TYPE table above for available types.
+local function json_array_iterator(input_str, prev_state, json_array_type)
   local state = prev_state or {
     started = false,
     pos = 1,
     input = input_str,
     eof = false,
   }
+
+  local sep_char, sep_char2, start_char
+  if json_array_type == JSON_ARRAY_TYPE.JSONL then -- JSON Lines format
+    sep_char = "\n"
+    start_char = nil
+  elseif json_array_type == JSON_ARRAY_TYPE.FLAT_JSON then -- Flat JSON format
+    sep_char = "\n"
+    sep_char2 = "\r"
+    start_char = nil
+  elseif json_array_type == JSON_ARRAY_TYPE.GEMINI then -- Gemini [{}, {}] format
+    sep_char = ","
+    start_char = "["
+  else
+    error("Unsupported JSON array type: " .. tostring(json_array_type))
+  end
+
 
   if state.eof then
     error("Iterator has reached end of input")
@@ -374,11 +401,11 @@ local function json_array_iterator(input_str, prev_state)
     while state.pos <= len and state.input:sub(state.pos, state.pos):match("%s") do
       state.pos = state.pos + 1
     end
-    if state.pos > len or state.input:sub(state.pos, state.pos) ~= "[" then
-      error("Invalid start: expected '['")
+    if state.pos > len or (start_char and state.input:sub(state.pos, state.pos) ~= start_char) then
+      error("Invalid start: expected '" .. start_char .. "'")
     end
     state.started = true
-    state.pos = state.pos + 1
+    state.pos = state.pos + (start_char and 1 or 0) -- move past the start character
   end
 
   -- Skip whitespace
@@ -426,14 +453,18 @@ local function json_array_iterator(input_str, prev_state)
             delimiter = state.pos - 1
             state.eof = true
           end
-        elseif char == ',' and brace_count == 0 and bracket_count == 0 then
+        elseif (char == sep_char or (sep_char2 and char == sep_char2))
+          and brace_count == 0 and bracket_count == 0
+        then
           -- Found element delimiter at top level
           delimiter = state.pos - 1
           -- if delimiter is at start of string, skip it in next iteration
-          if state.pos == 1 then
-            start_pos = 2
+          if state.pos == start_pos then
+            start_pos = state.pos + 1
           end
-        elseif brace_count == 0 and bracket_count == 0 and state.pos == len then
+        end
+
+        if not delimiter and brace_count == 0 and bracket_count == 0 and state.pos == len then
           -- Found element delimiter at end of string
           delimiter = state.pos
         end
@@ -458,6 +489,7 @@ local function json_array_iterator(input_str, prev_state)
   end
 end
 
+_M.JSON_ARRAY_TYPE = JSON_ARRAY_TYPE
 _M.json_array_iterator = json_array_iterator
 
 local function ollama_message_has_tools(message)
@@ -508,8 +540,10 @@ function _M.frame_to_events(frame, content_type)
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
   if content_type == _M._CONST.GEMINI_STREAM_CONTENT_TYPE then
-    for element, new_state in json_array_iterator(frame, kong.ctx.plugin.gemini_state) do
-      kong.ctx.plugin.gemini_state = new_state
+    local gemini_state = kong.ctx.plugin.gemini_state
+    local iter = json_array_iterator(frame, gemini_state, JSON_ARRAY_TYPE.GEMINI)
+    while true do
+      local element, gemini_state = iter()
       if element then
         local _, err = cjson.decode(element)
         if err then
@@ -517,9 +551,16 @@ function _M.frame_to_events(frame, content_type)
         end
         events[#events+1] = { data = element }
       end
-      if new_state.eof then  -- array end
+
+      -- the order is important here: we check eof before "not element", so that we don't skip this event
+      if gemini_state.eof then  -- array end
         kong.ctx.plugin.gemini_state = nil
         events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+        return events
+      end
+
+      if not element then
+        kong.ctx.plugin.gemini_state = gemini_state
         return events
       end
     end
@@ -550,11 +591,26 @@ function _M.frame_to_events(frame, content_type)
   -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  elseif (not kong or (not kong.ctx.plugin.gemini_state and not kong.ctx.plugin.truncated_frame)) and string.sub(str_ltrim(frame), 1, 1) == "{" then
-    for event in frame:gmatch("[^\r\n]+") do
-      events[#events + 1] = {
-        data = event,
-      }
+  elseif content_type ~= _M._CONST.SSE_CONTENT_TYPE and
+    -- if we are parsing a flat JSON stream or the first character is '{'
+    (kong.ctx.plugin.flat_json_state or string.sub(str_ltrim(frame), 1, 1) == "{")
+  then
+    local state = kong.ctx.plugin.flat_json_state
+    local iter = json_array_iterator(frame, state, JSON_ARRAY_TYPE.FLAT_JSON)
+    while true do
+      local element, state = iter()
+      if element then
+        local _, err = cjson.decode(element)
+        if err then
+          kong.log.err("malformed JSON in flat json stream: ", err, ": ", element)
+        end
+        events[#events+1] = { data = element }
+      end
+
+      if not element then
+        kong.ctx.plugin.flat_json_state = state
+        return events
+      end
     end
 
   -- standard SSE parser

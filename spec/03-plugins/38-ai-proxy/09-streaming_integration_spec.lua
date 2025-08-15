@@ -235,10 +235,10 @@ for _, strategy in helpers.all_strategies() do
                   -- GOOD RESPONSE
 
                   ngx.status = 200
-                  ngx.header["Content-Type"] = "text/event-stream"
+                  ngx.header["Content-Type"] = "application/stream+json"
 
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
-                    ngx.print(fmt("%s\n\n", EVENT))
+                    ngx.print(fmt("%s\n", EVENT))
                   end
                 end
               else

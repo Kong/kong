@@ -5,6 +5,7 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local llm = require("kong.llm")
 local ai_shared = require("kong.llm.drivers.shared")
+local pdk_log = require "kong.pdk.log"
 
 local SAMPLE_LLM_V2_CHAT_MULTIMODAL_IMAGE_URL = {
   messages = {
@@ -470,6 +471,15 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     package.loaded["kong.llm.drivers.shared"] = nil
     _G.TEST = true
     ai_shared = require("kong.llm.drivers.shared")
+  end)
+
+  before_each(function()
+    _G.kong = {}
+    kong.log = pdk_log.new(kong)
+    -- provide clean context for each test
+    kong.ctx = {
+      plugin = {},
+    }
   end)
 
   teardown(function()
@@ -958,7 +968,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms complete-json type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
-      local events = ai_shared._frame_to_events(input, "text/event-stream")  -- not "truncated json mode" like Gemini
+      local events = ai_shared._frame_to_events(input, "application/stream+json")  -- not "truncated json mode" like Gemini
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -986,6 +996,23 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.equal(#events, #expected_events)
       for i, _ in ipairs(expected_events) do
         -- tables are random ordered, so we need to compare each serialized event
+        assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data))
+      end
+    end)
+
+    it("transforms flat json type separated with \\r", function()
+      local input = pl_file.read("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/cohere/input.json")
+      -- Cohere's response is \n delimited JSON events
+      -- https://docs.cohere.com/v1/reference/chat-stream
+      -- We simulate a flat json input separated with `\r` by replacing \n with \r
+      input = input:gsub("\n", "\r")
+      local events = ai_shared._frame_to_events(input, "application/stream+json")
+
+      local expected = pl_file.read("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/cohere/expected-output.json")
+      local expected_events = cjson.decode(expected)
+
+      assert.equal(#events, #expected_events)
+      for i, _ in ipairs(expected_events) do
         assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data))
       end
     end)
@@ -2302,16 +2329,25 @@ end)
 
 describe("json_array_iterator", function()
   local json_array_iterator
+  local JSON_ARRAY_TYPE
   lazy_setup(function()
     _G.TEST = true
     package.loaded["kong.llm.drivers.shared"] = nil
-    json_array_iterator = require("kong.llm.drivers.shared")._json_array_iterator
+    json_array_iterator = require("kong.llm.drivers.shared").json_array_iterator
+    JSON_ARRAY_TYPE = require("kong.llm.drivers.shared").JSON_ARRAY_TYPE
   end)
 
   -- Helper function to collect all elements from iterator
-  local function collect_elements(input)
+  local function collect_elements(input, jsonl)
     local elements = {}
-    local iter = json_array_iterator(input)
+    local json_array_type
+    if jsonl then
+      json_array_type = JSON_ARRAY_TYPE.JSONL
+    else
+      json_array_type = JSON_ARRAY_TYPE.GEMINI
+    end
+
+    local iter = json_array_iterator(input, nil, json_array_type)
     local next_element = iter()
     while next_element do
       table.insert(elements, next_element)
@@ -2383,13 +2419,13 @@ describe("json_array_iterator", function()
       local iter
 
       -- First chunk (split within string)
-      iter = json_array_iterator('["hel', state)
+      iter = json_array_iterator('["hel', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.is_nil(element)  -- Should return nil as string is incomplete
       state = new_state
 
       -- Second chunk (complete string)
-      iter = json_array_iterator('lo"]', state)
+      iter = json_array_iterator('lo"]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('"hello"', element)
     end)
@@ -2404,12 +2440,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split during escape sequence
-      iter = json_array_iterator('["he\\', state)
+      iter = json_array_iterator('["he\\', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator('\\nllo"]', state)
+      iter = json_array_iterator('\\nllo"]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('"he\\\\nllo"', element)
     end)
@@ -2424,12 +2460,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split between object definition
-      iter = json_array_iterator('[{"name": "Jo', state)
+      iter = json_array_iterator('[{"name": "Jo', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator('hn"}, {"age": 30}]', state)
+      iter = json_array_iterator('hn"}, {"age": 30}]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('{"name": "John"}', element)
 
@@ -2447,12 +2483,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split between nested array
-      iter = json_array_iterator('[[1, 2', state)
+      iter = json_array_iterator('[[1, 2', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator('], [3, 4]]', state)
+      iter = json_array_iterator('], [3, 4]]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('[1, 2]', element)
 
@@ -2470,12 +2506,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split at comma
-      iter = json_array_iterator('[1,', state)
+      iter = json_array_iterator('[1,', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.are.same('1', element)
       state = new_state
 
-      iter = json_array_iterator(' 2]', state)
+      iter = json_array_iterator(' 2]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('2', element)
     end)
@@ -2490,13 +2526,13 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split at comma
-      iter = json_array_iterator('[{"message":"hello world"}, {"message":"goodbye,', state)
+      iter = json_array_iterator('[{"message":"hello world"}, {"message":"goodbye,', state, JSON_ARRAY_TYPE.GEMINI)
       local element, _ = iter()
       assert.are.same('{"message":"hello world"}',element)
       local element, _ = iter()
       assert.is_nil(element)
 
-      iter = json_array_iterator(' world"}]', state)
+      iter = json_array_iterator(' world"}]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('{"message":"goodbye, world"}', element)
     end)
@@ -2511,17 +2547,17 @@ describe("json_array_iterator", function()
       local iter
 
       -- Complex nested structure split
-      iter = json_array_iterator('[{"users": [{"id": 1', state)
+      iter = json_array_iterator('[{"users": [{"id": 1', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator(', "name": "John"}]}, {"status": "', state)
+      iter = json_array_iterator(', "name": "John"}]}, {"status": "', state, JSON_ARRAY_TYPE.GEMINI)
       local element, new_state = iter()
       assert.are.same('{"users": [{"id": 1, "name": "John"}]}', element)
       state = new_state
 
-      iter = json_array_iterator('active"}]', state)
+      iter = json_array_iterator('active"}]', state, JSON_ARRAY_TYPE.GEMINI)
       element = iter()
       assert.are.same('{"status": "active"}', element)
     end)
@@ -2529,7 +2565,7 @@ describe("json_array_iterator", function()
 
   it("should error on invalid start", function()
     assert.has_error(function()
-      json_array_iterator('{1, 2, 3}')()
+      json_array_iterator('{1, 2, 3}', nil, JSON_ARRAY_TYPE.GEMINI)()
     end, "Invalid start: expected '['")
   end)
 
@@ -2570,12 +2606,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split between object definition
-      iter = json_array_iterator('{"name": "Jo', state, true)
+      iter = json_array_iterator('{"name": "Jo', state, JSON_ARRAY_TYPE.JSONL)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator('hn"}\n{"age": 30}', state, true)
+      iter = json_array_iterator('hn"}\n{"age": 30}', state, JSON_ARRAY_TYPE.JSONL)
       element = iter()
       assert.are.same('{"name": "John"}', element)
 
@@ -2593,12 +2629,12 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split between nested array
-      iter = json_array_iterator('[1, 2', state, true)
+      iter = json_array_iterator('[1, 2', state, JSON_ARRAY_TYPE.JSONL)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator(']\n[3, 4]', state, true)
+      iter = json_array_iterator(']\n[3, 4]', state, JSON_ARRAY_TYPE.JSONL)
       element = iter()
       assert.are.same('[1, 2]', element)
 
@@ -2616,13 +2652,13 @@ describe("json_array_iterator", function()
       local iter
 
       -- Split at comma
-      iter = json_array_iterator('{"message":"hello world"}\n{"message":"goodbye\\n', state, true)
+      iter = json_array_iterator('{"message":"hello world"}\n{"message":"goodbye\\n', state, JSON_ARRAY_TYPE.JSONL)
       local element, _ = iter()
       assert.are.same('{"message":"hello world"}',element)
       local element, _ = iter()
       assert.is_nil(element)
 
-      iter = json_array_iterator(' world"}', state, true)
+      iter = json_array_iterator(' world"}', state, JSON_ARRAY_TYPE.JSONL)
       element = iter()
       assert.are.same('{"message":"goodbye\\n world"}', element)
     end)
@@ -2637,17 +2673,17 @@ describe("json_array_iterator", function()
       local iter
 
       -- Complex nested structure split
-      iter = json_array_iterator('{"users": [{"id": 1', state, true)
+      iter = json_array_iterator('{"users": [{"id": 1', state, JSON_ARRAY_TYPE.JSONL)
       local element, new_state = iter()
       assert.is_nil(element)
       state = new_state
 
-      iter = json_array_iterator(', "name": "John"}]}\n{"status": "', state, true)
+      iter = json_array_iterator(', "name": "John"}]}\n{"status": "', state, JSON_ARRAY_TYPE.JSONL)
       local element, new_state = iter()
       assert.are.same('{"users": [{"id": 1, "name": "John"}]}', element)
       state = new_state
 
-      iter = json_array_iterator('active"}', state, true)
+      iter = json_array_iterator('active"}', state, JSON_ARRAY_TYPE.JSONL)
       element = iter()
       assert.are.same('{"status": "active"}', element)
     end)
