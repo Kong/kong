@@ -160,6 +160,36 @@ describe('Gateway Plugins: AI Proxy', function () {
       gcp_use_service_account: true,
       gcp_service_account_json: `${vars.ai_providers.VERTEX_API_KEY}`
     },
+    {
+      name: 'gemini',
+      variant: 'vertex',  //enterprise use (Vertex AI)
+      chat: {
+        model: 'meta-llama/Llama-3.1-8B-Instruct',
+        options: {
+          "upstream_url": "https://us-central1-aiplatform.googleapis.com/v1/projects/432057123508/locations/us-central1/endpoints/9006006284624855040/chat/completions"
+        }
+      },
+      completions: {
+        model: null,
+        options: null
+      },
+      image: {
+        model: null,
+        options: null
+      },
+      image_generation: {
+        model: null,
+        options: null
+      },
+      audio: {
+        model: null,
+        options: null
+      },
+      auth_header: null,
+      auth_key: null,
+      gcp_use_service_account: true,
+      gcp_service_account_json: `${vars.ai_providers.VERTEX_API_KEY}`
+    },
     //Google gemini public use via API does not do audio transcription or image generation or completion mode
     {
       name: 'gemini',

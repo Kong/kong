@@ -4,6 +4,7 @@ local _M = {}
 local cjson = require("cjson.safe")
 local fmt = string.format
 local anthropic = require("kong.llm.drivers.anthropic")
+local openai = require("kong.llm.drivers.openai")
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
 local string_gsub = string.gsub
@@ -646,6 +647,12 @@ function _M.from_format(response_string, model_info, route_type)
   end
   -- otherwise, use the Gemini transformer
 
+  if model_info.options and model_info.options ~= ngx.null and model_info.options.upstream_url and model_info.options.upstream_url ~= ngx.null then
+    if string.find(model_info.options.upstream_url, "/endpoints/") then
+      return openai.from_format(response_string, model_info, route_type)
+    end
+  end
+
   local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok then
     err = response_string
@@ -688,6 +695,17 @@ function _M.to_format(request_table, model_info, route_type)
     return anthropic.to_format(request_table, model_info, route_type)
   end
   -- otherwise, use the Gemini transformer
+
+  if model_info.options and model_info.options ~= ngx.null and model_info.options.upstream_url and model_info.options.upstream_url ~= ngx.null then
+    -- vertex ai model garden most model are openai compatible
+    if string.find(model_info.options.upstream_url, "/endpoints/") then
+      request_table.model = nil
+      local req =  openai.to_format(request_table, model_info, route_type)
+      -- request not accept model arg
+      req.model = nil
+      return req
+    end
+  end
 
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
