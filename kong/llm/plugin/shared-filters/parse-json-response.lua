@@ -22,7 +22,7 @@ function _M:run(_)
 
   local content_type = kong.service.response.get_header("Content-Type") or "application/json"
   -- gemini vertex ai return response header content-type = "text/html" in json case
-  if content_type:sub(1, 16) ~= "application/json" and content_type:sub(1, 16) ~= "text/html" then
+  if content_type:sub(1, 16) ~= "application/json" and content_type:sub(1, 9) ~= "text/html" then
     return true
   end
 
