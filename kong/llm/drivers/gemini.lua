@@ -10,9 +10,12 @@ local socket_url = require("socket.url")
 local string_gsub = string.gsub
 local buffer = require("string.buffer")
 local table_insert = table.insert
+local table_concat = table.concat
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_base = require("kong.llm.plugin.base")
 local pl_string = require "pl.stringx"
+local model_garden_openai_chat_path = "/v1/projects/%s/locations/%s/endpoints/%s/chat/completions"
+local uuid = require("kong.tools.uuid").uuid
 --
 
 -- globals
@@ -24,6 +27,8 @@ local _OPENAI_ROLE_MAPPING = {
   ["system"] = "system",
   ["user"] = "user",
   ["assistant"] = "model",
+  ["model"] = "assistant",
+  ["tool"] = "user",
 }
 
 local _OPENAI_STOP_REASON_MAPPING = {
@@ -71,15 +76,6 @@ local function is_tool_content(content)
         and content.candidates[1].content.parts
         and #content.candidates[1].content.parts > 0
         and content.candidates[1].content.parts[1].functionCall
-end
-
-local function is_function_call_message(message)
-  return message
-        and message.role
-        and message.role == "assistant"
-        and message.tool_calls
-        and type(message.tool_calls) == "table"
-        and #message.tool_calls > 0
 end
 
 local function has_finish_reason(event)
@@ -162,19 +158,43 @@ local function get_gemini_vertex_url(model, route_type, stream_mode)
     return nil, "model.options.gemini.* options must be set for vertex mode"
   end
 
-  local coordinates, err = get_model_coordinates(model.name, stream_mode)
-  if err then
-    return nil, err
+  local forward_path, err
+  local llm_format_adapter = get_global_ctx("llm_format_adapter")
+  if llm_format_adapter then
+    local _
+    forward_path, _, err = llm_format_adapter:get_forwarded_path(model.name, model.options)
+    if err then
+      ngx.log(ngx.WARN, "failed to get forwarded path from llm_format_adapter: ", err)
+      forward_path = nil
+    end
+  end
+
+  if not forward_path then
+    local coordinates, err = get_model_coordinates(model.name, stream_mode)
+    if err then
+      return nil, err
+    end
+
+    if model.options.gemini.endpoint_id and model.options.gemini.endpoint_id ~= ngx.null then
+      -- means gcp vertex garden
+      forward_path = fmt(model_garden_openai_chat_path,
+              model.options.gemini.project_id,
+              model.options.gemini.location_id,
+              model.options.gemini.endpoint_id)
+    else
+      forward_path = fmt(ai_shared.operation_map["gemini_vertex"][route_type].path,
+              model.options.gemini.project_id,
+              model.options.gemini.location_id,
+              coordinates.publisher,
+              model.name,
+              coordinates.operation)
+    end
+
+
   end
 
   return fmt(ai_shared.upstream_url_format["gemini_vertex"],
-             model.options.gemini.api_endpoint) ..
-         fmt(ai_shared.operation_map["gemini_vertex"][route_type].path,
-             model.options.gemini.project_id,
-             model.options.gemini.location_id,
-             coordinates.publisher,
-             model.name,
-             coordinates.operation)
+             model.options.gemini.api_endpoint) .. forward_path
 end
 
 local function handle_stream_event(event_t, model_info, route_type)
@@ -277,28 +297,6 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 end
 
-local function to_tools(in_tools)
-  if not in_tools then
-    return nil
-  end
-
-  local out_tools
-
-  for i, v in ipairs(in_tools) do
-    if v['function'] then
-      out_tools = out_tools or {
-        [1] = {
-          function_declarations = {}
-        }
-      }
-
-      out_tools[1].function_declarations[i] = v['function']
-    end
-  end
-
-  return out_tools
-end
-
 
 local function image_url_to_components(img)
   -- determine the protocol from the first 10 bytes
@@ -384,10 +382,129 @@ local function openai_part_to_gemini_part(openai_part)
   return gemini_part
 end
 
+local function extract_function_calls(message)
+  if message
+      and message.tool_calls
+      and type(message.tool_calls) == "table"
+      and #message.tool_calls > 0
+  then
+    local function_calls = {}
+
+    for _, tool_call in ipairs(message.tool_calls) do
+      if tool_call['type'] == "function" and tool_call['function'] then
+        local args, err = cjson.decode(tool_call['function'].arguments)
+        if err then
+          return nil, "failed to decode function response arguments from assistant's message, not JSON format"
+        end
+
+        local gemini_tool_call = {
+          functionCall = {
+            name = tool_call['function'].name,
+            args = args,
+          },
+        }
+
+        -- Gemini expects function calls to be in the 'parts' array
+        table_insert(function_calls, gemini_tool_call)
+      end
+    end
+
+    return #function_calls > 0 and function_calls or nil
+
+  else
+    return nil
+  end
+end
+
+local function to_tools(tools)
+  if not tools or type(tools) ~= "table" then
+    return nil
+  end
+
+  local out_tools
+
+  for i, tool in ipairs(tools) do
+    if tool.type == "function" and tool['function'] then
+      out_tools = out_tools or {
+        [1] = {
+          function_declarations = {}
+        }
+      }
+
+      out_tools[1].function_declarations[i] = tool['function']
+    end
+  end
+
+  return out_tools
+end
+
+local function openai_toolcontent_to_gemini_toolcontent(content)
+  if not content then
+    return {
+      result = true  -- for now, we'll assume that OpenAI accepts empty result as "WAS EXECUTED"
+    }
+  end
+  
+  if type(content) == "string" then
+    -- try to decode json
+    local decoded_content, _ = cjson.decode(content)
+    if decoded_content and type(decoded_content) == "table" then
+      return decoded_content
+      
+    else
+      return {
+        result = content  -- it's probably a string result on its own, emulate this OpenAI functionality for Gemini
+      }
+    end
+  end
+end
+
+local function extract_function_called_name(tool_calls, tool_call_id)
+  if not tool_calls 
+      or not tool_calls.tool_calls
+      or type(tool_calls.tool_calls) ~= "table" or #tool_calls.tool_calls < 1 then
+    return nil
+  end
+
+  -- Find the tool_call_id from the tool_calls message previous
+  if tool_call_id then
+    for _, tool_call in ipairs(tool_calls.tool_calls) do
+      if tool_call.id == tool_call_id then
+        return tool_call['function'] and tool_call['function'].name
+      end
+    end
+  end
+
+  return nil
+end
+
+local function openai_toolresult_to_gemini_toolresult(tool_calls_msg, tool_result_message)
+  if not tool_result_message then
+    return nil, "tool result message is nil"
+  end
+
+  local function_called_name = extract_function_called_name(tool_calls_msg, tool_result_message.tool_call_id)
+  local tool_result_content = openai_toolcontent_to_gemini_toolcontent(tool_result_message.content)
+
+  if function_called_name and tool_result_content then
+    return {
+      functionResponse = {
+        name = function_called_name,  -- JTODO: get the name from the previous message, link up the IDs
+        response = tool_result_content,
+      }
+    }
+
+  else
+      return nil, "tool result message content does not match expected OpenAI format"
+  end
+end
+
 local function to_gemini_chat_openai(request_table, model_info, route_type)
   local new_r = {}
 
   if request_table then
+    local tool_calls_message_cache
+
     if request_table.messages and #request_table.messages > 0 then
       local system_prompt
 
@@ -398,39 +515,45 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
           system_prompt = system_prompt or buffer.new()
           system_prompt:put(v.content or "")
 
-        elseif v.role and v.role == "tool" then
-          -- handle tool execution output
-          table_insert(new_r.contents, {
-            role = "function",
-            parts = {
-              {
-                function_response = {
-                  response = {
-                    content = {
-                      v.content,
-                    },
-                  },
-                  name = "get_product_info",
-                },
-              },
-            },
-          })
+        elseif ai_shared.is_tool_result_message(v) then
+          -- This will also have "content" as a string but
+          -- requires completely different out-of-sequence handling
 
-        elseif is_function_call_message(v) then
-          -- treat specific 'assistant function call' tool execution input message
-          local function_calls = {}
-          for i, t in ipairs(v.tool_calls) do
-            function_calls[i] = {
-              function_call = {
-                name = t['function'].name,
-              },
-            }
+          -- Is the previous message already a tool result?
+          -- Gemini expects all tool results from a previous message to
+          -- be in the same 'parts' array in its following reply message.
+          if i > 1 and ai_shared.is_tool_result_message(request_table.messages[i-1]) then
+            -- append to the previous message's 'parts' array
+            local previous_parts = new_r.contents[#new_r.contents].parts or {}
+
+            local this_part, err = openai_toolresult_to_gemini_toolresult(tool_calls_message_cache, v)
+            if not this_part then
+              if not err then
+                err = "tool call result at position " .. i-1 .. " does not match expected OpenAI format"
+              end
+              return nil, nil, err
+            end
+
+            table_insert(previous_parts, this_part)
+            new_r.contents[#new_r.contents].parts = previous_parts
+
+          else
+            -- This is the start of the function result blocks
+            tool_calls_message_cache = request_table.messages[i-1]  -- hold this for next N "tool use" msgs as we iterate
+            
+            local this_part, err = openai_toolresult_to_gemini_toolresult(tool_calls_message_cache, v)
+            if not this_part then
+              if not err then
+                err = "tool call result at position " .. i-1 .. " does not match expected OpenAI format"
+              end
+              return nil, nil, err
+            end
+
+            table_insert(new_r.contents, {
+              role = _OPENAI_ROLE_MAPPING[v.role or "tool"],  -- default to Gemini 'user'
+              parts = { this_part },
+            })
           end
-
-          table_insert(new_r.contents, {
-            role = "function",
-            parts = function_calls,
-          })
 
         else
           local this_parts = {}
@@ -446,7 +569,7 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
             }
 
           elseif type(v.content) == "table" then
-            if #v.content > 0 then  -- check it has ome kind of array element
+            if #v.content > 0 then  -- check it has some kind of array element
               for j, part in ipairs(v.content) do
                 local this_part, err = openai_part_to_gemini_part(part)
                 
@@ -461,6 +584,18 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
               end
             else
               return nil, nil, "message at position " .. i .. " does not match expected array format"
+            end
+          end
+
+          local function_calls, err = extract_function_calls(v)
+          if err then
+            return nil, nil, "failed to extract function calls from message at position " .. i-1 .. ": " .. err
+          end
+
+          if function_calls then
+            for _, func_call in ipairs(function_calls) do
+              -- Gemini expects function calls to be in the 'parts' array
+              table_insert(this_parts, func_call)
             end
           end
 
@@ -506,6 +641,76 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
   return new_r, "application/json", nil
 end
 
+local function extract_response_finish_reason(response_candidate)
+  if response_candidate
+        and response_candidate.content
+        and response_candidate.content.parts
+        and type(response_candidate.content.parts) == "table"
+        and #response_candidate.content.parts > 0
+  then
+    for _, part in ipairs(response_candidate.content.parts) do
+      if part.functionCall then
+        return "tool_calls"
+      end
+    end
+  end
+
+  return "stop"
+end
+
+
+local function extract_response_tool_calls(response_candidate)
+  local tool_calls
+
+  if response_candidate
+        and response_candidate.content
+        and response_candidate.content.parts
+        and type(response_candidate.content.parts) == "table"
+        and #response_candidate.content.parts > 0
+  then
+    for _, part in ipairs(response_candidate.content.parts) do
+      if part.functionCall then
+        tool_calls = tool_calls or {}
+
+        table_insert(tool_calls, {
+          ['id'] = "call_" .. uuid(),
+          ['type'] = "function",
+          ['function'] = {
+            ['name'] = part.functionCall.name,
+            ['arguments'] = cjson.encode(part.functionCall.args),
+          },
+        })
+      end
+    end
+
+    return tool_calls
+  end
+
+  return nil
+end
+
+-- openai only supports a single string text part in response right now,
+-- so concat all gemini response parts together
+local function extract_response_content(response_candidate)
+  if response_candidate
+        and response_candidate.content
+        and response_candidate.content.parts
+        and type(response_candidate.content.parts) == "table"
+        and #response_candidate.content.parts > 0
+  then
+    local content = {}
+    for _, part in ipairs(response_candidate.content.parts) do
+      if part.text then
+        table_insert(content, part.text)
+      end
+    end
+
+    return #content > 0 and table_concat(content, "\\n") or nil
+  end
+
+  return nil
+end
+
 local function from_gemini_chat_openai(response, model_info, route_type)
   local err
   if response and (type(response) == "string") then
@@ -518,10 +723,8 @@ local function from_gemini_chat_openai(response, model_info, route_type)
     return nil, err_client
   end
 
-  -- messages/choices table is only 1 size, so don't need to static allocate
-  local messages = {}
-  messages.choices = {}
-  messages.model = model_info.name -- openai format always contains the model name
+  local kong_response = {}
+  kong_response.model = model_info.name -- openai format always contains the model name
 
   if response.candidates and #response.candidates > 0 then
     -- for transformer plugins only
@@ -534,69 +737,45 @@ local function from_gemini_chat_openai(response, model_info, route_type)
 
       return nil, err
 
-    elseif is_response_content(response) then
-      messages.choices[1] = {
-        index = 0,
-        message = {
-          role = "assistant",
-          content = response.candidates[1].content.parts[1].text,
-        },
-        finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
-      }
+    else
+      -- process 'content' messages one by one
+      for i, v in ipairs(response.candidates) do
+        kong_response.choices = kong_response.choices or {}
+
+        kong_response.choices[i] = {
+          index = i - 1,
+          message = {
+            role = _OPENAI_ROLE_MAPPING[v.role or "model"],  -- default to openai 'assistant'
+            content = extract_response_content(v),  -- may be nil
+            tool_calls = extract_response_tool_calls(v),  -- may be nil
+          },
+          finish_reason = extract_response_finish_reason(v),
+        }
+      end
 
       if get_global_ctx("structured_output_mode")
        and #response.candidates[1].content.parts[1].text > 2
        and response.candidates[1].content.parts[1].text == "[]" then
         -- simulate OpenAI "refusal" where the question/answer doesn't fit the structured output schema
-        messages.choices[1].message.content = nil
-        messages.choices[1].message.refusal = "Kong: Vertex refused to answer the question, because it did not fit the structured output schema"
+        kong_response.choices[1].message.content = nil
+        kong_response.choices[1].message.refusal = "Kong: Vertex refused to answer the question, because it did not fit the structured output schema"
       end
 
-      messages.object = "chat.completion"
-      messages.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
+      kong_response.object = "chat.completion"
+      kong_response.model = response.modelVersion or model_info.name
+
+      kong_response.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
       if err then
         ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
-        messages.created = 0
-      end
-      messages.id = response.responseId
-
-    elseif is_tool_content(response) then
-      messages.choices[1] = {
-        index = 0,
-        message = {
-          role = "assistant",
-          tool_calls = {},
-        },
-      }
-
-      local function_call_responses = response.candidates[1].content.parts
-      for i, v in ipairs(function_call_responses) do
-        messages.choices[1].message.tool_calls[i] =
-          {
-            ['function'] = {
-              name = v.functionCall.name,
-              arguments = cjson.encode(v.functionCall.args),
-            },
-          }
+        kong_response.created = 0
       end
 
-    elseif has_finish_reason(response) then
-      messages.choices[1] = {
-        finish_reason = _OPENAI_STOP_REASON_MAPPING[response.candidates[1].finishReason or "STOP"]
-      }
-
-      messages.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
-      if err then
-        ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
-        messages.created = 0
-      end
-      messages.id = response.responseId
-
+      kong_response.id = response.responseId or "chatcmpl-" .. uuid()
     end
 
     -- process analytics
     if response.usageMetadata then
-      messages.usage = {
+      kong_response.usage = {
         prompt_tokens = response.usageMetadata.promptTokenCount,
         completion_tokens = response.usageMetadata.candidatesTokenCount,
         total_tokens = response.usageMetadata.totalTokenCount,
@@ -610,7 +789,7 @@ local function from_gemini_chat_openai(response, model_info, route_type)
 
   end
 
-  return cjson.encode(messages)
+  return cjson.encode(kong_response)
 end
 
 local transformers_to = {
@@ -926,6 +1105,9 @@ if _G._TEST then
   _M._openai_part_to_gemini_part = openai_part_to_gemini_part
   _M._is_vertex_mode = is_vertex_mode
   _M._get_gemini_vertex_url = get_gemini_vertex_url
+  _M._extract_response_tool_calls = extract_response_tool_calls
+  _M._extract_function_calls = extract_function_calls
+  _M._openai_toolresult_to_gemini_toolresult = openai_toolresult_to_gemini_toolresult
 end
 
 

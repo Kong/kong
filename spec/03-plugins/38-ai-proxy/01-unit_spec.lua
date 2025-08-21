@@ -175,6 +175,117 @@ local SAMPLE_OPENAI_TOOLS_REQUEST = {
   },
 }
 
+local SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY = {
+  messages = {
+    {
+      role = "user",
+      content = "What is the current temperature in London? Get it, and then convert it to Fahrenheit.\n\nAlso, side note, what country is London in?"
+    },
+    {
+			role = "assistant",
+			content = nil,
+			tool_calls = {
+				{
+					id = "call_WQY6Dj7ncvDFjE5EuTeGzWGc",
+					type = "function",
+					['function'] = {
+						name = "get_weather",
+						arguments = "{\"location\": \"London\"}"
+					}
+				},
+				{
+					id = "call_KJeuUux7YsaWo7zVUlnklzae",
+					type = "function",
+					['function'] = {
+						name = "where_is_city",
+						arguments = "{\"city_name\": \"London\", \"continent\": \"Europe\"}"
+					}
+				}
+      }
+		},
+		{
+			role = "tool",
+			tool_call_id = "call_WQY6Dj7ncvDFjE5EuTeGzWGc",
+			content = "35"
+		},
+		{
+			role = "tool",
+			tool_call_id = "call_KJeuUux7YsaWo7zVUlnklzae",
+			content = "{\"country\": \"England\", \"continent\": \"Europe\"}"
+		},
+    {
+      role = "assistant",
+      content = "The current temperature in London is 35 degrees Celcius, which is 95 degrees Fahrenheit. London is in England, which is part of Europe."
+    }
+  },
+  tools = {
+		{
+			type = "function",
+			['function'] = {
+				name = "where_is_city",
+				description = "Returns what country a city is in.",
+				parameters = {
+					type = "object",
+					properties = {
+						city_name = {
+							type = "string",
+							description = "City e.g. Bogotá"
+						},
+            continent = {
+              type = "string",
+              description = "Continent e.g. South America"
+            }
+					},
+					required = {
+						"city_name"
+          },
+					additionalProperties = false
+				}
+			}
+		},
+		{
+			type = "function",
+			['function'] = {
+				name = "get_weather",
+				description = "Get current temperature for a given location in Celcius.",
+				parameters = {
+					type = "object",
+					properties = {
+						location = {
+							type = "string",
+							description = "City e.g. Bogotá"
+						}
+					},
+					required = {
+						"location"
+					},
+					additionalProperties = false
+				}
+			}
+		},
+		{
+			type = "function",
+			['function'] = {
+				name = "convert_celcius_to_fahrenheit",
+				description = "Convert Celcius to Fahrenheit.",
+				parameters = {
+					type = "object",
+					properties = {
+						degrees_celcius = {
+							type = "integer",
+							description = "Temperature in DEGREES CELCIUS"
+						}
+					},
+					required = {
+						"degrees_celcius"
+					},
+					additionalProperties = false
+				}
+			}
+		}
+  }
+}
+
 local SAMPLE_GEMINI_TOOLS_RESPONSE = {
   candidates = { {
     content = {
@@ -191,6 +302,43 @@ local SAMPLE_GEMINI_TOOLS_RESPONSE = {
     finishReason = "STOP",
   } },
 }
+
+local SAMPLE_GEMINI_TOOLS_RESPONSE_WITH_CHATTER = {
+  responseId = "chatcmpl-12345",
+  modelVersion = "gemini-2.5-pro-2025_08_09",
+  createTime = "2025-08-04T23:01:58.396462Z",
+  candidates = { {
+    content = {
+      role = "model",
+      parts = { {
+        functionCall = {
+          name = "sql_execute",
+          args = {
+            product_name = "NewPhone"
+          }
+        }
+      },
+      {
+        text = "And now I will call the function to determine your location."
+      },
+      {
+        functionCall = {
+          name = "from_place",
+          args = {
+            city = "London",
+            country = "England"
+          }
+        }
+      },
+      {
+        text = "It has been called."
+      } }
+    },
+    finishReason = "STOP",
+  } },
+}
+
+
 
 local SAMPLE_BEDROCK_TOOLS_RESPONSE = {
   metrics = {
@@ -934,7 +1082,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       _G._TEST = nil
     end)
 
-    it("transforms openai tools to gemini tools GOOD", function()
+    it("transforms openai tools to gemini tool declarations GOOD", function()
       local gemini_tools = gemini_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools)
 
       assert.not_nil(gemini_tools)
@@ -973,16 +1121,265 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.is_nil(gemini_tools)
     end)
 
+    it("transforms openai tool_calls to gemini functionCalls GOOD", function()
+      local gemini_tools = gemini_driver._extract_function_calls(SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[2])
+
+      assert.not_nil(gemini_tools)
+      assert.same(gemini_tools, {
+        {
+          functionCall = {
+            name = "get_weather",
+            args = {
+              location = "London"
+            }
+          }
+        },
+        {
+          functionCall = {
+            name = "where_is_city",
+            args = {
+              city_name = "London",
+              continent = "Europe"
+            }
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tool_calls to gemini functionCalls NO TOOL CALLS", function()
+      local gemini_tools = gemini_driver._extract_function_calls(SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[1])
+
+      assert.is_nil(gemini_tools)
+    end)
+
+    it("transforms openai tool_calls to gemini functionCalls NIL", function()
+      local gemini_tools = gemini_driver._extract_function_calls(nil)
+
+      assert.is_nil(gemini_tools)
+    end)
+
     it("transforms gemini tools to openai tools GOOD", function()
-      local openai_tools = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE, {}, "llm/v1/chat")
+      local openai_tools = gemini_driver._extract_response_tool_calls(SAMPLE_GEMINI_TOOLS_RESPONSE.candidates[1])
 
       assert.not_nil(openai_tools)
 
-      openai_tools = cjson.decode(openai_tools)
-      assert.same(openai_tools.choices[1].message.tool_calls[1]['function'], {
-        name = "sql_execute",
-        arguments = "{\"product_name\":\"NewPhone\"}"
+      for _, v in ipairs(openai_tools) do
+        assert.is_not_nil(v.id)
+        v.id = nil  -- remove random id for comparison
+
+        assert.is_not_nil(v['function'].arguments)
+        v['function'].arguments = cjson.decode(v['function'].arguments)  -- decode arguments to stop flaky tests
+      end
+
+      assert.same(openai_tools, {
+        {
+          ['type'] = "function",
+          ['function'] = {
+            ['name'] = "sql_execute",
+            ['arguments'] = cjson.decode("{\"product_name\":\"NewPhone\"}")
+          }
+        }
       })
+
+      ---
+
+      openai_tools = gemini_driver._extract_response_tool_calls(SAMPLE_GEMINI_TOOLS_RESPONSE_WITH_CHATTER.candidates[1])
+      
+      assert.not_nil(openai_tools)
+      
+      for _, v in ipairs(openai_tools) do
+        assert.is_not_nil(v.id)
+        v.id = nil  -- remove random id for comparison
+
+        assert.is_not_nil(v['function'].arguments)
+        v['function'].arguments = cjson.decode(v['function'].arguments)  -- decode arguments to stop flaky tests
+      end
+
+      assert.same(openai_tools, {
+        {
+          ['type'] = "function",
+          ['function'] = {
+            ['name'] = "sql_execute",
+            ['arguments'] = cjson.decode("{\"product_name\":\"NewPhone\"}")
+          }
+        },
+        {
+          ['type'] = 'function',
+          ['function'] = {
+            ['name'] = 'from_place',
+            ['arguments'] = cjson.decode('{"country":"England","city":"London"}')
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tool_call results to gemini functionResponses GOOD", function()
+      local gemini_toolresult = gemini_driver._openai_toolresult_to_gemini_toolresult(
+        SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[2],
+        SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[3])
+      
+      assert.not_nil(gemini_toolresult)
+      assert.same(gemini_toolresult, {
+        ['functionResponse'] = {
+          ['name'] = 'get_weather',
+          ['response'] = {
+            ['result'] = '35'
+          }
+        }
+      })
+
+      gemini_toolresult = gemini_driver._openai_toolresult_to_gemini_toolresult(
+        SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[2],
+        SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY.messages[4])
+      
+      assert.not_nil(gemini_toolresult)
+      assert.same(gemini_toolresult, {
+        ['functionResponse'] = {
+          ['name'] = 'where_is_city',
+          ['response'] = {
+            ['country'] = 'England',
+            ['continent'] = 'Europe'  
+          }
+        }
+      })
+    end)
+
+    it("transforms openai tools to gemini tools from whole response multiple tool use GOOD", function()
+      local gemini_response, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_OPENAI_TOOLS_REQUEST_WITH_REPLY, {}, "llm/v1/chat")
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_response)
+      assert.not_nil(gemini_response.contents)
+
+      assert.same(gemini_response.contents, {
+        {
+          ['parts'] = {
+            {
+              text = "What is the current temperature in London? Get it, and then convert it to Fahrenheit.\n\nAlso, side note, what country is London in?"
+            }
+          },
+          ['role'] = 'user'
+        },
+        {
+          ['parts'] = {
+            {
+              ['functionCall'] = {
+                ['name'] = "get_weather",
+                ['args'] = {
+                  ['location'] = "London"
+                }
+              }
+            },
+            {
+              ['functionCall'] = {
+                ['name'] = "where_is_city",
+                ['args'] = {
+                  ['city_name'] = "London",
+                  ['continent'] = "Europe"
+                }
+              }
+            }
+          },
+          ['role'] = 'model'
+        },
+        {
+          ['parts'] = {
+            {
+              ['functionResponse'] = {
+                ['name'] = "get_weather",
+                ['response'] = {
+                  ['result'] = "35"
+                }
+              }
+            },
+            {
+              ['functionResponse'] = {
+                ['name'] = "where_is_city",
+                ['response'] = {
+                  ['country'] = "England",
+                  ['continent'] = "Europe"
+                }
+              }
+            }
+          },
+          ['role'] = 'user'
+        },
+        {
+          ['parts'] = {
+            {
+              text = "The current temperature in London is 35 degrees Celcius, which is 95 degrees Fahrenheit. London is in England, which is part of Europe."
+            }
+          },
+          ['role'] = 'model'
+        }
+      })
+    end)
+    
+    it("transforms gemini tools to openai tools from whole response GOOD", function()
+      local openai_response = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_response)
+
+      openai_response = cjson.decode(openai_response)
+
+      for _, v in ipairs(openai_response.choices[1].message.tool_calls) do
+        assert.is_not_nil(v.id)
+        v.id = nil  -- remove random id for comparison
+
+        assert.is_not_nil(v['function'].arguments)
+        v['function'].arguments = cjson.decode(v['function'].arguments)  -- decode arguments to stop flaky tests
+      end
+
+      assert.same(openai_response.choices[1].message.tool_calls, {
+        {
+          ['type'] = "function",
+          ['function'] = {
+            ['name'] = "sql_execute",
+            ['arguments'] = cjson.decode("{\"product_name\":\"NewPhone\"}")
+          }
+        }
+      })
+
+      ---
+
+      openai_response = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE_WITH_CHATTER, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_response)
+
+      openai_response = cjson.decode(openai_response)
+
+      for _, v in ipairs(openai_response.choices[1].message.tool_calls) do
+        assert.is_not_nil(v.id)
+        v.id = nil  -- remove random id for comparison
+
+        assert.is_not_nil(v['function'].arguments)
+        v['function'].arguments = cjson.decode(v['function'].arguments)  -- decode arguments to stop flaky tests
+      end
+
+      assert.same(openai_response.choices[1].message.tool_calls, {
+        {
+          ['type'] = "function",
+          ['function'] = {
+            ['name'] = "sql_execute",
+            ['arguments'] = cjson.decode("{\"product_name\":\"NewPhone\"}")
+          }
+        },
+        {
+          ['type'] = 'function',
+          ['function'] = {
+            ['name'] = 'from_place',
+            ['arguments'] = cjson.decode('{"country":"England","city":"London"}')
+          }
+        }
+      })
+
+      assert.same(openai_response.choices[1].message.content, "And now I will call the function to determine your location.\\nIt has been called.")
+
+      assert.same(openai_response.choices[1].finish_reason, "tool_calls")
+      assert.is_not_nil(openai_response.id)
+      assert.same(openai_response.id, "chatcmpl-12345")
+      assert.same(openai_response.model, "gemini-2.5-pro-2025_08_09")
+      assert.same(openai_response.created, 1754348518.0)
     end)
   end)
 
@@ -1783,71 +2180,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   end)
 
-
-  describe("gemini tools", function()
-    local gemini_driver
-
-    setup(function()
-      _G._TEST = true
-      package.loaded["kong.llm.drivers.gemini"] = nil
-      gemini_driver = require("kong.llm.drivers.gemini")
-    end)
-
-    teardown(function()
-      _G._TEST = nil
-    end)
-
-    it("transforms openai tools to gemini tools GOOD", function()
-      local gemini_tools = gemini_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools)
-
-      assert.not_nil(gemini_tools)
-      assert.same(gemini_tools, {
-        {
-          function_declarations = {
-            {
-              description = "Check a product is in stock.",
-              name = "check_stock",
-              parameters = {
-                properties = {
-                  product_name = {
-                    type = "string"
-                  }
-                },
-                required = {
-                  "product_name"
-                },
-                type = "object"
-              }
-            }
-          }
-        }
-      })
-    end)
-
-    it("transforms openai tools to gemini tools NO_TOOLS", function()
-      local gemini_tools = gemini_driver._to_tools(SAMPLE_LLM_V1_CHAT)
-
-      assert.is_nil(gemini_tools)
-    end)
-
-    it("transforms openai tools to gemini tools NIL", function()
-      local gemini_tools = gemini_driver._to_tools(nil)
-
-      assert.is_nil(gemini_tools)
-    end)
-
-    it("transforms gemini tools to openai tools GOOD", function()
-      local openai_tools = gemini_driver._from_gemini_chat_openai(SAMPLE_GEMINI_TOOLS_RESPONSE, {}, "llm/v1/chat")
-
-      assert.not_nil(openai_tools)
-
-      openai_tools = cjson.decode(openai_tools)
-      assert.same(openai_tools.choices[1].message.tool_calls[1]['function'], {
-        name = "sql_execute",
-        arguments = "{\"product_name\":\"NewPhone\"}"
-      })
-    end)
-  end)
 
   describe("bedrock tools", function()
     local bedrock_driver

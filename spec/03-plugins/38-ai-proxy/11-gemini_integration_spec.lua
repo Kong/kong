@@ -38,8 +38,8 @@ local _EXPECTED_CHAT_STATS_GEMINI = {
   meta = {
     plugin_id = '17434c15-2c7c-4c2f-b87a-58880533a3c1',
     provider_name = 'gemini',
-    request_model = 'gemini-1.5-pro',
-    response_model = 'gemini-1.5-pro',
+    request_model = 'gemini-1.5-flash',
+    response_model = 'gemini-1.5-flash-002',
     llm_latency = 1,
   },
   usage = {
@@ -114,7 +114,7 @@ for _, strategy in helpers.all_strategies() do
               log_statistics = true,
             },
             model = {
-              name = "gemini-1.5-pro",
+              name = "gemini-1.5-flash",
               provider = "gemini",
               options = {
                 max_tokens = 256,
@@ -155,7 +155,7 @@ for _, strategy in helpers.all_strategies() do
               log_statistics = true,
             },
             model = {
-              name = "gemini-1.5-pro",
+              name = "gemini-1.5-flash",
               provider = "gemini",
               options = {
                 max_tokens = 256,
@@ -199,7 +199,7 @@ for _, strategy in helpers.all_strategies() do
               name = "$(uri_captures.model)",
               provider = "gemini",
               options = {
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORTS._GEMINI .. "/v1/chat/completions",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORTS._GEMINI .. "/v1/chat/completions/$(uri_captures.model)",
               },
             },
           },
@@ -370,7 +370,7 @@ for _, strategy in helpers.all_strategies() do
             local json = cjson.decode(body)
 
             -- check this is in the 'kong' response format
-            assert.equals(json.model, "gemini-1.5-pro")
+            assert.equals(json.model, "gemini-1.5-flash-002")
             assert.equals(json.object, "chat.completion")
             assert.equals(json.choices[1].finish_reason, "stop")
 
@@ -423,7 +423,7 @@ for _, strategy in helpers.all_strategies() do
           end)
 
           it("good request with model name from variable", function()
-            local r = client:get("/gemini/llm/v1/chat/good/gemni-2.0-flash", {
+            local r = client:get("/gemini/llm/v1/chat/good/gemini-2.0-flash", {
               headers = {
                 ["content-type"] = "application/json",
                 ["accept"] = "application/json",
@@ -433,7 +433,7 @@ for _, strategy in helpers.all_strategies() do
             -- validate that the request succeeded, response status 200
             local body = assert.res_status(200, r)
             local json = cjson.decode(body)
-            assert.equals("gemni-2.0-flash", json.model)
+            assert.equals("gemini-2.0-flash-079", json.model)
           end)
         end)
 
@@ -507,7 +507,7 @@ for _, strategy in helpers.all_strategies() do
 
         it("should parse gemini model names into coordinates", function()
           -- gemini no stream
-          local model_name = "gemini-1.5-pro"
+          local model_name = "gemini-1.5-flash"
           local coordinates = gemini_driver.get_model_coordinates(model_name, false)
 
           assert.same({
@@ -516,7 +516,7 @@ for _, strategy in helpers.all_strategies() do
           }, coordinates)
 
           -- gemini stream
-          model_name = "gemini-1.5-pro"
+          model_name = "gemini-1.5-flash"
           coordinates = gemini_driver.get_model_coordinates(model_name, true)
           assert.same({
             publisher = "google",
@@ -576,7 +576,7 @@ for _, strategy in helpers.all_strategies() do
           -- err
           local _, err = gemini_driver._get_gemini_vertex_url({
             provider = "gemini",
-            name = "gemini-1.5-pro",
+            name = "gemini-1.5-flash",
           }, "llm/v1/chat", false)
 
           assert.equals("model.options.gemini.* options must be set for vertex mode", err)
@@ -592,19 +592,19 @@ for _, strategy in helpers.all_strategies() do
           -- gemini no stream
           local url = gemini_driver._get_gemini_vertex_url({
             provider = "gemini",
-            name = "gemini-1.5-pro",
+            name = "gemini-1.5-flash",
             options = gemini_options,
           }, "llm/v1/chat", false)
 
-          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-pro:generateContent", url)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-flash:generateContent", url)
 
           -- gemini stream
           url = gemini_driver._get_gemini_vertex_url({
             provider = "gemini",
-            name = "gemini-1.5-pro",
+            name = "gemini-1.5-flash",
             options = gemini_options,
           }, "llm/v1/chat", true)
-          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-pro:streamGenerateContent", url)
+          assert.equals("https://gemini.local/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-1.5-flash:streamGenerateContent", url)
 
           -- claude no stream
           url = gemini_driver._get_gemini_vertex_url({
@@ -670,7 +670,7 @@ for _, strategy in helpers.all_strategies() do
 
         it("should detect vertex mode automatically", function()
           local model = {
-            name = "gemini-1.5-pro",
+            name = "gemini-1.5-flash",
             options = {
               gemini = {
                 api_endpoint = "gemini.local",
@@ -683,7 +683,7 @@ for _, strategy in helpers.all_strategies() do
           assert.is_true(gemini_driver._is_vertex_mode(model))
 
           model = {
-            name = "gemini-1.5-pro",
+            name = "gemini-1.5-flash",
           }
 
           assert.is_falsy(gemini_driver._is_vertex_mode(model))
