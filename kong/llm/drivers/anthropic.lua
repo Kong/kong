@@ -181,12 +181,12 @@ local function extract_structured_content_schema(request_table)
 end
 
 local function read_content(delta)
-  if delta.delta then
-    return delta.delta.text or ""
+  if delta then
+    if delta.delta and delta.delta.text then
+      return delta.delta.text
+    end
 
-  elseif delta.content_block then
-    return delta.content_block or ""
-    
+    -- reserve for more content types here later
   end
 
   return ""
@@ -282,10 +282,7 @@ local function delta_to_event(delta, model_info)
             logprobs = cjson.null,
           },
         },
-        id = kong
-        and kong.ctx
-        and kong.ctx.plugin
-        and kong.ctx.plugin.ai_proxy_anthropic_stream_id,
+        id = message_id,
         model = model_info.name,
         object = "chat.completion.chunk",
       }
