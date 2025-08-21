@@ -166,64 +166,114 @@ local function handle_stream_event(event_t, model_info, route_type)
       local tool_name = body.start.toolUse.name
       local tool_id = body.start.toolUse.toolUseId
 
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              tool_calls = {
-                {
-                  index = body.contentBlockIndex,
-                  id = tool_id,
-                  ['function'] = {
-                    name = tool_name,
-                    arguments = "",
-                  },
-                }
-              }
+      if get_global_ctx("structured_output_mode") and (tool_name == ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME) then
+        -- structured output tool call: return as if we're starting content
+        new_event = {
+          choices = {
+            [1] = {
+              delta = {
+                content = "",
+                role = "assistant",
+              },
+              index = 0,
+              logprobs = cjson.null,
             },
-            index = 0,
-            logprobs = cjson.null,
           },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
-      }
+          model = model_info.name,
+          object = "chat.completion.chunk",
+          system_fingerprint = cjson.null,
+        }
+
+      else
+        new_event = {
+          choices = {
+            [1] = {
+              delta = {
+                tool_calls = {
+                  {
+                    index = body.contentBlockIndex,
+                    id = tool_id,
+                    ['function'] = {
+                      name = tool_name,
+                      arguments = "",
+                    },
+                  }
+                }
+              },
+              index = 0,
+              logprobs = cjson.null,
+            },
+          },
+          model = model_info.name,
+          object = "chat.completion.chunk",
+          system_fingerprint = cjson.null,
+        }
+      end
     end
 
   elseif event_type == "contentBlockDelta" then
     -- check for async streamed tool parameters
     if body.delta and body.delta.toolUse then
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              tool_calls = {
-                {
-                  index = body.contentBlockIndex,
-                  ['function'] = {
-                    arguments = body.delta.toolUse.input,
-                  },
-                }
-              }
+
+      if get_global_ctx("structured_output_mode") then
+        -- structured output tool call: return as if we're starting content
+        new_event = {
+          choices = {
+            [1] = {
+              delta = {
+                content = (body.delta and
+                            body.delta.toolUse
+                            and body.delta.toolUse.input)
+                        or ""
+              },
+              index = 0,
+              logprobs = cjson.null,
             },
-            index = 0,
-            logprobs = cjson.null,
           },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+          system_fingerprint = cjson.null,
       }
 
+      else
+        new_event = {
+          choices = {
+            [1] = {
+              delta = {
+                tool_calls = {
+                  {
+                    index = body.contentBlockIndex,
+                    ['function'] = {
+                      arguments = body.delta.toolUse.input,
+                    },
+                  }
+                }
+              },
+              index = 0,
+              logprobs = cjson.null,
+            },
+          },
+          model = model_info.name,
+          object = "chat.completion.chunk",
+          system_fingerprint = cjson.null,
+        }
+      end
+
     else
+      if get_global_ctx("structured_output_mode") then
+        -- return no frame to the caller, because the LLM might be
+        -- chatting over the top of our structured output tool result
+
+        return
+      end
+
       new_event = {
         choices = {
           [1] = {
             delta = {
               content = (body.delta
-                     and body.delta.text)
-                     or "",
+                    and body.delta.text)
+                    or "",
             },
             index = 0,
             logprobs = cjson.null,
@@ -236,18 +286,37 @@ local function handle_stream_event(event_t, model_info, route_type)
     end
 
   elseif event_type == "messageStop" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {},
-          index = 0,
-          finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop",
-          logprobs = cjson.null,
+    if get_global_ctx("structured_output_mode") then
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {},
+            index = 0,
+
+            -- do not tell the client we stopped for "structured output" tool call
+            finish_reason = ((body.stopReason and body.stopReason ~= "tool_use") and _OPENAI_STOP_REASON_MAPPING[body.stopReason]) or "stop",
+
+            logprobs = cjson.null,
+          },
         },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
+
+    else
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {},
+            index = 0,
+            finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop",
+            logprobs = cjson.null,
+          },
+        },
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
+    end
 
   elseif event_type == "metadata" then
     metadata = {
