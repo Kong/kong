@@ -180,6 +180,18 @@ local function extract_structured_content_schema(request_table)
   return request_table.response_format.json_schema.schema
 end
 
+local function read_content(delta)
+  if delta.delta then
+    return delta.delta.text or ""
+
+  elseif delta.content_block then
+    return delta.content_block or ""
+    
+  end
+
+  return ""
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     local messages = {}
@@ -247,30 +259,131 @@ local transformers_to = {
 }
 
 local function delta_to_event(delta, model_info)
-  local data = {
-    choices = {
-      [1] = {
-        delta = {
-          content = (delta.delta
-                 and delta.delta.text)
-                 or (delta.content_block
-                 and "")
-                 or "",
-        },
-        index = 0,
-        finish_reason = cjson.null,
-        logprobs = cjson.null,
-      },
-    },
-    id = kong
-     and kong.ctx
-     and kong.ctx.plugin
-     and kong.ctx.plugin.ai_proxy_anthropic_stream_id,
-    model = model_info.name,
-    object = "chat.completion.chunk",
-  }
+  local data
 
-  return cjson.encode(data), nil, nil
+  local message_id = kong
+                      and kong.ctx
+                      and kong.ctx.plugin
+                      and kong.ctx.plugin.ai_proxy_anthropic_stream_id
+
+  if delta['type'] and delta['type'] == "content_block_start" then
+    if delta.content_block then
+      if delta.content_block['type'] == "text" then
+      -- mark the entrypoint for messages
+      data = {
+        choices = {
+          [1] = {
+            delta = {
+              content = read_content(delta),
+              role = "assistant",
+            },
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = kong
+        and kong.ctx
+        and kong.ctx.plugin
+        and kong.ctx.plugin.ai_proxy_anthropic_stream_id,
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
+
+      elseif delta.content_block['type'] == "tool_use" then
+        -- this is an ENTRYPOINT for a function call
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                content = cjson.null,
+                role = "assistant",
+                tool_calls = {
+                  {
+                    index = 0,
+                    id = delta.content_block['id'],
+                    ['type'] = "function",
+                    ['function'] = {
+                      name = delta.content_block['name'],
+                      arguments = "",
+                    }
+                  }
+                }
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+      end
+    end
+
+  else
+    local delta_type
+    
+    if delta.delta
+        and delta.delta['type']
+    then
+      delta_type = delta.delta['type']
+    end
+
+    if delta_type then
+      if delta_type == "text_delta" then
+        -- handle generic chat
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                content = read_content(delta),
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+
+      elseif delta_type == "input_json_delta" then
+        -- this is an ARGS DELTA for a function call
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                tool_calls = {
+                  {
+                    index = 0,
+                    ['function'] = {
+                      arguments = delta.delta.partial_json,
+                    }
+                  }
+                }
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+
+      end
+    end
+  end
+
+  if data then
+    return cjson.encode(data)
+  end
+
+  return
 end
 
 local function start_to_event(event_data, model_info)
@@ -354,9 +467,6 @@ local function handle_stream_event(event_t, model_info, route_type)
     end
 
   elseif event_id == "content_block_start" then
-    -- content_block_start is just an empty string and indicates
-    -- that we're getting an actual answer
-
     -- if this content block is starting a structure output tool call,
     -- we convert it into a standard text block start marker
     if get_global_ctx("structured_output_mode") then
@@ -390,7 +500,7 @@ local function handle_stream_event(event_t, model_info, route_type)
           {
             delta = {
               text = event_data.delta.partial_json or "",
-              type = "text",
+              type = "text_delta",
             },
             index = 0,
             type = "content_block_delta",
