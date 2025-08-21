@@ -1309,6 +1309,16 @@ function _M.convert_structured_output_tool(response)
   return nil
 end
 
+function _M.is_tool_result_message(message)
+  return message
+          and message.role
+          and message.role == "tool"
+          and message.tool_call_id
+          and type(message.tool_call_id) == "string"
+          and message.content
+          and type(message.content) == "string"
+end
+
 -- for unit tests
 if _G.TEST then
   _M._count_words = count_words

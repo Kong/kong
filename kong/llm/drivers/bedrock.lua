@@ -122,6 +122,23 @@ local function from_tool_call_response(content)
   return tools_used
 end
 
+local function new_chat_chunk_event(model_info)
+  local event = {
+    choices = {
+      {
+        delta = {},
+        index = 0,
+        logprobs = cjson.null,
+      },
+    },
+    model = model_info.name,
+    object = "chat.completion.chunk",
+    system_fingerprint = cjson.null,
+  }
+
+  return event
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   local new_event, metadata
 
@@ -144,20 +161,10 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   if event_type == "messageStart" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = "",
-            role = body.role,
-          },
-          index = 0,
-          logprobs = cjson.null,
-        },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-      system_fingerprint = cjson.null,
+    new_event = new_chat_chunk_event(model_info)
+    new_event.choices[1].delta = {
+      content = "",
+      role = body.role,
     }
 
   elseif event_type == "contentBlockStart" then
@@ -168,45 +175,25 @@ local function handle_stream_event(event_t, model_info, route_type)
 
       if get_global_ctx("structured_output_mode") and (tool_name == ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME) then
         -- structured output tool call: return as if we're starting content
-        new_event = {
-          choices = {
-            [1] = {
-              delta = {
-                content = "",
-                role = "assistant",
-              },
-              index = 0,
-              logprobs = cjson.null,
-            },
-          },
-          model = model_info.name,
-          object = "chat.completion.chunk",
-          system_fingerprint = cjson.null,
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          content = "",
+          role = "assistant",
         }
 
       else
-        new_event = {
-          choices = {
-            [1] = {
-              delta = {
-                tool_calls = {
-                  {
-                    index = body.contentBlockIndex,
-                    id = tool_id,
-                    ['function'] = {
-                      name = tool_name,
-                      arguments = "",
-                    },
-                  }
-                }
-              },
-              index = 0,
-              logprobs = cjson.null,
-            },
-          },
-          model = model_info.name,
-          object = "chat.completion.chunk",
-          system_fingerprint = cjson.null,
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          tool_calls = {
+            {
+              index = body.contentBlockIndex,
+              id = tool_id,
+              ['function'] = {
+                name = tool_name,
+                arguments = "",
+              }
+            }
+          }
         }
       end
     end
@@ -217,45 +204,25 @@ local function handle_stream_event(event_t, model_info, route_type)
 
       if get_global_ctx("structured_output_mode") then
         -- structured output tool call: return as if we're starting content
-        new_event = {
-          choices = {
-            [1] = {
-              delta = {
-                content = (body.delta and
-                            body.delta.toolUse
-                            and body.delta.toolUse.input)
-                        or ""
-              },
-              index = 0,
-              logprobs = cjson.null,
-            },
-          },
-          model = model_info.name,
-          object = "chat.completion.chunk",
-          system_fingerprint = cjson.null,
-      }
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          content = (body.delta and
+                      body.delta.toolUse
+                      and body.delta.toolUse.input)
+                  or ""
+        }
 
       else
-        new_event = {
-          choices = {
-            [1] = {
-              delta = {
-                tool_calls = {
-                  {
-                    index = body.contentBlockIndex,
-                    ['function'] = {
-                      arguments = body.delta.toolUse.input,
-                    },
-                  }
-                }
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          tool_calls = {
+            {
+              index = body.contentBlockIndex,
+              ['function'] = {
+                arguments = body.delta.toolUse.input,
               },
-              index = 0,
-              logprobs = cjson.null,
-            },
-          },
-          model = model_info.name,
-          object = "chat.completion.chunk",
-          system_fingerprint = cjson.null,
+            }
+          }
         }
       end
 
@@ -267,55 +234,22 @@ local function handle_stream_event(event_t, model_info, route_type)
         return
       end
 
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              content = (body.delta
-                    and body.delta.text)
-                    or "",
-            },
-            index = 0,
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].delta = {
+        content = (body.delta
+              and body.delta.text)
+              or "",
       }
     end
 
   elseif event_type == "messageStop" then
     if get_global_ctx("structured_output_mode") then
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {},
-            index = 0,
-
-            -- do not tell the client we stopped for "structured output" tool call
-            finish_reason = ((body.stopReason and body.stopReason ~= "tool_use") and _OPENAI_STOP_REASON_MAPPING[body.stopReason]) or "stop",
-
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-      }
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].finish_reason = ((body.stopReason and body.stopReason ~= "tool_use") and _OPENAI_STOP_REASON_MAPPING[body.stopReason]) or "stop"
 
     else
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {},
-            index = 0,
-            finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop",
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-      }
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop"
     end
 
   elseif event_type == "metadata" then
@@ -440,11 +374,19 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
           },
         }
 
-        new_r.messages = new_r.messages or {}
-        table_insert(new_r.messages, {
-          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-          content = content,
-        })
+        if i > 1 and ai_shared.is_tool_result_message(request_table.messages[i-1]) then
+          -- append to the previous message's 'content' array
+          local previous_content = new_r.messages[#new_r.messages].content or {}
+
+          previous_content[#previous_content+1] = content[1]
+          new_r.messages[#new_r.messages].content = previous_content
+        else
+          new_r.messages = new_r.messages or {}
+          table_insert(new_r.messages, {
+            role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+            content = content,
+          })
+        end
 
       else
         local content
@@ -458,15 +400,14 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
               return nil, nil, "failed to decode function response arguments from assistant's message, not JSON format"
             end
 
-            content = {
-              {
-                toolUse = {
-                  toolUseId = tool.id,
-                  name = tool['function'].name,
-                  input = inputs,
-                },
-              },
-            }
+            content = content or {}
+            table_insert(content, {
+              toolUse = {
+                toolUseId = tool.id,
+                name = tool['function'].name,
+                input = inputs,
+              }
+            })
           end
 
         else
