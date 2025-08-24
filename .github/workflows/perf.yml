@@ -3,11 +3,10 @@ name: Performance Test
 on:
   pull_request:
   schedule:
-  # don't know the timezone but it's daily at least
-  - cron:  '0 7 * * *'
+    - cron: '0 7 * * *' # daily at 07:00 UTC
 
 env:
-  terraform_version: '1.2.4'
+  terraform_version: '1.9.8'
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
@@ -17,7 +16,7 @@ env:
 jobs:
   build-packages:
     name: Build dependencies
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -49,7 +48,7 @@ jobs:
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -80,11 +79,10 @@ jobs:
 
   perf:
     name: RPS, latency and flamegraphs
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build-packages
 
     permissions:
-      # required to send comment of graphs and results in the PR
       pull-requests: write
 
     if: |
@@ -96,14 +94,12 @@ jobs:
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
-    # perf test can only run one at a time per repo for now
     concurrency:
       group: perf-ce
 
     steps:
-    # set up mutex across CE and EE to avoid resource race
     - name: Set up mutex
-      uses: ben-z/gh-action-mutex@9709ba4d8596ad4f9f8bbe8e0f626ae249b1b3ac # v1.0-alpha-6
+      uses: ben-z/gh-action-mutex@v1.0-alpha-7
       with:
         repository: "Kong/kong-perf-mutex-lock"
         branch: "gh-mutex"
@@ -112,7 +108,6 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v4
       with:
-        # Fetch all history for all tags and branches
         fetch-depth: 0
 
     - name: Load Cached Packages
@@ -125,10 +120,7 @@ jobs:
 
     - name: Install performance test Dependencies
       run: |
-        # in Kong repository
-        sudo apt update && sudo apt install inkscape -y
-
-        # terraform!
+        sudo apt update && sudo apt install -y inkscape
         wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip
         unzip terraform_${{ env.terraform_version }}_linux_amd64.zip
         sudo mv terraform /usr/bin/
@@ -141,26 +133,19 @@ jobs:
 
         if [[ $suite == "/flamegraph" ]]; then
           suites="02-flamegraph"
-          if [[ -z $tags ]]; then
-            tags="simple"
-          fi
+          [[ -z $tags ]] && tags="simple"
         elif [[ $suite == "/perf" ]]; then
           suites="01-rps"
-          if [[ -z $tags ]]; then
-            tags="baseline,single_route"
-          fi
+          [[ -z $tags ]] && tags="baseline,single_route"
         else
-          # if not specified by comment, run both
           suites="01-rps 02-flamegraph"
-          if [[ -z $tags ]]; then
-            tags="baseline,single_route,simple"
-          fi
+          [[ -z $tags ]] && tags="baseline,single_route,simple"
         fi
 
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
-    - uses: xt0rted/pull-request-comment-branch@d97294d304604fa98a2600a6e2f916a84b596dc7 # v1.4.1
+    - uses: xt0rted/pull-request-comment-branch@v2
       id: comment-branch
       if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
@@ -176,14 +161,11 @@ jobs:
           vers="${custom_vers}"
         elif [[ ! -z "${{ github.event.comment.body }}" ]]; then
           vers="git:${{ steps.comment-branch.outputs.head_ref}},git:${{ steps.comment-branch.outputs.base_ref}}"
-        else # is cron job/on master
+        else
           vers="git:master,git:origin/master~10,git:origin/master~50"
         fi
 
-        echo $vers
-
         echo "vers=$vers" >> $GITHUB_OUTPUT
-
 
     - name: Run Tests
       env:
@@ -199,9 +181,8 @@ jobs:
       run: |
         export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
-
         chmod 600 ${PERF_TEST_BYO_SSH_KEY_PATH}
-        # setup tunnel for psql and admin port
+
         ssh -o StrictHostKeyChecking=no -o TCPKeepAlive=yes -o ServerAliveInterval=10 \
             -o ExitOnForwardFailure=yes -o ConnectTimeout=5 \
             -L 15432:localhost:5432 -L 39001:localhost:39001 \
@@ -212,19 +193,15 @@ jobs:
         sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
         sudo iptables -t nat -I OUTPUT -p tcp --dport 39001 -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:39001
 
-        make dev # required to install other dependencies like bin/grpcurl
+        make dev
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
-          # Run each test individually, ngx.pipe doesn't like to be imported twice
-          # maybe bin/busted --no-auto-insulate
           for f in $(find "spec/04-perf/$suite/" -type f); do
-            bin/busted "$f" \
-              -t "${{ steps.choose_perf.outputs.tags }}"
+            bin/busted "$f" -t "${{ steps.choose_perf.outputs.tags }}"
           done
         done
 
     - name: Teardown
-      # Note: by default each job has if: ${{ success() }}
       if: always()
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }}
@@ -237,23 +214,21 @@ jobs:
       run: |
         export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
-
-        make dev # required to install other dependencies like bin/grpcurl
+        make dev
         source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         bin/busted spec/04-perf/99-teardown/
-
         rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 
     - name: Generate high DPI graphs
       if: always()
       run: |
         for i in $(ls output/*.svg); do
-          inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
+          inkscape --export-area-drawing --export-type=png --export-dpi=300 -b FFFFFF -o "${i%.*}.png" $i
         done
 
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.11'
         cache: 'pip'
 
     - name: Generate plots
@@ -267,18 +242,17 @@ jobs:
         done
 
     - name: Save results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: perf-results
         path: |
           output/
           !output/**/*.log
-
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: error_logs
@@ -291,24 +265,18 @@ jobs:
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
-          result="Please see Github Actions artifacts for flamegraphs.
-
-          "
+          result="Please see Github Actions artifacts for flamegraphs.\n\n"
         fi
-
         result="${result}$(cat output/result.txt)" || true
-
-        # https://github.community/t/set-output-truncates-multiline-strings/16852/2
         result="${result//'%'/'%25'}"
         result="${result//$'\n'/'%0A'}"
         result="${result//$'\r'/'%0D'}"
-
-        echo "result=$results" >> $GITHUB_OUTPUT
+        echo "result=$result" >> $GITHUB_OUTPUT
 
     - name: Upload charts
       if: always()
       id: charts
-      uses: devicons/public-upload-to-imgur@352cf5f2805c692539a96cfe49a09669e6fca88e # v2.2.2
+      uses: devicons/public-upload-to-imgur@v3
       continue-on-error: true
       with:
         path: output/*.png
@@ -318,7 +286,7 @@ jobs:
       if: |
         github.event_name == 'pull_request' ||
         (github.event_name == 'issue_comment' && github.event.issue.pull_request)
-      uses: actions-ecosystem/action-create-comment@e23bc59fbff7aac7f9044bd66c2dc0fe1286f80b # v1.0.0
+      uses: actions-ecosystem/action-create-comment@v1
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         body: |
