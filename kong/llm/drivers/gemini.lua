@@ -553,7 +553,6 @@ local function from_gemini_chat_openai(response, model_info, route_type)
       end
 
       messages.object = "chat.completion"
-      messages.model = model_info.name
       messages.created, err = ai_shared.iso_8601_to_epoch(response.createTime or ai_shared._CONST.UNIX_EPOCH)
       if err then
         ngx.log(ngx.WARN, "failed to convert createTime to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")

@@ -315,6 +315,37 @@ for _, strategy in helpers.all_strategies() do
             }
           }
 
+          location = "/gemini/llm/v1/chat/good" {
+            content_by_lua_block {
+              local _EVENT_CHUNKS = {
+                [1] = '[',
+                [2] = '{"candidates": [{"content": {"parts": [{"text": "Gemini"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [3] = '{"candidates": [{"content": {"parts": [{"text": " is"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [4] = '{"candidates": [{"content": {"parts": [{"text": " a"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [5] = '{"candidates": [{"content": {"parts": [{"text": " powerful"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [6] = '{"candidates": [{"content": {"parts": [{"text": " model"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [7] = '{"candidates": [{"content": {"parts": [{"text": "."}], "role": "model"}, "finishReason": "STOP", "index": 0}]}',
+                [8] = ']',
+              }
+
+              local fmt = string.format
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/json"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(EVENT)
+                ngx.flush(true)
+                ngx.sleep(0.01) -- simulate delay for latency assertion
+              end
+            }
+          }
+
           location = "/openai/llm/v1/chat/bad" {
             content_by_lua_block {
               local fmt = string.format
@@ -626,6 +657,49 @@ for _, strategy in helpers.all_strategies() do
       bp.plugins:insert {
         name = "file-log",
         route = { id = anthropic_chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat gemini
+      local gemini_chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/gemini/llm/v1/chat/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = gemini_chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "gemini-1.5-flash",
+            provider = "gemini",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/gemini/llm/v1/chat/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            header_name = "x-goog-api-key",
+            header_value = "123",
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = gemini_chat_good.id },
         config = {
           path = "/dev/stdout",
         },
@@ -1248,6 +1322,74 @@ for _, strategy in helpers.all_strategies() do
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
+      it("good stream request gemini", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/gemini/llm/v1/chat/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              if s_copy then
+                assert.equal("gemini-1.5-flash", s_copy.model)
+              end
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(7, #events)
+        assert.equal("Gemini is a powerful model.", buf:tostring())
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
       it("bad request is returned to the client not-streamed", function()
         local httpc = http.new()
 
@@ -1348,6 +1490,7 @@ for _, strategy in helpers.all_strategies() do
               s = cjson.decode(s_copy)
 
               if s and s.choices then
+                assert.equal("gemini-1.5-flash", s.model)
                 func_name = s.choices[1].delta.tool_calls[1]['function'].name
                 func_args = s.choices[1].delta.tool_calls[1]['function'].arguments
               end
