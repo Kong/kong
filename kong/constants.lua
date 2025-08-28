@@ -296,7 +296,7 @@ local constants = {
     STREAM_TLS_TERMINATE = "st",
     STREAM_TLS_PASSTHROUGH = "sp",
     STREAM_RPC = "rp",
-  }
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
