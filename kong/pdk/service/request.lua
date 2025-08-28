@@ -6,7 +6,6 @@ local cjson = require "cjson.safe"
 local buffer = require "string.buffer"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
-local constants = require "kong.constants"
 local balancer = require "ngx.balancer"
 
 local ngx = ngx
@@ -27,6 +26,7 @@ local check_phase = phase_checker.check
 local escape = require("kong.tools.uri").escape
 local get_header = require("kong.tools.http").get_header
 local search_remove = require("resty.ada.search").remove
+local content_type_table = require("kong.tools.http").get_content_type()
 
 
 local PHASES = phase_checker.phases
@@ -499,7 +499,7 @@ local function new(self)
 
     local set_body_handlers = {
 
-      [constants.CONTENT_TYPE_POST] = function(args, mime)
+      [content_type_table.CONTENT_TYPE_POST] = function(args, mime)
         if type(args) ~= "table" then
           error("args must be a table", 3)
         end
@@ -512,7 +512,7 @@ local function new(self)
         return querystring, mime
       end,
 
-      [constants.CONTENT_TYPE_JSON] = function(args, mime)
+      [content_type_table.CONTENT_TYPE_JSON] = function(args, mime)
         local encoded, err = cjson.encode(args)
         if not encoded then
           error(err, 3)
@@ -521,7 +521,7 @@ local function new(self)
         return encoded, mime
       end,
 
-      [constants.CONTENT_TYPE_FORM_DATA] = function(args, mime)
+      [content_type_table.CONTENT_TYPE_FORM_DATA] = function(args, mime)
         local keys = {}
 
         local boundary
@@ -588,7 +588,7 @@ local function new(self)
 
         local output = out:get()
 
-        return output, constants.CONTENT_TYPE_FORM_DATA .. "; boundary=" .. boundary
+        return output, content_type_table.CONTENT_TYPE_FORM_DATA .. "; boundary=" .. boundary
       end,
 
     }
@@ -660,7 +660,7 @@ local function new(self)
         error("mime must be a string", 2)
       end
       if not mime then
-        mime = get_header(constants.CONTENT_TYPE)
+        mime = get_header(content_type_table.CONTENT_TYPE)
         if not mime then
           return nil, "content type was neither explicitly given " ..
                       "as an argument or received as a header"
@@ -686,7 +686,7 @@ local function new(self)
       local body, content_type = handler_fn(args, mime)
 
       ngx.req.set_body_data(body)
-      ngx.req.set_header(constants.CONTENT_TYPE, content_type)
+      ngx.req.set_header(content_type_table.CONTENT_TYPE, content_type)
 
       return true
     end

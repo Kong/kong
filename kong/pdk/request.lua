@@ -9,7 +9,6 @@
 local cjson = require "kong.tools.cjson"
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
-local constants = require "kong.constants"
 local normalize = require("kong.tools.uri").normalize
 local yield = require("kong.tools.yield").yield
 
@@ -77,6 +76,7 @@ local function new(self)
   end
 
   local http_get_header = require("kong.tools.http").get_header
+  local content_type_table = require("kong.tools.http").get_content_type()
 
 
   ---
@@ -816,7 +816,7 @@ local function new(self)
   function _REQUEST.get_body(mimetype, max_args, max_allowed_file_size)
     check_phase(before_content)
 
-    local content_type = mimetype or _REQUEST.get_header(constants.CONTENT_TYPE)
+    local content_type = mimetype or _REQUEST.get_header(content_type_table.CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
     end
@@ -829,7 +829,7 @@ local function new(self)
       end
     end
 
-    if find(content_type_lower, constants.CONTENT_TYPE_POST, 1, true) == 1 then
+    if find(content_type_lower, content_type_table.CONTENT_TYPE_POST, 1, true) == 1 then
       if max_args ~= nil then
         if type(max_args) ~= "number" then
           error("max_args must be a number", 2)
@@ -857,41 +857,41 @@ local function new(self)
       end
 
       if not pargs then
-        return nil, err, constants.CONTENT_TYPE_POST
+        return nil, err, content_type_table.CONTENT_TYPE_POST
       end
 
-      return pargs, nil, constants.CONTENT_TYPE_POST
+      return pargs, nil, content_type_table.CONTENT_TYPE_POST
 
-    elseif find(content_type_lower, constants.CONTENT_TYPE_JSON, 1, true) == 1 then
+    elseif find(content_type_lower, content_type_table.CONTENT_TYPE_JSON, 1, true) == 1 then
       local body, err = _REQUEST.get_raw_body(max_allowed_file_size)
       if not body then
-        return nil, err, constants.CONTENT_TYPE_JSON
+        return nil, err, content_type_table.CONTENT_TYPE_JSON
       end
 
       local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
-        return nil, "invalid json body", constants.CONTENT_TYPE_JSON
+        return nil, "invalid json body", content_type_table.CONTENT_TYPE_JSON
       end
 
-      return json, nil, constants.CONTENT_TYPE_JSON
+      return json, nil, content_type_table.CONTENT_TYPE_JSON
 
-    elseif find(content_type_lower, constants.CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
+    elseif find(content_type_lower, content_type_table.CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
       local body, err = _REQUEST.get_raw_body(max_allowed_file_size)
       if not body then
-        return nil, err, constants.CONTENT_TYPE_FORM_DATA
+        return nil, err, content_type_table.CONTENT_TYPE_FORM_DATA
       end
 
       local parts = multipart(body, content_type)
       if not parts then
-        return nil, "unable to decode multipart body", constants.CONTENT_TYPE_FORM_DATA
+        return nil, "unable to decode multipart body", content_type_table.CONTENT_TYPE_FORM_DATA
       end
 
       local margs = parts:get_all_with_arrays()
       if not margs then
-        return nil, "unable to read multipart values", constants.CONTENT_TYPE_FORM_DATA
+        return nil, "unable to read multipart values", content_type_table.CONTENT_TYPE_FORM_DATA
       end
 
-      return margs, nil, constants.CONTENT_TYPE_FORM_DATA
+      return margs, nil, content_type_table.CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower

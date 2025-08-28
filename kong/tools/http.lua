@@ -621,5 +621,18 @@ function _M.calculate_resource_ttl(res_cc)
   return max_age and max(max_age, 0) or 0
 end
 
+do
+  local CONTENT_TYPE_MAP = {
+    CONTENT_TYPE           = "Content-Type",
+    CONTENT_TYPE_POST      = "application/x-www-form-urlencoded",
+    CONTENT_TYPE_JSON      = "application/json",
+    CONTENT_TYPE_FORM_DATA = "multipart/form-data",
+  }
+
+  function _M.get_content_type()
+    return CONTENT_TYPE_MAP
+  end
+end
+
 
 return _M
