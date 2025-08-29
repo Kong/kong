@@ -61,6 +61,11 @@ local function new(self)
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
+  local CONTENT_TYPE           = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE
+  local CONTENT_TYPE_POST      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_POST
+  local CONTENT_TYPE_JSON      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_JSON
+  local CONTENT_TYPE_FORM_DATA = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_FORM_DATA
+
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
@@ -76,7 +81,6 @@ local function new(self)
   end
 
   local http_get_header = require("kong.tools.http").get_header
-  local content_type_table = require("kong.tools.http").get_content_type()
 
 
   ---
@@ -816,7 +820,7 @@ local function new(self)
   function _REQUEST.get_body(mimetype, max_args, max_allowed_file_size)
     check_phase(before_content)
 
-    local content_type = mimetype or _REQUEST.get_header(content_type_table.CONTENT_TYPE)
+    local content_type = mimetype or _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
     end
@@ -829,7 +833,7 @@ local function new(self)
       end
     end
 
-    if find(content_type_lower, content_type_table.CONTENT_TYPE_POST, 1, true) == 1 then
+    if find(content_type_lower, CONTENT_TYPE_POST, 1, true) == 1 then
       if max_args ~= nil then
         if type(max_args) ~= "number" then
           error("max_args must be a number", 2)
@@ -857,41 +861,41 @@ local function new(self)
       end
 
       if not pargs then
-        return nil, err, content_type_table.CONTENT_TYPE_POST
+        return nil, err, CONTENT_TYPE_POST
       end
 
-      return pargs, nil, content_type_table.CONTENT_TYPE_POST
+      return pargs, nil, CONTENT_TYPE_POST
 
-    elseif find(content_type_lower, content_type_table.CONTENT_TYPE_JSON, 1, true) == 1 then
+    elseif find(content_type_lower, CONTENT_TYPE_JSON, 1, true) == 1 then
       local body, err = _REQUEST.get_raw_body(max_allowed_file_size)
       if not body then
-        return nil, err, content_type_table.CONTENT_TYPE_JSON
+        return nil, err, CONTENT_TYPE_JSON
       end
 
       local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
-        return nil, "invalid json body", content_type_table.CONTENT_TYPE_JSON
+        return nil, "invalid json body", CONTENT_TYPE_JSON
       end
 
-      return json, nil, content_type_table.CONTENT_TYPE_JSON
+      return json, nil, CONTENT_TYPE_JSON
 
-    elseif find(content_type_lower, content_type_table.CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
+    elseif find(content_type_lower, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
       local body, err = _REQUEST.get_raw_body(max_allowed_file_size)
       if not body then
-        return nil, err, content_type_table.CONTENT_TYPE_FORM_DATA
+        return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
       local parts = multipart(body, content_type)
       if not parts then
-        return nil, "unable to decode multipart body", content_type_table.CONTENT_TYPE_FORM_DATA
+        return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
       end
 
       local margs = parts:get_all_with_arrays()
       if not margs then
-        return nil, "unable to read multipart values", content_type_table.CONTENT_TYPE_FORM_DATA
+        return nil, "unable to read multipart values", CONTENT_TYPE_FORM_DATA
       end
 
-      return margs, nil, content_type_table.CONTENT_TYPE_FORM_DATA
+      return margs, nil, CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower
