@@ -30,6 +30,7 @@ local search_remove = require("resty.ada.search").remove
 
 local PHASES = phase_checker.phases
 
+
 local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
 local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
 local access_rewrite_balancer = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer)
