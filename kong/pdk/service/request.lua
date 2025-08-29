@@ -30,11 +30,6 @@ local search_remove = require("resty.ada.search").remove
 
 local PHASES = phase_checker.phases
 
-local CONTENT_TYPE           = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE
-local CONTENT_TYPE_POST      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_POST
-local CONTENT_TYPE_JSON      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_JSON
-local CONTENT_TYPE_FORM_DATA = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_FORM_DATA
-
 local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
 local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
 local access_rewrite_balancer = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer)
@@ -75,6 +70,12 @@ end
 local function new(self)
 
   local request = {}
+
+  local CONTENT_TYPE           = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE
+  local CONTENT_TYPE_POST      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_POST
+  local CONTENT_TYPE_JSON      = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_JSON
+  local CONTENT_TYPE_FORM_DATA = require("kong.tools.http").CONTENT_TYPES.CONTENT_TYPE_FORM_DATA
+
   local SLASH                  = string_byte("/")
 
   ---
