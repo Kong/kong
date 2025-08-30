@@ -29,12 +29,14 @@ local EMPTY = require("kong.tools.table").EMPTY
 
 local _M = {}
 
+
 _M.CONTENT_TYPES = {
     CONTENT_TYPE           = "Content-Type",
     CONTENT_TYPE_POST      = "application/x-www-form-urlencoded",
     CONTENT_TYPE_JSON      = "application/json",
     CONTENT_TYPE_FORM_DATA = "multipart/form-data",
 }
+
 
 do
   local url = require "socket.url"
