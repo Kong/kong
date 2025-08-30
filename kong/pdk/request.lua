@@ -62,10 +62,10 @@ local function new(self)
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
-  local CONTENT_TYPE           = content_types.CONTENT_TYPES.CONTENT_TYPE
-  local CONTENT_TYPE_POST      = content_types.CONTENT_TYPES.CONTENT_TYPE_POST
-  local CONTENT_TYPE_JSON      = content_types.CONTENT_TYPES.CONTENT_TYPE_JSON
-  local CONTENT_TYPE_FORM_DATA = content_types.CONTENT_TYPES.CONTENT_TYPE_FORM_DATA
+  local CONTENT_TYPE           = content_types.CONTENT_TYPE
+  local CONTENT_TYPE_POST      = content_types.CONTENT_TYPE_POST
+  local CONTENT_TYPE_JSON      = content_types.CONTENT_TYPE_JSON
+  local CONTENT_TYPE_FORM_DATA = content_types.CONTENT_TYPE_FORM_DATA
 
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
