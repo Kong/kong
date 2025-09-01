@@ -175,6 +175,36 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        -- 200 chat good with variable
+        local chat_good_with_var = assert(bp.routes:insert({
+          service = empty_service,
+          protocols = { "http" },
+          strip_path = true,
+          paths = { "~/gemini/llm/v1/chat/good/(?<model>[^/]+)" },
+        }))
+        bp.plugins:insert({
+          name = PLUGIN_NAME,
+          route = { id = chat_good_with_var.id },
+          config = {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer gemini-key",
+            },
+            logging = {
+              log_payloads = true,
+              log_statistics = true,
+            },
+            model = {
+              name = "$(uri_captures.model)",
+              provider = "gemini",
+              options = {
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORTS._GEMINI .. "/v1/chat/completions",
+              },
+            },
+          },
+        })
+
         -- 200 chat good with query param auth using ai-proxy-advanced and ai-response-transformer
         local chat_query_auth = assert(bp.routes:insert({
           service = empty_service,
@@ -390,7 +420,21 @@ for _, strategy in helpers.all_strategies() do
             local tries = log_message.tries
             assert.is_table(tries)
             assert.equal(tries[1].port, 80)
-              end)
+          end)
+
+          it("good request with model name from variable", function()
+            local r = client:get("/gemini/llm/v1/chat/good/gemni-2.0-flash", {
+              headers = {
+                ["content-type"] = "application/json",
+                ["accept"] = "application/json",
+              },
+              body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+            })
+            -- validate that the request succeeded, response status 200
+            local body = assert.res_status(200, r)
+            local json = cjson.decode(body)
+            assert.equals("gemni-2.0-flash", json.model)
+          end)
         end)
 
         describe("gemini (gemini) llm/v1/chat with query param auth", function()
