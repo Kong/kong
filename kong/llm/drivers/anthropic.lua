@@ -1,7 +1,7 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
+local cjson = require("kong.tools.cjson")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
@@ -311,7 +311,7 @@ end
 
 local function handle_stream_event(event_t, model_info, route_type)
   local event_id = event_t.event
-  local event_data = cjson.decode(event_t.data)
+  local event_data = cjson.decode_with_array_mt(event_t.data)
 
   if not event_id or not event_data then
     return nil, "transformation to stream event failed or empty stream event received", nil
@@ -412,7 +412,7 @@ end
 
 local transformers_from = {
   ["llm/v1/chat"] = function(response_string)
-    local response_table, err = cjson.decode(response_string)
+    local response_table, err = cjson.decode_with_array_mt(response_string)
     if err then
       return nil, "failed to decode anthropic response"
     end

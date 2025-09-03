@@ -1,7 +1,7 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
+local cjson = require("kong.tools.cjson")
 local fmt = string.format
 local anthropic = require("kong.llm.drivers.anthropic")
 local openai = require("kong.llm.drivers.openai")
@@ -187,7 +187,7 @@ local function handle_stream_event(event_t, model_info, route_type)
     return ai_shared._CONST.SSE_TERMINATOR, nil, nil
   end
 
-  local event, err = cjson.decode(event_t.data)
+  local event, err = cjson.decode_with_array_mt(event_t.data)
   if err then
     ngx.log(ngx.WARN, "failed to decode stream event frame from gemini: ", err)
     return nil, "failed to decode stream event frame from gemini", nil
@@ -509,7 +509,7 @@ end
 local function from_gemini_chat_openai(response, model_info, route_type)
   local err
   if response and (type(response) == "string") then
-    response, err = cjson.decode(response)
+    response, err = cjson.decode_with_array_mt(response)
   end
 
   if err then

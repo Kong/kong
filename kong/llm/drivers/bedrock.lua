@@ -1,7 +1,7 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
+local cjson = require("kong.tools.cjson")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
@@ -473,7 +473,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
 end
 
 local function from_bedrock_chat_openai(response, model_info, route_type)
-  local response, err = cjson.decode(response)
+  local response, err = cjson.decode_with_array_mt(response)
 
   if err then
     local err_client = "failed to decode response from Bedrock"
