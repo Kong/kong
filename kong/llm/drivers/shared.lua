@@ -588,7 +588,7 @@ function _M.frame_to_events(frame, content_type)
   end
 
   -- some new LLMs return the JSON object-by-object,
-  -- because that totally makes sense to parse?!
+  -- to make it difficult to parse
   if content_type == _M._CONST.GEMINI_STREAM_CONTENT_TYPE then
     local gemini_state = kong.ctx.plugin.gemini_state
     local iter = json_array_iterator(frame, gemini_state, JSON_ARRAY_TYPE.GEMINI)
@@ -673,7 +673,10 @@ function _M.frame_to_events(frame, content_type)
       kong.ctx.plugin.truncated_frame = nil
     end
 
-    local struct = {} -- { event = nil, id = nil, data = nil }
+    -- check if we were mid-chunk when the frame was truncated
+    local struct = kong.ctx.plugin.truncated_frame_struct or {} -- { event = nil, id = nil, data = nil }
+    kong.ctx.plugin.truncated_frame_struct = nil
+
     local start = 1
     local n_events = 1
     while start <= #frame do
@@ -681,7 +684,10 @@ function _M.frame_to_events(frame, content_type)
       local end_of_msg = str_find(frame, "[\r\n]", start, false)
       if not end_of_msg or end_of_msg == #frame then
         if kong then
+          -- we may be mid-chunk when the frame was truncated
+          -- and already have read in the "id", "event", etc
           kong.ctx.plugin.truncated_frame = frame:sub(start)
+          kong.ctx.plugin.truncated_frame_struct = struct
         end
 
         break
