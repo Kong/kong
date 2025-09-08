@@ -150,11 +150,24 @@ local encode_traces, encode_logs, prepare_logs
 do
   local attributes_cache = setmetatable({}, { __mode = "k" })
   local function default_resource_attributes()
-    return {
+    local attributes =  {
       ["service.name"] = "kong",
       ["service.instance.id"] = kong and kong.node.get_id(),
       ["service.version"] = kong and kong.version,
     }
+    local pod_name = os.getenv("POD_NAME")
+    local pod_uid = os.getenv("POD_UID")
+    local pod_host = os.getenv("K8S_HOST")
+    local pod_namespace = os.getenv("K8S_NAMESPACE")
+    if pod_uid ~= "" and pod_name ~= "" then
+      attributes = table_merge(attributes, {
+          ["k8s.pod.name"] = pod_name,
+          ["k8s.pod.uid"] = pod_uid,
+          ["k8s.node.name"] = pod_host,
+          ["k8s.namespace.name"] = pod_namespace,
+      })
+    end
+    return attributes
   end
 
   local function render_resource_attributes(attributes)
