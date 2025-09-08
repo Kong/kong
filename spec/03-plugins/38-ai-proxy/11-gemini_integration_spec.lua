@@ -142,6 +142,36 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        -- 200 chat good with variable
+        local chat_good_with_var = assert(bp.routes:insert({
+          service = empty_service,
+          protocols = { "http" },
+          strip_path = true,
+          paths = { "~/gemini/llm/v1/chat/good/(?<model>[^/]+)" },
+        }))
+        bp.plugins:insert({
+          name = PLUGIN_NAME,
+          route = { id = chat_good_with_var.id },
+          config = {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer gemini-key",
+            },
+            logging = {
+              log_payloads = true,
+              log_statistics = true,
+            },
+            model = {
+              name = "$(uri_captures.model)",
+              provider = "gemini",
+              options = {
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/v1/chat/completions",
+              },
+            },
+          },
+        })
+
         -- start kong
         assert(helpers.start_kong({
           -- set the strategy
@@ -217,6 +247,20 @@ for _, strategy in helpers.all_strategies() do
           assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
           assert.match_re(actual_request_log, [[.*contents.*What is 1 \+ 1.*]])
           assert.match_re(actual_response_log, [[.*content.*Everything is okay.*]])
+        end)
+
+        it("good request with model name from variable", function()
+          local r = client:get("/gemini/llm/v1/chat/good/gemni-2.0-flash", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+          })
+          -- validate that the request succeeded, response status 200
+          local body = assert.res_status(200, r)
+          local json = cjson.decode(body)
+          assert.equals("gemni-2.0-flash", json.model)
         end)
       end)
     end)
