@@ -11,6 +11,7 @@ local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local normalize = require("kong.tools.uri").normalize
 local yield = require("kong.tools.yield").yield
+local content_types = require("kong.tools.http").CONTENT_TYPES
 
 
 local ngx = ngx
@@ -61,11 +62,10 @@ local function new(self)
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
-  local CONTENT_TYPE           = "Content-Type"
-
-  local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
-  local CONTENT_TYPE_JSON      = "application/json"
-  local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
+  local CONTENT_TYPE           = content_types.CONTENT_TYPE
+  local CONTENT_TYPE_POST      = content_types.CONTENT_TYPE_POST
+  local CONTENT_TYPE_JSON      = content_types.CONTENT_TYPE_JSON
+  local CONTENT_TYPE_FORM_DATA = content_types.CONTENT_TYPE_FORM_DATA
 
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
