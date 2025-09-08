@@ -62,7 +62,9 @@ starting point. It contains the proper file structures, configuration files,
 and CI setup to get up and running quickly. This repository seamlessly
 integrates with [Pongo](https://github.com/Kong/kong-pongo).
 
-## Build and Install from source
+## General guide for development
+
+### Prepare development dependencies and build from source
 
 This is the hard way to build a development environment, and also a good start
 for beginners to understand how everything fits together.
@@ -72,7 +74,7 @@ requires some additional third-party dependencies, some of which are compiled
 with tweaked options, and kong runs on a modified version of OpenResty with
 patches.
 
-To install from the source, first, we clone the repository:
+To build from the source, first, we clone the repository:
 
 ```shell
 git clone https://github.com/Kong/kong
@@ -180,8 +182,8 @@ git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
 Finally, we start the build process:
 
 ```
-# Build the virtual environment for developing Kong
-make build-venv
+# Setup virtual environment, download dependencies and build Kong from source
+make dev
 ```
 
 [The build guide](https://github.com/Kong/kong/blob/master/build/README.md) contains a troubleshooting section if
@@ -204,8 +206,13 @@ Now you can start Kong:
 # Use the pre-defined docker-compose file to bring up databases etc
 start_services
 
+# bootstrap database
+kong migrations bootstrap
 # Start Kong!
 kong start
+
+# Verify if Kong is started by querying the Admin endpoint
+curl 127.0.0.1:8001 -I
 
 # Stop Kong
 kong stop
@@ -213,8 +220,6 @@ kong stop
 # Cleanup
 deactivate
 ```
-
-### Install Development Dependencies
 
 #### Running for development
 
@@ -225,10 +230,9 @@ and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_pack
 directives will allow Kong to find your custom plugin's source code wherever it
 might be in your system.
 
-#### Tests
+### Tests
 
-Install the development dependencies ([busted](https://lunarmodules.github.io/busted/),
-[luacheck](https://github.com/mpeterv/luacheck)) with:
+Before running any tests, please ensure the development dependencies are installed via
 
 ```shell
 make dev
@@ -350,7 +354,7 @@ are available in both versions (i.e. from helpers.lua).  The module
 the new version into the container of the old version and it can be
 used to make new library functionality available to migration tests.
 
-#### Makefile
+### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
 
