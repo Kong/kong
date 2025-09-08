@@ -117,6 +117,9 @@ function _M.balancer(ctx)
 
       if balancer_data.hostname ~= nil then
         span:set_attribute("net.peer.name", balancer_data.hostname)
+        span:set_attribute("net.peer.port", balancer_data.port)
+        span:set_attribute("http.method", get_method())
+        span:set_attribute("http.url", balancer_data.scheme .. "://" .. balancer_data.hostname .. ctx.request_uri)
       end
 
       if try.balancer_latency_ns ~= nil then
@@ -139,6 +142,9 @@ function _M.balancer(ctx)
 
       if balancer_data.hostname ~= nil then
         span:set_attribute("net.peer.name", balancer_data.hostname)
+        span:set_attribute("net.peer.port", balancer_data.port)
+        span:set_attribute("http.method", get_method())
+        span:set_attribute("http.url", balancer_data.scheme .. "://" .. balancer_data.hostname .. ctx.request_uri)
       end
 
       local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
