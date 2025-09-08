@@ -147,6 +147,27 @@ for _, strategy in helpers.all_strategies() do
               }
             }
 
+            location = "/llm/v1/chat/tool_choice" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+
+                ngx.req.read_body()
+                local function assert_ok(ok, err)
+                  if not ok then
+                    ngx.status = 500
+                    ngx.say(err)
+                    ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+                  end
+                  return ok
+                end
+                local body = assert_ok(ngx.req.get_body_data())
+                body = assert_ok(json.decode(body))
+                local tool_choice = body.tool_choice
+                ngx.header["tool-choice"] = json.encode(tool_choice)
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/good.json"))
+              }
+            }
 
             location = "/llm/v1/completions/good" {
               content_by_lua_block {
@@ -369,6 +390,36 @@ for _, strategy in helpers.all_strategies() do
           },
           logging = {
             log_statistics = false,  -- anthropic does not support statistics
+          },
+        },
+      }
+      --
+
+      -- 200 chat tool_choice response
+      local chat_tool_choice = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/tool_choice" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_tool_choice.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "x-api-key",
+            header_value = "anthropic-key",
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/tool_choice",
+              anthropic_version = "2023-06-01",
+            },
           },
         },
       }
@@ -739,6 +790,42 @@ for _, strategy in helpers.all_strategies() do
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
         assert.is_truthy(deepcompare(json.usage, {}))
+      end)
+
+      it("tool_choice conversion", function()
+        local function get_converted_tool_choice(input)
+          local body = pl_file.read(input)
+          -- rewrite the model so we can reuse the same test fixture with different models
+          body = cjson.decode(body)
+          body.model = "claude-2.1" -- anthropic model name
+          local r = client:post("/anthropic/llm/v1/chat/tool_choice", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = cjson.encode(body),
+          })
+          r:read_body()
+          local sent = r.headers["tool-choice"]
+          if not sent then
+            return nil
+          end
+          return cjson.decode(sent)
+        end
+
+        for _, case in ipairs({
+          {input = "spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/tool_choice_auto.json",
+           output = {type = "auto"}},
+          {input = "spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/tool_choice_none.json",
+           output = {type = "none"}},
+          {input = "spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/tool_choice_required.json",
+           output = {type = "any"}},
+          {input = "spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/tool_choice_object_function.json",
+           output = {type = "tool", name = "my_function"}},
+        }) do
+          local r = get_converted_tool_choice(case.input)
+          assert.same(case.output, r)
+        end
       end)
     end)
 
