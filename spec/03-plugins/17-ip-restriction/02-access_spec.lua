@@ -345,6 +345,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert.logfile().has.line("IP address not allowed", true)
         -- Ensure no preread phase errors occur (regression test for #14749)
+        assert.logfile().has.no.line("[error]", true)
+        assert.logfile().has.no.line("traceback", true)
         assert.logfile().has.no.line("function cannot be called in preread phase", true)
       end)
 
@@ -382,6 +384,8 @@ for _, strategy in helpers.each_strategy() do
         tcp:close()
 
         -- Ensure no preread phase errors occur (regression test for #14749)
+        assert.logfile().has.no.line("[error]", true)
+        assert.logfile().has.no.line("traceback", true)
         assert.logfile().has.no.line("function cannot be called in preread phase", true)
       end)
 
