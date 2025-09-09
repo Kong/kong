@@ -1,0 +1,5 @@
+message: |
+  **ip-restriction**: Fix issue where blocking an IP over TCP would log error:
+  "function cannot be called in preread phase" (#14749)
+type: bugfix
+scope: Plugin
