@@ -344,6 +344,8 @@ for _, strategy in helpers.each_strategy() do
         tcp:close()
 
         assert.logfile().has.line("IP address not allowed", true)
+        -- Ensure no preread phase errors occur (regression test for #14749)
+        assert.logfile().has.no.line("function cannot be called in preread phase", true)
       end)
 
       it("allows a request when the IP is not denied", function()
@@ -378,6 +380,9 @@ for _, strategy in helpers.each_strategy() do
         local body = assert(tcp:receive("*a"))
         assert.equal(MESSAGE, body)
         tcp:close()
+
+        -- Ensure no preread phase errors occur (regression test for #14749)
+        assert.logfile().has.no.line("function cannot be called in preread phase", true)
       end)
 
       it("blocks IP with CIDR", function()
