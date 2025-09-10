@@ -30,6 +30,9 @@ do
 end
 
 
+local is_http_subsystem = ngx.config.subsystem == "http"
+
+
 local function do_exit(status, message)
   status = status or 403
   message = message or
@@ -37,7 +40,11 @@ local function do_exit(status, message)
 
   log.warn(message)
 
-  return kong.response.error(status, message)
+  if is_http_subsystem then
+    return kong.response.error(status, message)
+  else
+    return ngx.exit(status)
+  end
 end
 
 
