@@ -6,7 +6,6 @@ local kong_meta = require "kong.meta"
 local error = error
 local kong = kong
 local log = kong.log
-local ngx_exit = ngx.exit
 local ngx_var = ngx.var
 
 
@@ -44,7 +43,7 @@ local function do_exit(status, message)
   if is_http_subsystem then
     return kong.response.error(status, message)
   else
-    return ngx_exit(status)
+    return ngx.exit(status)
   end
 end
 
