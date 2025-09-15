@@ -51,7 +51,6 @@ local function GET(url, opt)
 
   return res
 end
--- Some random changes in a file --- 11
 
 local function client_requests(n, proxy_fn)
   local ret = {

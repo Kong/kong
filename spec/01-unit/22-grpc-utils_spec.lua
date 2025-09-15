@@ -28,7 +28,6 @@ describe("grpc tools", function()
     }, methods)
   end)
 
-  -- Some random changes in a file --- 11
   it("imports recursively", function()
     local methods = {}
     local grpc_tools_instance = grpc_tools.new()

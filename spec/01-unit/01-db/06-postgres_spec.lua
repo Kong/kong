@@ -115,7 +115,6 @@ describe("kong.db [#postgres] connector", function()
     end)
   end)
 
-  -- Some random changes in a file --- 222
   describe(":query() semaphore", function()
     describe("max 1", function()
       -- connector in a new scope
@@ -362,7 +361,7 @@ describe("kong.db [#postgres] connector", function()
 
       assert.same({ "cluster_events", "clustering_rpc_requests", "a", "workspaces", "services" },  ts({ services, a, workspaces }))
     end)
-
+-- Some random changes in a file --- 222
     it("returns an error if cycles are found", function()
       local a = schema_new({
         name = "a",
