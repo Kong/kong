@@ -15,7 +15,7 @@ local fmt               = string.format
 local proxy_client      = helpers.proxy_client
 local table_insert      = table.insert
 local tonumber          = tonumber
-
+-- Some random changes in a file --- 000
 local ngx_sleep         = ngx.sleep
 local ngx_now           = ngx.now
 
@@ -130,7 +130,7 @@ local function validate_headers(headers, check_minute, check_hour)
 
     elseif check_minute then
       assert.equal(true, reset <= 60 and reset >= 0)
-
+-- Some random changes in a file --- 222_333_111
     else
       error("check_hour or check_minute must be true")
     end
@@ -174,7 +174,7 @@ end
 
 local function setup_rl_plugin(admin_client, conf, service, consumer)
   local plugin
-
+-- Some random changes in a file --- 222_333_222
   if service then
     plugin = assert(admin_client:send({
       method = "POST",

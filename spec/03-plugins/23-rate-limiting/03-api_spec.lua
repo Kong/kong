@@ -160,7 +160,7 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(201, res))
           assert.equal("local", body.config.policy)
         end)
-
+      -- Some random changes in a file --- 222
         it("does allow setting policy to cluster on non-dbless", function()
           local res = admin_client:post("/plugins", {
             body    = {
