@@ -108,7 +108,7 @@ _M.upstream_url_format = {
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
   bedrock_agent = "https://bedrock-agent-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
-  huggingface   = "https://api-inference.huggingface.co/models/%s",
+  huggingface   = "https://router.huggingface.co",
 }
 
 _M.operation_map = {
@@ -170,14 +170,11 @@ _M.operation_map = {
     },
   },
   huggingface = {
-    ["llm/v1/completions"] = {
-      path = "/models/%s",
-      method = "POST",
-    },
     ["llm/v1/chat"] = {
-      path = "/models/%s",
+      path = "/v1/chat/completions",
       method = "POST",
     },
+    -- NYI: image, audio
   },
   bedrock = {
     ["llm/v1/chat"] = {

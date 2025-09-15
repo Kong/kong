@@ -56,7 +56,7 @@ for _, strategy in helpers.all_strategies() do
           
           default_type 'application/json';
 
-          location = "/v1/chat/completions" {
+          location = "/llm/v1/chat/good" {
             content_by_lua_block {
               local pl_file = require "pl.file"
               local json = require("cjson.safe")
@@ -158,7 +158,7 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = true,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT,
+                upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
               },
             },
           },
@@ -321,7 +321,7 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = false,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-loading",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-loading/v1/chat/completions",
               },
             },
           },
@@ -352,7 +352,7 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = false,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-timeout",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-timeout/v1/chat/completions",
               },
             },
           },
@@ -403,7 +403,6 @@ for _, strategy in helpers.all_strategies() do
           assert.equals(json.object, "chat.completion")
 
           assert.is_table(json.choices)
-          --print("json: ", inspect(json))
           assert.is_string(json.choices[1].message.content)
           assert.same(
             " The sum of 1 + 1 is 2. This is a basic arithmetic operation and the answer is always the same: adding one to one results in having two in total.",
