@@ -1,6 +1,6 @@
 [![][kong-logo]][kong-url]
 
-![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)  ![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)
+![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square) [![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)](https://x.com/thekonginc)
 
 
 Kong or Kong Gateway is a cloud-native, platform-agnostic, scalable **API 𖧹 LLM 𖧹 MCP** Gateway distinguished for its high performance and extensibility via plugins. It also provides advanced AI traffic capabilities with multi-LLM support, semantic security, MCP traffic security and analytics, and more.
