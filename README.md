@@ -1,17 +1,21 @@
 [![][kong-logo]][kong-url]
 
-![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)  ![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)
+![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)  ![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)
 
 
-**Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins. It also provides advanced AI capabilities with multi-LLM support.
+Kong or Kong Gateway is a cloud-native, platform-agnostic, scalable **API 𖧹 LLM 𖧹 MCP** Gateway distinguished for its high performance and extensibility via plugins. It also provides advanced AI traffic capabilities with multi-LLM support, semantic security, MCP traffic security and analytics, and more.
 
-By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
+By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic - and agentic LLM and MCP as well - with ease.
 
 Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Controller](https://github.com/Kong/kubernetes-ingress-controller).
 
+<br />
+
+[![][kong-diagram]][kong-url]
+
 ---
 
-[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds] | [Cloud Hosted Kong](https://konghq.com/kong-konnect/)
+[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds] | [AI Gateway](https://konghq.com/products/kong-ai-gateway) | [Cloud Hosted Kong](https://konghq.com/kong-konnect/)
 
 ---
 
@@ -21,7 +25,7 @@ If you prefer to use a cloud-hosted Kong, you can [sign up for a free trial of K
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong API Gateway in DB-less mode.
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong Gateway in DB-less mode.
 
 Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
@@ -45,17 +49,23 @@ The Gateway is now available on the following ports on localhost:
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
 
+### Getting started with AI Gateway for LLM and MCP
+
+If you would like to get started with Kong AI Gateway capabilities including LLM and MCP features, please refer to the [official AI documentation](https://developer.konghq.com/ai-gateway/).
+
 ## Features
 
-By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most.
+By centralizing common API, AI and MCP functionality across all your organization's services, Kong Gateway creates more freedom for engineering teams to focus on the challenges that matter most.
 
 The top Kong features include:
 
 - Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
 - Authentication and authorization for APIs using methods like JWT, basic auth, OAuth, ACLs and more.
+- Universal LLM API to route across multiple providers like OpenAI, Anthropic, GCP Gemini, AWS Bedrock, Azure AI, Databricks, Mistral, Huggingface and more.
+- MCP traffic governance, MCP security and MCP observability in addition to MCP autogeneration from any RESTful API.
+- 60+ AI features like AI observability, semantic security and caching, semantic routing and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
 - Plugins for enforcing traffic controls, rate limiting, req/res transformations, logging, monitoring and including a plugin developer hub.
-- Plugins for AI traffic to support multi-LLM implementations and no-code AI use cases, with advanced AI prompt engineering, AI observability, AI security and more.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
 - Native [ingress controller](https://github.com/Kong/kubernetes-ingress-controller) support for serving Kubernetes.
 
@@ -69,7 +79,7 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 
 ## Contributing
 
-We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong Gateway, please familiarize yourself with the following developer resources:
 
 - Community Pledge ([COMMUNITY_PLEDGE.md](COMMUNITY_PLEDGE.md)) for our pledge to interact with you, the open source community.
 - Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
@@ -95,7 +105,7 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 
 ## Konnect Cloud
 
-Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect Cloud](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect Cloud platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/products/kong-konnect/register?utm_medium=Referral&utm_source=Github&utm_campaign=kong-gateway&utm_content=konnect-promo-in-gateway&utm_term=get-started) with Konnect Cloud.
+Kong Inc. offers commercial subscriptions that enhance the Kong Gateway in a variety of ways. Customers of Kong's [Konnect Cloud](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect Cloud platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/products/kong-konnect/register?utm_medium=Referral&utm_source=Github&utm_campaign=kong-gateway&utm_content=konnect-promo-in-gateway&utm_term=get-started) with Konnect Cloud.
 
 ## License
 
@@ -117,6 +127,7 @@ limitations under the License.
 
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
+[kong-diagram]: https://assets.prd.mktg.konghq.com/images/2025/09/68cc1bfd-kong-diagram.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-master-builds]: https://hub.docker.com/r/kong/kong/tags
 [badge-action-url]: https://github.com/Kong/kong/actions
