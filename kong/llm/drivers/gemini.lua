@@ -106,6 +106,7 @@ local function handle_stream_event(event_t, model_info, route_type)
     metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
 
     local new_event = {
+      model = model_info.name,
       choices = {
         [1] = {
           delta = {
@@ -128,6 +129,7 @@ local function handle_stream_event(event_t, model_info, route_type)
 
     if event.candidates and #event.candidates > 0 then
       local new_event = {
+        model = model_info.name,
         choices = {
           [1] = {
             delta = {
@@ -395,6 +397,7 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   -- messages/choices table is only 1 size, so don't need to static allocate
   local messages = {}
   messages.choices = {}
+  messages.model = model_info.name -- openai format always contains the model name
 
   if response.candidates and #response.candidates > 0 then
     -- for transformer plugins only
