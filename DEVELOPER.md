@@ -204,6 +204,9 @@ Now you can start Kong:
 # Use the pre-defined docker-compose file to bring up databases etc
 start_services
 
+# Bootstrap the database
+kong migrations bootstrap
+
 # Start Kong!
 kong start
 
