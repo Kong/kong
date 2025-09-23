@@ -75,4 +75,13 @@ server {
       end
     }
   }
+
+  location = "/v1/chat/completions/fail-model-armor" {
+    content_by_lua_block {
+      local pl_file = require "pl.file"
+
+      ngx.status = 200
+      ngx.print(pl_file.read("spec/fixtures/ai-proxy/gemini/llm-v1-chat/responses/fails-model-armor-floor.json"))
+    }
+  }
 }

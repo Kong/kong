@@ -658,6 +658,19 @@ local function extract_response_finish_reason(response_candidate)
   return "stop"
 end
 
+local function feedback_to_kong_error(promptFeedback)
+  if promptFeedback
+      and type(promptFeedback) == "table"
+  then
+    return {
+      error = true,
+      message = promptFeedback.blockReasonMessage or cjson.null,
+      reason = promptFeedback.blockReason or cjson.null,
+    }
+  end
+
+  return nil
+end
 
 local function extract_response_tool_calls(response_candidate)
   local tool_calls
@@ -780,6 +793,30 @@ local function from_gemini_chat_openai(response, model_info, route_type)
         completion_tokens = response.usageMetadata.candidatesTokenCount,
         total_tokens = response.usageMetadata.totalTokenCount,
       }
+    end
+
+  elseif response.promptFeedback then
+    kong_response = feedback_to_kong_error(response.promptFeedback)
+    
+    if get_global_ctx("stream_mode") then
+      set_global_ctx("blocked_by_guard", kong_response)
+    else
+      kong.response.set_status(400)  -- safety call this in case we have already returned from e.g. another AI plugin
+
+      -- This is duplicated DELIBERATELY - to avoid regression,
+      -- moving it outside of the block above may cause bugs that
+      -- we can't predict.
+      if response.usageMetadata and
+          (response.usageMetadata.promptTokenCount
+          or response.usageMetadata.candidatesTokenCount
+          or response.usageMetadata.totalTokenCount)
+      then
+        kong_response.usage = {
+          prompt_tokens = response.usageMetadata.promptTokenCount,
+          completion_tokens = response.usageMetadata.candidatesTokenCount,
+          total_tokens = response.usageMetadata.totalTokenCount,
+        }
+      end
     end
 
   else -- probably a server fault or other unexpected response

@@ -282,6 +282,46 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        -- 400 chat fails Model Armor "Floor".
+        -- NOT related to the "ai-gcp-model-armor" plugin.
+        local chat_fail_model_armor = assert(bp.routes:insert({
+          service = empty_service,
+          protocols = { "http" },
+          strip_path = true,
+          paths = { "/gemini/llm/v1/chat/fail-model-armor" },
+        }))
+        bp.plugins:insert({
+          name = "ai-proxy-advanced",
+          id = "27544c15-3c8c-5c3f-c98a-69990644aaaa",
+          route = { id = chat_fail_model_armor.id },
+          config = {
+            targets = {
+              {
+                route_type = "llm/v1/chat",
+                auth = {
+                  header_name = "Authorization",
+                  header_value = "Bearer gemini-key",
+                },
+                logging = {
+                  log_payloads = false,
+                  log_statistics = false,
+                },
+                model = {
+                  name = "gemini-2.5-flash",
+                  provider = "gemini",
+                  options = {
+                    max_tokens = 256,
+                    temperature = 1.0,
+                    upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORTS._GEMINI .. "/v1/chat/completions/fail-model-armor",
+                    input_cost = 15.0,
+                    output_cost = 15.0,
+                  },
+                },
+              },
+            },
+          },
+        })
+
         ----
         -- ANTHROPIC MODELS
         ----
@@ -434,6 +474,26 @@ for _, strategy in helpers.all_strategies() do
             local body = assert.res_status(200, r)
             local json = cjson.decode(body)
             assert.equals("gemini-2.0-flash-079", json.model)
+          end)
+
+          it("bad request fails gcp model armor floor settings", function()
+            local r = client:get("/gemini/llm/v1/chat/fail-model-armor", {
+              headers = {
+                ["content-type"] = "application/json",
+                ["accept"] = "application/json",
+              },
+              -- the body doesn't matter - the mock server always returns the error we want
+              body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+            })
+            -- validate that the request succeeded, response status 400
+            local body = assert.res_status(400, r)
+            local json = cjson.decode(body)
+
+            assert.same(json, {
+              error = true,
+              message = "Blocked by Model Armor Floor Setting: The prompt violated Responsible AI Safety settings (Harassment), Prompt Injection and Jailbreak filters.",
+              reason = "MODEL_ARMOR"
+            })
           end)
         end)
 
