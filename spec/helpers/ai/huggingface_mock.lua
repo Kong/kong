@@ -11,7 +11,7 @@ local mock_huggingface_embeddings = require("spec.helpers.ai.embeddings_mock").m
 --
 
 local api = "https://router.huggingface.co"
-local embeddings_url = api .. "/models/distilbert-base-uncased/pipeline/feature-extraction"
+local embeddings_url = api .. "/hf-inference/models/distilbert-base-uncased/pipeline/feature-extraction"
 
 --
 -- private functions

@@ -232,7 +232,6 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-
 local function huggingface_endpoint(conf, model)
   local parsed_url
 
