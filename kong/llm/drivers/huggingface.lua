@@ -68,49 +68,6 @@ local function from_huggingface(response_string, model_info, route_type)
   return result_string, nil
 end
 
-local function set_huggingface_options(model_info)
-  local use_cache = false
-  local wait_for_model = false
-
-  if model_info and model_info.options and model_info.options.huggingface then
-    use_cache = model_info.options.huggingface.use_cache or false
-    wait_for_model = model_info.options.huggingface.wait_for_model or false
-  end
-
-  return {
-    use_cache = use_cache,
-    wait_for_model = wait_for_model,
-  }
-end
-
-local function set_default_parameters(request_table)
-  local parameters = request_table.parameters or {}
-  if parameters.top_k == nil then
-    parameters.top_k = request_table.top_k
-  end
-  if parameters.top_p == nil then
-    parameters.top_p = request_table.top_p
-  end
-  if parameters.temperature == nil then
-    parameters.temperature = request_table.temperature
-  end
-  if parameters.max_tokens == nil then
-    if request_table.messages then
-      -- conversational model use the max_length param
-      -- https://huggingface.co/docs/api-inference/en/detailed_parameters?code=curl#conversational-task
-      parameters.max_length = request_table.max_tokens
-    else
-      parameters.max_new_tokens = request_table.max_tokens
-    end
-  end
-  request_table.top_k = nil
-  request_table.top_p = nil
-  request_table.temperature = nil
-  request_table.max_tokens = nil
-
-  return parameters
-end
-
 local function safe_access(tbl, ...)
   local value = tbl
   for _, key in ipairs({ ... }) do
@@ -195,18 +152,14 @@ local function to_huggingface(task, request_table, model_info)
   if task == "llm/v1/completions" then
     request_table.inputs = request_table.prompt
     request_table.prompt = nil
-    request_table.parameters = set_default_parameters(request_table)
     request_table.model = model_info.name or request_table.model
 
   elseif task == "llm/v1/chat" then
     -- For router.huggingface.co, we need to include the model in the request body
     request_table.model = model_info.name or request_table.model
-    request_table.parameters = set_default_parameters(request_table)
     request_table.inputs = request_table.prompt
 
   end
-
-  request_table.options = set_huggingface_options(model_info)
 
   return request_table, "application/json", nil
 end
