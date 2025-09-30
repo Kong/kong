@@ -28,7 +28,8 @@ local function transform_body(conf)
     local adapter = get_global_ctx("llm_format_adapter")
     if not adapter then
       -- openai formats
-      response_body, err = ai_driver.from_format(response_body, conf.model, route_type)
+      local model_t = ai_plugin_ctx.get_request_model_table_inuse()
+      response_body, err = ai_driver.from_format(response_body, model_t, route_type)
     end
 
     if err then
