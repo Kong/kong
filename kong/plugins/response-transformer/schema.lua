@@ -25,6 +25,7 @@ local string_array = {
   type = "array",
   default = {},
   required = true,
+  referenceable = true,
   elements = { type = "string" },
 }
 
@@ -33,6 +34,7 @@ local colon_string_array = {
   type = "array",
   default = {},
   required = true,
+  referenceable = true,
   elements = { type = "string", match = "^[^:]+:.*$" },
 }
 
@@ -53,6 +55,7 @@ local colon_string_record = {
     { json_types = { description = "List of JSON type names. Specify the types of the JSON values returned when appending\nJSON properties. Each string element can be one of: boolean, number, or string.", type = "array",
       default = {},
       required = true,
+      referenceable = true,
       elements = {
         type = "string",
         one_of = { "boolean", "number", "string" }
@@ -66,6 +69,7 @@ local colon_headers_array = {
   type = "array",
   default = {},
   required = true,
+  referenceable = true,
   elements = { type = "string", match = "^[^:]+:.*$", custom_validator = validate_colon_headers },
 }
 
