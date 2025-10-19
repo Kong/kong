@@ -134,3 +134,90 @@ describe("headers_key", function()
                    {vary_headers = {"a", "b", "c"}}))
   end)
 end)
+
+describe("normalize_accept_encoding", function()
+  it("returns 'none' for nil header", function()
+    assert.equal("none", key_utils.normalize_accept_encoding(nil))
+  end)
+
+  it("returns 'none' for empty string", function()
+    assert.equal("none", key_utils.normalize_accept_encoding(""))
+  end)
+
+  it("returns 'none' for whitespace only", function()
+    assert.equal("none", key_utils.normalize_accept_encoding("   "))
+  end)
+
+  it("handles single encoding", function()
+    assert.equal("gzip", key_utils.normalize_accept_encoding("gzip"))
+  end)
+
+  it("handles single encoding with whitespace", function()
+    assert.equal("gzip", key_utils.normalize_accept_encoding("  gzip  "))
+  end)
+
+  it("handles multiple encodings", function()
+    local result = key_utils.normalize_accept_encoding("gzip, deflate, br")
+    -- encodings should be sorted
+    assert.equal("br,deflate,gzip", result)
+  end)
+
+  it("handles multiple encodings with different order", function()
+    local result1 = key_utils.normalize_accept_encoding("gzip, deflate, br")
+    local result2 = key_utils.normalize_accept_encoding("br, gzip, deflate")
+    -- should normalize to same value
+    assert.equal(result1, result2)
+  end)
+
+  it("handles case insensitivity", function()
+    assert.equal("gzip", key_utils.normalize_accept_encoding("GZIP"))
+    assert.equal("gzip", key_utils.normalize_accept_encoding("Gzip"))
+    assert.equal("gzip", key_utils.normalize_accept_encoding("gZiP"))
+  end)
+
+  it("handles quality values", function()
+    local result = key_utils.normalize_accept_encoding("gzip;q=1.0, deflate;q=0.8")
+    -- quality values should be stripped, encodings sorted
+    assert.equal("deflate,gzip", result)
+  end)
+
+  it("handles complex quality values with whitespace", function()
+    local result = key_utils.normalize_accept_encoding("gzip ; q=1.0 , deflate ; q=0.8")
+    assert.equal("deflate,gzip", result)
+  end)
+
+  it("ignores wildcard encoding", function()
+    assert.equal("gzip", key_utils.normalize_accept_encoding("gzip, *"))
+  end)
+
+  it("handles identity encoding", function()
+    assert.equal("identity", key_utils.normalize_accept_encoding("identity"))
+  end)
+
+  it("handles multiple encodings with mixed case and quality", function()
+    local result = key_utils.normalize_accept_encoding("GZIP;q=1.0, Deflate;q=0.8, BR")
+    assert.equal("br,deflate,gzip", result)
+  end)
+
+  it("handles real-world browser Accept-Encoding header", function()
+    local result = key_utils.normalize_accept_encoding("gzip, deflate, br")
+    assert.equal("br,deflate,gzip", result)
+  end)
+
+  it("returns consistent results for equivalent headers", function()
+    local headers = {
+      "gzip, deflate",
+      "deflate, gzip",
+      "gzip;q=1.0, deflate;q=1.0",
+      "GZIP, DEFLATE",
+      "  gzip  ,  deflate  ",
+    }
+
+    local first_result = key_utils.normalize_accept_encoding(headers[1])
+    for i = 2, #headers do
+      local result = key_utils.normalize_accept_encoding(headers[i])
+      assert.equal(first_result, result,
+        "Expected '" .. headers[i] .. "' to normalize to same value as '" .. headers[1] .. "'")
+    end
+  end)
+end)

@@ -16,6 +16,8 @@ local time             = ngx.time
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
 local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
+local ngx_log          = ngx.log
+local ngx_DEBUG        = ngx.DEBUG
 local parse_mime_type  = mime_type.parse_mime_type
 local parse_directive_header = require("kong.tools.http").parse_directive_header
 local calculate_resource_ttl = require("kong.tools.http").calculate_resource_ttl
@@ -247,17 +249,26 @@ function ProxyCacheHandler:access(conf)
     uri = lower(uri)
   end
 
+  local headers = kong.request.get_headers()
+  local accept_encoding = headers["accept-encoding"] or headers["Accept-Encoding"]
+
+  -- debug logging for Accept-Encoding header to trace cache key generation
+  ngx_log(ngx_DEBUG, "[proxy-cache] Accept-Encoding header: ",
+          accept_encoding or "none")
+
   local cache_key, err = cache_key.build_cache_key(consumer and consumer.id,
                                                    route    and route.id,
                                                    kong.request.get_method(),
                                                    uri,
                                                    kong.request.get_query(),
-                                                   kong.request.get_headers(),
+                                                   headers,
                                                    conf)
   if err then
     kong.log.err(err)
     return
   end
+
+  ngx_log(ngx_DEBUG, "[proxy-cache] Generated cache key: ", cache_key)
 
   set_header(conf, "X-Cache-Key", cache_key)
 
@@ -270,6 +281,8 @@ function ProxyCacheHandler:access(conf)
   local ctx = kong.ctx.plugin
   local res, err = strategy:fetch(cache_key)
   if err == "request object not in cache" then -- TODO make this a utils enum err
+
+    ngx_log(ngx_DEBUG, "[proxy-cache] Cache miss for key: ", cache_key)
 
     -- this request wasn't found in the data store, but the client only wanted
     -- cache data. see https://tools.ietf.org/html/rfc7234#section-5.2.1.7
@@ -317,6 +330,8 @@ function ProxyCacheHandler:access(conf)
       return signal_cache_req(ctx, conf, cache_key, "Refresh")
     end
   end
+
+  ngx_log(ngx_DEBUG, "[proxy-cache] Cache hit for key: ", cache_key)
 
   -- we have cache data yo!
   -- expose response data for logging plugins

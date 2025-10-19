@@ -5,6 +5,9 @@ local pairs = pairs
 local sort = table.sort
 local insert = table.insert
 local concat = table.concat
+local lower = string.lower
+local match = string.match
+local gsub = string.gsub
 
 local sha256_hex = require("kong.tools.sha256").sha256_hex
 
@@ -82,6 +85,46 @@ end
 _M.headers_key = headers_key
 
 
+-- Normalize Accept-Encoding header for cache key generation
+-- This ensures compressed and uncompressed responses are cached separately
+-- to prevent serving compressed content to clients that don't support it
+local function normalize_accept_encoding(accept_encoding_header)
+  -- if no Accept-Encoding header, treat as "none" for cache key
+  if not accept_encoding_header or accept_encoding_header == "" then
+    return "none"
+  end
+
+  -- convert to lowercase for case-insensitive comparison
+  local header_lower = lower(accept_encoding_header)
+
+  -- extract encoding types, ignoring quality values (q=X.X)
+  -- split by comma and extract encoding names
+  local encodings = {}
+  for encoding in header_lower:gmatch("[^,]+") do
+    -- trim whitespace and extract encoding name (before semicolon if present)
+    encoding = match(encoding, "^%s*(.-)%s*$")
+    local encoding_name = match(encoding, "^([^;]+)")
+    if encoding_name then
+      encoding_name = match(encoding_name, "^%s*(.-)%s*$")
+      -- only include recognized encodings
+      if encoding_name ~= "" and encoding_name ~= "*" then
+        encodings[#encodings + 1] = encoding_name
+      end
+    end
+  end
+
+  -- if no valid encodings found, treat as "none"
+  if #encodings == 0 then
+    return "none"
+  end
+
+  -- sort encodings for consistent cache key generation
+  sort(encodings)
+  return concat(encodings, ",")
+end
+_M.normalize_accept_encoding = normalize_accept_encoding
+
+
 local function prefix_uuid(consumer_id, route_id)
 
   -- authenticated route
@@ -108,8 +151,15 @@ function _M.build_cache_key(consumer_id, route_id, method, uri,
   local params_digest  = params_key(params_table, conf)
   local headers_digest = headers_key(headers_table, conf)
 
-  return sha256_hex(fmt("%s|%s|%s|%s|%s", prefix_digest, method, uri,
-                                          params_digest, headers_digest))
+  -- include Accept-Encoding in cache key to prevent serving compressed
+  -- content to clients that don't support compression (Issue #12796)
+  local accept_encoding = normalize_accept_encoding(
+    headers_table["accept-encoding"] or headers_table["Accept-Encoding"]
+  )
+
+  return sha256_hex(fmt("%s|%s|%s|%s|%s|%s", prefix_digest, method, uri,
+                                          params_digest, headers_digest,
+                                          accept_encoding))
 end
 
 
