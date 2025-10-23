@@ -16,6 +16,9 @@ on:
         description: "Ignore the build cache and build dependencies from scratch"
         type: boolean
         default: false
+
+permissions: read-all
+
 jobs:
   build:
     name: Build dependencies
