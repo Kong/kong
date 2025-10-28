@@ -79,8 +79,7 @@ local function handle_streaming_frame(conf, chunk, finished)
     end
   end
 
-  local finish_reason
-
+  local finish_reason = nil
 
   for _, event in ipairs(events) do
     -- TODO: currently only subset of driver follow the body, err, metadata pattern
@@ -93,32 +92,36 @@ local function handle_streaming_frame(conf, chunk, finished)
       local event_t, err = cjson.decode(formatted)
 
       if not err then
+        local token_t
+
         if event_t.choices and #event_t.choices > 0 then
           finish_reason = event_t.choices[1].finish_reason
         end
 
+        token_t = get_token_text(event_t)
+
+        if body_buffer and token_t then
+          body_buffer:put(token_t)
+        end
+      end
+    end
+
     if formatted then
-      if not blocked_msg
-        or (formatted == ai_shared._CONST.SSE_TERMINATOR and not get_global_ctx("sample_event"))then
+      if formatted == ai_shared._CONST.SSE_TERMINATOR and not get_global_ctx("sample_event") then
         frame_buffer:put("data: ")
         frame_buffer:put(formatted)
         frame_buffer:put("\n\n")
-
-        -- either enabled in ai-proxy plugin, or required by other plugin
-        if body_buffer then
-          body_buffer:put(token_t)
-        end
       end
     end
 
     if conf.logging and conf.logging.log_statistics and metadata then
       -- gemini metadata specifically, works differently
       if conf.model.provider == "gemini" then
-        ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", metadata.prompt_tokens or 0)
-        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", metadata.completion_tokens or 0)
+        ai_plugin_o11y.metrics_set("input_tokens_count", metadata.prompt_tokens or 0)
+        ai_plugin_o11y.metrics_set("output_tokens_count", metadata.completion_tokens or 0)
       else
-        ai_plugin_o11y.metrics_add("llm_prompt_tokens_count", metadata.prompt_tokens or 0)
-        ai_plugin_o11y.metrics_add("llm_completion_tokens_count", metadata.completion_tokens or 0)
+        ai_plugin_o11y.metrics_add("input_tokens_count", metadata.prompt_tokens or 0)
+        ai_plugin_o11y.metrics_add("output_tokens_count", metadata.completion_tokens or 0)
       end
     end
   end
@@ -139,8 +142,8 @@ local function handle_streaming_frame(conf, chunk, finished)
   if finished then
     local response = body_buffer and body_buffer:get()
 
-    local prompt_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_tokens_count")
-    local completion_tokens_count = ai_plugin_o11y.metrics_get("llm_completion_tokens_count")
+    local prompt_tokens_count = ai_plugin_o11y.metrics_get("input_tokens_count")
+    local completion_tokens_count = ai_plugin_o11y.metrics_get("output_tokens_count")
 
     if conf.logging and conf.logging.log_statistics then
       -- no metadata populated in the event streams, do our estimation
@@ -150,7 +153,7 @@ local function handle_streaming_frame(conf, chunk, finished)
         --
         -- essentially, every 4 characters is a token, with minimum of 1*4 per event
         completion_tokens_count = math.ceil(#strip(response) / 4)
-        ai_plugin_o11y.metrics_set("llm_completion_tokens_count", completion_tokens_count)
+        ai_plugin_o11y.metrics_set("output_tokens_count", completion_tokens_count)
       end
     end
 
@@ -181,7 +184,7 @@ local function handle_streaming_frame(conf, chunk, finished)
       usage = {
         prompt_tokens = prompt_tokens_count,
         completion_tokens = completion_tokens_count,
-        total_tokens = ai_plugin_o11y.metrics_get("llm_total_tokens_count"),
+        total_tokens = ai_plugin_o11y.metrics_get("total_tokens_count"),
       }
     }
 
