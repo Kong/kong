@@ -10,6 +10,8 @@ on:
       # globs for files that we want to check with ast-grep here
       - '**/*.lua'
 
+permissions: read-all
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true

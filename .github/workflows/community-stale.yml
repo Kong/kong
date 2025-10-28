@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "30 1 * * *"
 
+permissions: read-all
+
 jobs:
   close-issues:
     runs-on: ubuntu-latest

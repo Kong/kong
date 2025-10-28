@@ -3,6 +3,8 @@ name: Detect Unexpected EE Changes
 on:
   pull_request:
 
+permissions: read-all
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
