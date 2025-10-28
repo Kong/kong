@@ -34,6 +34,7 @@ describe("kong.db [#postgres] connector", function()
         db_readonly = false,
       }, infos)
 
+      -- Some random changes in a file --- 111
       infos = connector.infos{ major_version = 9.5, major_minor_version = "9.5.1", config = config }
       assert.same({
         db_desc  = "database",
@@ -360,7 +361,7 @@ describe("kong.db [#postgres] connector", function()
 
       assert.same({ "cluster_events", "clustering_rpc_requests", "a", "workspaces", "services" },  ts({ services, a, workspaces }))
     end)
-
+-- Some random changes in a file --- 222
     it("returns an error if cycles are found", function()
       local a = schema_new({
         name = "a",
