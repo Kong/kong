@@ -5,7 +5,7 @@ local prompt_record = {
   required = false,
   fields = {
     { role = { type = "string", required = true, one_of = { "system", "assistant", "user" }, default = "system" }},
-    { content = { type = "string", required = true, len_min = 1, len_max = 500 } },
+    { content = { type = "string", required = true, len_min = 1, len_max = 100000 } },
   }
 }
 

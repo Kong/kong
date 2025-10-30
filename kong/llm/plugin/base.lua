@@ -1,5 +1,7 @@
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local kong_global = require "kong.global"
+
 
 local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors("_base")
 
@@ -72,13 +74,16 @@ function MetaPlugin:configure(sub_plugin, configs)
   run_stage(STAGES.SETUP, sub_plugin, configs)
 end
 
-function MetaPlugin:access(sub_plugin, conf)
+function MetaPlugin:access(sub_plugin, conf, kong_plugin_t)
   ngx.ctx.ai_namespaced_ctx = ngx.ctx.ai_namespaced_ctx or {}
   ngx.ctx.ai_executed_filters = ngx.ctx.ai_executed_filters or {}
 
   if sub_plugin.enable_balancer_retry then
     kong.service.set_target_retry_callback(function()
       ngx.ctx.ai_executed_filters = {}
+      kong_global.set_named_ctx(kong, "plugin", kong_plugin_t, ngx.ctx)
+      kong_global.set_namespaced_log(kong, sub_plugin.name, ngx.ctx)
+      ngx.ctx.plugin_id = conf.__plugin_id
 
       MetaPlugin:retry(sub_plugin, conf)
 
@@ -110,6 +115,7 @@ function MetaPlugin:body_filter(sub_plugin, conf)
   -- check if a response is already sent in access phase by any filter
   local sent, source = get_global_ctx("response_body_sent")
   if sent then
+    run_stage(STAGES.RES_PRE_PROCESSING, sub_plugin, conf)
     kong.log.debug("response already sent from source: ", source, " skipping body_filter")
     return
   end
@@ -238,7 +244,7 @@ function _M:as_kong_plugin()
 
   if self.filters[STAGES.REQ_INTROSPECTION] or self.filters[STAGES.REQ_TRANSFORMATION] then
     Plugin.access = function(_, conf)
-      return MetaPlugin:access(self, conf)
+      return MetaPlugin:access(self, conf, Plugin)
     end
   end
 

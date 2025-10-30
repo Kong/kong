@@ -1,0 +1,4 @@
+message: >
+  **ollama**: Fixed an issue where 'tools' and 'RAG' decoration did not work for Ollama (llama2) provider.
+type: bugfix
+scope: Plugin

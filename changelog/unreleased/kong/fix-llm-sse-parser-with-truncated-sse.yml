@@ -1,0 +1,4 @@
+message: >
+  Fixed an issue where AI Proxy and AI Proxy Advanced might produce duplicate content in the response when the SSE event was truncated.
+type: bugfix
+scope: Plugin

@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where aws stream parser didn't parse correctly when the frame was incomplete.
+type: bugfix
+scope: Plugin

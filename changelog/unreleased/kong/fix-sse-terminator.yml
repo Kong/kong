@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where SSE terminator may not have correct ending characters.
+type: "bugfix"
+scope: "Plugin"

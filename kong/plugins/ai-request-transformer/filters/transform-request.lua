@@ -21,10 +21,7 @@ local FILTER_OUTPUT_SCHEMA = {
 
 local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_SCHEMA)
 
-local _KEYBASTION = setmetatable({}, {
-  __mode = "k",
-  __index = ai_shared.cloud_identity_function,
-})
+local _KEYBASTION = ai_shared.get_key_bastion()
 
 
 local function bad_request(msg)

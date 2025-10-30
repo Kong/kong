@@ -6,7 +6,7 @@ local PRIORITY = 770
 local AIPlugin = ai_plugin_base.define(NAME, PRIORITY)
 
 local SHARED_FILTERS = {
-  "parse-request", "normalize-request", "enable-buffering",
+  "parse-request", "save-request-body", "normalize-request", "enable-buffering",
   "normalize-response-header", "parse-sse-chunk", "normalize-sse-chunk",
   "parse-json-response", "normalize-json-response",
   "serialize-analytics",

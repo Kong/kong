@@ -13,9 +13,16 @@ local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAM
 
 
 function _M:run(_)
-  ai_plugin_o11y.record_request_end()
+  if get_global_ctx("response_body") or
+    get_global_ctx("stream_mode") or
+    kong.response.get_source() ~= "service"
+  then
+    return true
+  end
 
-  if get_global_ctx("response_body") or get_global_ctx("stream_mode") or kong.response.get_source() ~= "service" then
+  local content_type = kong.service.response.get_header("Content-Type") or "application/json"
+  -- gemini vertex ai return response header content-type = "text/html" in json case
+  if content_type:sub(1, 16) ~= "application/json" and content_type:sub(1, 9) ~= "text/html" then
     return true
   end
 

@@ -664,6 +664,7 @@ build = {
     ["kong.llm.plugin.shared-filters.parse-json-response"] = "kong/llm/plugin/shared-filters/parse-json-response.lua",
     ["kong.llm.plugin.shared-filters.parse-request"] = "kong/llm/plugin/shared-filters/parse-request.lua",
     ["kong.llm.plugin.shared-filters.parse-sse-chunk"] = "kong/llm/plugin/shared-filters/parse-sse-chunk.lua",
+    ["kong.llm.plugin.shared-filters.save-request-body"] = "kong/llm/plugin/shared-filters/save-request-body.lua",
     ["kong.llm.plugin.shared-filters.serialize-analytics"] = "kong/llm/plugin/shared-filters/serialize-analytics.lua",
 
     ["kong.llm.adapters.bedrock"] = "kong/llm/adapters/bedrock.lua",

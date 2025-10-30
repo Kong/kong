@@ -1,0 +1,4 @@
+message: >
+  Fixed an issue where AI Proxy and AI Proxy Advanced can't properly failover to a Bedrock target.
+type: bugfix
+scope: Plugin

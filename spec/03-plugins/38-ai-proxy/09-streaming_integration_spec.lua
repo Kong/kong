@@ -19,10 +19,10 @@ local _EXPECTED_CHAT_STATS = {
   },
   usage = {
     prompt_tokens = 18,
-    completion_tokens = 13, -- this was from estimation
-    total_tokens = 31,
+    completion_tokens = 7, -- this was from estimation
+    total_tokens = 25,
     time_per_token = 1,
-    cost = 0.00031,
+    cost = 0.00025,
   },
 }
 
@@ -130,6 +130,8 @@ for _, strategy in helpers.all_strategies() do
 
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n\n", EVENT))
+                    ngx.sleep(0.01) -- simulate delay for latency assertion
+                    ngx.flush(true)
                   end
                 end
               else
@@ -233,10 +235,10 @@ for _, strategy in helpers.all_strategies() do
                   -- GOOD RESPONSE
 
                   ngx.status = 200
-                  ngx.header["Content-Type"] = "text/event-stream"
+                  ngx.header["Content-Type"] = "application/stream+json"
 
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
-                    ngx.print(fmt("%s\n\n", EVENT))
+                    ngx.print(fmt("%s\n", EVENT))
                   end
                 end
               else
@@ -309,6 +311,37 @@ for _, strategy in helpers.all_strategies() do
               else
                 ngx.status = 401
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+              end
+            }
+          }
+
+          location = "/gemini/llm/v1/chat/good" {
+            content_by_lua_block {
+              local _EVENT_CHUNKS = {
+                [1] = '[',
+                [2] = '{"candidates": [{"content": {"parts": [{"text": "Gemini"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [3] = '{"candidates": [{"content": {"parts": [{"text": " is"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [4] = '{"candidates": [{"content": {"parts": [{"text": " a"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [5] = '{"candidates": [{"content": {"parts": [{"text": " powerful"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [6] = '{"candidates": [{"content": {"parts": [{"text": " model"}], "role": "model"}, "finishReason": "NULL", "index": 0}]},',
+                [7] = '{"candidates": [{"content": {"parts": [{"text": "."}], "role": "model"}, "finishReason": "STOP", "index": 0}]}',
+                [8] = ']',
+              }
+
+              local fmt = string.format
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/json"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(EVENT)
+                ngx.flush(true)
+                ngx.sleep(0.01) -- simulate delay for latency assertion
               end
             }
           }
@@ -397,6 +430,67 @@ for _, strategy in helpers.all_strategies() do
               end
             }
           }
+
+          location = "/bedrock/llm/v1/chat/streaming/good" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local _EVENT_CHUNKS = {}
+
+              for i=1,4 do
+                local encoded = pl_file.read("spec/fixtures/ai-proxy/bedrock/chunks-normal/chunk-" .. i .. ".bin")
+                local decoded = ngx.decode_base64(encoded)
+                _EVENT_CHUNKS[i] = decoded
+              end
+
+              local fmt = string.format
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/vnd.amazon.eventstream"
+
+              for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                ngx.print(fmt("%s", EVENT))
+              end
+            }
+          }
+
+          location = "/bedrock/llm/v1/chat/streaming/incomplete" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local all_chunks = ""
+
+              for i=1,4 do
+                local encoded = pl_file.read("spec/fixtures/ai-proxy/bedrock/chunks-normal/chunk-" .. i .. ".bin")
+                local decoded = ngx.decode_base64(encoded)
+                all_chunks = all_chunks .. decoded
+              end
+
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+
+              -- GOOD RESPONSE
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/vnd.amazon.eventstream"
+
+              local len = #all_chunks
+              local i = math.floor(len / 3)
+              for j = 0, 2 do
+                local stop = i * j + i
+                if j == 2 then
+                  -- the last truncated frame
+                  stop = len
+                end
+                local to_send = all_chunks:sub(i * j + 1, stop)
+                ngx.print(to_send)
+                ngx.flush(true)
+                ngx.sleep(0.1) -- simulate delay
+              end
+            }
+          }
         }
       ]]
 
@@ -423,6 +517,10 @@ for _, strategy in helpers.all_strategies() do
             header_name = "Authorization",
             header_value = "Bearer openai-key",
           },
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
           model = {
             name = "gpt-3.5-turbo",
             provider = "openai",
@@ -440,7 +538,7 @@ for _, strategy in helpers.all_strategies() do
         name = "file-log",
         route = { id = openai_chat_good.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -559,6 +657,49 @@ for _, strategy in helpers.all_strategies() do
       bp.plugins:insert {
         name = "file-log",
         route = { id = anthropic_chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat gemini
+      local gemini_chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/gemini/llm/v1/chat/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = gemini_chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          model = {
+            name = "gemini-1.5-flash",
+            provider = "gemini",
+            options = {
+              max_tokens = 512,
+              temperature = 0.6,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/gemini/llm/v1/chat/good",
+              input_cost = 20.0,
+              output_cost = 20.0,
+            },
+          },
+          auth = {
+            header_name = "x-goog-api-key",
+            header_value = "123",
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = gemini_chat_good.id },
         config = {
           path = "/dev/stdout",
         },
@@ -777,6 +918,88 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
+      -- 200 chat bedrock streaming
+      local bedrock_chat_streaming_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock/llm/v1/chat/streaming/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_streaming_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
+          model = {
+            name = "anthropic.claude-3-sonnet-20240229-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.7,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/streaming/good",
+              input_cost = 15.0,
+              output_cost = 15.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_streaming_good.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
+        },
+      }
+      --
+
+      -- 200 chat bedrock streaming with incomplete events
+      local bedrock_chat_streaming_incomplete = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/bedrock/llm/v1/chat/streaming/incomplete" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = bedrock_chat_streaming_incomplete.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = true,
+            log_statistics = true,
+          },
+          model = {
+            name = "anthropic.claude-3-sonnet-20240229-v1:0",
+            provider = "bedrock",
+            options = {
+              max_tokens = 512,
+              temperature = 0.7,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/bedrock/llm/v1/chat/streaming/incomplete",
+              input_cost = 15.0,
+              output_cost = 15.0,
+            },
+          },
+          auth = {
+            allow_override = false,
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = bedrock_chat_streaming_incomplete.id },
+        config = {
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
+        },
+      }
+      --
+
       helpers.setenv("AWS_REGION", "us-east-1")
 
       -- start kong
@@ -848,6 +1071,8 @@ for _, strategy in helpers.all_strategies() do
           end
 
           if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
             -- we need to rip each message from this chunk
             for s in buffer:gmatch("[^\r\n]+") do
               local s_copy = s
@@ -871,6 +1096,11 @@ for _, strategy in helpers.all_strategies() do
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
         -- to verifiy not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        local actual_stats = log_message.ai.proxy
+        local actual_llm_latency = actual_stats.meta.llm_latency
+        assert.is_true(actual_llm_latency > 60) -- 6 events, each with 10ms latency
       end)
 
       it("good stream request openai with partial split chunks", function()
@@ -958,7 +1188,8 @@ for _, strategy in helpers.all_strategies() do
         assert.is_true(actual_llm_latency >= 0)
         assert.same(tonumber(string.format("%.3f", actual_time_per_token)), tonumber(string.format("%.3f", time_per_token)))
         assert.match_re(actual_request_log, [[.*content.*What is 1 \+ 1.*]])
-        assert.match_re(actual_response_log, [[.*content.*The answer.*]])
+        -- include the quotes to match the whole string
+        assert.match_re(actual_response_log, [[.*"The answer to 1 \+ 1 is 2\.".*]])
         -- to verifiy not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
@@ -1091,6 +1322,74 @@ for _, strategy in helpers.all_strategies() do
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
       end)
 
+      it("good stream request gemini", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/gemini/llm/v1/chat/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              if s_copy then
+                assert.equal("gemini-1.5-flash", s_copy.model)
+              end
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(7, #events)
+        assert.equal("Gemini is a powerful model.", buf:tostring())
+        -- to verifiy not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
       it("bad request is returned to the client not-streamed", function()
         local httpc = http.new()
 
@@ -1191,6 +1490,7 @@ for _, strategy in helpers.all_strategies() do
               s = cjson.decode(s_copy)
 
               if s and s.choices then
+                assert.equal("gemini-1.5-flash", s.model)
                 func_name = s.choices[1].delta.tool_calls[1]['function'].name
                 func_args = s.choices[1].delta.tool_calls[1]['function'].arguments
               end
@@ -1389,6 +1689,153 @@ for _, strategy in helpers.all_strategies() do
 
         -- to verify not enable `kong.service.request.enable_buffering()`
         assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock streaming", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock/llm/v1/chat/streaming/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(#events, 17) -- 16 data events + [DONE]
+        assert.equal(buf:tostring(), "1 + 1 = 2\n\nThis is one of the most basic arithmetic equations. It represents the addition of two units, resulting in a sum of two.")
+
+        -- test analytics on this item
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- to verify not enable `kong.service.request.enable_buffering()`
+        assert.logfile().has.no.line("/kong_buffered_http", true, 10)
+      end)
+
+      it("good stream request bedrock streaming with incomplete events", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/bedrock/llm/v1/chat/streaming/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        assert.equal(200, res.status)
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- ensure the last chunk ends properly
+            assert.equal("\n\n", buffer:sub(-2))
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+
+        assert.equal(#events, 17) -- 16 data events + [DONE]
+        assert.equal(buf:tostring(), "1 + 1 = 2\n\nThis is one of the most basic arithmetic equations. It represents the addition of two units, resulting in a sum of two.")
+
+        -- test analytics on this item
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
       end)
 
     end)

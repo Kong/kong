@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where the Anthropic provider may truncate tokens in streaming responses.
+type: bugfix
+scope: Plugin

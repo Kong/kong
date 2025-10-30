@@ -9,7 +9,7 @@
     "stop_reason": "end_turn",
     "stop_sequence": "string",
     "usage": {
-        "input_tokens": 0,
-        "output_tokens": 0
+        "input_tokens": 100,
+        "output_tokens": 150
     }
 }

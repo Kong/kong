@@ -585,7 +585,7 @@ local function new(self)
              :put('Content-Disposition: form-data; name="')
              :put(k)
              :put('"\r\n\r\n')
-             :put(args[k])
+             :put(tostring(args[k]))
              :put("\r\n")
         end
         out:put("--")

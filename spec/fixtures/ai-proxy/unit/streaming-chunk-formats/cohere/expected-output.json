@@ -1,0 +1,11 @@
+[
+  {
+    "data": "{\"event_type\": \"text-generation\", \"text\": \"Hello\"}"
+  },
+  {
+    "data": "{\"event_type\": \"text-generation\", \"text\": \"!\"}"
+  },
+  {
+    "data": "{\"event_type\": \"stream-end\", \"response\": {\"text\": \"Hello!\", \"generation_id\": \"29f14a5a-11de-4cae-9800-25e4747408ea\", \"chat_history\": [{\"role\": \"USER\", \"message\": \"hello world!\"}, {\"role\": \"CHATBOT\", \"message\": \"Hello!\"}], \"finish_reason\": \"COMPLETE\", \"meta\": {\"api_version\": {\"version\": \"1\"}, \"billed_units\": {\"input_tokens\": 3, \"output_tokens\": 9}, \"tokens\": {\"input_tokens\": 69, \"output_tokens\": 9}}}, \"finish_reason\": \"COMPLETE\"}"
+  }
+]
