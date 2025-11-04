@@ -1,5 +1,5 @@
-local helpers = require "spec.helpers"
-local conf_loader = require "kong.conf_loader"
+local helpers = require("spec.helpers")
+local conf_loader = require("kong.conf_loader")
 
 describe("basic-auth: (vault integration)", function()
   local get
@@ -9,7 +9,7 @@ describe("basic-auth: (vault integration)", function()
       vaults = "bundled",
     }))
 
-    local kong_global = require "kong.global"
+    local kong_global = require("kong.global")
     _G.kong = kong_global.new()
     kong_global.init_pdk(kong, conf)
 
@@ -17,7 +17,7 @@ describe("basic-auth: (vault integration)", function()
   end)
 
   describe("vault reference resolution", function()
-    it("should handle all variations of variable name", function ()
+    it("should handle all variations of variable name", function()
       local env_name = "MY_VAR_NAME"
       local env_value = "complex_value_789"
 
@@ -67,7 +67,7 @@ describe("basic-auth: (vault integration)", function()
 
     it("should fail gracefully when environment variable does not exist", function()
       helpers.unsetenv("NON_EXISTENT_VAR")
-      
+
       local res, err = get("{vault://env/non_existent_var}")
       assert.matches("could not get value from external vault", err)
       assert.is_nil(res)
@@ -115,7 +115,7 @@ describe("basic-auth: (vault integration)", function()
 
       local username_res, username_err = get("{vault://env/auth_username}")
       local password_res, password_err = get("{vault://env/auth_password}")
-      
+
       assert.is_nil(username_err)
       assert.is_nil(password_err)
       assert.equal("vault_user_both", username_res)
@@ -148,10 +148,12 @@ describe("basic-auth: (vault integration)", function()
 
     it("should preserve non-vault values unchanged", function()
       local regular_value = "regular_password"
-      
+
       local res, err = get(regular_value)
       if res then
         assert.equal(regular_value, res)
+      else
+        assert.is_nil(err)
       end
     end)
 
@@ -173,10 +175,10 @@ describe("basic-auth: (vault integration)", function()
   end)
 
   describe("integration with basic-auth plugin", function()
-    it("should demonstrate vault usage in basic-auth context", function()      
+    it("should demonstrate vault usage in basic-auth context", function()
       local password_env = "BASIC_AUTH_PASSWORD"
       local username_env = "BASIC_AUTH_USERNAME"
-      
+
       finally(function()
         helpers.unsetenv(password_env)
         helpers.unsetenv(username_env)
@@ -196,3 +198,4 @@ describe("basic-auth: (vault integration)", function()
     end)
   end)
 end)
+
