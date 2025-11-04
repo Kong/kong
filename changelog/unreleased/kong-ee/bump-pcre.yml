@@ -1,0 +1,3 @@
+message: Bumped PCRE2 from 10.45 to 10.47.
+type: dependency
+scope: Core
