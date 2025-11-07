@@ -1,24 +1,31 @@
-# please see matrix-full.yml for meaning of each field
+# Refer to matrix-full.yml for the meaning of each field
+
 build-packages:
-- label: ubuntu-24.04
-  image: ubuntu:24.04
-  package: deb
-  check-manifest-suite: ubuntu-24.04-amd64
+  - label: ubuntu-24.04
+    image: ubuntu:24.04
+    package: deb
+    check-manifest-suite: ubuntu-24.04-amd64
 
 build-images:
-- label: ubuntu
-  base-image: ubuntu:24.04
-  package: deb
-  artifact-from: ubuntu-24.04
+  - label: ubuntu
+    base-image: ubuntu:24.04
+    package: deb
+    artifact-from: ubuntu-24.04
 
 smoke-tests:
-- label: ubuntu
+  - label: ubuntu
+    description: "Run smoke tests on Ubuntu build to ensure basic functionality."
 
 scan-vulnerabilities:
-- label: ubuntu
+  - label: ubuntu
+    description: "Perform vulnerability scans on Ubuntu images and packages."
 
 release-packages:
+  - label: ubuntu
+    package: deb
+    description: "Prepare and publish Ubuntu .deb packages for release."
 
 release-images:
-- label: ubuntu
-  package: deb
+  - label: ubuntu
+    package: deb
+    description: "Release Docker images based on Ubuntu 24.04."
