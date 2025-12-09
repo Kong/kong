@@ -42,6 +42,7 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
+  "ai-noma-guardrail",
   "standard-webhooks",
   "redirect"
 }
