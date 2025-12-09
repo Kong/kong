@@ -55,9 +55,10 @@ local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
 local WASM_REQUEST_COUNT_KEY = "events:requests:wasm"
 
 
-local AI_RESPONSE_TOKENS_COUNT_KEY = "events:ai:response_tokens"
-local AI_PROMPT_TOKENS_COUNT_KEY   = "events:ai:prompt_tokens"
-local AI_REQUEST_COUNT_KEY         = "events:ai:requests"
+local AI_RESPONSE_TOKENS_COUNT_KEY     = "events:ai:response_tokens"
+local AI_PROMPT_TOKENS_COUNT_KEY       = "events:ai:prompt_tokens"
+local AI_PROMPT_CACHE_TOKENS_COUNT_KEY = "events:ai:prompt_cache_tokens"
+local AI_REQUEST_COUNT_KEY             = "events:ai:requests"
 
 
 local ROUTE_CACHE_HITS_KEY = "route_cache_hits"
@@ -248,7 +249,7 @@ end
 
 
 local function incr_counter(key, hit)
-  if not hit then 
+  if not hit then
     hit = 1
   end
 
@@ -537,6 +538,11 @@ return {
     local llm_response_tokens_count = ai_plugin_o11y.metrics_get("llm_completion_tokens_count")
     if llm_response_tokens_count then
       incr_counter(AI_RESPONSE_TOKENS_COUNT_KEY, llm_response_tokens_count)
+    end
+
+    local llm_response_cache_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_cache_tokens_count")
+    if llm_response_cache_tokens_count then
+      incr_counter(AI_PROMPT_CACHE_TOKENS_COUNT_KEY, llm_response_cache_tokens_count)
     end
 
     local suffix = get_current_suffix(ctx)
