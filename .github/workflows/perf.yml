@@ -135,9 +135,11 @@ jobs:
 
     - name: Choose perf suites
       id: choose_perf
+      env:
+        COMMENT_BODY: ${{ github.event.comment.body }}
       run: |
-        suites="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $1}')"
-        tags="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $2}')"
+        suites="$(printf '%s' "$COMMENT_BODY" | awk '{print $1}')"
+        tags="$(printf '%s' "$COMMENT_BODY" | awk '{print $2}')"
 
         if [[ $suite == "/flamegraph" ]]; then
           suites="02-flamegraph"
@@ -166,15 +168,18 @@ jobs:
 
     - name: Find compared versions
       id: compare_versions
+      env:
+        PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        COMMENT_BODY: ${{ github.event.comment.body }}
       run: |
-        pr_ref=$(echo "${{ github.event.pull_request.base.ref }}")
-        custom_vers="$(printf '%s' "${{ github.event.comment.body }}" | awk '{print $3}')"
+        pr_ref=$(echo "$PR_BASE_REF")
+        custom_vers="$(printf '%s' "$COMMENT_BODY" | awk '{print $3}')"
 
         if [[ ! -z "${pr_ref}" ]]; then
           vers="git:${{ github.head_ref }},git:${pr_ref}"
         elif [[ ! -z "${custom_vers}" ]]; then
           vers="${custom_vers}"
-        elif [[ ! -z "${{ github.event.comment.body }}" ]]; then
+        elif [[ ! -z "$COMMENT_BODY" ]]; then
           vers="git:${{ steps.comment-branch.outputs.head_ref}},git:${{ steps.comment-branch.outputs.base_ref}}"
         else # is cron job/on master
           vers="git:master,git:origin/master~10,git:origin/master~50"

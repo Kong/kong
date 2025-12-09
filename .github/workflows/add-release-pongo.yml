@@ -9,6 +9,9 @@ jobs:
   set_vars:
     name: Set Vars
     runs-on: ubuntu-latest-kong
+    env:
+      REF_NAME: ${{ github.ref_name }}
+      RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
     outputs:
       code_base: ${{ steps.define_vars.outputs.CODE_BASE }}
       tag_version: ${{ steps.define_vars.outputs.TAG_VERSION }}
@@ -25,9 +28,9 @@ jobs:
         echo "CODE_BASE=$CODE_BASE" >> "$GITHUB_OUTPUT"
 
         if [[ "${{ github.event_name }}" == "push" ]] ; then
-          TAG_VERSION="${{ github.ref_name }}"
+          TAG_VERSION="$REF_NAME"
         elif [[ "${{ github.event_name }}" == "release" ]] ; then
-          TAG_VERSION="${{ github.event.release.tag_name }}"
+          TAG_VERSION="$RELEASE_TAG_NAME"
         fi
         echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_OUTPUT"
   add_release_to_pongo:

@@ -127,7 +127,7 @@ limitations under the License.
 
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
-[kong-diagram]: https://assets.prd.mktg.konghq.com/images/2025/09/68cc1bfd-kong-diagram.png
+[kong-diagram]: https://assets.prd.mktg.konghq.com/images/2025/09/68cc1bfd-kong-diagram.png?v=2
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-master-builds]: https://hub.docker.com/r/kong/kong/tags
 [badge-action-url]: https://github.com/Kong/kong/actions

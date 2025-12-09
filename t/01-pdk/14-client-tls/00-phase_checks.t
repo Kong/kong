@@ -118,19 +118,6 @@ qq{
                 body_filter   = "forced false",
                 log           = "forced false",
                 admin_api     = false,
-            }, {
-                method        = "disable_http2_alpn",
-                args          = {},
-                init_worker   = false,
-                client_hello  = true,
-                certificate   = false,
-                rewrite       = false,
-                access        = false,
-                header_filter = false,
-                response      = false,
-                body_filter   = false,
-                log           = false,
-                admin_api     = false,
             },
         }
 
