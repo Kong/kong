@@ -540,9 +540,9 @@ return {
       incr_counter(AI_RESPONSE_TOKENS_COUNT_KEY, llm_response_tokens_count)
     end
 
-    local llm_response_cache_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_cache_tokens_count")
-    if llm_response_cache_tokens_count then
-      incr_counter(AI_PROMPT_CACHE_TOKENS_COUNT_KEY, llm_response_cache_tokens_count)
+    local llm_prompt_cache_tokens_count = ai_plugin_o11y.metrics_get("llm_prompt_cache_tokens_count")
+    if llm_prompt_cache_tokens_count then
+      incr_counter(AI_PROMPT_CACHE_TOKENS_COUNT_KEY, llm_prompt_cache_tokens_count)
     end
 
     local suffix = get_current_suffix(ctx)
