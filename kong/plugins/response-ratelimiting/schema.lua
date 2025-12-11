@@ -154,7 +154,8 @@ return {
             deprecation = {
               replaced_with = { { path = {'redis', 'port'} } },
               message = "response-ratelimiting: config.redis_port is deprecated, please use config.redis.port instead",
-              removal_in_version = "4.0", },
+              removal_in_version = "4.0",
+              old_default = 6379, },
             func = function(value)
               return { redis = { port = value } }
             end
@@ -185,7 +186,8 @@ return {
             deprecation = {
               replaced_with = { { path = {'redis', 'ssl'} } },
               message = "response-ratelimiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
-              removal_in_version = "4.0", },
+              removal_in_version = "4.0",
+              old_default = false, },
             func = function(value)
               return { redis = { ssl = value } }
             end
@@ -195,7 +197,8 @@ return {
             deprecation = {
               replaced_with = { { path = {'redis', 'ssl_verify'} } },
               message = "response-ratelimiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
-              removal_in_version = "4.0", },
+              removal_in_version = "4.0",
+              old_default = false, },
             func = function(value)
               return { redis = { ssl_verify = value } }
             end
@@ -215,7 +218,8 @@ return {
             deprecation = {
               replaced_with = { { path = {'redis', 'timeout'} } },
               message = "response-ratelimiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
-              removal_in_version = "4.0", },
+              removal_in_version = "4.0",
+              old_default = 2000, },
             func = function(value)
               return { redis = { timeout = value } }
             end
@@ -225,7 +229,8 @@ return {
             deprecation = {
               replaced_with = { { path = {'redis', 'database'} } },
               message = "response-ratelimiting: config.redis_database is deprecated, please use config.redis.database instead",
-              removal_in_version = "4.0", },
+              removal_in_version = "4.0",
+              old_default = 0, },
             func = function(value)
               return { redis = { database = value } }
             end
