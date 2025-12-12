@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a panic triggered when handling models whose names contain `/`."
+type: "bugfix"
+scope: "Plugin"
