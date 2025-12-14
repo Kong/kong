@@ -49,6 +49,10 @@ The Gateway is now available on the following ports on localhost:
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
 
+### Who is this for?
+
+Kong Gateway is ideal for platform engineers, backend developers, and DevOps teams who need a reliable, scalable way to manage API, LLM, and MCP traffic across microservices or legacy systems.
+
 ### Getting started with AI Gateway for LLM and MCP
 
 If you would like to get started with Kong AI Gateway capabilities including LLM and MCP features, please refer to the [official AI documentation](https://developer.konghq.com/ai-gateway/).
