@@ -17,6 +17,8 @@ on:
     - master
     - release/*
 
+permissions: read-all
+
 jobs:
 
   autoformat:

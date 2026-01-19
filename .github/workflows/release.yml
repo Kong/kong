@@ -28,6 +28,8 @@ on:  # yamllint disable-line rule:truthy
         required: true
         type: string
 
+permissions: read-all
+
 # `commit-ly` is a flag that indicates whether the build should be run per commit.
 
 env:
