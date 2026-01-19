@@ -1,7 +1,7 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
+local cjson = require("kong.tools.cjson")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
@@ -12,11 +12,20 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
 -- globals
 local DRIVER_NAME = "anthropic"
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local function kong_prompt_to_claude_prompt(prompt)
   return fmt("Human: %s\n\nAssistant:", prompt)
 end
+
+local _OPENAI_STOP_REASON_MAPPING = {
+  ["max_tokens"] = "length",
+  ["end_turn"] = "stop",
+  ["tool_use"] = "tool_calls",
+  ["guardrail_intervened"] = "guardrail_intervened",
+  ["stop_sequence"] = "stop"
+}
 
 local function kong_messages_to_claude_prompt(messages)
   local buf = buffer.new()
@@ -120,6 +129,7 @@ local function to_tools(in_tools)
     if v['function'] then
       v['function'].input_schema = v['function'].parameters
       v['function'].parameters = nil
+      v['function'].strict = nil  -- unsupported
 
       table.insert(out_tools, v['function'])
     end
@@ -155,6 +165,33 @@ local function to_tool_choice(openai_tool_choice)
   return nil
 end
 
+local function extract_structured_content_schema(request_table)
+  -- bounds check EVERYTHING first
+  if not request_table
+    or not request_table.response_format
+    or type(request_table.response_format.type) ~= "string"
+    or type(request_table.response_format.json_schema) ~= "table"
+    or type(request_table.response_format.json_schema.schema) ~= "table"
+  then
+    return nil
+  end
+
+  -- return
+  return request_table.response_format.json_schema.schema
+end
+
+local function read_content(delta)
+  if delta then
+    if delta.delta and delta.delta.text then
+      return delta.delta.text
+    end
+
+    -- reserve for more content types here later
+  end
+
+  return ""
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     local messages = {}
@@ -173,6 +210,32 @@ local transformers_to = {
     -- handle function calling translation from OpenAI format
     messages.tools = request_table.tools and to_tools(request_table.tools)
     messages.tool_choice = request_table.tool_choice and to_tool_choice(request_table.tool_choice)
+
+    local structured_content_schema = extract_structured_content_schema(request_table)
+    if structured_content_schema then
+      set_global_ctx("structured_output_mode", true)
+
+      -- make a tool call that covers all responses, adhering to specific json schema
+      -- we will extract this tool call into the OpenAI "response content" later
+      messages.tools = messages.tools or {}
+      messages.tools[#messages.tools + 1] = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+        description = "Responds with strict structured output.",
+        input_schema = structured_content_schema
+      }
+
+      -- force the json tool use
+      messages.tool_choice = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+        type = "tool",
+      }
+    end
+
+    -- these are specific customizations for when another provider calls this transformer
+    if model.provider == "gemini" then
+      messages.anthropic_version = request_table.anthropic_version
+      messages.model = nil  -- gemini throws an error for some reason if model is in the body (it's in the URL)
+    end
 
     return messages, "application/json", nil
   end,
@@ -196,30 +259,128 @@ local transformers_to = {
 }
 
 local function delta_to_event(delta, model_info)
-  local data = {
-    choices = {
-      [1] = {
-        delta = {
-          content = (delta.delta
-                 and delta.delta.text)
-                 or (delta.content_block
-                 and "")
-                 or "",
-        },
-        index = 0,
-        finish_reason = cjson.null,
-        logprobs = cjson.null,
-      },
-    },
-    id = kong
-     and kong.ctx
-     and kong.ctx.plugin
-     and kong.ctx.plugin.ai_proxy_anthropic_stream_id,
-    model = model_info.name,
-    object = "chat.completion.chunk",
-  }
+  local data
 
-  return cjson.encode(data), nil, nil
+  local message_id = kong
+                      and kong.ctx
+                      and kong.ctx.plugin
+                      and kong.ctx.plugin.ai_proxy_anthropic_stream_id
+
+  if delta['type'] and delta['type'] == "content_block_start" then
+    if delta.content_block then
+      if delta.content_block['type'] == "text" then
+      -- mark the entrypoint for messages
+      data = {
+        choices = {
+          [1] = {
+            delta = {
+              content = read_content(delta),
+              role = "assistant",
+            },
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = message_id,
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
+
+      elseif delta.content_block['type'] == "tool_use" then
+        -- this is an ENTRYPOINT for a function call
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                content = cjson.null,
+                role = "assistant",
+                tool_calls = {
+                  {
+                    index = 0,
+                    id = delta.content_block['id'],
+                    ['type'] = "function",
+                    ['function'] = {
+                      name = delta.content_block['name'],
+                      arguments = "",
+                    }
+                  }
+                }
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+      end
+    end
+
+  else
+    local delta_type
+    
+    if delta.delta
+        and delta.delta['type']
+    then
+      delta_type = delta.delta['type']
+    end
+
+    if delta_type then
+      if delta_type == "text_delta" then
+        -- handle generic chat
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                content = read_content(delta),
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+
+      elseif delta_type == "input_json_delta" then
+        -- this is an ARGS DELTA for a function call
+        data = {
+          choices = {
+            [1] = {
+              delta = {
+                tool_calls = {
+                  {
+                    index = 0,
+                    ['function'] = {
+                      arguments = delta.delta.partial_json,
+                    }
+                  }
+                }
+              },
+              index = 0,
+              finish_reason = cjson.null,
+              logprobs = cjson.null,
+            },
+          },
+          id = message_id,
+          model = model_info.name,
+          object = "chat.completion.chunk",
+        }
+
+      end
+    end
+  end
+
+  if data then
+    return cjson.encode(data)
+  end
+
+  return
 end
 
 local function start_to_event(event_data, model_info)
@@ -231,7 +392,7 @@ local function start_to_event(event_data, model_info)
     completion_tokens = meta.usage
                     and meta.usage.output_tokens,
     model = meta.model,
-    stop_reason = meta.stop_reason,
+    stop_reason = _OPENAI_STOP_REASON_MAPPING[meta.stop_reason or "end_turn"],
     stop_sequence = meta.stop_sequence,
   }
 
@@ -260,7 +421,7 @@ end
 
 local function handle_stream_event(event_t, model_info, route_type)
   local event_id = event_t.event
-  local event_data = cjson.decode(event_t.data)
+  local event_data = cjson.decode_with_array_mt(event_t.data)
 
   if not event_id or not event_data then
     return nil, "transformation to stream event failed or empty stream event received", nil
@@ -280,24 +441,71 @@ local function handle_stream_event(event_t, model_info, route_type)
     -- last few frames / iterations
     if event_data
     and event_data.usage then
+      local completion_tokens = event_data.usage.output_tokens or 0
+      local stop_reason = event_data.delta
+        and event_data.delta.stop_reason
+        and _OPENAI_STOP_REASON_MAPPING[event_data.delta.stop_reason or "end_turn"]
+      
+      if get_global_ctx("structured_output_mode") then
+        stop_reason = _OPENAI_STOP_REASON_MAPPING["end_turn"]
+      end
+
+      local stop_sequence = event_data.delta
+        and event_data.delta.stop_sequence
+
       return nil, nil, {
         prompt_tokens = nil,
-        completion_tokens = event_data.usage.output_tokens,
-        stop_reason = event_data.delta
-                  and event_data.delta.stop_reason,
-        stop_sequence = event_data.delta
-                    and event_data.delta.stop_sequence,
+        completion_tokens = completion_tokens,
+        stop_reason = stop_reason,
+        stop_sequence = stop_sequence,
       }
     else
       return nil, "message_delta is missing the metadata block", nil
     end
 
   elseif event_id == "content_block_start" then
-    -- content_block_start is just an empty string and indicates
-    -- that we're getting an actual answer
+    -- if this content block is starting a structure output tool call,
+    -- we convert it into a standard text block start marker
+    if get_global_ctx("structured_output_mode") then
+      if event_data.content_block
+          and event_data.content_block.type == "tool_use"
+          and event_data.content_block.name == ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+      then
+        return delta_to_event(
+          {
+            content_block = {
+              text = "",
+              type = "text",
+            },
+            index = 0,
+            type = "content_block_start",
+          }
+        , model_info)
+      end
+    end
+
     return delta_to_event(event_data, model_info)
 
   elseif event_id == "content_block_delta" then
+    -- if this content block is continuing a structure output tool call,
+    -- we convert it into a standard text block
+    if get_global_ctx("structured_output_mode") then
+      if event_data.delta
+          and event_data.delta.type == "input_json_delta"
+      then
+        return delta_to_event(
+          {
+            delta = {
+              text = event_data.delta.partial_json or "",
+              type = "text_delta",
+            },
+            index = 0,
+            type = "content_block_delta",
+          }
+        , model_info)
+      end
+    end
+
     return delta_to_event(event_data, model_info)
 
   elseif event_id == "message_stop" then
@@ -311,7 +519,7 @@ end
 
 local transformers_from = {
   ["llm/v1/chat"] = function(response_string)
-    local response_table, err = cjson.decode(response_string)
+    local response_table, err = cjson.decode_with_array_mt(response_string)
     if err then
       return nil, "failed to decode anthropic response"
     end
@@ -374,13 +582,20 @@ local transformers_from = {
               content = extract_text_from_content(response_table.content),
               tool_calls = extract_tools_from_content(response_table.content)
             },
-            finish_reason = response_table.stop_reason,
+            finish_reason = _OPENAI_STOP_REASON_MAPPING[response_table.stop_reason or "end_turn"],
           },
         },
         usage = usage,
         model = response_table.model,
         object = "chat.completion",
       }
+
+      -- check for structured output tool call
+      if get_global_ctx("structured_output_mode") then
+        -- if we have a structured output tool call, we need to convert it to a message
+        -- this is a workaround for the fact that Anthropic does not return structured output
+        res = ai_shared.convert_structured_output_tool(res) or res
+      end
 
       return cjson.encode(res)
     else
@@ -401,7 +616,7 @@ local transformers_from = {
           {
             index = 0,
             text = response_table.completion,
-            finish_reason = response_table.stop_reason,
+            finish_reason = _OPENAI_STOP_REASON_MAPPING[response_table.stop_reason or "end_turn"],
           },
         },
         model = response_table.model,
@@ -567,9 +782,8 @@ function _M.configure_request(conf)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
-
-
+  local default_port = (parsed_url.scheme == "https") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
 
   kong.service.request.set_header("anthropic-version", model.options.anthropic_version)
 

@@ -12,8 +12,9 @@
   "model": "mistral-tiny",
   "object": "chat.completion",
   "usage": {
-    "completion_tokens": 139,
-    "prompt_tokens": 130,
-    "total_tokens": 269
-  }
+    "completion_tokens": 100,
+    "prompt_tokens": 26,
+    "total_tokens": 126
+  },
+  "created": 1705306418
 }

@@ -1075,6 +1075,7 @@ qq{
                 ngx.say((raw_body:gsub("\\r", "")))
                 ngx.say("foo: {", mpvalues.foo, "}")
                 ngx.say("zzz: {", mpvalues.zzz, "}")
+                ngx.say("yes: {", mpvalues.yes, "}")
             }
         }
     }
@@ -1089,6 +1090,7 @@ qq{
             assert(pdk.service.request.set_body({
                 foo = "hello world",
                 zzz = "goodbye world",
+                yes = true,
             }))
         }
 
@@ -1115,6 +1117,10 @@ Content-Disposition: form-data; name="foo"
 
 hello world
 --xxyyzz
+Content-Disposition: form-data; name="yes"
+
+true
+--xxyyzz
 Content-Disposition: form-data; name="zzz"
 
 goodbye world
@@ -1122,5 +1128,6 @@ goodbye world
 
 foo: {hello world}
 zzz: {goodbye world}
+yes: {true}
 --- no_error_log
 [error]

@@ -10,6 +10,7 @@ local schemas = {
     response_body_sent = "boolean",
     llm_format_adapter = "table",
     preserve_mode = "boolean",
+    structured_output_mode = "boolean", -- set by request phases to modify certain response transformations
   },
 }
 
@@ -145,7 +146,7 @@ end
 
 local EMPTY_REQUEST_T = _M.immutable_table({})
 
-function _M.set_request_body_table_inuse(t, source)
+function _M.set_request_body_table_inuse(t, source, should_set_body)
   assert(source, "source is missing")
 
   -- merge overlay keys into the key itself
@@ -161,6 +162,11 @@ function _M.set_request_body_table_inuse(t, source)
 
   _M.set_namespaced_ctx("_global", "request_body_table", t)
   ngx.ctx.ai_request_body_table_source = source
+
+  -- optionally set the request body to Kong service
+  if should_set_body then
+    kong.service.request.set_body(t, "application/json")
+  end
 end
 
 function _M.get_request_body_table_inuse()

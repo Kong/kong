@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where the Anthropic provider failed to stream function call responses.
+type: bugfix
+scope: Plugin

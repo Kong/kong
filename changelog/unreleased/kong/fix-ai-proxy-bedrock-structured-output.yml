@@ -1,0 +1,3 @@
+message: "**AI Plugins**: Fixed an issue Structured Output did not work correctly with Bedrock (Converse API) models."
+type: "bugfix"
+scope: "Plugin"

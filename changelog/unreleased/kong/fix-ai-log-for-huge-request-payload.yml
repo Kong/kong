@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where large request payload was not logged.
+type: "bugfix"
+scope: "Plugin"

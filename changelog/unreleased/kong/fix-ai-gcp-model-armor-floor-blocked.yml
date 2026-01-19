@@ -1,0 +1,4 @@
+message: >
+  **AI Plugins**: Fixed an issue where the Gemini provider would not correctly return Model Armor 'Floor' blocking responses to the caller.
+type: bugfix
+scope: Plugin
