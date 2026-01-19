@@ -85,10 +85,6 @@ function _M.get_stored_response_header(ngx_ctx, key)
     return nil
   end
 
-  if not _has_rl_ctx(ngx_ctx) then
-    return nil
-  end
-
   local rl_ctx = _get_rl_ctx(ngx_ctx)
   return rl_ctx[key]
 end
