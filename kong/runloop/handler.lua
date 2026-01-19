@@ -1382,8 +1382,9 @@ return {
 
       do
         local req_via = get_header(constants.HEADERS.VIA, ctx)
-        local kong_inbound_via = protocol_version and protocol_version .. " " .. SERVER_HEADER
-                                 or SERVER_HEADER
+        local received_by_and_comment = fmt("kong (%s)", SERVER_HEADER)
+        local kong_inbound_via = protocol_version and protocol_version .. " " .. received_by_and_comment
+                                 or received_by_and_comment
         var.upstream_via = req_via and req_via .. ", " .. kong_inbound_via
                            or kong_inbound_via
       end
@@ -1593,7 +1594,7 @@ return {
                                  DEFAULT_PROXY_HTTP_VERSION
           end
 
-          local kong_outbound_via = proxy_http_version .. " " .. SERVER_HEADER
+          local kong_outbound_via = proxy_http_version .. " " .. fmt("kong (%s)", SERVER_HEADER)
           local resp_via = var["upstream_http_" .. headers.VIA]
           header[headers.VIA] = resp_via and resp_via .. ", " .. kong_outbound_via
                                 or kong_outbound_via

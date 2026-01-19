@@ -8,6 +8,7 @@ local re_match  = ngx.re.match
 local str_fmt   = string.format
 
 local SERVER_TOKENS = meta._SERVER_TOKENS
+local RECEIVED_BY_AND_COMMENT = str_fmt("kong (%s)", meta._SERVER_TOKENS)
 
 for _, strategy in helpers.all_strategies() do
   describe("append Kong Gateway info to the 'Via' header [#" .. strategy .. "]", function()
@@ -146,8 +147,8 @@ for _, strategy in helpers.all_strategies() do
 
       local body = assert.res_status(200, res)
       local json_body = cjson.decode(body)
-      assert.are_same({ via = "1.1 dev, 1.1 " .. SERVER_TOKENS }, json_body)
-      assert.are_same("2 nginx, HTTP/1.1 http_mock, 1.1 " .. SERVER_TOKENS, res.headers["Via"])
+      assert.are_same({ via = "1.1 dev, 1.1 " .. RECEIVED_BY_AND_COMMENT }, json_body)
+      assert.are_same("2 nginx, HTTP/1.1 http_mock, 1.1 " .. RECEIVED_BY_AND_COMMENT, res.headers["Via"])
       assert.are_same("http-mock", res.headers["Server"])
 
       if proxy_client then
@@ -170,8 +171,8 @@ for _, strategy in helpers.all_strategies() do
 
       assert.are_equal(200, tonumber(headers:get(":status")))
       local json_body = cjson.decode(body)
-      assert.are_same({ via = "1.1 dev, 2 " .. SERVER_TOKENS }, json_body)
-      assert.are_same("2 nginx, HTTP/1.1 http_mock, 1.1 " .. SERVER_TOKENS, headers:get("Via"))
+      assert.are_same({ via = "1.1 dev, 2 " .. RECEIVED_BY_AND_COMMENT }, json_body)
+      assert.are_same("2 nginx, HTTP/1.1 http_mock, 1.1 " .. RECEIVED_BY_AND_COMMENT, headers:get("Via"))
       assert.are_same("http-mock", headers:get("Server"))
     end)
 
@@ -193,7 +194,7 @@ for _, strategy in helpers.all_strategies() do
       local server = re_match(resp, [=[Response headers received\:[\s\S]*\nserver\:\s(.*?)\n]=], "jo")
       assert.are_equal(SERVER_TOKENS, server[1])
       local via = re_match(resp, [=[Response headers received\:[\s\S]*\nvia\:\s(.*?)\n]=], "jo")
-      assert.are_equal("2 " .. SERVER_TOKENS, via[1])
+      assert.are_equal("2 " .. RECEIVED_BY_AND_COMMENT, via[1])
       local body = re_match(resp, [=[Response contents\:([\s\S]+?)\nResponse trailers received]=], "jo")
       local json_body = cjson.decode(body[1])
       assert.are_equal("hello world!", json_body.reply)
@@ -217,7 +218,7 @@ for _, strategy in helpers.all_strategies() do
       local server = re_match(resp, [=[Response headers received\:[\s\S]*\nserver\:\s(.*?)\n]=], "jo")
       assert.are_equal(SERVER_TOKENS, server[1])
       local via = re_match(resp, [=[Response headers received\:[\s\S]*\nvia\:\s(.*?)\n]=], "jo")
-      assert.are_equal("2 " .. SERVER_TOKENS, via[1])
+      assert.are_equal("2 " .. RECEIVED_BY_AND_COMMENT, via[1])
       local body = re_match(resp, [=[Response contents\:([\s\S]+?)\nResponse trailers received]=], "jo")
       local json_body = cjson.decode(body[1])
       assert.are_equal("hello world!", json_body.reply)
