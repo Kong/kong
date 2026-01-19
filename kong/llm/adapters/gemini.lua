@@ -50,6 +50,8 @@ function _GeminiAdapter:extract_metadata(response_body)
       return {
         prompt_tokens = response_body.usageMetadata.promptTokenCount or 0,
         completion_tokens = response_body.usageMetadata.candidatesTokenCount or 0,
+        total_tokens = response_body.usageMetadata.totalTokenCount or 0,
+        prompt_cache_tokens = response_body.usageMetadata.cachedContentTokenCount or 0,
       }
     end
 
