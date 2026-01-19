@@ -1,0 +1,3 @@
+message: Fixed an issue where gRPC plugins lack support for "optional".
+scope: Plugin
+type: bugfix
