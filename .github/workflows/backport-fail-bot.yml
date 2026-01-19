@@ -10,6 +10,10 @@ jobs:
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'cherry-pick the changes locally and resolve any conflicts')
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Fetch mapping file
       id: fetch_mapping
       uses: actions/github-script@v7
