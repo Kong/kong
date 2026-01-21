@@ -60,7 +60,7 @@ function _M.metrics_add(key, increment)
 end
 
 
-function _M.metrics_get(key)
+function _M.metrics_get(key, skip_calculation)
   if not metrics_schema[key] then
     error("metrics key not registered: " .. key, 2)
   end
@@ -68,7 +68,7 @@ function _M.metrics_get(key)
   local metrics = get_metrics_ctx()
 
   -- process automatic calculation
-  if not metrics[key] then
+  if not metrics[key] and not skip_calculation then
     if key == "llm_tpot_latency" then
       local llm_completion_tokens_count = _M.metrics_get("llm_completion_tokens_count")
       if llm_completion_tokens_count  > 0 then
@@ -76,7 +76,14 @@ function _M.metrics_get(key)
       end
       return 0
     elseif key == "llm_total_tokens_count" then
-      return _M.metrics_get("llm_prompt_tokens_count") + _M.metrics_get("llm_completion_tokens_count")
+      local total = _M.metrics_get("llm_total_tokens_count", true)
+      if total then
+        return total
+      end
+
+      local prompt = _M.metrics_get("llm_prompt_tokens_count") or 0
+      local completion = _M.metrics_get("llm_completion_tokens_count") or 0
+      return prompt + completion
     end
   end
 
