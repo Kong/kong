@@ -4,6 +4,8 @@ on:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
     - '**/*.md'
+    - 'COPYRIGHT'
+    - 'LICENSE'
     - '.github/workflows/release.yml'
     - 'changelog/**'
     - 'kong.conf.default'
@@ -13,6 +15,7 @@ on:
     - '**/*.md'
     # ignore PRs for the generated COPYRIGHT file
     - 'COPYRIGHT'
+    - 'LICENSE'
     branches:
     - master
     - release/*

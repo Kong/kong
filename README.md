@@ -110,7 +110,7 @@ Kong Inc. offers commercial subscriptions that enhance the Kong Gateway in a var
 ## License
 
 ```
-Copyright 2016-2025 Kong Inc.
+Copyright 2016-2026 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
