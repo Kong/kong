@@ -10,6 +10,9 @@ on:
         description: 'Computed cache key, used for restoring cache in other workflows'
         value: ${{ jobs.build.outputs.cache-key }}
 
+permissions:
+  contents: read
+
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
 
