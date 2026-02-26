@@ -1180,6 +1180,47 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
       end)
 
+      describe("multiple regex paths matching same URI and regex_priority", function()
+        it_trad_only("selects higher regex_priority route when multiple regex paths match and first match has headers", function()
+          local use_case = {
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8181",
+                paths = { "~/api(/.*)" },
+                headers = { ["X-API-Key"] = { "secret" } },
+                regex_priority = 0,
+              },
+            },
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8182",
+                paths = { "~/api/v1/login" },
+                regex_priority = 200,
+              },
+            },
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8183",
+                paths = { "~/api(/.*)" },
+                regex_priority = 0,
+              },
+            },
+          }
+
+          local router = assert(new_router(use_case))
+
+          local match_t = router:select("GET", "/api/v1/login", "example.com", "http", nil, nil, nil, nil, nil, {})
+          assert.truthy(match_t)
+          assert.same(use_case[2].route, match_t.route)
+          if flavor == "traditional" then
+            assert.same("/api/v1/login", match_t.matches.uri)
+          end
+        end)
+      end)
+
       describe("[wildcard host]", function()
         local use_case, router
 

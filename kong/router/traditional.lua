@@ -1135,6 +1135,53 @@ do
     [MATCH_RULES.URI] = function(category, ctx)
       -- no ctx.req_uri indexing since regex URIs have a higher priority than
       -- plain URIs
+      local matching = ctx.hits.matching_uri_values
+      if matching and next(matching) then
+        -- Union of routes for every path that matched the request URI, then
+        -- sort by regex_priority (desc) then created_at (asc) so more specific
+        -- routes are tried first.
+        local seen = {}
+        local seen_ref = {}
+        local list = {}
+        for path_value, _ in pairs(matching) do
+          local candidates = category.routes_by_uris[path_value]
+          if candidates then
+            for j = 1, candidates[0] do
+              local rt = candidates[j]
+              local id = rt.route and rt.route.id
+              if id then
+                if not seen[id] then
+                  seen[id] = true
+                  list[#list + 1] = rt
+                end
+              else
+                if not seen_ref[rt] then
+                  seen_ref[rt] = true
+                  list[#list + 1] = rt
+                end
+              end
+            end
+          end
+        end
+        if #list == 0 then
+          return nil
+        end
+        sort(list, function(a, b)
+          local rp1 = a.route and (a.route.regex_priority or 0) or 0
+          local rp2 = b.route and (b.route.regex_priority or 0) or 0
+          if rp1 ~= rp2 then
+            return rp1 > rp2
+          end
+          local ca = a.route and a.route.created_at
+          local cb = b.route and b.route.created_at
+          if ca and cb then
+            return ca < cb
+          end
+          return false
+        end)
+        list[0] = #list
+        return list
+      end
       return category.routes_by_uris[ctx.hits.uri]
     end,
 
@@ -1666,6 +1713,7 @@ function _M.new(routes, cache, cache_neg)
     -- uri match
 
     if match_regex_uris then
+      hits.matching_uri_values = nil
       for i = 1, regex_uris[0] do
         local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
         if err then
@@ -1674,9 +1722,14 @@ function _M.new(routes, cache, cache_neg)
         end
 
         if from then
-          hits.uri     = regex_uris[i].value
+          if not hits.matching_uri_values then
+            hits.matching_uri_values = {}
+          end
+          hits.matching_uri_values[regex_uris[i].value] = true
+          if not hits.uri then
+            hits.uri = regex_uris[i].value
+          end
           req_category = bor(req_category, MATCH_RULES.URI)
-          break
         end
       end
     end
