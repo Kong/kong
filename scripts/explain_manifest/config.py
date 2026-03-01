@@ -36,7 +36,7 @@ def transform(f: FileInfo):
 # GLIBCXX and CXXABI based on gcc version:
 # - https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html
 # - https://repology.org/project/gcc/versions
-# TODO: libstdc++ verions
+# TODO: libstdc++ versions
 targets = {
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
