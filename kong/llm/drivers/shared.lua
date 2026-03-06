@@ -843,6 +843,7 @@ function _M.post_request(conf, response_object)
     end
     if response_object.usage.total_tokens then
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
+      ai_plugin_o11y.metrics_set("llm_total_tokens_count", response_object.usage.total_tokens)
     end
 
     ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", response_object.usage.prompt_tokens)
