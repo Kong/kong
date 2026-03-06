@@ -6,6 +6,8 @@ on:
   # run weekly
   - cron: '0 0 * * 0'
 
+permissions: read-all
+
 jobs:
   update:
     runs-on: ubuntu-22.04

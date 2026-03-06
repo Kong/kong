@@ -2,6 +2,9 @@ name: Pull Request Label Checker
 on:
   pull_request:
     types: [opened, edited, synchronize, labeled, unlabeled]
+
+permissions: read-all
+
 jobs:
   check-labels:
     name: prevent merge labels

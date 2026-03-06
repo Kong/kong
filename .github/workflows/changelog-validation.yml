@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [ opened, synchronize ]
 
+permissions: read-all
+
 jobs:
   validate-changelog:
     name: Validate changelog
