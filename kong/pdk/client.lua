@@ -43,7 +43,7 @@ local function new(self)
   --
   -- @function kong.client.get_ip
   -- @phases certificate, rewrite, access, header_filter, response, body_filter, log
-  -- @treturn string The remote IP address of the client making the request.
+  -- @return string The remote IP address of the client making the request.
   -- @usage
   -- -- Given a client with IP 127.0.0.1 making connection through
   -- -- a load balancer with IP 10.0.0.1 to Kong answering the request for
@@ -76,7 +76,7 @@ local function new(self)
   --
   -- @function kong.client.get_forwarded_ip
   -- @phases certificate, rewrite, access, header_filter, response, body_filter, log
-  -- @treturn string The remote IP address of the client making the request,
+  -- @return string The remote IP address of the client making the request,
   -- considering forwarded addresses.
   --
   -- @usage
@@ -103,7 +103,7 @@ local function new(self)
   -- returns the load balancer's port, and **not** that of the downstream client.
   -- @function kong.client.get_port
   -- @phases certificate, rewrite, access, header_filter, response, body_filter, log
-  -- @treturn number The remote client port.
+  -- @return number The remote client port.
   -- @usage
   -- -- [client]:40000 <-> 80:[balancer]:30000 <-> 80:[kong]:20000 <-> 80:[service]
   -- kong.client.get_port() -- 30000
@@ -132,7 +132,7 @@ local function new(self)
   -- * [real\_ip\_recursive](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_recursive)
   -- @function kong.client.get_forwarded_port
   -- @phases certificate, rewrite, access, header_filter, response, body_filter, log
-  -- @treturn number The remote client port, considering forwarded ports.
+  -- @return number The remote client port, considering forwarded ports.
   -- @usage
   -- -- [client]:40000 <-> 80:[balancer]:30000 <-> 80:[kong]:20000 <-> 80:[service]
   -- kong.client.get_forwarded_port() -- 40000
@@ -152,7 +152,7 @@ local function new(self)
   -- If not set yet, it returns `nil`.
   -- @function kong.client.get_credential
   -- @phases access, header_filter, response, body_filter, log
-  -- @treturn string The authenticated credential.
+  -- @treturn table|nil The authenticated credential (consumer_id, id, and username) or `nil`.
   -- @usage
   -- local credential = kong.client.get_credential()
   -- if credential then
