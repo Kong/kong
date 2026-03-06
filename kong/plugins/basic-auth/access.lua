@@ -26,8 +26,8 @@ local _M = {}
 --
 -- @param request ngx request object
 -- @param {table} conf Plugin config
--- @return {string} public_key
--- @return {string} private_key
+-- @return {string} username
+-- @return {string} password
 local function retrieve_credentials(header_name, conf, header)
   local username, password
   local authorization_header = header or kong.request.get_header(header_name)
