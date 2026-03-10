@@ -1221,6 +1221,75 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
       end)
 
+      describe("multiple wildcard hosts matching same host and regex_priority", function()
+        it_trad_only("selects higher regex_priority route when multiple wildcard hosts match", function()
+          local use_case = {
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8191",
+                hosts = { "*.com" },
+                regex_priority = 0,
+              },
+            },
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8192",
+                hosts = { "*.example.com" },
+                regex_priority = 200,
+              },
+            },
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8193",
+                hosts = { "*.com" },
+                regex_priority = 0,
+              },
+            },
+          }
+
+          local router = assert(new_router(use_case))
+
+          -- api.example.com matches both *.com and *.example.com; higher regex_priority wins
+          local match_t = router:select("GET", "/", "api.example.com")
+          assert.truthy(match_t)
+          assert.same(use_case[2].route, match_t.route)
+          assert.same("*.example.com", match_t.matches.host)
+        end)
+
+        it_trad_only("selects by created_at when regex_priority ties and multiple wildcard hosts match", function()
+          local use_case = {
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8194",
+                hosts = { "*.com" },
+                regex_priority = 100,
+                created_at = 2000,
+              },
+            },
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8195",
+                hosts = { "*.example.com" },
+                regex_priority = 100,
+                created_at = 1000,
+              },
+            },
+          }
+
+          local router = assert(new_router(use_case))
+
+          -- both match api.example.com, same regex_priority; earlier created_at wins
+          local match_t = router:select("GET", "/", "api.example.com")
+          assert.truthy(match_t)
+          assert.same(use_case[2].route, match_t.route)
+        end)
+      end)
+
       describe("[wildcard host]", function()
         local use_case, router
 
