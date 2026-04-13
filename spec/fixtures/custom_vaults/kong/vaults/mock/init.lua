@@ -1,4 +1,5 @@
 local env = require "kong.vaults.env"
+local http = require "resty.http"
 
 
 local getenv = os.getenv
@@ -12,6 +13,14 @@ end
 
 
 local function get(conf, resource, version)
+  -- simulate a real vault backend that makes HTTP requests (yield via cosocket)
+  -- pcall is needed because cosocket may not be available in all phases (e.g. init)
+  pcall(function()
+    local test = require "kong.vaults.test"
+    local httpc = http.new()
+    httpc:request_uri("http://127.0.0.1:" .. test.PORT .. "/secret/dummy")
+  end)
+
   return env.get(conf, resource, version)
 end
 
