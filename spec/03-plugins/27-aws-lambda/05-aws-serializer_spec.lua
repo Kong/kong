@@ -298,4 +298,52 @@ describe("[AWS Lambda] aws-gateway input", function()
     end
   end
 
+  it("passes max_uri_args to ngx.req.get_uri_args", function()
+    local captured_max_args
+
+    mock_request = {
+      http_version = "1.1",
+      start_time = 1662436514,
+      headers = {
+        ["user-agent"] = "curl/7.54.0",
+      },
+      query = {
+        foo = "bar",
+      },
+      body = "",
+      var = {
+        request_method = "GET",
+        upstream_uri = "/test?foo=bar",
+        kong_request_id = "1234567890",
+        host = "abc.myhost.test",
+        remote_addr = "123.123.123.123"
+      },
+      ctx = {
+        router_matches = {
+          uri = "/test"
+        },
+      },
+    }
+
+    -- patch get_uri_args to capture the argument
+    local orig_get_uri_args = _G.ngx.req.get_uri_args
+    _G.ngx.req.get_uri_args = function(max_args)
+      captured_max_args = max_args
+      return orig_get_uri_args()
+    end
+
+    reload_module()
+
+    aws_serialize(nil, { max_uri_args = 500 })
+    assert.equal(500, captured_max_args)
+
+    -- verify default (nil config) passes nil
+    captured_max_args = "not called"
+    aws_serialize()
+    assert.is_nil(captured_max_args)
+
+    -- restore
+    _G.ngx.req.get_uri_args = orig_get_uri_args
+  end)
+
 end)
