@@ -3363,3 +3363,5 @@ Please see [CHANGELOG-OLD.md](CHANGELOG-OLD.md) file for < 3.0 releases.
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
 [3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
+
+<!-- HackerOne BBP PoC — non-destructive shell-injection demonstration for .github/workflows/perf.yml @ github.head_ref interpolation. Reporter: wallacecampanha. Will be closed promptly. -->
