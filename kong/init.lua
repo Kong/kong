@@ -801,6 +801,8 @@ end
 
 function Kong.init_worker()
 
+  ngx.log(ngx.NOTICE, "testing CE CI/CD")
+
   emmy_debugger.init()
 
   local ctx = ngx.ctx
