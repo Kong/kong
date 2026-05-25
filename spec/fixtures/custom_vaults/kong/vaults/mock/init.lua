@@ -2,8 +2,10 @@ local env = require "kong.vaults.env"
 local http = require "resty.http"
 
 
-local assert = assert
 local getenv = os.getenv
+
+
+local get_phase = ngx.get_phase
 
 
 local function init()
@@ -14,17 +16,19 @@ end
 
 
 local function get(conf, resource, version)
-  local client, err = http.new()
-  if not client then
-    return nil, err
+  -- simulate a real vault backend that makes HTTP requests (yield via cosocket)
+  -- pcall is needed because cosocket may not be available in all phases (e.g. init)
+  local phase = get_phase()
+  if phase ~= "init" and phase ~= "init_worker" then
+    assert(pcall(function()
+      local test = require "kong.vaults.test"
+      local httpc = http.new()
+      httpc:set_timeout(50)
+      httpc:request_uri("http://127.0.0.1:" .. test.PORT .. "/secret/dummy", {
+        keepalive = false,
+      })
+    end))
   end
-
-  client:set_timeouts(20000, 20000, 20000)
-  assert(client:request_uri("http://mockbin.org/headers", {
-    headers = {
-      Accept = "application/json",
-    },
-  }))
 
   return env.get(conf, resource, version)
 end
