@@ -23,7 +23,7 @@ local function get(conf, resource, version)
       keepalive = false,
     })
   end)
-  if not pok and fok and not fok:find("API disabled in the current context", nil, true) then
+  if not pok and fok and not fok:find("API disabled in", nil, true) then
     return nil, "unexpected error during HTTP request: " .. fok
   end
 

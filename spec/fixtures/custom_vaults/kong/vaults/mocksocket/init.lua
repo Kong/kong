@@ -18,10 +18,10 @@ local function get(conf, resource, version)
   local pok, fok = pcall(function()
     local test = require "kong.vaults.test"
     local httpc = http.new()
-    httpc:set_timeout(100)
+    httpc:set_timeout(50)
     httpc:request_uri("http://127.0.0.1:" .. test.PORT .. "/secret/dummy")
   end)
-  if not pok and fok and not fok:find("API disabled in the current context", nil, true) then
+  if not pok and fok and not fok:find("API disabled in", nil, true) then
     return nil, "unexpected error during HTTP request: " .. fok
   end
 
