@@ -24,7 +24,9 @@ local function get(conf, resource, version)
       local test = require "kong.vaults.test"
       local httpc = http.new()
       httpc:set_timeout(50)
-      httpc:request_uri("http://127.0.0.1:" .. test.PORT .. "/secret/dummy")
+      httpc:request_uri("http://127.0.0.1:" .. test.PORT .. "/secret/dummy", {
+        keepalive = false,
+      })
     end))
   end
 
