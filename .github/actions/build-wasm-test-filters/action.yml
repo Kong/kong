@@ -27,7 +27,7 @@ runs:
         echo "CACHE_KEY=${CACHE_PREFIX}::${FILE_HASH}" >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       id: restore-cache
       with:
         path: |
@@ -66,7 +66,7 @@ runs:
     - name: Save cache
       if: steps.restore-cache.outputs.cache-hit != 'true'
       id: save-cache
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: |
           ~/.cargo/bin/
