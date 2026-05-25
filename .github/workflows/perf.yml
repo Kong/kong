@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Generate cache key
       id: cache-key
@@ -42,7 +42,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v4
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -65,7 +65,7 @@ jobs:
         luarocks
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: failure()
       with:
         name: bazel-outputs
@@ -110,7 +110,7 @@ jobs:
         repo-token: ${{ secrets.PAT }}
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
       with:
         # Fetch all history for all tags and branches
         fetch-depth: 0
@@ -118,7 +118,7 @@ jobs:
     - name: Load Cached Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build-packages.outputs.cache-key }}
@@ -251,7 +251,7 @@ jobs:
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
         done
 
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -267,7 +267,7 @@ jobs:
         done
 
     - name: Save results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
       if: always()
       with:
         name: perf-results
@@ -278,7 +278,7 @@ jobs:
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
       if: always()
       with:
         name: error_logs

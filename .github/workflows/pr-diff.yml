@@ -25,7 +25,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Read comment
       id: read_comment
@@ -43,7 +43,7 @@ jobs:
     - name: Validate input
       if: steps.read_comment.outputs.other_pr
       id: validate_url
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       with:
         script: |
           const url = `${{ steps.read_comment.outputs.other_pr }}`;
@@ -89,7 +89,7 @@ jobs:
         fi
 
     - name: Post result as comment in the PR
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       if: steps.run_extension.outputs.MESSAGE
       with:
         script: |
