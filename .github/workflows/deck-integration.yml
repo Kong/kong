@@ -51,13 +51,13 @@ jobs:
         run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev postgresql-client jq
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           submodules: recursive
 
       - name: Lookup build cache
         id: cache-deps
-        uses: actions/cache@v4
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
         with:
           path: ${{ env.BUILD_ROOT }}
           key: ${{ needs.build.outputs.cache-key }}

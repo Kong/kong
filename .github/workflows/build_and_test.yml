@@ -46,7 +46,7 @@ jobs:
       old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
       with:
         fetch-depth: 0  # `git merge-base` requires the history
 
@@ -91,11 +91,11 @@ jobs:
           sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v4
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -139,7 +139,7 @@ jobs:
 
     steps:
     - name: Checkout source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Download runtimes file
       uses: Kong/gh-storage/download@b196a6b94032e56e414227c749e9f96a6afc2b91 # v1
@@ -158,7 +158,7 @@ jobs:
         static-mode: ${{ github.run_attempt > 1 }}
 
     - name: Upload schedule files
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       continue-on-error: true
       with:
         name: schedule-test-files
@@ -232,11 +232,11 @@ jobs:
           sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     # used for plugin compatibility test
     - name: Checkout old version Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
       with:
         path: kong-old
         # if the minor version is 0, `ref` will default to ''
@@ -245,7 +245,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v4
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -306,7 +306,7 @@ jobs:
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
     - name: Download test schedule file
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
         name: schedule-test-files
 
@@ -323,13 +323,13 @@ jobs:
         pip install kong-pdk
 
     - name: Download test rerun information
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       continue-on-error: true
       with:
         name: test-rerun-info-${{ matrix.runner }}
 
     - name: Download test runtime statistics from previous runs
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       continue-on-error: true
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
@@ -359,7 +359,7 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: busted-test-errlogs-${{ matrix.runner }}
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
@@ -367,7 +367,7 @@ jobs:
 
     - name: Upload test rerun information
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: test-rerun-info-${{ matrix.runner }}
         path: ${{ env.FAILED_TEST_FILES_FILE }}
@@ -375,14 +375,14 @@ jobs:
 
     - name: Upload test runtime statistics for offline scheduling
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
         path: ${{ env.TEST_FILE_RUNTIME_FILE }}
         retention-days: 7
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.runner }}
@@ -409,11 +409,11 @@ jobs:
           sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v4
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -446,14 +446,14 @@ jobs:
 
     - name: Upload error logs
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: PDK-test-errlogs
         path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
         retention-days: 1
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -474,7 +474,7 @@ jobs:
 
     steps:
     - name: Checkout source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
     - name: Install requirements
       run: |
@@ -483,7 +483,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
 
     - name: Stats aggregation
       shell: bash
