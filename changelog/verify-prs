@@ -78,7 +78,7 @@ Version: 0.1
                                 
          --bulk N               Number of jobs ran concurrency. Default
                                 is '5'. Set this value to your CPU cores,
-                                but may hit the GitHub API reate limit.
+                                but may hit the GitHub API rate limit.
                                 See 'https://api.github.com/rate_limit'.
                                 
          --org-repo <repo>      GitHub repository. Either 'kong/kong' or
