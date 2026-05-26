@@ -8,6 +8,10 @@ jobs:
   assign-author:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
       - name: assign-author
         # ignore the pull requests opened from PR because token is not correct
         if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'

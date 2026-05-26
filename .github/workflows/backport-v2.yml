@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v4
       - name: Create backport pull requests
         uses: korthout/backport-action@924c8170740fa1e3685f69014971f7f251633f53 # v2.4.1

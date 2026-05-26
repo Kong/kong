@@ -46,6 +46,10 @@ jobs:
       old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # `git merge-base` requires the history
@@ -83,6 +87,10 @@ jobs:
     needs: build
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Bump max open files
       run: |
           sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
@@ -138,6 +146,10 @@ jobs:
       runners: ${{ steps.generate-runner-array.outputs.RUNNERS }}
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Checkout source code
       uses: actions/checkout@v4
 
@@ -224,6 +236,10 @@ jobs:
           REDIS_ARGS: "--requirepass passdefault"
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Bump max open files
       run: |
           sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
@@ -401,6 +417,10 @@ jobs:
     needs: build
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Bump max open files
       run: |
           sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
@@ -473,6 +493,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
     - name: Checkout source code
       uses: actions/checkout@v4
 
