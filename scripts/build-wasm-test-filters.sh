@@ -98,6 +98,7 @@ main() {
     fi
 
 
+    RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=--allow-undefined" \
     "$cargo" build \
         --manifest-path "$FIXTURE_PATH/Cargo.toml" \
         --workspace \
