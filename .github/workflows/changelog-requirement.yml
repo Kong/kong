@@ -8,6 +8,8 @@ on:
       - '**.rockspec'
       - '.requirements'
       - 'changelog/**'
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   require-changelog:

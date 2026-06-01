@@ -13,6 +13,7 @@ env:
 
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-packages:

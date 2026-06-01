@@ -6,6 +6,8 @@ permissions:
   contents: write # so it can comment
   pull-requests: write # so it can create pull requests
   actions: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   backport:
     name: Backport

@@ -3,6 +3,8 @@ name: Check for Enterprise Copyright
 on:
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   check-copyright:
     runs-on: ubuntu-latest

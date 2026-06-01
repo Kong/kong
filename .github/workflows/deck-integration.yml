@@ -17,6 +17,7 @@ env:
   LIBRARY_PREFIX: /usr/local/kong
   TEST_RESULTS_XML_OUTPUT: test-results
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # cancel previous runs if new commits are pushed to the PR
 concurrency:

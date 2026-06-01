@@ -9,6 +9,8 @@ permissions:
   pull-requests: write
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   pr_diff:
     runs-on: ubuntu-latest

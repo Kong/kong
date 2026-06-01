@@ -2,6 +2,8 @@ name: Pull Request Schema Labeler
 on:
   pull_request:
     types: [opened, edited, labeled, unlabeled]
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   schema-change-labels:
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"

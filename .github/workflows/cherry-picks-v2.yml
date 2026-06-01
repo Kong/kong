@@ -7,6 +7,8 @@ on:
 permissions:
   contents: write # so it can comment
   pull-requests: write # so it can create pull requests and labels
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   cross-repo-cherrypick:
     name: Cherry pick to remote repository

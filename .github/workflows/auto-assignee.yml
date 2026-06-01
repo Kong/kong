@@ -4,6 +4,8 @@ on:
     types: [ opened, reopened ]
 permissions:
   pull-requests: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   assign-author:
     runs-on: ubuntu-latest

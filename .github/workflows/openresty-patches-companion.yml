@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
     - 'build/openresty/patches/**'
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   create-pr:

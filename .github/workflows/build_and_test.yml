@@ -37,6 +37,7 @@ env:
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
   RUNNER_COUNT: 7
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   metadata:

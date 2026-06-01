@@ -16,6 +16,8 @@ on:
         description: "Ignore the build cache and build dependencies from scratch"
         type: boolean
         default: false
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   build:
     name: Build dependencies

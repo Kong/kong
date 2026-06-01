@@ -2,6 +2,8 @@ name: Pull Request Label Checker
 on:
   pull_request:
     types: [opened, edited, synchronize, labeled, unlabeled]
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   check-labels:
     name: prevent merge labels
