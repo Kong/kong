@@ -1,3 +1,0 @@
-message: "Fixed an issue where a GET request to the Admin API root `/` path would return a 500 server error"
-type: bugfix
-scope: Core
