@@ -50,6 +50,8 @@ runs:
     - name: Build Test Filters
       if: steps.restore-cache.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        RUSTFLAGS: "-C link-arg=--allow-undefined"
       run: |
         cargo build \
           --manifest-path "${WASM_FILTER_PATH:?}/Cargo.toml" \
