@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.9.2](#392)
 - [3.9.1](#391)
 - [3.9.0](#390)
 - [3.8.1](#381)
@@ -22,6 +23,22 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.9.2
+
+### Kong
+
+#### Dependencies
+##### Core
+
+- Bumped luarocks from 3.11.1 to 3.12.2.
+ [#14672](https://github.com/Kong/kong/issues/14672)
+
+#### Fixes
+##### Core
+
+- Applied upstream nginx security patches for CVE-2026-40701, CVE-2026-40460, CVE-2026-42934, CVE-2026-42946, CVE-2026-42945, and CVE-2026-9256.
+ [#14882](https://github.com/Kong/kong/issues/14882)
 
 ## 3.9.1
 
