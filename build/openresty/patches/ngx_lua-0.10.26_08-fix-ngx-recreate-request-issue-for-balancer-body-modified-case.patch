@@ -1,8 +1,8 @@
 diff --git a/bundle/ngx_lua-0.10.26/README.markdown b/bundle/ngx_lua-0.10.26/README.markdown
-index d6ec8c9..27f3880 100644
+index 02eb9af..ced1946 100644
 --- a/bundle/ngx_lua-0.10.26/README.markdown
 +++ b/bundle/ngx_lua-0.10.26/README.markdown
-@@ -5512,6 +5512,8 @@ If the request body has been read into memory, try calling the [ngx.req.get_body
+@@ -5508,6 +5508,8 @@ If the request body has been read into memory, try calling the [ngx.req.get_body
  
  To force in-file request bodies, try turning on [client_body_in_file_only](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_in_file_only).
  
@@ -11,7 +11,7 @@ index d6ec8c9..27f3880 100644
  This function was first introduced in the `v0.3.1rc17` release.
  
  See also [ngx.req.get_body_data](#ngxreqget_body_data).
-@@ -5523,7 +5525,7 @@ ngx.req.set_body_data
+@@ -5519,7 +5521,7 @@ ngx.req.set_body_data
  
  **syntax:** *ngx.req.set_body_data(data)*
  
@@ -20,7 +20,7 @@ index d6ec8c9..27f3880 100644
  
  Set the current request's request body using the in-memory data specified by the `data` argument.
  
-@@ -5531,6 +5533,8 @@ If the request body has not been read yet, call [ngx.req.read_body](#ngxreqread_
+@@ -5527,6 +5529,8 @@ If the request body has not been read yet, call [ngx.req.read_body](#ngxreqread_
  
  Whether the previous request body has been read into memory or buffered into a disk file, it will be freed or the disk file will be cleaned up immediately, respectively.
  
@@ -29,7 +29,7 @@ index d6ec8c9..27f3880 100644
  This function was first introduced in the `v0.3.1rc18` release.
  
  See also [ngx.req.set_body_file](#ngxreqset_body_file).
-@@ -5542,7 +5546,7 @@ ngx.req.set_body_file
+@@ -5538,7 +5542,7 @@ ngx.req.set_body_file
  
  **syntax:** *ngx.req.set_body_file(file_name, auto_clean?)*
  
@@ -39,7 +39,7 @@ index d6ec8c9..27f3880 100644
  Set the current request's request body using the in-file data specified by the `file_name` argument.
  
 diff --git a/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki b/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
-index 305626c..51807c7 100644
+index 0db9dd5..61cc365 100644
 --- a/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
 +++ b/bundle/ngx_lua-0.10.26/doc/HttpLuaModule.wiki
 @@ -4637,7 +4637,7 @@ See also [[#ngx.req.get_body_data|ngx.req.get_body_data]].
@@ -79,10 +79,10 @@ index 305626c..51807c7 100644
  
  See also [[#ngx.req.set_body_data|ngx.req.set_body_data]].
 diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
-index af4da73..4da4393 100644
+index 407c115..d687cbf 100644
 --- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
 +++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
-@@ -802,7 +802,7 @@ ngx_http_lua_ffi_balancer_recreate_request(ngx_http_request_t *r,
+@@ -1331,7 +1331,7 @@ ngx_http_lua_ffi_balancer_recreate_request(ngx_http_request_t *r,
          /* u->request_bufs already contains a valid request buffer
           * remove it from chain first
           */
