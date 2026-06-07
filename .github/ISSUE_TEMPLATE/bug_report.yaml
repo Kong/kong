@@ -1,5 +1,5 @@
 name: 🐞 Bug
-description: Something is not working as indended.
+description: Something is not working as intended.
 body:
 - type: checkboxes
   attributes:
