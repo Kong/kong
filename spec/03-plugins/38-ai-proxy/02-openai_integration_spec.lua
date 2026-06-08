@@ -12,6 +12,7 @@ local PLUGIN_NAME = "ai-proxy"
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
 local FILE_LOG_PATH_NO_LOGS = os.tmpname()
 local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
+local FILE_LOG_PATH_INVALID_JSON = os.tmpname()
 
 local truncate_file = function(path)
   local file = io.open(path, "w")
@@ -155,6 +156,13 @@ for _, strategy in helpers.all_strategies() do
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/internal_server_error.html"))
+              }
+            }
+
+            location = "/llm/v1/chat/invalid-json" {
+              content_by_lua_block {
+                ngx.status = 200
+                ngx.print("{")
               }
             }
 
@@ -574,6 +582,43 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
+      -- 200 preserve route mode with invalid JSON response
+      local preserve_invalid_json = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http", "https" },
+        paths = { "/llm/v1/chat/invalid-json" },
+        snis = { "example.test" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = preserve_invalid_json.id },
+        config = {
+          route_type = "preserve",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/whatever/doesnt/matter"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = preserve_invalid_json.id },
+        config = {
+          path = FILE_LOG_PATH_INVALID_JSON,
+        },
+      }
+      --
+
       -- 200 chat good but no model set in plugin config
       local chat_good_no_model = assert(bp.routes:insert {
         service = empty_service,
@@ -822,6 +867,7 @@ for _, strategy in helpers.all_strategies() do
       os.remove(FILE_LOG_PATH_STATS_ONLY)
       os.remove(FILE_LOG_PATH_NO_LOGS)
       os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
+      os.remove(FILE_LOG_PATH_INVALID_JSON)
     end)
 
     before_each(function()
@@ -830,6 +876,7 @@ for _, strategy in helpers.all_strategies() do
       truncate_file(FILE_LOG_PATH_STATS_ONLY)
       truncate_file(FILE_LOG_PATH_NO_LOGS)
       truncate_file(FILE_LOG_PATH_WITH_PAYLOADS)
+      truncate_file(FILE_LOG_PATH_INVALID_JSON)
     end)
 
     after_each(function()
@@ -1285,28 +1332,51 @@ for _, strategy in helpers.all_strategies() do
     describe("openai preserve mode", function()
       -- preserve mode
       it("embeddings", function()
-      local r = client:get("/llm/v1/embeddings/good", {
-        headers = {
-          ["content-type"] = "application/json",
-          ["accept"] = "application/json",
-        },
-        body = cjson.encode({
-          model = "text-embedding-ada-002",
-          input = "The food was delicious and the waiter",
-          encoding_format = "float",
-        }),
-      })
+        local r = client:get("/llm/v1/embeddings/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = cjson.encode({
+            model = "text-embedding-ada-002",
+            input = "The food was delicious and the waiter",
+            encoding_format = "float",
+          }),
+        })
 
-      -- validate that the request succeeded, response status 200
-      local body = assert.res_status(200 , r)
-      local json = cjson.decode(body)
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
 
-       -- check this is in the 'kong' response format
-       assert.not_nil(json.data and json.data[1])
-       assert.equals("text-embedding-3-large", json.model)
-       assert.equals("openai/text-embedding-ada-002", r.headers["X-Kong-LLM-Model"])
+        -- check this is in the 'kong' response format
+        assert.not_nil(json.data and json.data[1])
+        assert.equals("text-embedding-3-large", json.model)
+        assert.equals("openai/text-embedding-ada-002", r.headers["X-Kong-LLM-Model"])
+      end)
+
+      it("logs statistics with invalid JSON response", function()
+        local r = client:get("/llm/v1/chat/invalid-json", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200, r)
+        assert.equals("{", body)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_INVALID_JSON)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        local _, message = next(log_message.ai)
+        assert.same("openai", message.meta.provider_name)
+        assert.same("UNSPECIFIED", message.meta.request_model)
+        assert.same("UNSPECIFIED", message.meta.response_model)
+      end)
     end)
-  end)
 
     describe("openai different auth methods", function()
       it("works with query param auth", function()

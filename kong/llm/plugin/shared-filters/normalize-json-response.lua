@@ -1,4 +1,4 @@
-local cjson = require("cjson")
+local cjson = require("cjson.safe")
 
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_o11y = require("kong.llm.plugin.observability")
