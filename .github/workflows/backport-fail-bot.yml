@@ -12,7 +12,7 @@ jobs:
     steps:
     - name: Fetch mapping file
       id: fetch_mapping
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         ACCESS_TOKEN: ${{ secrets.PAT }}
       with:
@@ -25,7 +25,7 @@ jobs:
 
     - name: Generate Slack Payload
       id: generate-payload
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         SLACK_CHANNEL: gateway-notifications
         SLACK_MAPPING: "${{ steps.fetch_mapping.outputs.result }}"
@@ -44,8 +44,8 @@ jobs:
         result-encoding: string
 
     - name: Send Slack Message
-      uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+      uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
       with:
         payload: ${{ steps.generate-payload.outputs.result }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
+        webhook: ${{ secrets.SLACK_GATEWAY_NOTIFICATIONS_WEBHOOK }}
+        webhook-type: incoming-webhook

@@ -60,7 +60,7 @@ jobs:
       commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Build Info
       id: build-info
       run: |
@@ -135,7 +135,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm') && matrix.image != ''
-      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -167,7 +167,7 @@ jobs:
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Checkout Kong source code
-      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
@@ -184,7 +184,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -194,7 +194,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazel-contrib/setup-bazel@e403ad507104847c3539436f64a9e9eecc73eeec #0.8.5
+      uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 #0.9.10
       with:
         bazelisk-version: "1.20.0"
         # Avoid downloading Bazel every time.
@@ -266,7 +266,7 @@ jobs:
         tail -n500 bazel-out/**/*/CMake.log || true
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
@@ -283,16 +283,16 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     steps:
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Download artifact
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
 
     - name: Install Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.11'
         cache: 'pip' # caching pip dependencies
@@ -319,31 +319,31 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Download artifact
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
     - name: Download artifact (alt)
       if: matrix.artifact-from-alt != ''
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: ${{ matrix.artifact-from-alt }}-packages
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
         password: ${{ secrets.DOCKER_OAT_PUSH }}
 
     - name: Docker meta
       id: meta
-      uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5
+      uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
       env:
         DOCKER_METADATA_PR_HEAD_SHA: true
       with:
@@ -354,10 +354,10 @@ jobs:
 
     - name: Set up QEMU
       if: matrix.docker-platforms != ''
-      uses: docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a # v3
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
     - name: Set platforms
       id: docker_platforms_arg
@@ -383,7 +383,7 @@ jobs:
         echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
@@ -400,7 +400,7 @@ jobs:
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
-      uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
+      uses: peter-evans/commit-comment@f6d60c65d05bb59f750fa51ad3de1d443ba0eb52 # v4.0.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         body: |
@@ -420,10 +420,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Install Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.11'
         cache: 'pip' # caching pip dependencies
@@ -461,11 +461,11 @@ jobs:
       IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
     steps:
     - name: Install regctl
-      uses: regclient/actions/regctl-installer@ce5fd131e371ffcdd7508b478cb223b3511a9183
+      uses: regclient/actions/regctl-installer@f07124ffba4b0cbf96b2a666d481ed9d44b5e7e4
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
         password: ${{ secrets.DOCKER_OAT_PUSH }}
@@ -495,7 +495,7 @@ jobs:
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a5b1cfac7d55d8cf9390456a1e6799425e28840d # v4.0.1
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a92df3beb1e69e27d86be56346488f15fecaf0de # scan-docker-image@6.1.1
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -504,7 +504,7 @@ jobs:
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a5b1cfac7d55d8cf9390456a1e6799425e28840d # v4.0.1
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a92df3beb1e69e27d86be56346488f15fecaf0de # scan-docker-image@6.1.1
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -526,10 +526,10 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-packages'] }}"
 
     steps:
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Download artifact
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
@@ -591,12 +591,12 @@ jobs:
     steps:
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
         password: ${{ secrets.DOCKER_OAT_PUSH }}
 
-    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Get latest commit SHA on master
       run: |
@@ -604,7 +604,7 @@ jobs:
 
     - name: Docker meta
       id: meta
-      uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5
+      uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
       with:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
@@ -628,7 +628,7 @@ jobs:
           suffix=-${{ matrix.label }}
 
     - name: Install regctl
-      uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
+      uses: regclient/actions/regctl-installer@f07124ffba4b0cbf96b2a666d481ed9d44b5e7e4
 
     - name: Push Images
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}

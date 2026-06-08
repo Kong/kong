@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout source code
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ secrets.PAT }}
 
       - name: Process statistics
-        uses: Kong/gateway-test-scheduler/analyze@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
+        uses: Kong/gateway-test-scheduler/analyze@7f296716e385b5fce9573ebc5875f13c09504791 # main (node24)
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
@@ -28,7 +28,7 @@ jobs:
           artifact-name-regexp: "^test-runtime-statistics-\\d+$"
 
       - name: Upload new runtimes file
-        uses: Kong/gh-storage/upload@b196a6b94032e56e414227c749e9f96a6afc2b91 # v1
+        uses: Kong/gh-storage/upload@29d5de7b2b87c63016daae5680aefab30812a318 # main (node24)
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:

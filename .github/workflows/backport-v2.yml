@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Create backport pull requests
-        uses: korthout/backport-action@924c8170740fa1e3685f69014971f7f251633f53 # v2.4.1
+        uses: korthout/backport-action@66065406958f46e82238fd59546f5a99e69e22aa # v4.5.2
         id: backport
         with:
           github_token: ${{ secrets.PAT }}
@@ -37,6 +37,6 @@ jobs:
             }
       - name: add label
         if: steps.backport.outputs.was_successful == 'false'
-        uses: Kong/action-add-labels@81b0a07d6b2ec64d770be1ca94c31ec827418054
+        uses: Kong/action-add-labels@e9beb8480f1c0e4e1292df967adec60e388755fc
         with:
           labels: incomplete-backport
