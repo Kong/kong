@@ -32,7 +32,7 @@ runs:
         } >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       id: restore-cache
       with:
         path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
@@ -62,7 +62,7 @@ runs:
     - name: Save cache
       if: steps.restore-cache.outputs.cache-hit != 'true'
       id: save-cache
-      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
         key: ${{ env.WASM_CACHE_KEY }}

@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Generate cache key
       id: cache-key
@@ -42,7 +42,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -65,7 +65,7 @@ jobs:
         luarocks
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: failure()
       with:
         name: bazel-outputs
@@ -110,7 +110,7 @@ jobs:
         repo-token: ${{ secrets.PAT }}
 
     - name: Checkout Kong source code
-      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         # Fetch all history for all tags and branches
         fetch-depth: 0
@@ -118,7 +118,7 @@ jobs:
     - name: Load Cached Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build-packages.outputs.cache-key }}
@@ -162,7 +162,7 @@ jobs:
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
-    - uses: xt0rted/pull-request-comment-branch@d97294d304604fa98a2600a6e2f916a84b596dc7 # v1.4.1
+    - uses: xt0rted/pull-request-comment-branch@e8b8daa837e8ea7331c0003c9c316a64c6d8b0b1 # v3.0.0
       id: comment-branch
       if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
@@ -256,7 +256,7 @@ jobs:
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
         done
 
-    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+    - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -272,7 +272,7 @@ jobs:
         done
 
     - name: Save results
-      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: always()
       with:
         name: perf-results
@@ -283,7 +283,7 @@ jobs:
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: always()
       with:
         name: error_logs
