@@ -1527,7 +1527,8 @@ local function get_cache_key_value(name, key, fields)
   end
 
   if type(value) == "table" and fields[name].type == "foreign" then
-    value = value.id -- FIXME extract foreign key, do not assume `id`
+    local foreign_pk = fields[name].schema.primary_key
+    value = value[foreign_pk[1]]
     if value == null or value == nil then
       return
     end
