@@ -27,7 +27,7 @@ runs:
         echo "CACHE_KEY=${CACHE_PREFIX}::${FILE_HASH}" >> $GITHUB_ENV
 
     - name: Restore Cache
-      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       id: restore-cache
       with:
         path: |
@@ -41,32 +41,27 @@ runs:
 
     - name: Install Rust Toolchain
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
+      uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # v1
       with:
-        profile: minimal
         toolchain: stable
-        override: true
         components: cargo
-        target: ${{ env.WASM_FILTER_TARGET }}
+        targets: ${{ env.WASM_FILTER_TARGET }}
 
-    - name: cargo build
+    - name: Build Test Filters
       if: steps.restore-cache.outputs.cache-hit != 'true'
-      uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
-      with:
-        command: build
-        # building in release mode yields smaller library sizes, so it's
-        # better for our cacheability
-        args: >
-          --manifest-path "${{ env.WASM_FILTER_PATH }}/Cargo.toml"
-          --workspace
-          --lib
-          --target "${{ env.WASM_FILTER_TARGET }}"
+      shell: bash
+      run: |
+        cargo build \
+          --manifest-path "${WASM_FILTER_PATH:?}/Cargo.toml" \
+          --workspace \
+          --lib \
+          --target "${WASM_FILTER_TARGET:?}" \
           --release
 
     - name: Save cache
       if: steps.restore-cache.outputs.cache-hit != 'true'
       id: save-cache
-      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |
           ~/.cargo/bin/
