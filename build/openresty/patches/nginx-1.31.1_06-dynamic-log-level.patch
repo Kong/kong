@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.29.2/src/core/ngx_log.c b/bundle/nginx-1.29.2/src/core/ngx_log.c
+diff --git a/bundle/nginx-1.31.1/src/core/ngx_log.c b/bundle/nginx-1.31.1/src/core/ngx_log.c
 index eb7a989..0862d4d 100644
---- a/bundle/nginx-1.29.2/src/core/ngx_log.c
-+++ b/bundle/nginx-1.29.2/src/core/ngx_log.c
+--- a/bundle/nginx-1.31.1/src/core/ngx_log.c
++++ b/bundle/nginx-1.31.1/src/core/ngx_log.c
 @@ -171,8 +171,12 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
      debug_connection = (log->log_level & NGX_LOG_DEBUG_CONNECTION) != 0;
  
@@ -28,13 +28,12 @@ index eb7a989..0862d4d 100644
          va_start(args, fmt);
          ngx_log_error_core(level, log, err, fmt, args);
          va_end(args);
-diff --git a/bundle/nginx-1.29.2/src/core/ngx_log.h b/bundle/nginx-1.29.2/src/core/ngx_log.h
+diff --git a/bundle/nginx-1.31.1/src/core/ngx_log.h b/bundle/nginx-1.31.1/src/core/ngx_log.h
 index da81cf0..dae8c3a 100644
---- a/bundle/nginx-1.29.2/src/core/ngx_log.h
-+++ b/bundle/nginx-1.29.2/src/core/ngx_log.h
-@@ -72,6 +72,13 @@ struct ngx_log_s {
-     ngx_log_t           *next;
- };
+--- a/bundle/nginx-1.31.1/src/core/ngx_log.h
++++ b/bundle/nginx-1.31.1/src/core/ngx_log.h
+@@ -77,4 +77,11 @@ struct ngx_log_s {
+ 
  
 +#if (NGX_HTTP_LUA_KONG)
 +ngx_uint_t
@@ -43,7 +42,6 @@ index da81cf0..dae8c3a 100644
 +#define ngx_http_lua_kong_get_dynamic_log_level(expr) (expr)
 +#endif
 +
- 
  #ifndef NGX_MAX_ERROR_STR
  #define NGX_MAX_ERROR_STR   4096
 @@ -85,13 +92,13 @@ struct ngx_log_s {
