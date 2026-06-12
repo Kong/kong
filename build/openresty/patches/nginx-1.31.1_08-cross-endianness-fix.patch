@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.29.2/auto/endianness b/bundle/nginx-1.29.2/auto/endianness
+diff --git a/bundle/nginx-1.31.1/auto/endianness b/bundle/nginx-1.31.1/auto/endianness
 index 1b552b6..be84487 100644
---- a/bundle/nginx-1.29.2/auto/endianness
-+++ b/bundle/nginx-1.29.2/auto/endianness
+--- a/bundle/nginx-1.31.1/auto/endianness
++++ b/bundle/nginx-1.31.1/auto/endianness
 @@ -13,7 +13,13 @@ checking for system byte ordering
  END
  

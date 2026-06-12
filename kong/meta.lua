@@ -2,7 +2,7 @@ local version = setmetatable({
   major = 3,
   minor = 10,
   patch = 0,
-  suffix = "-veecode.5",
+  suffix = "-veecode.6",
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places
@@ -24,6 +24,6 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = { "1.29.2.3" },
+    nginx = { "1.31.1.1" },
   }
 }

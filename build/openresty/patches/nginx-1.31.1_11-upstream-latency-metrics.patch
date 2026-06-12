@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.29.2/src/http/ngx_http_upstream.c b/bundle/nginx-1.29.2/src/http/ngx_http_upstream.c
+diff --git a/bundle/nginx-1.31.1/src/http/ngx_http_upstream.c b/bundle/nginx-1.31.1/src/http/ngx_http_upstream.c
 index 3445bf2..73231db 100644
---- a/bundle/nginx-1.29.2/src/http/ngx_http_upstream.c
-+++ b/bundle/nginx-1.29.2/src/http/ngx_http_upstream.c
+--- a/bundle/nginx-1.31.1/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.31.1/src/http/ngx_http_upstream.c
 @@ -160,6 +160,8 @@ static ngx_int_t ngx_http_upstream_status_variable(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data);
  static ngx_int_t ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
@@ -195,10 +195,10 @@ index 3445bf2..73231db 100644
  static ngx_int_t
  ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data)
-diff --git a/bundle/nginx-1.29.2/src/http/ngx_http_upstream.h b/bundle/nginx-1.29.2/src/http/ngx_http_upstream.h
+diff --git a/bundle/nginx-1.31.1/src/http/ngx_http_upstream.h b/bundle/nginx-1.31.1/src/http/ngx_http_upstream.h
 index f6621af..4ab6793 100644
---- a/bundle/nginx-1.29.2/src/http/ngx_http_upstream.h
-+++ b/bundle/nginx-1.29.2/src/http/ngx_http_upstream.h
+--- a/bundle/nginx-1.31.1/src/http/ngx_http_upstream.h
++++ b/bundle/nginx-1.31.1/src/http/ngx_http_upstream.h
 @@ -61,6 +61,11 @@ typedef struct {
      ngx_msec_t                       response_time;
      ngx_msec_t                       connect_time;

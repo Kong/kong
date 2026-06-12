@@ -1,7 +1,7 @@
-diff --git a/bundle/LuaJIT-2.1-20260311/Makefile b/bundle/LuaJIT-2.1-20260311/Makefile
+diff --git a/bundle/LuaJIT-2.1-20260415/Makefile b/bundle/LuaJIT-2.1-20260415/Makefile
 index d789e9f..19b6bfa 100644
---- a/bundle/LuaJIT-2.1-20260311/Makefile
-+++ b/bundle/LuaJIT-2.1-20260311/Makefile
+--- a/bundle/LuaJIT-2.1-20260415/Makefile
++++ b/bundle/LuaJIT-2.1-20260415/Makefile
 @@ -42,7 +42,7 @@ INSTALL_SHARE= $(DESTDIR)$(INSTALL_SHARE_)
  INSTALL_DEFINC= $(DPREFIX)/include/luajit-$(MMVERSION)
  INSTALL_INC=   $(INSTALL_DEFINC)
@@ -11,10 +11,10 @@ index d789e9f..19b6bfa 100644
  INSTALL_JITLIB= $(DESTDIR)$(INSTALL_LJLIBD)/jit
  INSTALL_LMODD= $(INSTALL_SHARE)/lua
  INSTALL_LMOD= $(INSTALL_LMODD)/$(ABIVER)
-diff --git a/bundle/LuaJIT-2.1-20260311/src/Makefile b/bundle/LuaJIT-2.1-20260311/src/Makefile
+diff --git a/bundle/LuaJIT-2.1-20260415/src/Makefile b/bundle/LuaJIT-2.1-20260415/src/Makefile
 index 285082a..346646e 100644
---- a/bundle/LuaJIT-2.1-20260311/src/Makefile
-+++ b/bundle/LuaJIT-2.1-20260311/src/Makefile
+--- a/bundle/LuaJIT-2.1-20260415/src/Makefile
++++ b/bundle/LuaJIT-2.1-20260415/src/Makefile
 @@ -304,9 +304,6 @@ endif
  ifneq (,$(LMULTILIB))
    TARGET_XCFLAGS+= -DLUA_LMULTILIB=\"$(LMULTILIB)\"
@@ -25,10 +25,10 @@ index 285082a..346646e 100644
  
  ##############################################################################
  # Target system detection.
-diff --git a/bundle/LuaJIT-2.1-20260311/src/luaconf.h b/bundle/LuaJIT-2.1-20260311/src/luaconf.h
+diff --git a/bundle/LuaJIT-2.1-20260415/src/luaconf.h b/bundle/LuaJIT-2.1-20260415/src/luaconf.h
 index 71e44d5..a648c5a 100644
---- a/bundle/LuaJIT-2.1-20260311/src/luaconf.h
-+++ b/bundle/LuaJIT-2.1-20260311/src/luaconf.h
+--- a/bundle/LuaJIT-2.1-20260415/src/luaconf.h
++++ b/bundle/LuaJIT-2.1-20260415/src/luaconf.h
 @@ -9,6 +9,7 @@
  #ifndef WINVER
  #define WINVER 0x0501

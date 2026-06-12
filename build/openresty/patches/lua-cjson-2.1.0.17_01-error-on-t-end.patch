@@ -1,7 +1,7 @@
-diff --git a/bundle/lua-cjson-2.1.0.15/lua_cjson.c b/bundle/lua-cjson-2.1.0.15/lua_cjson.c
+diff --git a/bundle/lua-cjson-2.1.0.17/lua_cjson.c b/bundle/lua-cjson-2.1.0.17/lua_cjson.c
 index bbd8eff..c39c425 100644
---- a/bundle/lua-cjson-2.1.0.15/lua_cjson.c
-+++ b/bundle/lua-cjson-2.1.0.15/lua_cjson.c
+--- a/bundle/lua-cjson-2.1.0.17/lua_cjson.c
++++ b/bundle/lua-cjson-2.1.0.17/lua_cjson.c
 @@ -1495,6 +1495,10 @@ static int json_decode(lua_State *l)
      if (token.type != T_END)
          json_throw_parse_error(l, &json, "the end", &token);
