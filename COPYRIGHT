@@ -458,7 +458,7 @@ lua-resty-ada
 https://github.com/bungle/lua-resty-ada
 https://github.com/bungle/lua-resty-ada/blob/master/LICENSE
 
-Copyright (c) 2024–2025 Aapo Talvensaari, 2024 Guilherme Salazar
+Copyright (c) 2024–2026 Aapo Talvensaari, 2024 Guilherme Salazar
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2279,10 +2279,10 @@ SOFTWARE.
 
 %%%%%%%%%
 
-LuaFileSystem
+luafilesystem
 
-https://github.com/keplerproject/luafilesystem
-https://github.com/keplerproject/luafilesystem/blob/master/LICENSE
+https://github.com/lunarmodules/luafilesystem
+https://github.com/lunarmodules/luafilesystem/blob/master/LICENSE
 
 Copyright © 2003-2010 Kepler Project.
 Copyright © 2010-2022 The LuaFileSystem authors.
