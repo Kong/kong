@@ -1,0 +1,3 @@
+message: "Router now correctly handles repeated query parameters during gRPC-gateway transcoding"
+type: bugfix
+scope: Core

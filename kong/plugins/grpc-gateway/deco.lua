@@ -186,6 +186,20 @@ local function encode_fix(v, typ)
   return v
 end
 
+local function normalize_query_param_value(v)
+  -- Normalize query parameter value for repeated fields
+  -- When a query parameter is repeated (e.g., ?array=foo&array=bar),
+  -- ngx.req.get_uri_args() returns it as a table
+  if type(v) == "table" then
+    local repeated_values = {}
+    for _, val in ipairs(v) do
+      table.insert(repeated_values, val)
+    end
+    return repeated_values
+  end
+  return v
+end
+
 --[[
   // Set value `v` at `path` in table `t`
   // Path contains value address in dot-syntax. For example:
@@ -268,7 +282,8 @@ function deco:upstream(body)
           // For example: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
           // translates into `payload = { sub = { subfield = "foo" }}`
         ]]--
-        add_to_table( payload, k, v, self.endpoint.input_type)
+        local normalized_v = normalize_query_param_value(v)
+        add_to_table(payload, k, normalized_v, self.endpoint.input_type)
       end
     end
   end

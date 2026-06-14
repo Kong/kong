@@ -268,6 +268,20 @@ for _, strategy in helpers.each_strategy() do
       }, cjson.decode(body))
     end)
 
+    test("repeated query parameters", function()
+      local res, _ = proxy_client:get("/v1/echo", {
+        query = {
+          array = { "foo", "bar", "baz" },
+          nullable = "test",
+        }
+      })
+      assert.equal(200, res.status)
+      local body = assert(res:read_body())
+      local data = cjson.decode(body)
+      assert.same({ "foo", "bar", "baz" }, data.array)
+      assert.equal("test", data.nullable)
+    end)
+
     test("null in json", function()
       local res, _ = proxy_client:post("/bounce", {
         headers = { ["Content-Type"] = "application/json" },
