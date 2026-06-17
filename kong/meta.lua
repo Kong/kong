@@ -1,7 +1,7 @@
 local version = setmetatable({
   major = 3,
   minor = 9,
-  patch = 3,
+  patch = 4,
   --suffix = "-alpha.13"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
