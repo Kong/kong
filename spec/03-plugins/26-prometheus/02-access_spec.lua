@@ -664,7 +664,11 @@ describe("Plugin: prometheus (access) AI metrics", function()
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
                 else
                   ngx.status = 200
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/good.json"))
+                  local response = json.decode(pl_file.read(
+                    "spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/good.json"
+                  ))
+                  response.usage.total_tokens = 298
+                  ngx.print(json.encode(response))
                 end
               else
                 ngx.status = 401
@@ -844,7 +848,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 25', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 298', body, nil, true)
   end)
 
   it("increments the count for proxied AI requests", function()
@@ -883,7 +887,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 50', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 74', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 596', body, nil, true)
   end)
 
   it("behave correctly if AI metrics are not found", function()
