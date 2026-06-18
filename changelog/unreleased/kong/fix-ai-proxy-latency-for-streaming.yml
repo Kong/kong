@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where latency metric was not implemented for streaming responses.
+type: "bugfix"
+scope: "Plugin"

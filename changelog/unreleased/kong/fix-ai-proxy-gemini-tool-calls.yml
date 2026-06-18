@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where the Gemini provider did not properly handle multiple tool calls across different turns.
+type: "bugfix"
+scope: "Plugin"

@@ -1,0 +1,11 @@
+[
+  {
+    "data": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"blah\"}], \"role\": \"model\"}, \"index\": 0}], \"usageMetadata\": {\"promptTokenCount\": 4, \"candidatesTokenCount\": 1673, \"totalTokenCount\": 2918, \"promptTokensDetails\": [{\"modality\": \"TEXT\", \"tokenCount\": 4}], \"thoughtsTokenCount\": 1241}, \"modelVersion\": \"gemini-2.5-flash\", \"responseId\": \"VrOIaOHJEdCqqtsP5L_oqQ0\"}"
+  },
+  {                                                                                                                                       "data": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"blahblah\"}], \"role\": \"model\"}, \"index\": 0}], \"usageMetadata\": {\"promptTokenCount\": 4, \"candidatesTokenCount\": 1723, \"totalTokenCount\": 2968, \"promptTokensDetails\": [{\"modality\": \"TEXT\", \"tokenCount\": 4}], \"thoughtsTokenCount\": 1241}, \"modelVersion\": \"gemini-2.5-flash\", \"responseId\": \"VrOIaOHJEdCqqtsP5L_oqQ0\"}"
+  },
+  {
+    "data": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \" that, to us, appear intelligent.\"}], \"role\": \"model\"}, \"finishReason\": \"STOP\", \"index\": 0}], \"usageMetadata\": {\"promptTokenCount\": 4, \"candidatesTokenCount\": 1731, \"totalTokenCount\": 2976, \"promptTokensDetails\": [{\"modality\": \"TEXT\", \"tokenCount\": 4}], \"thoughtsTokenCount\": 1241}, \"modelVersion\": \"gemini-2.5-flash\", \"responseId\": \"VrOIaOHJEdCqqtsP5L_oqQ0\"}"
+  },
+  { "data": "[DONE]" }
+]

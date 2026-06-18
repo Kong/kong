@@ -1,8 +1,35 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local strip = require("kong.tools.string").strip
+
 
 local PLUGIN_NAME = "ai-proxy"
+
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -114,6 +141,45 @@ for _, strategy in helpers.all_strategies() do
           },
         },
       }
+
+      local chat_good_with_no_upstream_port = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/mistral/llm/v1/chat/good_with_no_upstream_port" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer mistral-key",
+            allow_override = true,
+          },
+          model = {
+            name = "mistralai/Mistral-7B-Instruct-v0.1-instruct",
+            provider = "mistral",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              mistral_format = "openai",
+              upstream_url = "http://"..helpers.mock_upstream_host .."/v1/chat/completions",
+            },
+          },
+        },
+      }
+
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          path = FILE_LOG_PATH_NO_LOGS,
+        },
+      }
+
 
       local chat_good_no_allow_override = assert(bp.routes:insert {
         service = empty_service,
@@ -379,6 +445,25 @@ for _, strategy in helpers.all_strategies() do
           role = "assistant",
         }, json.choices[1].message)
       end)
+
+      it("good request with no upstream port", function()
+        local r = client:get("/mistral/llm/v1/chat/good_with_no_upstream_port", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+        })
+
+        -- validate that the request succeeded, response status 502
+        assert.res_status(502 , r)
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        local tries = log_message.tries
+        assert.is_table(tries)
+        assert.equal(tries[1].port, 80)
+      end)
+
 
       it("good request with client right auth", function()
         local r = client:get("/mistral/llm/v1/chat/good", {

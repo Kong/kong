@@ -34,6 +34,8 @@ local function handle_streaming_frame(conf, chunk, finished)
 
     local events = ai_shared.frame_to_events(chunk, normalized_content_type)
     if not events then
+      -- unrecognized frame, need to reset the current events
+      set_ctx("current_events", {})
       return
     end
 
@@ -49,6 +51,9 @@ local function handle_streaming_frame(conf, chunk, finished)
     kong.log.debug("using existing body buffer created by: ", source)
 
     -- TODO: implement the ability to decode the frame based on content type
+  else
+    -- empty frame, need to reset the current events
+    set_ctx("current_events", {})
   end
 end
 

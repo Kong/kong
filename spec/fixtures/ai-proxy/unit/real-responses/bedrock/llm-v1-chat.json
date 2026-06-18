@@ -14,8 +14,8 @@
     },
     "stopReason": "end_turn",
     "usage": {
-        "completion_tokens": 119,
-        "prompt_tokens": 19,
-        "total_tokens": 138
+        "outputTokens": 119,
+        "inputTokens": 19,
+        "totalTokens": 138
     }
 }

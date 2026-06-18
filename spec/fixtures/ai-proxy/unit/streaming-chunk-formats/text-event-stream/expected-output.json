@@ -7,5 +7,8 @@
   },
   {
     "data": "{    \"choices\": [        {            \"delta\": {},            \"finish_reason\": \"stop\",            \"index\": 0,            \"logprobs\": null        }    ],    \"created\": 1720136012,    \"id\": \"chatcmpl-9hQFArK1oMZcRwaIa86RGwrjVNmeY\",    \"model\": \"gpt-4-0613\",    \"object\": \"chat.completion.chunk\",    \"system_fingerprint\": null}"
+  },
+  {
+    "data": "[DONE]"
   }
 ] 

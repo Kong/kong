@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where the response body for observability may be larger than the real one because of the stale data.
+type: "bugfix"
+scope: "Plugin"
