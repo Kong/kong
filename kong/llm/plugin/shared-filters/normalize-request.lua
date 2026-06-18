@@ -157,6 +157,12 @@ local function validate_and_transform(conf)
     return bail(400, err)
   end
 
+  -- Compressed SSE is only safe when Kong can pass the stream through untouched.
+  -- If Kong needs to parse/translate streaming frames, ask upstream for raw SSE bytes.
+  if get_global_ctx("stream_mode") and not get_global_ctx("preserve_mode") then
+    kong.service.request.set_header("Accept-Encoding", "identity")
+  end
+
 
   -- if this is a 'native' request with adapter,
   -- we need to update all the request/inference parameters as appropriate.
