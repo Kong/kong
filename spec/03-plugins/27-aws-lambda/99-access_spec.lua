@@ -7,6 +7,7 @@ local http_mock = require "spec.helpers.http_mock"
 
 local TEST_CONF = helpers.test_conf
 local server_tokens = meta._SERVER_TOKENS
+local via_header_suffix = string.format("kong (%s)", server_tokens)
 local null = ngx.null
 local fmt = string.format
 
@@ -971,7 +972,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         if server_tokens then
-          assert.equal("2 " .. server_tokens, res.headers["Via"])
+          assert.equal("2 " .. via_header_suffix, res.headers["Via"])
         end
       end)
 
