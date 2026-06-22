@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Handle malformed JSON in analytics."
+type: "bugfix"
+scope: "Plugin"
