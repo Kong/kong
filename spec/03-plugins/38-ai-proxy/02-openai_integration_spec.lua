@@ -586,8 +586,7 @@ for _, strategy in helpers.all_strategies() do
       local preserve_invalid_json = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http", "https" },
-        strip_path = true,
-        paths = { "/openai/preserve/invalid-json" },
+        paths = { "/llm/v1/chat/invalid-json" },
         snis = { "example.test" },
       })
       bp.plugins:insert {
@@ -606,7 +605,7 @@ for _, strategy in helpers.all_strategies() do
           model = {
             provider = "openai",
             options = {
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/invalid-json",
+                  upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/invalid-json",
             },
           },
         },
@@ -1332,12 +1331,20 @@ for _, strategy in helpers.all_strategies() do
 
     describe("openai preserve mode", function()
       it("logs statistics when the response contains malformed JSON", function()
-        local r = client:post("/openai/preserve/invalid-json", {
+        local r = client:post("/llm/v1/chat/invalid-json", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+          body = [[{
+            "model": "gpt-4",
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello"
+              }
+            ]
+          }]],
         })
 
         local body = assert.res_status(200, r)
@@ -1347,8 +1354,8 @@ for _, strategy in helpers.all_strategies() do
         local _, message = next(log_message.ai)
 
         assert.same("openai", message.meta.provider_name)
-        assert.same("UNSPECIFIED", message.meta.request_model)
-        assert.same("UNSPECIFIED", message.meta.response_model)
+        assert.same("gpt-4", message.meta.request_model)
+        assert.same("gpt-4", message.meta.response_model)
       end)
 
       -- preserve mode
