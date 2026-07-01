@@ -348,6 +348,67 @@ describe("#postgres upstream keepalive", function()
   end)
 
 
+  it("keeps stable upstream keepalive pool names when max lifetime is enabled", function()
+    start_kong({
+      upstream_keepalive_max_lifetime = 3600,
+    })
+
+    local res = assert(proxy_client:send {
+      method = "GET",
+      path = "/echo_sni",
+      headers = {
+        Host = "one.test",
+      }
+    })
+    local body = assert.res_status(200, res)
+    assert.equal("SNI=one.test", body)
+
+    assert.errlog()
+          .has
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test, pool_size=]])
+    assert.errlog()
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
+    assert.errlog()
+          .not_has.line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test\|gen_]], true)
+  end)
+
+
+  it("closes expired upstream keepalive connections when max lifetime is exceeded", function()
+    start_kong({
+      upstream_keepalive_max_lifetime = 1,
+    })
+
+    local res = assert(proxy_client:send {
+      method = "GET",
+      path = "/echo_sni",
+      headers = {
+        Host = "one.test",
+      }
+    })
+    local body = assert.res_status(200, res)
+    assert.equal("SNI=one.test", body)
+
+    ngx.sleep(1.1)
+
+    local res = assert(proxy_client:send {
+      method = "GET",
+      path = "/echo_sni",
+      headers = {
+        Host = "one.test",
+      }
+    })
+    local body = assert.res_status(200, res)
+    assert.equal("SNI=one.test", body)
+
+    assert.errlog()
+          .has.line([[keepalive closing expired connection [A-F0-9]+, cpool: [A-F0-9]+, age: \d+, max_lifetime: 1000]])
+    assert.errlog()
+          .has.line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test, pool_size=]])
+    assert.errlog()
+          .not_has.line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test\|gen_]], true)
+  end)
+
+
   it("free upstream keepalive pool", function()
     start_kong({ upstream_keepalive_max_requests = 1, })
 

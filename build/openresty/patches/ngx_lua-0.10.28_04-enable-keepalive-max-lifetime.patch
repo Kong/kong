@@ -1,0 +1,87 @@
+diff --git a/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
+--- a/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
++++ b/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
+@@ -34,6 +34,7 @@ typedef struct {
+ struct ngx_http_lua_balancer_peer_data_s {
+     ngx_uint_t                          keepalive_requests;
+     ngx_msec_t                          keepalive_timeout;
++    ngx_msec_t                          keepalive_max_lifetime;
+ 
+     void                               *data;
+ 
+@@ -430,6 +431,7 @@ ngx_http_lua_balancer_get_peer(ngx_peer_connection_t *pc, void *data)
+     bp->more_tries = 0;
+     bp->keepalive_requests = 0;
+     bp->keepalive_timeout = 0;
++    bp->keepalive_max_lifetime = 0;
+     bp->keepalive = 0;
+     bp->total_tries++;
+ 
+@@ -616,7 +618,22 @@ ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
+             {
+                 goto invalid;
+             }
++
++            if (bp->keepalive_max_lifetime) {
++                ngx_msec_t now = ngx_current_msec;
+ 
++                if (now - c->start_time >= bp->keepalive_max_lifetime) {
++                    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, pc->log, 0,
++                                   "lua balancer: keepalive not saving expired "
++                                   "connection %p, cpool: %p, age: %M, "
++                                   "max_lifetime: %M",
++                                   c, lscf, now - c->start_time,
++                                   bp->keepalive_max_lifetime);
++
++                    goto invalid;
++                }
++            }
++
+             if (!u->keepalive) {
+                 goto invalid;
+             }
+@@ -1019,7 +1036,8 @@ ngx_http_lua_ffi_balancer_bind_to_local_addr(ngx_http_request_t *r,
+ 
+ int
+ ngx_http_lua_ffi_balancer_enable_keepalive(ngx_http_request_t *r,
+-    unsigned long timeout, unsigned int max_requests, char **err)
++    unsigned long timeout, unsigned int max_requests,
++    unsigned long max_lifetime, char **err)
+ {
+     ngx_http_upstream_t                     *u;
+     ngx_http_lua_ctx_t                      *ctx;
+@@ -1057,6 +1075,7 @@ ngx_http_lua_ffi_balancer_enable_keepalive(ngx_http_request_t *r,
+ 
+     bp->keepalive_timeout = (ngx_msec_t) timeout;
+     bp->keepalive_requests = (ngx_uint_t) max_requests;
++    bp->keepalive_max_lifetime = (ngx_msec_t) max_lifetime;
+     bp->keepalive = 1;
+ 
+     return NGX_OK;
+@@ -1486,6 +1505,26 @@ ngx_http_lua_balancer_get_cached_item(ngx_http_lua_srv_conf_t *lscf,
+                                 socklen, local->socklen) == 0))
+         {
+             c = item->connection;
++
++            if (bp->keepalive_max_lifetime) {
++                ngx_msec_t now = ngx_current_msec;
++
++                if (now - c->start_time >= bp->keepalive_max_lifetime) {
++                    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, pc->log, 0,
++                                   "lua balancer: keepalive closing expired "
++                                   "connection %p, cpool: %p, age: %M, "
++                                   "max_lifetime: %M",
++                                   c, lscf, now - c->start_time,
++                                   bp->keepalive_max_lifetime);
++
++                    ngx_queue_remove(q);
++                    ngx_queue_remove(&item->queue);
++                    ngx_queue_insert_head(&lscf->balancer.free, &item->queue);
++                    ngx_http_lua_balancer_close(c);
++                    continue;
++                }
++            }
++
+             ngx_queue_remove(q);
+             ngx_queue_remove(&item->queue);
+             ngx_queue_insert_head(&lscf->balancer.free, &item->queue);
