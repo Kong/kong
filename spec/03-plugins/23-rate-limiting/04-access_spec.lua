@@ -52,7 +52,6 @@ local function GET(url, opt)
   return res
 end
 
-
 local function client_requests(n, proxy_fn)
   local ret = {
     minute_limit     = {},
@@ -90,7 +89,7 @@ local function client_requests(n, proxy_fn)
   return ret
 end
 
-
+-- Some random changes in a file --- 222
 local function validate_headers(headers, check_minute, check_hour)
   if check_minute then
     assert.same({
@@ -219,7 +218,7 @@ local function setup_rl_plugin(admin_client, conf, service, consumer)
 
   return cjson.decode(assert.res_status(201, plugin))
 end
-
+-- Some random changes in a file --- 333
 local function setup_key_auth_plugin(admin_client, conf, service)
   local plugin
 
