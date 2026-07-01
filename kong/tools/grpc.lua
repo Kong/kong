@@ -77,6 +77,7 @@ function _M.new()
     protoc_instance:addpath(v)
   end
   protoc_instance.include_imports = true
+  protoc_instance.proto3_optional = true
 
   return setmetatable({
     protoc_instance = protoc_instance,
