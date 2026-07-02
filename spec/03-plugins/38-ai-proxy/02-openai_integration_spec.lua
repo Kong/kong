@@ -12,6 +12,7 @@ local PLUGIN_NAME = "ai-proxy"
 local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
 local FILE_LOG_PATH_NO_LOGS = os.tmpname()
 local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
+local FILE_LOG_PATH_PRESERVE_INVALID_JSON = os.tmpname()
 
 local truncate_file = function(path)
   local file = io.open(path, "w")
@@ -155,6 +156,13 @@ for _, strategy in helpers.all_strategies() do
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/internal_server_error.html"))
+              }
+            }
+
+            location = "/llm/v1/chat/invalid-json" {
+              content_by_lua_block {
+                ngx.status = 200
+                ngx.print("{")
               }
             }
 
@@ -574,6 +582,43 @@ for _, strategy in helpers.all_strategies() do
       }
       --
 
+      -- 200 malformed JSON response (preserve route mode)
+      local preserve_invalid_json = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http", "https" },
+        paths = { "/llm/v1/chat/invalid-json" },
+        snis = { "example.test" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = preserve_invalid_json.id },
+        config = {
+          route_type = "preserve",
+          llm_format = "openai",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer dummy",
+          },
+          logging = {
+            log_statistics = true,
+          },
+          model = {
+            provider = "openai",
+            options = {
+                  upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/invalid-json",
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = preserve_invalid_json.id },
+        config = {
+          path = FILE_LOG_PATH_PRESERVE_INVALID_JSON,
+        },
+      }
+      --
+
       -- 200 chat good but no model set in plugin config
       local chat_good_no_model = assert(bp.routes:insert {
         service = empty_service,
@@ -822,6 +867,7 @@ for _, strategy in helpers.all_strategies() do
       os.remove(FILE_LOG_PATH_STATS_ONLY)
       os.remove(FILE_LOG_PATH_NO_LOGS)
       os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
+      os.remove(FILE_LOG_PATH_PRESERVE_INVALID_JSON)
     end)
 
     before_each(function()
@@ -830,6 +876,7 @@ for _, strategy in helpers.all_strategies() do
       truncate_file(FILE_LOG_PATH_STATS_ONLY)
       truncate_file(FILE_LOG_PATH_NO_LOGS)
       truncate_file(FILE_LOG_PATH_WITH_PAYLOADS)
+      truncate_file(FILE_LOG_PATH_PRESERVE_INVALID_JSON)
     end)
 
     after_each(function()
@@ -1283,6 +1330,34 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     describe("openai preserve mode", function()
+      it("logs statistics when the response contains malformed JSON", function()
+        local r = client:post("/llm/v1/chat/invalid-json", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = [[{
+            "model": "gpt-4",
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello"
+              }
+            ]
+          }]],
+        })
+
+        local body = assert.res_status(200, r)
+        assert.equals("{", body)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_PRESERVE_INVALID_JSON)
+        local _, message = next(log_message.ai)
+
+        assert.same("openai", message.meta.provider_name)
+        assert.same("gpt-4", message.meta.request_model)
+        assert.same("gpt-4", message.meta.response_model)
+      end)
+
       -- preserve mode
       it("embeddings", function()
       local r = client:get("/llm/v1/embeddings/good", {
