@@ -39,7 +39,7 @@ configure_make(
             "libexpat.1.dylib",
         ],
         "//conditions:default": [
-            "libexpat.so.1.12.1",
+            "libexpat.so.1.12.2",
         ],
     }),
     targets = [
