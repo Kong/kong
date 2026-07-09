@@ -13,6 +13,8 @@ on:
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
 
+permissions: read-all
+
 jobs:
   build:
     name: Build dependencies

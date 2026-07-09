@@ -14,6 +14,8 @@ env:
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
+permissions: read-all
+
 jobs:
   build-packages:
     name: Build dependencies

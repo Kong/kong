@@ -8,6 +8,8 @@ on:
     branches:
       - feat/test-run-scheduler
 
+permissions: read-all
+
 jobs:
   process-statistics:
     name: Download statistics from GitHub and combine them

@@ -38,6 +38,8 @@ env:
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
   RUNNER_COUNT: 7
 
+permissions: read-all
+
 jobs:
   metadata:
     name: Metadata

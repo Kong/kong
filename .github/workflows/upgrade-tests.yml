@@ -27,6 +27,8 @@ env:
   GH_TOKEN: ${{ github.token }}
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
+permissions: read-all
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
