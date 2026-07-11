@@ -137,6 +137,7 @@ local function load_into_db(entities, meta)
   for i = 1, #sorted_schemas do
     local schema = sorted_schemas[i]
     local schema_name = schema.name
+    options.transform = meta._transform ~= false or schema_name == "ca_certificates"
 
     local primary_key, ok, err, err_t
     for _, entity in pairs(entities[schema_name]) do

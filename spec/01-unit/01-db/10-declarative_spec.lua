@@ -26,6 +26,62 @@ routes:
     end)
   end)
 
+  describe("load_into_db", function()
+    local original_db
+
+    before_each(function()
+      original_db = kong.db
+    end)
+
+    after_each(function()
+      kong.db = original_db
+    end)
+
+    it("transforms CA certificates when declarative transformations are disabled", function()
+      local transform
+      local schema = {
+        name = "ca_certificates",
+        each_field = function()
+          return function() end
+        end,
+        extract_pk_values = function(_, entity)
+          return { id = entity.id }
+        end,
+      }
+
+      kong.db = {
+        workspaces = {
+          select_by_name = function()
+            return {
+              id = "00000000-0000-0000-0000-000000000000",
+              name = "default",
+            }
+          end,
+        },
+        ca_certificates = {
+          schema = schema,
+          upsert = function(_, _, _, options)
+            transform = options.transform
+            return true
+          end,
+        },
+      }
+
+      assert(declarative.load_into_db({
+        ca_certificates = {
+          certificate = {
+            id = "85a67812-678c-5fe5-9ff1-60af91f31b4b",
+            cert = "certificate",
+          },
+        },
+      }, {
+        _transform = false,
+      }))
+
+      assert.is_true(transform)
+    end)
+  end)
+
   it("ttl fields are accepted in DB-less schema validation", function()
     local dc = declarative.new_config(conf_loader())
     local entities, err = dc:parse_string([[

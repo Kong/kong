@@ -1,0 +1,5 @@
+message: |
+  Fixed `kong config db_import` to generate `cert_digest` for CA certificates
+  when declarative transformations are disabled.
+type: bugfix
+scope: Core
