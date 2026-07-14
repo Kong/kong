@@ -41,6 +41,11 @@ local function assert_has_attributes(span, attributes)
   end
 end
 
+local function assert_has_no_attribute(span, key)
+  assert.is_nil(span.attributes[key], fmt(
+        "Expected span not to have attribute %s, but got %s\n", key, pretty.write(span.attributes)))
+end
+
 local TCP_PORT = 35001
 local tcp_trace_plugin_name = "tcp-trace-exporter"
 for _, strategy in helpers.each_strategy() do
@@ -569,6 +574,79 @@ for _, strategy in helpers.each_strategy() do
           -- has error reported
           assert.is_not_nil(upstream_dns.events)
         end)
+      end)
+    end)
+
+    describe("http.route", function ()
+      lazy_setup(function()
+        local bp, _ = assert(helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+          "plugins",
+        }, { tcp_trace_plugin_name }))
+
+        local http_srv = assert(bp.services:insert {
+          name = "mock-service",
+          host = helpers.mock_upstream_host,
+          port = helpers.mock_upstream_port,
+        })
+
+        -- host-restricted route so a request to another host matches no route
+        bp.routes:insert({
+          service = http_srv,
+          protocols = { "http" },
+          paths = { "/" },
+          hosts = { "known-host" },
+        })
+
+        bp.plugins:insert({
+          name = tcp_trace_plugin_name,
+          config = {
+            host = "127.0.0.1",
+            port = TCP_PORT,
+            custom_spans = false,
+          }
+        })
+
+        assert(helpers.start_kong {
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins = "bundled, tcp-trace-exporter",
+          tracing_instrumentations = "request",
+          tracing_sampling_rate = 1,
+        })
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("is not set on the root span when no route matched", function ()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/nope",
+          headers = {
+            host = "unknown-host",
+          }
+        })
+        assert.res_status(404, r)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        local spans = cjson.decode(res)
+        local kong_span = assert_has_spans("kong", spans, 1)[1]
+
+        assert_has_attributes(kong_span, {
+          ["http.method"]      = "GET",
+          ["http.status_code"] = "404",
+        })
+        -- http.route must be omitted (not an empty string) when unknown
+        assert_has_no_attribute(kong_span, "http.route")
       end)
     end)
   end)
