@@ -400,11 +400,6 @@ end -- is_http
 -- traversing these fields will always get a decided result (for one router instance)
 -- so we need not to add field's name in cache key now
 local function visit_for_cache_key(field, value, str_buf)
-  -- these fields were not in cache key
-  if field == "net.protocol" then
-    return true
-  end
-
   if type(value) == "table" then
     tb_sort(value)
     value = tb_concat(value, ",")

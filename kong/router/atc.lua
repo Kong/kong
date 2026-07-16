@@ -583,6 +583,17 @@ function _M:exec(ctx)
 
   CACHE_PARAMS:clear()
 
+  local scheme
+  if var.protocol == "UDP" then
+    scheme = "udp"
+
+  else
+    CACHE_PARAMS.sni = fields:get_value("tls.sni", CACHE_PARAMS)
+    scheme = CACHE_PARAMS.sni and "tls" or "tcp"
+  end
+
+  CACHE_PARAMS.scheme = scheme
+
   local cache_key = fields:get_cache_key(CACHE_PARAMS, ctx)
 
   -- cache lookup
@@ -596,16 +607,6 @@ function _M:exec(ctx)
       route_match_stat(ctx, "neg")
       return nil
     end
-
-    local scheme
-    if var.protocol == "UDP" then
-      scheme = "udp"
-
-    else
-      scheme = CACHE_PARAMS.sni and "tls" or "tcp"
-    end
-
-    CACHE_PARAMS.scheme = scheme
 
     local err
     match_t, err = self:matching(CACHE_PARAMS)
