@@ -458,6 +458,7 @@ function _M:exec(ctx)
 
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
+  CACHE_PARAMS.scheme = ctx and ctx.scheme or var.scheme
 
   local cache_key = fields:get_cache_key(CACHE_PARAMS)
 
@@ -469,8 +470,6 @@ function _M:exec(ctx)
       route_match_stat(ctx, "neg")
       return nil
     end
-
-    CACHE_PARAMS.scheme = ctx and ctx.scheme or var.scheme
 
     local err
     match_t, err = self:matching(CACHE_PARAMS)

@@ -5367,6 +5367,63 @@ do
 
     local use_case, router
 
+    it("keeps HTTP protocols in separate cache entries", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8275",
+            protocols = { "http" },
+            expression = [[net.protocol == "http"]],
+            priority = 100,
+          },
+        },
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8276",
+            protocols = { "https" },
+            expression = [[net.protocol == "https"]],
+            priority = 100,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      router._set_ngx(mock_ngx("GET", "/", nil, nil, { scheme = "http" }))
+      assert.same(use_case[1].route, router:exec({}).route)
+
+      local https_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil, nil, { scheme = "https" }))
+      assert.same(use_case[2].route, router:exec(https_ctx).route)
+      assert.falsy(https_ctx.route_match_cached)
+    end)
+
+    it("keeps HTTP protocol misses in separate cache entries", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8277",
+            protocols = { "https" },
+            expression = [[net.protocol == "https"]],
+            priority = 100,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      router._set_ngx(mock_ngx("GET", "/", nil, nil, { scheme = "http" }))
+      assert.falsy(router:exec({}))
+
+      local https_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil, nil, { scheme = "https" }))
+      local match_t = router:exec(https_ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(https_ctx.route_match_cached)
+    end)
+
     lazy_setup(function()
       use_case = {
         -- query has one value
