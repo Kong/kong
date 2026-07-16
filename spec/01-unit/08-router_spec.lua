@@ -5298,17 +5298,22 @@ do
       }
       local router = assert(new_router(use_case))
 
+      local udp_ctx = {}
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "UDP" }))
+      local udp_match = router:exec(udp_ctx)
+      assert.same(use_case[2].route, udp_match.route)
+      assert.falsy(udp_ctx.route_match_cached)
+
       local tcp_ctx = {}
       router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "TCP" }))
       local tcp_match = router:exec(tcp_ctx)
       assert.same(use_case[1].route, tcp_match.route)
       assert.falsy(tcp_ctx.route_match_cached)
 
-      local udp_ctx = {}
-      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "UDP" }))
-      local udp_match = router:exec(udp_ctx)
-      assert.same(use_case[2].route, udp_match.route)
-      assert.falsy(udp_ctx.route_match_cached)
+      local cached_tcp_ctx = {}
+      local cached_tcp_match = router:exec(cached_tcp_ctx)
+      assert.same(use_case[1].route, cached_tcp_match.route)
+      assert.same("pos", cached_tcp_ctx.route_match_cached)
     end)
 
     it("keeps stream protocol misses in separate cache entries", function()
