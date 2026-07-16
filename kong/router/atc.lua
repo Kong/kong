@@ -7,6 +7,7 @@ local tb_new = require("table.new")
 local utils = require("kong.router.utils")
 local transform = require("kong.router.transform")
 local rat = require("kong.tools.request_aware_table")
+local shallow_copy = require("kong.tools.table").shallow_copy
 local yield = require("kong.tools.yield").yield
 
 
@@ -548,7 +549,7 @@ function _M:matching(params)
       port = service_port,
     },
     upstream_scheme = service_protocol,
-    upstream_host = matched_route.preserve_host and sni or nil,
+    upstream_host = nil,
   }
 end
 
@@ -621,8 +622,8 @@ function _M:exec(ctx)
     self.cache:set(cache_key, match_t)
   end
 
-  -- preserve_host logic, modify cache result
-  if match_t.route.preserve_host and match_t.upstream_host == nil then
+  if match_t.route.preserve_host then
+    match_t = shallow_copy(match_t)
     match_t.upstream_host = fields:get_value("tls.sni", CACHE_PARAMS)
   end
 
