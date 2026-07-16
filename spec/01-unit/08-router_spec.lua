@@ -5273,6 +5273,93 @@ do
       assert.same(use_case[2].route, match_t.route)
     end)
 
+    it("keeps stream protocol matches in separate cache entries", function()
+      local tcp_service = { name = "tcp-service", protocol = "tcp" }
+      local udp_service = { name = "udp-service", protocol = "udp" }
+      local use_case = {
+        {
+          service = tcp_service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8271",
+            protocols = { "tcp" },
+            expression = [[net.protocol == "tcp"]],
+            priority = 100,
+          },
+        },
+        {
+          service = udp_service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8272",
+            protocols = { "udp" },
+            expression = [[net.protocol == "udp"]],
+            priority = 100,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local tcp_ctx = {}
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "TCP" }))
+      local tcp_match = router:exec(tcp_ctx)
+      assert.same(use_case[1].route, tcp_match.route)
+      assert.falsy(tcp_ctx.route_match_cached)
+
+      local udp_ctx = {}
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "UDP" }))
+      local udp_match = router:exec(udp_ctx)
+      assert.same(use_case[2].route, udp_match.route)
+      assert.falsy(udp_ctx.route_match_cached)
+    end)
+
+    it("keeps stream protocol misses in separate cache entries", function()
+      local udp_service = { name = "udp-service", protocol = "udp" }
+      local use_case = {
+        {
+          service = udp_service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8273",
+            protocols = { "udp" },
+            expression = [[net.protocol == "udp"]],
+            priority = 100,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "TCP" }))
+      assert.falsy(router:exec({}))
+
+      local udp_ctx = {}
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, { protocol = "UDP" }))
+      local udp_match = router:exec(udp_ctx)
+      assert.same(use_case[1].route, udp_match.route)
+      assert.falsy(udp_ctx.route_match_cached)
+    end)
+
+    it("derives TLS before building a protocol-only cache key", function()
+      local tls_service = { name = "tls-service", protocol = "tls" }
+      local use_case = {
+        {
+          service = tls_service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8274",
+            protocols = { "tls" },
+            expression = [[net.protocol == "tls"]],
+            priority = 100,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, {
+        protocol = "TCP",
+        ssl_preread_server_name = "example.test",
+      }))
+
+      local match_t = router:exec({})
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+    end)
+
   end)
 
   describe("Router (flavor = " .. flavor .. ") [http]", function()
