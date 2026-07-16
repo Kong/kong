@@ -5072,6 +5072,54 @@ for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
 
+    it("normalizes repeated valueless query arguments", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8260",
+            expression = [[any(http.queries.test) == ""]],
+            priority = 100,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local repeated_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil,
+                               { test = { true, true } }))
+      local repeated_match = router:exec(repeated_ctx)
+      assert.truthy(repeated_match)
+      assert.same(use_case[1].route, repeated_match.route)
+      assert.falsy(repeated_ctx.route_match_cached)
+
+      local explicit_empty_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil,
+                               { test = { "", "" } }))
+      local explicit_empty_match = router:exec(explicit_empty_ctx)
+      assert.truthy(explicit_empty_match)
+      assert.same(use_case[1].route, explicit_empty_match.route)
+      assert.same("pos", explicit_empty_ctx.route_match_cached)
+
+      router = assert(new_router(use_case))
+      local mixed_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil,
+                               { test = { true, "value" } }))
+      local mixed_match = router:exec(mixed_ctx)
+      assert.truthy(mixed_match)
+      assert.same(use_case[1].route, mixed_match.route)
+      assert.falsy(mixed_ctx.route_match_cached)
+
+      local reordered_ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", nil,
+                               { test = { "value", true } }))
+      local reordered_match = router:exec(reordered_ctx)
+      assert.truthy(reordered_match)
+      assert.same(use_case[1].route, reordered_match.route)
+      assert.same("pos", reordered_ctx.route_match_cached)
+    end)
+
     it("[cache hit should be case sensitive]", function()
       local use_case = {
         {
