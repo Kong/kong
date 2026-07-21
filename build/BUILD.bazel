@@ -262,6 +262,8 @@ kong_genrule(
         ":install",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
+        "@rusty_cli//:license",
+        "@rusty_cli//:rusty-cli",
     ],
     outs = [
         "bin/luarocks",
@@ -280,6 +282,20 @@ kong_genrule(
 
         mkdir -p ${BUILD_DESTDIR}/etc/kong/
         cp ${WORKSPACE_PATH}/kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
+
+        # ADR-0007 (apip-parent): replace OpenResty's Perl resty launcher with
+        # the rusty-cli native binary at the same path, so the runtime image
+        # needs no Perl interpreter.
+        rm -f ${BUILD_DESTDIR}/openresty/bin/resty
+        cp $(location @rusty_cli//:rusty-cli) ${BUILD_DESTDIR}/openresty/bin/resty
+        chmod 755 ${BUILD_DESTDIR}/openresty/bin/resty
+
+        # ADR-0007: stage the BSD-2-Clause notices (rusty-cli + upstream
+        # resty-cli) for nfpm to install under /usr/share/licenses/kong/.
+        mkdir -p ${BUILD_DESTDIR}/licenses
+        cp $(location @rusty_cli//:license) ${BUILD_DESTDIR}/licenses/rusty-cli.LICENSE
+        cp ${WORKSPACE_PATH}/build/package/resty-cli.COPYRIGHT ${BUILD_DESTDIR}/licenses/resty-cli.COPYRIGHT
+        chmod 644 ${BUILD_DESTDIR}/licenses/rusty-cli.LICENSE ${BUILD_DESTDIR}/licenses/resty-cli.COPYRIGHT
 
         # housecleaning
         if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then

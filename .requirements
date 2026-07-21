@@ -12,6 +12,8 @@ ADA=2.9.2
 ADA_SHA256=b2cce630590b490d79ea4f4460ba77efd5fb29c5a87a4e8cb7ebc4859bc4b564
 LIBEXPAT=2.8.2
 LIBEXPAT_SHA256=ef7d1994f533c9e7343d6c19f31064fc8ebbcbcaa144be3812b4f43052a05f4c
+RUSTY_CLI=0.5.0
+RUSTY_CLI_SHA256=c29343bacf107090bf64a577dd468ab06f8da5c62dac09de8713c8c86ea71287
 
 # Note: git repositories can be loaded from local path if path is set as value
 

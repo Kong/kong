@@ -1,0 +1,48 @@
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@rusty_cli_crate_index//:defs.bzl", "aliases", "all_crate_deps")
+
+filegroup(
+    name = "license",
+    srcs = ["LICENSE"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "rust_srcs",
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
+
+# Upstream's build.rs only injects the optional `default_nginx_path` /
+# `default_resty_compat_version` cfgs when NGINX_PATH / RESTY_CLI_COMPAT_VERSION
+# are set in the build environment. We build with neither (same behavior as a
+# plain `cargo build --release`), so the binary discovers nginx relative to its
+# own location (../nginx/sbin/nginx) — exactly right for
+# /usr/local/openresty/bin/resty. The build script is therefore not wired in.
+#
+# rustc_flags approximate upstream's [profile.release]
+# (opt-level = "z", strip = true); LTO is not enabled because rules_rust
+# builds dependency rlibs without linker-plugin LTO support here.
+rust_binary(
+    name = "rusty-cli",
+    srcs = [":rust_srcs"],
+    aliases = aliases(),
+    crate_root = "src/main.rs",
+    edition = "2021",
+    proc_macro_deps = all_crate_deps(
+        proc_macro = True,
+    ),
+    rustc_flags = [
+        "--codegen=opt-level=z",
+        "--codegen=strip=symbols",
+    ],
+    # sets CARGO_PKG_VERSION, which the binary reports when not invoked
+    # under the `resty`/`resty-cli` names
+    version = KONG_VAR["RUSTY_CLI"],
+    visibility = ["//visibility:public"],
+    deps = all_crate_deps(
+        normal = True,
+    ),
+)

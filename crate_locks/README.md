@@ -13,7 +13,7 @@ please check out the [rules_rust](https://github.com/bazelbuild/rules_rust).
 ### Bash
 
 ```bash
-crates="atc_router_crate_index"
+crates="atc_router_crate_index,rusty_cli_crate_index"
 CARGO_BAZEL_REPIN=1 CARGO_BAZEL_REPIN_ONLY=$crates bazel sync --only=$crates
 unset crates
 ```
@@ -22,7 +22,8 @@ unset crates
 
 ```fish
 set -l crates \
-    atc_router_crate_index
+    atc_router_crate_index \
+    rusty_cli_crate_index
 CARGO_BAZEL_REPIN=1 CARGO_BAZEL_REPIN_ONLY=$(string join ',' $crates) bazel sync --only=$(string join ',' $crates)
 set -e crates
 ```

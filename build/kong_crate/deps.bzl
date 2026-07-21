@@ -57,3 +57,18 @@ def kong_crate_repositories(cargo_home_isolated = True):
             "@atc_router//:Cargo.toml",
         ],
     )
+
+    crates_repository(
+        name = "rusty_cli_crate_index",
+        cargo_lockfile = "//:crate_locks/rusty_cli.Cargo.lock",
+        isolated = cargo_home_isolated,
+        lockfile = "//:crate_locks/rusty_cli.lock",
+        manifests = [
+            "@rusty_cli//:Cargo.toml",
+            # test-utils crates are workspace members of the rusty-cli
+            # manifest (dev-dependencies only); crate_universe requires every
+            # workspace member to be tracked, but nothing links against them.
+            "@rusty_cli//:test-utils/Cargo.toml",
+            "@rusty_cli//:test-utils/macros/Cargo.toml",
+        ],
+    )

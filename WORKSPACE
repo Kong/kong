@@ -62,6 +62,10 @@ load("//build/openresty:repositories.bzl", "openresty_repositories")
 
 openresty_repositories()
 
+load("//build/rusty_cli:rusty_cli_repositories.bzl", "rusty_cli_repositories")
+
+rusty_cli_repositories()
+
 # [[ BEGIN: must happen after any Rust repositories are loaded
 load("//build/kong_crate:deps.bzl", "kong_crate_repositories")
 

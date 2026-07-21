@@ -57,6 +57,16 @@ contents:
 - src: /usr/local/openresty/nginx/modules
   dst: /usr/local/kong/modules
   type: symlink
+# ADR-0007 (apip-parent): BSD-2-Clause notices for the rusty-cli resty
+# launcher and the upstream resty-cli it replaces.
+- src: nfpm-prefix/licenses/rusty-cli.LICENSE
+  dst: /usr/share/licenses/kong/rusty-cli.LICENSE
+  file_info:
+    mode: 0644
+- src: nfpm-prefix/licenses/resty-cli.COPYRIGHT
+  dst: /usr/share/licenses/kong/resty-cli.COPYRIGHT
+  file_info:
+    mode: 0644
 
 scripts:
   postinstall: ./build/package/postinstall.sh
@@ -71,14 +81,11 @@ overrides:
     depends:
     - ca-certificates
     - libpcre3
-    - perl
     - libyaml-0-2
   rpm:
     depends:
     - ca-certificates
     - pcre2
-    - perl
-    - perl-Time-HiRes
     - zlib
     - libyaml
     # Workaround for https://github.com/goreleaser/nfpm/issues/589
