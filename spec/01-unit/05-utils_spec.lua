@@ -236,6 +236,15 @@ describe("Utils", function()
       assert.equal(1024, parse_ngx_size("1k"))
       assert.equal(1024, parse_ngx_size("1K"))
       assert.equal(10, parse_ngx_size("10"))
+      -- multi-digit values
+      assert.equal(100 * 1024 * 1024, parse_ngx_size("100m"))
+      assert.equal(100 * 1024, parse_ngx_size("100k"))
+
+      -- decimal values
+      assert.equal(2.5 * 1024 * 1024, parse_ngx_size("2.5m"))
+
+      -- empty string falls back to 0
+      assert.equal(0, parse_ngx_size(""))
     end)
 
     describe("random_string()", function()
