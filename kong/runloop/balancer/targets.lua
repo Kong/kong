@@ -190,13 +190,17 @@ function targets_M.on_target_event(operation, target)
 
   if operation ~= "create" then
     local ok, err
-    ok = cancel_dns_renewal(target)
+    ok, err = cancel_dns_renewal(target)
     if not ok then
-      for _, t in ipairs(targets_list) do
+      -- targets_list may be nil: it is cleared above and only populated lazily
+      for _, t in ipairs(targets_list or EMPTY) do
         ok, err = cancel_dns_renewal(t)
         if not ok then
           log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
         end
+      end
+      if not targets_list then
+        log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
       end
     end
   end
