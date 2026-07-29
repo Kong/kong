@@ -31,7 +31,7 @@ local function new()
   --         `attributes` field of the log entry
   -- @usage
   -- local attributes = {
-  --   http_method = kong.request.get_method()
+  --   http_method = kong.request.get_method(),
   --   ["node.id"] = kong.node.get_id(),
   --   hostname = kong.node.get_hostname(),
   -- }
