@@ -202,7 +202,11 @@ function ewma:getPeer(cache_only, handle)
 
       local score
       if filtered_addresses_num > 1 then
-        k = filtered_addresses_num > k and filtered_addresses_num or k
+        -- clamp k down to the number of candidates actually left after
+        -- removing previously-failed addresses; never grow it back up,
+        -- otherwise "power of two choices" degrades into a full scan that
+        -- always picks the single globally-lowest-latency address.
+        k = filtered_addresses_num < k and filtered_addresses_num or k
         address, score = pick_and_score(self, filtered_addresses, k)
       else
         address = filtered_addresses[1]
