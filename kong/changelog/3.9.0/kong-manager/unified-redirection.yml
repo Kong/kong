@@ -1,0 +1,3 @@
+message: Unified the redirection logic in Kong Manager upon entity operations.
+type: bugfix
+githubs: [289]

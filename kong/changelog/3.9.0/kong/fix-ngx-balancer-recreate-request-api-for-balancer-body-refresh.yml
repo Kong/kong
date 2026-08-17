@@ -1,0 +1,4 @@
+message: |
+  **Core**: Fixed an issue where `ngx.balancer.recreate_request` API does not refresh body buffer when `ngx.req.set_body_data` is used in balancer phase
+type: bugfix
+scope: Core

@@ -1,0 +1,5 @@
+message: |
+  Kong AI Gateway (AI Proxy and associated plugin family) now supports 
+  the Google Gemini "chat" (generateContent) interface.
+type: feature
+scope: Plugin

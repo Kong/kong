@@ -1,0 +1,3 @@
+message: "**Clustering**: Adjust error log levels for control plane connections."
+type: bugfix
+scope: Clustering

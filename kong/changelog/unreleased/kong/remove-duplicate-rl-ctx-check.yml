@@ -1,0 +1,3 @@
+message: Remove duplicate rate limiting context check in PDK
+type: performance
+scope: PDK

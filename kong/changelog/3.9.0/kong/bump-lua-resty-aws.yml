@@ -1,0 +1,2 @@
+message: "Bumped lua-resty-aws to 1.5.4, to fix a bug inside region prefix generating"
+type: dependency

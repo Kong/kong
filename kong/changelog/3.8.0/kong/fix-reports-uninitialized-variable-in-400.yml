@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where unnecessary uninitialized variable error log is reported when 400 bad requests were received.
+type: bugfix
+scope: Core

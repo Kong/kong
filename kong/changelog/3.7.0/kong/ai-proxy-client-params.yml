@@ -1,0 +1,6 @@
+message: |
+  AI Proxy now reads most prompt tuning parameters from the client,
+  while the plugin config parameters under `model_options` are now just defaults.
+  This fixes support for using the respective provider's native SDK.
+type: feature
+scope: Plugin

@@ -1,0 +1,6 @@
+message: >
+  **Rate-Limiting**: Fixed an issue that caused an
+  HTTP 500 error when `hide_client_headers`
+  is set to `true` and the request exceeds the rate limit.
+type: bugfix
+scope: Plugin

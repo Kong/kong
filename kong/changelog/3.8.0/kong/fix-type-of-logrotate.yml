@@ -1,0 +1,5 @@
+message: |
+    The kong.logrotate configuration file will no longer be overwritten during upgrade.
+    When upgrading, set the environment variable `DEBIAN_FRONTEND=noninteractive` on Debian/Ubuntu to avoid any interactive prompts and enable fully automatic upgrades.
+type: bugfix
+scope: Core

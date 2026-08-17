@@ -1,0 +1,5 @@
+message: >
+    Bumped atc-router from v1.6.2 to v1.7.1.
+    This release contains dependencies upgrade and new interface for validating expressions.
+type: dependency
+scope: Core

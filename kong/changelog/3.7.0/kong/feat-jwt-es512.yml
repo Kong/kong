@@ -1,0 +1,4 @@
+message: |
+  Added support for ES512, PS256, PS384, PS512 algorithms in JWT plugin
+type: feature
+scope: Plugin

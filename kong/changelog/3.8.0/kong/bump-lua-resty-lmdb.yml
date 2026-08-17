@@ -1,0 +1,7 @@
+message: >
+  Bumped lua-resty-lmdb to 1.4.3 to
+  get fixes from the upstream (lmdb 0.9.33),
+  which resolved numerous race conditions and
+  fixed a cursor issue.
+type: dependency
+scope: Core

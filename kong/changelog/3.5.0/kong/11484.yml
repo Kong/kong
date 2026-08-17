@@ -1,0 +1,5 @@
+message: "Tracing: fix an issue that resulted in some parent spans to end before their children due to different precision of their timestamps"
+type: bugfix
+scope: PDK
+issues:
+  - 11294

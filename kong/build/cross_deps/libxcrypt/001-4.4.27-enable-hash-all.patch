@@ -1,0 +1,70 @@
+This is roughly adapted from https://patchwork.yoctoproject.org/project/oe-core/patch/20230726131331.2239727-1-Martin.Jansa@gmail.com
+Which is a patch adopted around 4.4.30 upstream.
+
+diff --color -Naur a/build-aux/scripts/BuildCommon.pm b/build-aux/scripts/BuildCommon.pm
+--- a/build-aux/scripts/BuildCommon.pm	2021-12-17 07:16:06.000000000 -0800
++++ b/build-aux/scripts/BuildCommon.pm	2024-09-05 12:47:53.534533364 -0700
+@@ -519,19 +519,19 @@
+     my $COMPAT_ABI;
+     local $_;
+     for (@args) {
+-        when (/^SYMVER_MIN=(.+)$/) {
++        if (/^SYMVER_MIN=(.+)$/) {
+             $usage_error->() if defined $SYMVER_MIN;
+             $SYMVER_MIN = $1;
+         }
+-        when (/^SYMVER_FLOOR=(.+)$/) {
++        elsif (/^SYMVER_FLOOR=(.+)$/) {
+             $usage_error->() if defined $SYMVER_FLOOR;
+             $SYMVER_FLOOR = $1;
+         }
+-        when (/^COMPAT_ABI=(.+)$/) {
++        elsif (/^COMPAT_ABI=(.+)$/) {
+             $usage_error->() if defined $COMPAT_ABI;
+             $COMPAT_ABI = $1;
+         }
+-        default {
++        else {
+             $usage_error->() if defined $map_in;
+             $map_in = $_;
+         }
+diff --color -Naur a/build-aux/scripts/gen-crypt-h b/build-aux/scripts/gen-crypt-h
+--- a/build-aux/scripts/gen-crypt-h	2021-12-17 07:16:06.000000000 -0800
++++ b/build-aux/scripts/gen-crypt-h	2024-09-05 12:48:58.446980478 -0700
+@@ -37,22 +37,20 @@
+     local $_;
+     while (<$fh>) {
+         chomp;
+-        # Yes, 'given $_' is really required here.
+-        given ($_) {
+-            when ('#define HAVE_SYS_CDEFS_H 1') {
+-                $have_sys_cdefs_h = 1;
+-            }
+-            when ('#define HAVE_SYS_CDEFS_BEGIN_END_DECLS 1') {
+-                $have_sys_cdefs_begin_end_decls = 1;
+-            }
+-            when ('#define HAVE_SYS_CDEFS_THROW 1') {
+-                $have_sys_cdefs_throw = 1;
+-            }
+-            when (/^#define PACKAGE_VERSION "((\d+)\.(\d+)\.\d+)"$/) {
+-                $substs{XCRYPT_VERSION_STR}   = $1;
+-                $substs{XCRYPT_VERSION_MAJOR} = $2;
+-                $substs{XCRYPT_VERSION_MINOR} = $3;
+-            }
++
++        if ($_ eq '#define HAVE_SYS_CDEFS_H 1') {
++            $have_sys_cdefs_h = 1;
++        }
++        elsif ($_ eq '#define HAVE_SYS_CDEFS_BEGIN_END_DECLS 1') {
++            $have_sys_cdefs_begin_end_decls = 1;
++        }
++        elsif ($_ eq '#define HAVE_SYS_CDEFS_THROW 1') {
++            $have_sys_cdefs_throw = 1;
++        }
++        elsif (/^#define PACKAGE_VERSION "((\d+)\.(\d+)\.\d+)"$/) {
++            $substs{XCRYPT_VERSION_STR}   = $1;
++            $substs{XCRYPT_VERSION_MAJOR} = $2;
++            $substs{XCRYPT_VERSION_MINOR} = $3;
+         }
+     }
+

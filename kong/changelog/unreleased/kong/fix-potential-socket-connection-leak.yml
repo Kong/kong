@@ -1,0 +1,3 @@
+message: "Fixed potential connection leaks when the data plane failed to connect to the control plane"
+type: bugfix
+scope: Core

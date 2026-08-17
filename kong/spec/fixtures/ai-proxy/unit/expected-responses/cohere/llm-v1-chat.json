@@ -1,0 +1,20 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "You cannot divide by zero because it is not a valid operation in mathematics.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "id": "f8aabbeb-f745-4e9b-85b1-71a3269620d9",
+  "model": "command",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 258,
+    "prompt_tokens": 102,
+    "total_tokens": 360
+  }
+}

@@ -1,0 +1,31 @@
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+make(
+    name = "lua",
+    lib_source = ":all_srcs",
+    out_binaries = [
+        "lua",
+    ],
+    targets = [
+        "posix -j" + KONG_VAR["NPROC"],  # use posix instead linux to be able to cross compile
+        "install INSTALL_TOP=$$INSTALLDIR",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "lua_dir",
+    srcs = [
+        ":lua",
+    ],
+    output_group = "gen_dir",
+)

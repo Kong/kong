@@ -1,0 +1,3 @@
+message: Properly warmup Vault caches on init
+type: bugfix
+scope: Core

@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Decorator** plugin that enables prepending and appending llm/v1/chat messages onto consumer LLM requests, for prompt tuning.
+type: feature
+scope: Plugin

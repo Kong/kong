@@ -1,0 +1,3 @@
+message: "**AI-Prompt-Guard**: Fixed an issue when `allow_all_conversation_history` is set to false, the first user request is selected instead of the last one."
+type: bugfix
+scope: Plugin

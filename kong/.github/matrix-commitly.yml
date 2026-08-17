@@ -1,0 +1,24 @@
+# please see matrix-full.yml for meaning of each field
+build-packages:
+- label: ubuntu-24.04
+  image: ubuntu:24.04
+  package: deb
+  check-manifest-suite: ubuntu-24.04-amd64
+
+build-images:
+- label: ubuntu
+  base-image: ubuntu:24.04
+  package: deb
+  artifact-from: ubuntu-24.04
+
+smoke-tests:
+- label: ubuntu
+
+scan-vulnerabilities:
+- label: ubuntu
+
+release-packages:
+
+release-images:
+- label: ubuntu
+  package: deb

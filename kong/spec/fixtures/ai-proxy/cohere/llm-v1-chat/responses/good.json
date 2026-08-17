@@ -1,0 +1,19 @@
+{
+  "text": "The sum of 1 + 1 is 2.",
+  "generation_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "token_count": {
+    "billed_tokens": 339,
+    "prompt_tokens": 102,
+    "response_tokens": 258,
+    "total_tokens": 360
+  },
+  "meta": {
+    "api_version": {
+      "version": "1"
+    },
+    "billed_units": {
+      "input_tokens": 81,
+      "output_tokens": 258
+    }
+  }
+}

@@ -1,0 +1,3 @@
+message: "**key-auth**: Fixed to retain order of query arguments when hiding the credentials."
+type: bugfix
+scope: Plugin

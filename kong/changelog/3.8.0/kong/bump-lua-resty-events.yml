@@ -1,0 +1,5 @@
+message: >
+  Bumped lua-resty-events to 0.3.0 to fix an
+  issue that was preventing the
+  configuration from being updated to the latest version
+scope: Core

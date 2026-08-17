@@ -1,0 +1,44 @@
+kenCount": 33,
+    "totalTokenCount": 39
+  }
+}
+,
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "1905):**\n\n* **Focus:**  The relationship between space and time.\n* **Key ideas:**\n    * **Speed of light"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": [
+        {
+          "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          "probability": "NEGLIGIBLE"
+        },
+        {
+          "category": "HARM_CATEGORY_HATE_SPEECH",
+          "probability": "NEGLIGIBLE"
+        },
+        {
+          "category": "HARM_CATEGORY_HARASSMENT",
+          "probability": "NEGLIGIBLE"
+        },
+        {
+          "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+          "probability": "NEGLIGIBLE"
+        }
+      ]
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 6,
+    "candidatesTokenCount": 65,
+    "totalTokenCount": 71
+  }
+}

@@ -1,0 +1,3 @@
+message: "improving performance of trace ID size lookup."
+type: performance
+scope: Core

@@ -1,0 +1,5 @@
+message: |
+  Line up the `kong.log.inspect` function to log at `notice` level as documented
+  in the PDK documentation (used to be `debug`).
+type: bugfix
+scope: PDK

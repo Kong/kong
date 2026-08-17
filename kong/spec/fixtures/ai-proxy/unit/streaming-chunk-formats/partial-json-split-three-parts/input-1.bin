@@ -1,0 +1,31 @@
+[{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "The theory of relativity is actually"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 6,
+    "candidatesTokenCount": 1,
+    "totalTokenCount": 7
+  }
+}
+,
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": " two theories by Albert Einstein: **special relativity** and"
+          }
+        ]

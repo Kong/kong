@@ -1,0 +1,126 @@
+{
+  "system": [
+    {
+      "text": "You are a helpful lighting system bot. You can turn lights on and off, and you can set the color. Do not perform any other tasks."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Turn on the lights please."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "text": "Sure! I will turn them on now."
+        },
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_12j842hSE-_gkri61ab2A",
+            "name": "enable_lights"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "toolResult": {
+            "toolUseId": "tooluse_12j842hSE-_gkri61ab2A",
+            "content": [
+              {
+                "json": {
+                  "success": true
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Now set them to orange."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "text": "Setting to orange."
+        },
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_5wP5DuMwSE-_VgqY61ab3A",
+            "name": "set_light_color",
+            "input": {
+              "rgb_hex": "FFA500"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "toolResult": {
+            "toolUseId": "tooluse_5wP5DuMwSE-_VgqY61ab3A",
+            "content": [
+              {
+                "json": {
+                  "success": true
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "toolConfig": {
+    "tools": [
+      {
+        "toolSpec": {
+          "description": "Turn on the lighting system.",
+          "name": "enable_lights"
+        }
+      },
+      {
+        "toolSpec": {
+          "name": "set_light_color",
+          "description": "Set the light color. Lights must be enabled for this to work.",
+          "inputSchema": {
+            "json": {
+              "type": "object",
+              "required": [
+                "rgb_hex"
+              ],
+              "properties": {
+                "rgb_hex": {
+                  "description": "The light color as a 6-digit hex string, e.g. ff0000 for red.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "toolSpec": {
+          "description": "Turn off the lighting system.",
+          "name": "stop_lights"
+        }
+      }
+    ]
+  }
+}

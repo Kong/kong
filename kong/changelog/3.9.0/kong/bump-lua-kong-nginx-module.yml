@@ -1,0 +1,4 @@
+message: |
+  Bumped lua-kong-nginx-module from 0.11.0 to 0.11.1 to fix an issue where the upstream cert chain wasn't properly set.
+type: dependency
+scope: Core

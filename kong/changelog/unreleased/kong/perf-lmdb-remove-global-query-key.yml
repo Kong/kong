@@ -1,0 +1,3 @@
+message: "Reduced the LMDB storage space by optimizing the key format."
+type: performance
+scope: Core

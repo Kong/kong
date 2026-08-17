@@ -1,0 +1,178 @@
+#!/bin/bash
+
+set -e
+
+DOCS_REPO=$1
+DOCS_VERSION=$2
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+function echoerr() {
+    printf '%s%s%s\n' "$RED" "$@" "$NC" 1>&2;
+}
+
+function copy() {
+    printf 'cp %s\t→\t%s\n' "$1" "$2"
+    cp "$1" "$2"
+}
+
+INFINITY=9223372036854775807
+COUNT_INDENTS=0
+function count_indents_on_line() {
+    local file=$1
+    local lineno=$2
+    local line
+    line=$(sed -n "${lineno}p" "$file")
+    local trim="${line#*[^[:blank:]]}"
+    COUNT_INDENTS="$(( ${#line} - ${#trim} - 1 ))"
+
+    # empty lines count as "infinitely indented"
+    if [ "$COUNT_INDENTS" -lt 0 ]
+    then
+        COUNT_INDENTS="$INFINITY"
+    fi
+}
+
+function insert_yaml_file_into_nav_file() {
+    local new_nav_partial_file=$1
+    local docs_nav_file=$2
+    local first_line_text=$3
+
+    echo "Patching $docs_nav_file with $new_nav_partial_file ..."
+
+    # find first_line and last line of the current pdk index in docs_nav_file
+
+    # first line contains the content of first_line_text
+    local first_line
+    first_line=$(sed -n "$first_line_text" "$docs_nav_file")
+
+    # find last_line by looking at the indentation of all subsequent lines, looking at the indentation
+    # last line is the last one with more indentation that first_line
+    local max_line
+    max_line=$(wc -l < "$docs_nav_file" | bc)
+    count_indents_on_line "$docs_nav_file" "$first_line"
+    local initial_indent="$COUNT_INDENTS"
+    local current_indent="$(( initial_indent + 1 ))"
+    local current_line="$first_line"
+    while [ "$current_indent" -gt "$initial_indent" ] && [ "$current_line" -lt "$max_line" ]
+    do
+        current_line="$((current_line + 1))"
+        count_indents_on_line "$docs_nav_file" "$current_line"
+        current_indent="$COUNT_INDENTS"
+    done
+    local last_line="$(( current_line - 1 ))"
+
+    # insert_line is where we want to put the new pdk docs after deleting the old ones (one less than first)
+    local insert_line="$(( first_line - 1 ))"
+
+    # delete existing pdk index, insert new pdk nav file instead
+    # Passing an option to -i is required on macOS, but not required on Linux
+    # Commenting out to make the GitHub Actions build work
+    #sed -i '' -e "${first_line},${last_line}d" -e "${insert_line}r${new_nav_partial_file}" "$docs_nav_file"
+    # Recommended to `brew install gnu-sed && brew info gnu-sed` to override default sed on Mac
+    sed -i -e "${first_line},${last_line}d" -e "${insert_line}r${new_nav_partial_file}" "$docs_nav_file"
+}
+
+
+echo "Generating docs ..."
+
+rm -rf ./autodoc/output
+./autodoc/cli/generate.lua
+./autodoc/pdk/generate.lua
+
+exit_code=$?
+
+if [[ $exit_code -ne 0 ]]
+then
+    exit $exit_code
+fi
+
+if [ -z "$DOCS_REPO" ] || [ -z "$DOCS_VERSION" ]
+then
+    echo
+    echo "No docs repo & version parameters found. For example, this:"
+    echo
+    echo "  script/autodocs ../docs.konghq.com 2.1.x"
+    echo
+    echo "would install the files in the docs repo, located in ../docs.konghq.com,"
+    echo "and in the 2.1.x version"
+    echo
+    echo "Since no repo or version was specified, I won't attempt to copy the files, and exit successfully now"
+    echo
+
+    exit 0
+fi
+
+if [ -d "$DOCS_REPO" ]
+then
+    echo
+    echo "docs repo: $DOCS_REPO"
+    echo "docs version: $DOCS_VERSION"
+    echo
+else
+    echoerr
+    echoerr "Could not find the docs repo in $DOCS_REPO . Please clone it there so I can copy the autodocs files there"
+    echoerr "For example with:"
+    echoerr "cd .."
+    echoerr "git clone https://github.com/kong/docs.konghq.com"
+    echoerr "cd docs.konghq.com"
+    echoerr "git checkout -b docs/autodocs"
+    echoerr
+
+    exit 1
+fi
+
+
+if [ ! -d "$DOCS_REPO/autodoc-nav" ]
+then
+    echoerr
+    echoerr "The folder $DOCS_REPO/autodoc-nav does not exist. Please create it in order to copy the autodocs there"
+    echoerr "Usually this is done by copying and renaming a previous version of the docs"
+
+    exit 2
+fi
+
+DOCS_APP="$DOCS_REPO/app/gateway/$DOCS_VERSION"
+
+if [ ! -d "$DOCS_APP" ]
+then
+    echoerr
+    echoerr "The app doc folder for the chosen version ($DOCS_APP) does not exist. Please create it in order to copy the autodocs there"
+    echoerr "Usually this is done by copying and renaming a previous version of the docs"
+    echoerr "The file $DOCS_REPO/app/_data/kong_versions.yml might need to be updated with the new version as well"
+    echoerr
+
+    exit 3
+fi
+
+DOCS_NAV="$DOCS_REPO/app/_data/docs_nav_gateway_$DOCS_VERSION.yml"
+
+if [ ! -f "$DOCS_NAV" ]
+then
+    echoerr
+    echoerr "The doc file $DOCS_NAV does not exist. Please create it in order to copy the autodocs there"
+    echoerr "Usually this is done by copying and renaming a previous version of the docs. Example:"
+    echoerr
+    echoerr "cp $DOCS_REPO/app/_data/docs_nav_**REPLACE_THIS**.yml $DOCS_NAV"
+    echoerr
+
+    exit 4
+fi
+
+copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api/index.md"
+copy autodoc/output/cli.md "$DOCS_APP/reference/cli.md"
+
+rm -rf "$DOCS_APP/pdk/"
+mkdir -p "$DOCS_APP/pdk"
+
+for module in autodoc/output/pdk/*; do
+  copy "$module" "$DOCS_APP/pdk/"
+done
+
+insert_yaml_file_into_nav_file ./autodoc/output/nav/docs_nav.yml.admin-api.in \
+                               "$DOCS_NAV" \
+                               "/title: Admin API/="
+
+insert_yaml_file_into_nav_file ./autodoc/output/_pdk_nav.yml \
+                               "$DOCS_NAV" \
+                               "/text: Plugin Development Kit/="

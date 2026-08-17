@@ -1,0 +1,3 @@
+message: "**Admin API**: fixed an issue where calling the endpoint `POST /schemas/vaults/validate` was conflicting with the endpoint `/schemas/vaults/:name` which only has GET implemented, hence resulting in a 405."
+type: bugfix
+scope: Admin API

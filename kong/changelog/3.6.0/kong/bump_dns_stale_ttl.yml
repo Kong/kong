@@ -1,0 +1,3 @@
+message: Bump `dns_stale_ttl` default to 1 hour so stale DNS record can be used for longer time in case of resolver downtime.
+type: performance
+scope: Configuration
