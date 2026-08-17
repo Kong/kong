@@ -703,6 +703,25 @@ describe("Utils", function()
       end
     end
   end)
+
+  it("validate_header_value() validates header values", function()
+    assert.equal("", tools_http.validate_header_value(""))
+    assert.is_nil(tools_http.validate_header_value(nil))
+
+    for i = 0, 255 do
+      local c = string.char(i)
+      local valid = i == 9 or i >= 32 and i ~= 127
+
+      if valid then
+        assert.equal(c, tools_http.validate_header_value(c),
+          "ascii character " .. i .. " should have been allowed")
+      else
+        assert.is_nil(tools_http.validate_header_value(c),
+          "ascii character " .. i .. " should not have been allowed")
+      end
+    end
+  end)
+
   it("validate_cookie_name() validates cookie names", function()
     local cookie_chars = [[~`|!#$%&'*+-._-^0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
 
