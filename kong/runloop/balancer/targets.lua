@@ -199,9 +199,6 @@ function targets_M.on_target_event(operation, target)
           log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
         end
       end
-      if not targets_list then
-        log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
-      end
     end
   end
 
