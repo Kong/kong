@@ -46,7 +46,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.12.1
+- Path      : /usr/local/kong/lib/libexpat.so.1.12.3
   Needed    :
   - libstdc++.so.6
   - libm.so.6
