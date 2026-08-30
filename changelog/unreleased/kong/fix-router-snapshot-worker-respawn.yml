@@ -1,0 +1,5 @@
+message: >-
+  Fixed an issue where respawned workers could use stale route and service
+  configuration when the database was temporarily unavailable.
+type: bugfix
+scope: Core
