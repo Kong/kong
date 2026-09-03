@@ -1,0 +1,3 @@
+message: "**aws-lambda**: Add `max_uri_args` configuration to override the default limit of 100 query string parameters, and `reject_if_max_uri_args_exceeded` to return 414 when the limit is exceeded."
+type: feature
+scope: Plugin
