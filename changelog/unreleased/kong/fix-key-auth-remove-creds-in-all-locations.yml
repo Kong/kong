@@ -1,0 +1,4 @@
+message: Key-auth plugin "hide_credentials" parameter now removes credentials only in search locations
+type: bugfix
+scope: Plugin
+
