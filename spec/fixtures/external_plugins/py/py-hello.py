@@ -24,10 +24,16 @@ class Plugin(object):
         #     host = kong.request.get_header("host")
         # except Exception as ex:
         #     pass  # error handling
+
+        raw_path, err = kong.request.get_raw_path()
+        if err:
+            pass
+
         message = "hello"
         if 'message' in self.config:
             message = self.config['message']
         kong.response.set_header("x-hello-from-python", "Python says %s to %s" % (message, host))
+        kong.response.set_header("x-raw-path-from-python", raw_path)
         kong.response.set_header("x-python-pid", str(os.getpid()))
 
 

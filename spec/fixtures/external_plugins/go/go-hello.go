@@ -27,11 +27,18 @@ func (conf Config) Access(kong *pdk.PDK) {
 	if err != nil {
 		kong.Log.Err(err.Error())
 	}
+	
+	rawPath, err := kong.Request.GetRawPath()
+	if err != nil {
+		kong.Log.Err(err.Error())
+	}
+	
 	message := conf.Message
 	if message == "" {
 		message = "hello"
 	}
 	kong.Response.SetHeader("x-hello-from-go", fmt.Sprintf("Go says %s to %s", message, host))
+	kong.Response.SetHeader("x-raw-path-from-go", rawPath)
 	kong.Ctx.SetShared("shared_msg", message)
 }
 
