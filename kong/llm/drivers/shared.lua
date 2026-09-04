@@ -848,6 +848,13 @@ function _M.post_request(conf, response_object)
     ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", response_object.usage.prompt_tokens)
     ai_plugin_o11y.metrics_set("llm_completion_tokens_count", response_object.usage.completion_tokens)
 
+    -- Prefer the provider's reported total. For models with reasoning/hidden
+    -- tokens the total is more than prompt + completion, so falling back to the
+    -- sum (see observability.metrics_get) would under-report usage.
+    if response_object.usage.total_tokens then
+      ai_plugin_o11y.metrics_set("llm_total_tokens_count", response_object.usage.total_tokens)
+    end
+
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens and
        conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then
         local cost = (response_object.usage.prompt_tokens * conf.model.options.input_cost +
