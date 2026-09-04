@@ -1,0 +1,11 @@
+message: >-
+  **Load Balancing**: Fixed a bug in the `latency` (EWMA) balancer algorithm
+  where the "power of two choices" candidate-set size was clamped to 2 and then
+  immediately grown back up to the full number of available addresses whenever
+  more than 2 were available. This made the algorithm always pick the single
+  globally-lowest-latency address on every request instead of sampling from 2
+  candidates, defeating the purpose of the algorithm and risking traffic
+  concentration/thundering-herd behavior on the currently-fastest backend for
+  any upstream with 3 or more targets.
+type: bugfix
+scope: Core
