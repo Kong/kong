@@ -1,0 +1,3 @@
+message: Cooperatively yield when building statistics of routes to reduce the impact to proxy path latency.
+type: performance
+scope: Performance

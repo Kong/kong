@@ -1,0 +1,3 @@
+message: "Bumped PCRE2 from 10.44 to 10.45 (https://github.com/PCRE2Project/pcre2/blob/pcre2-10.45/NEWS)."
+type: dependency
+scope: Core

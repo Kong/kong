@@ -1,0 +1,3 @@
+message: "**Prometheus**: Bumped KONG_LATENCY_BUCKETS bucket's maximal capacity to 6000"
+type: feature
+scope: Plugin

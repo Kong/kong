@@ -1,0 +1,5 @@
+message: |
+  **PDK:** Fixed `kong.request.get_forwarded_port` to always return a number,
+  which was caused by an incorrectly stored string value in `ngx.ctx.host_port`.
+type: bugfix
+scope: PDK

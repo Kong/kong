@@ -1,0 +1,6 @@
+message: |
+  Support `http.path.segments.len` and `http.path.segments.*` fields in the expressions router
+  which allows matching incoming (normalized) request path by individual segment or ranges of segments,
+  plus checking the total number of segments.
+type: feature
+scope: Core

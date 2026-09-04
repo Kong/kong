@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed an issue where the `model` field was incorrect in Gemini responses when a variable was used as the model name."
+type: "bugfix"
+scope: "Plugin"

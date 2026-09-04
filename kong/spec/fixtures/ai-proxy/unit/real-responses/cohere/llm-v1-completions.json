@@ -1,0 +1,20 @@
+{
+  "generations": [
+      {
+          "finish_reason": "MAX_TOKENS",
+          "id": "d9b056b7-5506-4407-8b8f-b65b995f4203",
+          "text": " You cannot divide by zero because it is not a valid operation in mathematics. Division is the process of finding how many times one number can fit into another number while subtraction is finding the difference between two numbers. For example, if you have a pizza that is divided into 5 pieces and you eat 2 pieces, you have 3 pieces left. This is expressed as $5 \\div 2 = 3$. However, if you eat all 5 pieces, there are no pieces left. We cannot define the result of"
+      }
+  ],
+  "id": "77d630a0-c350-4f4e-bbff-ae6eda8919f3",
+  "meta": {
+      "api_version": {
+          "version": "1"
+      },
+      "billed_units": {
+          "input_tokens": 8,
+          "output_tokens": 100
+      }
+  },
+  "prompt": "Why can't you divide by zero?"
+}

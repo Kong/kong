@@ -1,0 +1,8 @@
+{
+  "inputs": "<s> [INST] <<SYS>> You are a helpful assistant. <<SYS>> Explain why you can't divide by zero? [/INST]",
+  "parameters": {
+    "max_new_tokens": 512,
+    "temperature": 0.5,
+    "stream": false
+  }
+}

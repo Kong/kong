@@ -1,0 +1,11 @@
+{
+  "content": [
+      {
+          "text": "The sum of 1 + 1 is 2.",
+          "type": "text"
+      }
+  ],
+  "model": "claude-2.1",
+  "stop_reason": "end_turn",
+  "stop_sequence": "string"
+}

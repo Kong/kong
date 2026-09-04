@@ -1,0 +1,4 @@
+message: |
+  Use `-1` as the worker ID of privileged agent to avoid access issues.
+type: bugfix
+scope: Core

@@ -1,0 +1,8 @@
+{
+  "error": {
+      "code": "invalid_api_key",
+      "message": "Incorrect API key provided: wro****ey. You can find your API key at https://platform.openai.com/account/api-keys.",
+      "param": null,
+      "type": "invalid_request_error"
+  }
+}

@@ -1,0 +1,104 @@
+id: assert-eventually-terminated
+snapshots:
+  assert.eventually(function() end):
+    labels:
+    - source: assert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 33
+    - source: assert.eventually
+      style: secondary
+      start: 0
+      end: 17
+  ? |
+    assert.eventually(function() end)
+  : labels:
+    - source: assert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 33
+    - source: assert.eventually
+      style: secondary
+      start: 0
+      end: 17
+  assert.eventually(function() end).with_timeout(1):
+    labels:
+    - source: assert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 33
+    - source: assert.eventually
+      style: secondary
+      start: 0
+      end: 17
+  assert.with_timeout(1).eventually(function() end):
+    labels:
+    - source: assert.with_timeout(1).eventually(function() end)
+      style: primary
+      start: 0
+      end: 49
+    - source: assert.with_timeout
+      style: secondary
+      start: 0
+      end: 19
+  assert.with_timeout(1).eventually(function() end).with_timeout(1):
+    labels:
+    - source: assert.with_timeout(1).eventually(function() end)
+      style: primary
+      start: 0
+      end: 49
+    - source: assert.with_timeout
+      style: secondary
+      start: 0
+      end: 19
+  luassert.eventually(function() end):
+    labels:
+    - source: luassert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 35
+    - source: luassert.eventually
+      style: secondary
+      start: 0
+      end: 19
+  ? |
+    luassert.eventually(function() end)
+  : labels:
+    - source: luassert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 35
+    - source: luassert.eventually
+      style: secondary
+      start: 0
+      end: 19
+  luassert.eventually(function() end).with_timeout(1):
+    labels:
+    - source: luassert.eventually(function() end)
+      style: primary
+      start: 0
+      end: 35
+    - source: luassert.eventually
+      style: secondary
+      start: 0
+      end: 19
+  luassert.with_timeout(1).eventually(function() end):
+    labels:
+    - source: luassert.with_timeout(1).eventually(function() end)
+      style: primary
+      start: 0
+      end: 51
+    - source: luassert.with_timeout
+      style: secondary
+      start: 0
+      end: 21
+  luassert.with_timeout(1).eventually(function() end).with_timeout(1):
+    labels:
+    - source: luassert.with_timeout(1).eventually(function() end)
+      style: primary
+      start: 0
+      end: 51
+    - source: luassert.with_timeout
+      style: secondary
+      start: 0
+      end: 21

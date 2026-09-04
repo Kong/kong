@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+echo "
+Checking existing changelog PR ..."
+response=$(
+	curl -sSL \
+         -H "Accept: application/vnd.github+json" \
+         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+         -H "X-GitHub-Api-Version: 2022-11-28" \
+         "https://api.github.com/repos/${1}/pulls?state=open&base=${2}&head=${4}" \
+	     | jq -er '.[] | select(.head.ref == "'"${4}"'") | [.html_url, .head.ref] | @tsv'
+)
+
+if [[ -z "${response:+x}" ]] ; then
+    echo "Not found. Creating ..."
+    curl -sSL \
+         -H "Accept: application/vnd.github+json" \
+         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+         -H "X-GitHub-Api-Version: 2022-11-28" \
+         "https://api.github.com/repos/${1}/pulls" \
+         -d '{"base":"'"${2}"'", "title":"'"docs(release): generate ${3} changelog"'","body":"'"Generate ${3} changelog"'","head":"'"${4}"'"}' \
+         | jq -r '[.html_url, .head.ref] | @tsv'
+else
+    printf 'Updated existing PR: %s\n' "${response}"
+fi

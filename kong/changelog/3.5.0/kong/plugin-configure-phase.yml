@@ -1,0 +1,6 @@
+message: >
+  Plugins can now implement `Plugin:configure(configs)` function that is called whenever
+  there is a change in plugin entities. An array of current plugin configurations is
+  passed to the function, or `nil` in case there is no active configurations for the plugin.
+type: feature
+scope: Core

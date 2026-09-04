@@ -1,0 +1,4 @@
+message: |
+  **proxy-cache**: Fixed an issue where the Age header was not being updated correctly when serving cached responses.
+scope: Plugin
+type: bugfix

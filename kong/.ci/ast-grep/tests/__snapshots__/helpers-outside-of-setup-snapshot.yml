@@ -1,0 +1,98 @@
+id: helpers-outside-of-setup
+snapshots:
+  ? |
+    describe("my test", function()
+      for , strategy in helpers.each_strategy() do
+        local a = 123
+        local port = helpers.get_available_port()
+      end
+    end)
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 113
+      end: 141
+    - source: |-
+        describe("my test", function()
+          for , strategy in helpers.each_strategy() do
+            local a = 123
+            local port = helpers.get_available_port()
+          end
+        end)
+      style: secondary
+      start: 0
+      end: 152
+  ? |
+    describe("my test", function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 62
+      end: 90
+    - source: |-
+        describe("my test", function()
+          local a = 123
+          local port = helpers.get_available_port()
+        end)
+      style: secondary
+      start: 0
+      end: 95
+  ? |
+    describe(function()
+      local a = 123
+      local port = helpers.get_available_port()
+    end)
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 51
+      end: 79
+    - source: |-
+        describe(function()
+          local a = 123
+          local port = helpers.get_available_port()
+        end)
+      style: secondary
+      start: 0
+      end: 84
+  ? |
+    for , strategy in helpers.each_strategy() do
+      local a = 123
+      local port = helpers.get_available_port()
+
+      describe("my test", function()
+        -- ...
+      end)
+    end
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 76
+      end: 104
+  ? |
+    for , strategy in helpers.each_strategy() do
+      local a = 123
+      local port = helpers.get_available_port()
+    end
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 76
+      end: 104
+  ? |
+    local a = 123
+    local port = helpers.get_available_port()
+  : labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 27
+      end: 55
+  local port = helpers.get_available_port():
+    labels:
+    - source: helpers.get_available_port()
+      style: primary
+      start: 13
+      end: 41

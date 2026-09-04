@@ -1,0 +1,80 @@
+name: Build WASM Test Filters
+
+description: >
+  Installs the rust toolchain and builds the WASM filters that are used
+  in our integration tests
+
+runs:
+  using: composite
+  steps:
+    - name: Setup env vars
+      shell: bash
+      run: |
+        FILTER_PATH=$PWD/spec/fixtures/proxy_wasm_filters
+        {
+          echo "WASM_FILTER_PATH=$FILTER_PATH"
+          echo "WASM_FIXTURE_PATH=$FILTER_PATH/build"
+          echo "WASM_FILTER_CARGO_LOCK=$FILTER_PATH/Cargo.lock"
+          echo "WASM_FILTER_TARGET=wasm32-wasip1"
+        } >> $GITHUB_ENV
+
+    - name: Setup cache key
+      shell: bash
+      env:
+        FILE_HASH: ${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
+        CACHE_VERSION: "6"
+        RUNNER_OS: ${{ runner.os }}
+      run: |
+        CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${RUNNER_OS}::${WASM_FILTER_TARGET}::"
+        {
+          echo "WASM_CACHE_PREFIX=${CACHE_PREFIX}"
+          echo "WASM_CACHE_KEY=${CACHE_PREFIX}${FILE_HASH}"
+        } >> $GITHUB_ENV
+
+    - name: Restore Cache
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      id: restore-cache
+      with:
+        path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
+        key: ${{ env.WASM_CACHE_KEY }}
+
+    - name: Install Rust Toolchain
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
+      with:
+        toolchain: stable
+        components: cargo
+        targets: ${{ env.WASM_FILTER_TARGET }}
+
+    - name: Build Test Filters
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # building in release mode yields smaller library sizes, so it's
+        # better for our cacheability
+        cargo build \
+          --manifest-path "${WASM_FILTER_PATH:?}/Cargo.toml" \
+          --workspace \
+          --lib \
+          --target "${WASM_FILTER_TARGET:?}" \
+          --release
+
+    - name: Save cache
+      if: steps.restore-cache.outputs.cache-hit != 'true'
+      id: save-cache
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ env.WASM_FILTER_PATH }}/target/**/*.wasm
+        key: ${{ env.WASM_CACHE_KEY }}
+
+    - name: Create a symlink to the target directory
+      shell: bash
+      run: |
+        ln -sfv \
+          --no-target-directory \
+          "${WASM_FILTER_PATH:?}"/target/"${WASM_FILTER_TARGET:?}"/release \
+          "${WASM_FIXTURE_PATH:?}"
+
+    - name: debug
+      shell: bash
+      run: ls -la "${{ env.WASM_FIXTURE_PATH }}"/*.wasm

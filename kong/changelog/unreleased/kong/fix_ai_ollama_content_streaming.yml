@@ -1,0 +1,4 @@
+message: |
+  Added support for the new Ollama streaming content type in AI driver.
+type: bugfix
+scope: Core

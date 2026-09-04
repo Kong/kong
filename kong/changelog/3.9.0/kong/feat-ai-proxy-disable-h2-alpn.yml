@@ -1,0 +1,4 @@
+message: | 
+  **ai-proxy**: Disabled HTTP/2 ALPN handshake for connections on routes configured with AI-proxy. 
+type: feature
+scope: Plugin

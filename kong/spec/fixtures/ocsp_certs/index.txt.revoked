@@ -1,0 +1,3 @@
+V	310302112235Z		1000	unknown	/C=US/ST=CA/L=SF/O=Kong/OU=Engineering/CN=ocsp
+V	310302112337Z		1001	unknown	/C=US/ST=CA/L=SF/O=Kong/OU=Engineering/CN=kong_clustering
+R	310302112425Z	210304112822Z	1002	unknown	/C=US/ST=CA/L=SF/O=Kong/OU=Engineering/CN=kong_data_plane

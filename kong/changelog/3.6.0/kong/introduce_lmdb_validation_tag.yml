@@ -1,0 +1,6 @@
+message: |
+  Validate LMDB cache by Kong's version (major + minor),
+  wiping the content if tag mismatch to avoid compatibility issues
+  during minor version upgrade.
+type: feature
+scope: Configuration

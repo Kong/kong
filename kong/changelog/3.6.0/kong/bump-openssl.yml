@@ -1,0 +1,3 @@
+message: Bumped OpenSSL from 3.1.4 to 3.2.1
+type: dependency
+scope: Core

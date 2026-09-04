@@ -1,0 +1,3 @@
+message: "**tcp-log**: fix an issue of unnecessary handshakes when reusing TLS connection"
+type: bugfix
+scope: Plugin

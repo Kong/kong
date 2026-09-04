@@ -1,0 +1,3 @@
+message: "**grpc-gateway**: When there is a JSON decoding error, respond with status 400 and error information in the body instead of status 500."
+type: bugfix
+scope: Plugin

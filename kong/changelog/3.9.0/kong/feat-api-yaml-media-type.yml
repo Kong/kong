@@ -1,0 +1,4 @@
+message: | 
+  **Admin API**: Added support for official YAML media-type (application/yaml) to /config endpoint.
+type: feature
+scope: Admin API

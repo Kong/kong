@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Template** which can offer consumers and array of LLM prompt templates, with variable substitutions.
+type: feature
+scope: Plugin

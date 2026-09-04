@@ -1,0 +1,4 @@
+message: |
+  **AI-proxy-plugin**: Fixed the bug that the `route_type` `/llm/v1/chat` didn't include the analytics in the responses.
+scope: Plugin
+type: bugfix

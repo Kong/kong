@@ -1,0 +1,3 @@
+message: use NGX_WASM_MODULE_BRANCH environment variable to set ngx_wasm_module repository branch when building Kong.
+type: bugfix
+scope: Core

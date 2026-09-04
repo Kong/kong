@@ -1,0 +1,96 @@
+openapi: 3.0.1
+info:
+  title: AI-Proxy Plugin Schema
+  description: AI-Proxy Plugin objects (and samples) for Kong Gateway LLM integration.
+  version: 0.0.1
+servers:
+- url: "https://localhost:9000"
+  description: Null Service for AI-Proxy
+tags:
+- name: llm
+  description: LLM Methods
+paths:
+  /{provider}/completions:
+    post:
+      tags:
+      - llm
+      summary: Provider Completions
+      operationId: provider-prompt-completions
+      description: Provider Prompt Completions
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Specific Kong-Conforming Post Body 
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prompt'
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json: {}
+  /{provider}}/chat:
+    post:
+      tags:
+      - llm
+      summary: Provider Chat
+      operationId: provider-chat
+      description: Provider Chat
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Specific Kong-Conforming Post Body 
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json: {}
+
+components:
+  schemas:
+    Prompt:
+      required:
+      - prompt
+      type: object
+      properties:
+        prompt:
+          type: string
+    Chat:
+      required:
+      - messages
+      type: object
+      properties:
+        messages:
+          type: array
+          minLength: 1
+          items:
+            $ref: '#/components/schemas/Message'
+    Message:
+      required:
+      - role
+      - content
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+          - "system"
+          - "user"
+          - "assistant"
+        content:
+          type: string

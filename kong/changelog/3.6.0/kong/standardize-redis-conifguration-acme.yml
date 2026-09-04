@@ -1,0 +1,3 @@
+message: "**ACME**: Standardize redis configuration across plugins. The redis configuration right now follows common schema that is shared across other plugins."
+type: deprecation
+scope: Plugin

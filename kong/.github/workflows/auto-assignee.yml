@@ -1,0 +1,14 @@
+name: Add assignee to PRs
+on:
+  pull_request:
+    types: [ opened, reopened ]
+permissions:
+  pull-requests: write
+jobs:
+  assign-author:
+    runs-on: ubuntu-latest
+    steps:
+      - name: assign-author
+        # ignore the pull requests opened from PR because token is not correct
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        uses: toshimaru/auto-author-assign@bdd7688cbf9e6d5683f02f8c7d8ae4062a254b6d #v3.0.2

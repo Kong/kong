@@ -1,0 +1,3 @@
+message: add DHE-RSA-CHACHA20-POLY1305 cipher to the intermediate configuration
+type: feature
+scope: Configuration

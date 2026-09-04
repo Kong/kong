@@ -1,0 +1,3 @@
+message: Fix upstream ssl failure when plugins use response handler
+type: bugfix
+scope: Core

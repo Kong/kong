@@ -1,0 +1,5 @@
+message: >
+   Extend support for getting and setting Gateway values via proxy-wasm
+   properties in the `kong.*` namespace.
+type: feature
+scope: Core

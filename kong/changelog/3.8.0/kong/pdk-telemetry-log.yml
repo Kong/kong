@@ -1,0 +1,5 @@
+message: |
+  Added a new PDK module `kong.telemetry` and function: `kong.telemetry.log`
+  to generate log entries to be reported via the OpenTelemetry plugin.
+type: feature
+scope: PDK

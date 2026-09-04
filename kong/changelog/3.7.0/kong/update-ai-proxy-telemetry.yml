@@ -1,0 +1,3 @@
+message: Updated telemetry collection for AI Plugins to allow multiple plugins data to be set for the same request.
+type: bugfix
+scope: Core

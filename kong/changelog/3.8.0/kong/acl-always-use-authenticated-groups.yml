@@ -1,0 +1,3 @@
+message: "**acl:** Added a new config `always_use_authenticated_groups` to support using authenticated groups even when an authenticated consumer already exists."
+type: feature
+scope: Plugin

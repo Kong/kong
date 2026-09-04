@@ -1,0 +1,3 @@
+message: "`node_id` in configuration has been deprecated."
+scope: Core
+type: deprecation

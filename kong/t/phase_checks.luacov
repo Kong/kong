@@ -1,0 +1,5 @@
+statsfile = "t/phase_checks.stats"
+reportfile = "t/phase_checks.report"
+modules = {
+   ["kong.pdk.*"] = ".",
+}

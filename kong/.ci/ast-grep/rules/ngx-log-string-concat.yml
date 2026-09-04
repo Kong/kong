@@ -1,0 +1,65 @@
+id: ngx-log-string-concat
+language: lua
+message: Using string concatenation to build arguments for ngx.log()
+severity: error
+note: |
+  When invoking `ngx.log()` with some variable as input, prefer vararg-style
+  calls rather than using the string concatenation operator (`..`):
+
+  ## bad
+  ```lua
+  ngx.log(ngx.DEBUG, "if `my_var` is nil, this code throws an exception: " .. my_var)
+  ```
+
+  ## good
+  ```lua
+  ngx.log(ngx.DEBUG, "if `my_var` is nil, this code is fine: ", my_var)
+  ```
+
+files:
+  - kong/**
+  - test*.lua
+
+rule:
+  all:
+    - matches: string-concat
+      inside:
+        kind: arguments
+        inside:
+          matches: ngx-log-call
+    - not:
+        matches: string-literal-concat
+
+utils:
+  ngx-log-call:
+    any:
+      # direct invocation of `_G.ngx.log()`
+      - pattern: ngx.log($_LEVEL, $$$)
+
+      # track local var assignments of `_G.ngx.log`
+      - pattern: $IDENT($_LEVEL, $$$)
+        inside:
+          kind: chunk
+          stopBy: end
+          has:
+            pattern: $IDENT = ngx.log
+            stopBy: end
+
+  string-concat:
+    kind: binary_expression
+    pattern: $LHS .. $RHS
+
+  string-literal-concat:
+    kind: binary_expression
+    all:
+      - has:
+          nthChild: 1
+          any:
+            - kind: string
+            - matches: string-literal-concat
+
+      - has:
+          nthChild: 2
+          any:
+            - kind: string
+            - matches: string-literal-concat

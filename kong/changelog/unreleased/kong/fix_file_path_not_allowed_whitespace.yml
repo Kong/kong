@@ -1,0 +1,3 @@
+message: "**file-log**: Fixed an issue where an error would occur when there were spaces at the beginning or end of a path."
+type: bugfix
+scope: Plugin
