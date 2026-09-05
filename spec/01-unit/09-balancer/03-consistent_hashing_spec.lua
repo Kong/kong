@@ -6,7 +6,7 @@ assert:set_parameter("TableFormatLevel", 5) -- when displaying tables, set a big
 ------------------------
 
 local client
-local targets, balancers
+local targets, balancers, consistent_hashing
 
 require "spec.helpers" -- initialize db
 local dns_utils = require "kong.resty.dns.utils"
@@ -216,6 +216,7 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
     client = require "kong.resty.dns.client"
     targets = require "kong.runloop.balancer.targets"
     balancers = require "kong.runloop.balancer.balancers"
+    consistent_hashing = require "kong.runloop.balancer.consistent_hashing"
     local healthcheckers = require "kong.runloop.balancer.healthcheckers"
     healthcheckers.init()
     balancers.init()
@@ -417,6 +418,43 @@ describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or "")
       assert.equal(nil, res["mashape.com:123"]) -- host got no hits, key never gets initialized
       assert.equal(160, res["5.6.7.8:321"])
       assert.equal(160, res["getkong.org:321"])
+    end)
+    it("does not skip the ring slot immediately clockwise of the hashed index (regression)", function()
+      -- regression test: the ring traversal used to apply the wrap-around
+      -- fix-up (`index == 0 -> index = points`) *after* the loop's exit
+      -- check had already been evaluated against the unwrapped value, so it
+      -- always skipped exactly the slot at `hashValue + 1`, even though that
+      -- slot could hold the only available address left in the ring.
+      local available_address = {
+        available = true,
+        disabled = false,
+        ip = "9.9.9.9",
+        port = 9999,
+        host = "test-target",
+      }
+
+      local orig_getAddressPeer = balancers.getAddressPeer
+      balancers.getAddressPeer = function(address)
+        return address.ip, address.port, address.host
+      end
+      finally(function()
+        balancers.getAddressPeer = orig_getAddressPeer
+      end)
+
+      -- a tiny, fully synthetic 5-slot ring where the only available
+      -- address sits at slot 4, and the hashed index is 3. A correct
+      -- counter-clockwise traversal visits 3, 2, 1, 5, 4 (all 5 slots
+      -- exactly once) and must find the address at slot 4.
+      local algo = setmetatable({
+        points = 5,
+        balancer = { healthy = true },
+        continuum = { [4] = available_address },
+      }, consistent_hashing)
+
+      local ip, port, host = algo:getPeer(false, { hashValue = 3, retryCount = 0 }, nil)
+      assert.equal("9.9.9.9", ip)
+      assert.equal(9999, port)
+      assert.equal("test-target", host)
     end)
     it("does not hit the resolver when 'cache_only' is set", function()
       local record = dnsA({
