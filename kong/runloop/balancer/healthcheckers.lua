@@ -242,12 +242,34 @@ end
 function healthcheckers_M.create_healthchecker(balancer, upstream)
   -- Do not run active healthchecks in `stream` module
   local checks = upstream.healthchecks
+  local checks_copied = false
   if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
     or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
   then
     checks = cycle_aware_deep_copy(checks)
+    checks_copied = true
     checks.active.healthy.interval = 0
     checks.active.unhealthy.interval = 0
+  end
+
+  -- lua-resty-healthcheck only accepts "tcp", "http", or "https" as check
+  -- types. gRPC runs over HTTP/2, so map grpc -> http and grpcs -> https.
+  if checks.active.type == "grpc" or checks.active.type == "grpcs"
+    or checks.passive.type == "grpc" or checks.passive.type == "grpcs"
+  then
+    if not checks_copied then
+      checks = cycle_aware_deep_copy(checks)
+    end
+    if checks.active.type == "grpc" then
+      checks.active.type = "http"
+    elseif checks.active.type == "grpcs" then
+      checks.active.type = "https"
+    end
+    if checks.passive.type == "grpc" then
+      checks.passive.type = "http"
+    elseif checks.passive.type == "grpcs" then
+      checks.passive.type = "https"
+    end
   end
 
   if not is_upstream_using_healthcheck(upstream) then
