@@ -1984,10 +1984,12 @@ describe("Configuration loader", function()
         upstream_keepalive_pool_size = 10,
         upstream_keepalive_max_requests = 20,
         upstream_keepalive_idle_timeout = 30,
+        upstream_keepalive_max_lifetime = 40,
       }))
       assert.equal(10, conf.upstream_keepalive_pool_size)
       assert.equal(20, conf.upstream_keepalive_max_requests)
       assert.equal(30, conf.upstream_keepalive_idle_timeout)
+      assert.equal(40, conf.upstream_keepalive_max_lifetime)
     end)
 
     it("accepts upstream_keepalive_pool_size = 0", function()
@@ -2011,6 +2013,13 @@ describe("Configuration loader", function()
       assert.equal(0, conf.upstream_keepalive_idle_timeout)
     end)
 
+    it("accepts upstream_keepalive_max_lifetime = 0", function()
+      local conf = assert(conf_loader(nil, {
+        upstream_keepalive_max_lifetime = 0,
+      }))
+      assert.equal(0, conf.upstream_keepalive_max_lifetime)
+    end)
+
     it("rejects negative values", function()
       local conf, err = conf_loader(nil, {
         upstream_keepalive_pool_size = -1,
@@ -2029,6 +2038,12 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("upstream_keepalive_idle_timeout must be 0 or greater", err)
+
+      local conf, err = conf_loader(nil, {
+        upstream_keepalive_max_lifetime = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("upstream_keepalive_max_lifetime must be 0 or greater", err)
     end)
   end)
 
