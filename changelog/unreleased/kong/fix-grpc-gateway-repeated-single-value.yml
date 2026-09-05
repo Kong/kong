@@ -1,0 +1,3 @@
+message: "**grpc-gateway**: Fixed a bug where a repeated request field supplied as a single query-parameter value (e.g. `?colors=RED`) failed to transcode with `400 failed to encode payload`. A single value is now wrapped into a one-element list, matching grpc-gateway query-parameter semantics."
+type: bugfix
+scope: Plugin
