@@ -12,6 +12,7 @@ local metrics_schema = {
   llm_prompt_tokens_count = true,
   llm_completion_tokens_count = true,
   llm_total_tokens_count = true,
+  llm_prompt_cache_tokens_count = true,
   llm_usage_cost = true,
 }
 

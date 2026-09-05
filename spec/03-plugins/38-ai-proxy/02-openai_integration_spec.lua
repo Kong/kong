@@ -51,6 +51,7 @@ local _EXPECTED_CHAT_STATS = {
       llm_latency = 1
     },
     usage = {
+      prompt_cache_tokens = 0,
       prompt_tokens = 25,
       completion_tokens = 12,
       total_tokens = 37,

@@ -81,6 +81,21 @@ local function has_finish_reason(event)
          or nil
 end
 
+-- Extract usage metadata from Gemini response
+-- For Gemini usage metadata reference: https://ai.google.dev/api/generate-content#UsageMetadata
+local function extract_usage(usageMetadata)
+  if not usageMetadata then
+    return {}
+  end
+
+  return {
+    prompt_tokens = usageMetadata.promptTokenCount or 0,
+    completion_tokens = usageMetadata.candidatesTokenCount or 0,
+    total_tokens = usageMetadata.totalTokenCount or 0,
+    prompt_cache_tokens = usageMetadata.cachedContentTokenCount or 0,
+  }
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
@@ -100,10 +115,8 @@ local function handle_stream_event(event_t, model_info, route_type)
   local finish_reason = has_finish_reason(event)  -- may be nil
 
   if is_response_content(event) then
-    local metadata = {}
-    metadata.finish_reason     = finish_reason
-    metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
-    metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+    local metadata = extract_usage(event.usageMetadata)
+    metadata.finish_reason = finish_reason
 
     local new_event = {
       model = model_info.name,
@@ -122,10 +135,8 @@ local function handle_stream_event(event_t, model_info, route_type)
     return cjson.encode(new_event), nil, metadata
   
   elseif is_tool_content(event) then
-    local metadata = {}
-    metadata.finish_reason     = finish_reason
-    metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
-    metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+    local metadata = extract_usage(event.usageMetadata)
+    metadata.finish_reason = finish_reason
 
     if event.candidates and #event.candidates > 0 then
       local new_event = {
@@ -445,11 +456,7 @@ local function from_gemini_chat_openai(response, model_info, route_type)
 
     -- process analytics
     if response.usageMetadata then
-      messages.usage = {
-        prompt_tokens = response.usageMetadata.promptTokenCount,
-        completion_tokens = response.usageMetadata.candidatesTokenCount,
-        total_tokens = response.usageMetadata.totalTokenCount,
-      }
+      messages.usage = extract_usage(response.usageMetadata)
     end
 
   else -- probably a server fault or other unexpected response
