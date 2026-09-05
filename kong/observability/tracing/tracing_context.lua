@@ -16,6 +16,7 @@ local function init_tracing_context(ctx)
     -- yet available).
     unlinked_spans = table_new(0, 1),
     flags = nil,
+    baggage = nil,
   }
 
   return ctx.TRACING_CONTEXT
@@ -113,6 +114,15 @@ local function set_unlinked_span(name, span, ctx)
   tracing_context.unlinked_spans[name] = span
 end
 
+local function get_baggage(ctx)
+  local tracing_context = get_tracing_context(ctx)
+  return tracing_context.baggage
+end
+
+local function set_baggage(baggage, ctx)
+  local tracing_context = get_tracing_context(ctx)
+  tracing_context.baggage = baggage
+end
 
 
 return {
@@ -123,4 +133,5 @@ return {
   set_unlinked_span = set_unlinked_span,
   get_flags = get_flags,
   set_flags = set_flags,
+  get_baggage = get_baggage,
 }
