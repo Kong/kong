@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where the Gemini driver dropped the `cachedContent` field during the OpenAI-to-Gemini request transformation, so Vertex AI context caches were never used. The cached token count is now also reported back as `usage.prompt_tokens_details.cached_tokens`."
+type: bugfix
+scope: Plugin

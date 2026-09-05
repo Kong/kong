@@ -377,6 +377,13 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
     -- handle function calling translation from OpenAI format
     new_r.tools = request_table.tools and to_tools(request_table.tools)
     new_r.tool_config = request_table.tool_config
+
+    -- pass through a Vertex AI context cache reference if the caller set one.
+    -- Gemini expects the full resource name here, e.g.
+    -- "projects/123/locations/us-central1/cachedContents/456". We build new_r
+    -- from scratch above, so without this the field is silently dropped and the
+    -- cache never gets used.
+    new_r.cachedContent = request_table.cachedContent
   end
 
   return new_r, "application/json", nil
@@ -450,6 +457,14 @@ local function from_gemini_chat_openai(response, model_info, route_type)
         completion_tokens = response.usageMetadata.candidatesTokenCount,
         total_tokens = response.usageMetadata.totalTokenCount,
       }
+
+      -- when a context cache was used, report the cached portion the same way
+      -- OpenAI does so downstream analytics and clients can see it
+      if response.usageMetadata.cachedContentTokenCount then
+        messages.usage.prompt_tokens_details = {
+          cached_tokens = response.usageMetadata.cachedContentTokenCount,
+        }
+      end
     end
 
   else -- probably a server fault or other unexpected response

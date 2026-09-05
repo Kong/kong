@@ -1280,6 +1280,104 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     end)
   end)
 
+  describe("gemini context cache", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("passes cachedContent through to the gemini request", function()
+      local cache_name = "projects/123456789/locations/us-central1/cachedContents/987654321"
+      local request_table = {
+        messages = {
+          {
+            role = "user",
+            content = "What company are you an expert on?",
+          },
+        },
+        cachedContent = cache_name,
+      }
+
+      local gemini_request, _, err = gemini_driver._to_gemini_chat_openai(request_table)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_request)
+      assert.equal(cache_name, gemini_request.cachedContent)
+    end)
+
+    it("leaves cachedContent unset when the caller did not provide one", function()
+      local gemini_request, _, err = gemini_driver._to_gemini_chat_openai(SAMPLE_LLM_V1_CHAT)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_request)
+      assert.is_nil(gemini_request.cachedContent)
+    end)
+
+    it("reports cached prompt tokens from the gemini response", function()
+      local gemini_response = {
+        candidates = {
+          {
+            content = {
+              parts = {
+                { text = "I am an expert on Kong." },
+              },
+            },
+            finishReason = "STOP",
+          },
+        },
+        usageMetadata = {
+          promptTokenCount = 32776,
+          candidatesTokenCount = 8,
+          totalTokenCount = 32784,
+          cachedContentTokenCount = 32768,
+        },
+      }
+
+      local openai_response = gemini_driver._from_gemini_chat_openai(gemini_response, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_response)
+
+      openai_response = cjson.decode(openai_response)
+      assert.equal(32776, openai_response.usage.prompt_tokens)
+      assert.same({ cached_tokens = 32768 }, openai_response.usage.prompt_tokens_details)
+    end)
+
+    it("omits prompt_tokens_details when no cache was used", function()
+      local gemini_response = {
+        candidates = {
+          {
+            content = {
+              parts = {
+                { text = "Two." },
+              },
+            },
+            finishReason = "STOP",
+          },
+        },
+        usageMetadata = {
+          promptTokenCount = 8,
+          candidatesTokenCount = 1,
+          totalTokenCount = 9,
+        },
+      }
+
+      local openai_response = gemini_driver._from_gemini_chat_openai(gemini_response, {}, "llm/v1/chat")
+
+      assert.not_nil(openai_response)
+
+      openai_response = cjson.decode(openai_response)
+      assert.is_nil(openai_response.usage.prompt_tokens_details)
+    end)
+  end)
+
+
   describe("bedrock tools", function()
     local bedrock_driver
 
