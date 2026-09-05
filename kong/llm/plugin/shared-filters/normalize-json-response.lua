@@ -58,6 +58,10 @@ local function transform_body(conf)
     if t and t.usage and t.usage.completion_tokens then
       ai_plugin_o11y.metrics_set("llm_completion_tokens_count", t.usage.completion_tokens)
     end
+
+    if t and t.usage and t.usage.total_tokens then
+      ai_plugin_o11y.metrics_set("llm_total_tokens_count", t.usage.total_tokens)
+    end
   end
 
   set_global_ctx("response_body", response_body) -- to be sent out later or consumed by other plugins
