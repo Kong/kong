@@ -111,7 +111,9 @@ for _, strategy in helpers.all_strategies() do
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
 
-              local token = ngx.req.get_headers()["authorization"]
+              local headers = ngx.req.get_headers()
+              ngx.header["X-Upstream-Accept-Encoding"] = headers["accept-encoding"] or ""
+              local token = headers["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
 
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
@@ -159,7 +161,9 @@ for _, strategy in helpers.all_strategies() do
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
 
-              local token = ngx.req.get_headers()["authorization"]
+              local headers = ngx.req.get_headers()
+              ngx.header["X-Upstream-Accept-Encoding"] = headers["accept-encoding"] or ""
+              local token = headers["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
 
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
@@ -218,7 +222,9 @@ for _, strategy in helpers.all_strategies() do
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
 
-              local token = ngx.req.get_headers()["authorization"]
+              local headers = ngx.req.get_headers()
+              ngx.header["X-Upstream-Accept-Encoding"] = headers["accept-encoding"] or ""
+              local token = headers["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
 
               if token == "Bearer cohere-key" or token_query == "cohere-key" or body.apikey == "cohere-key" then
@@ -323,7 +329,9 @@ for _, strategy in helpers.all_strategies() do
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
 
-              local token = ngx.req.get_headers()["authorization"]
+              local headers = ngx.req.get_headers()
+              ngx.header["X-Upstream-Accept-Encoding"] = headers["accept-encoding"] or ""
+              local token = headers["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
 
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
@@ -387,6 +395,8 @@ for _, strategy in helpers.all_strategies() do
               local json = require("cjson.safe")
 
               ngx.req.read_body()
+              local headers = ngx.req.get_headers()
+              ngx.header["X-Upstream-Accept-Encoding"] = headers["accept-encoding"] or ""
 
               -- GOOD RESPONSE
               ngx.status = 200
@@ -867,6 +877,7 @@ for _, strategy in helpers.all_strategies() do
           end
         until not buffer
 
+        assert.equal("identity", res.headers["X-Upstream-Accept-Encoding"])
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
         -- to verifiy not enable `kong.service.request.enable_buffering()`
@@ -1385,6 +1396,7 @@ for _, strategy in helpers.all_strategies() do
           end
         until not buffer
 
+        assert.equal("gzip, identity", res.headers["X-Upstream-Accept-Encoding"])
         assert.truthy(found_marker, "didn't find bedrock native response marker, is it being transformer?")
 
         -- to verify not enable `kong.service.request.enable_buffering()`
