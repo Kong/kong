@@ -1,0 +1,6 @@
+message: >
+  **Tracing**: Fixed an issue where the `http.route` span attribute was set
+  to an empty string when the route had no paths, instead of being omitted
+  as required by the OpenTelemetry specification.
+type: bugfix
+scope: Core
