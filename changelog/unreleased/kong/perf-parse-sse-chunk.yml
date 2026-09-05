@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Implemented a faster SSE parser."
+type: "performance"
+scope: "Plugin"

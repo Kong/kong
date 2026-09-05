@@ -1,0 +1,3 @@
+message: "**llm**: Added support for Bedrock agent SDK, including rerand, converse, converse-stream, retrieveAndGenerate, and retrieveAndGenerate-stream."
+type: "feature"
+scope: "Plugin"

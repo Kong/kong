@@ -2,7 +2,36 @@ local helpers = require("spec.helpers")
 local cjson = require("cjson")
 local pl_file = require("pl.file")
 
+local strip = require("kong.tools.string").strip
+
+
 local PLUGIN_NAME = "ai-proxy"
+
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
+
 
 for _, strategy in helpers.all_strategies() do
   if strategy ~= "cassandra" then
@@ -27,7 +56,7 @@ for _, strategy in helpers.all_strategies() do
           
           default_type 'application/json';
 
-          location = "/v1/chat/completions" {
+          location = "/llm/v1/chat/good" {
             content_by_lua_block {
               local pl_file = require "pl.file"
               local json = require("cjson.safe")
@@ -129,11 +158,51 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = true,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT,
+                upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
               },
             },
           },
         })
+
+        local chat_good_with_no_upstream_port = assert(bp.routes:insert({
+          service = empty_service,
+          protocols = { "http" },
+          strip_path = true,
+          paths = { "/huggingface/llm/v1/chat/good_with_no_upstream_port" },
+        }))
+        bp.plugins:insert({
+          name = PLUGIN_NAME,
+          route = { id = chat_good_with_no_upstream_port.id },
+          config = {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer huggingface-key",
+            },
+            model = {
+              name = "mistralai/Mistral-7B-Instruct-v0.2",
+              provider = "huggingface",
+              options = {
+                max_tokens = 256,
+                temperature = 1.0,
+                huggingface = {
+                  use_cache = false,
+                  wait_for_model = true,
+                },
+                upstream_url = "http://" .. helpers.mock_upstream_host,
+              },
+            },
+          },
+        })
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          path = FILE_LOG_PATH_NO_LOGS,
+        },
+      }
+
         local completions_good = assert(bp.routes:insert({
           service = empty_service,
           protocols = { "http" },
@@ -252,7 +321,7 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = false,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-loading",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-loading/v1/chat/completions",
               },
             },
           },
@@ -283,7 +352,7 @@ for _, strategy in helpers.all_strategies() do
                   use_cache = false,
                   wait_for_model = false,
                 },
-                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-timeout",
+                upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT.."/model-timeout/v1/chat/completions",
               },
             },
           },
@@ -334,14 +403,29 @@ for _, strategy in helpers.all_strategies() do
           assert.equals(json.object, "chat.completion")
 
           assert.is_table(json.choices)
-          --print("json: ", inspect(json))
           assert.is_string(json.choices[1].message.content)
           assert.same(
             " The sum of 1 + 1 is 2. This is a basic arithmetic operation and the answer is always the same: adding one to one results in having two in total.",
             json.choices[1].message.content
           )
         end)
+        it("good request with no upstream port", function()
+          local r = client:get("/huggingface/llm/v1/chat/good_with_no_upstream_port", {
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+            body = pl_file.read("spec/fixtures/ai-proxy/huggingface/llm-v1-chat/requests/good.json"),
+          })
+          assert.res_status(502 , r)
+          local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+          assert.same("127.0.0.1", log_message.client_ip)
+          local tries = log_message.tries
+          assert.is_table(tries)
+          assert.equal(tries[1].port, 80)
+        end)
       end)
+      
       describe("huggingface llm/v1/completions", function()
         it("good request", function()
           local r = client:get("/huggingface/llm/v1/completions/good", {

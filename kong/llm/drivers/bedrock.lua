@@ -1,7 +1,7 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
+local cjson = require("kong.tools.cjson")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
@@ -13,7 +13,7 @@ local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 
 -- globals
 local DRIVER_NAME = "bedrock"
-local get_global_ctx, _ = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
+local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(DRIVER_NAME)
 --
 
 local _OPENAI_ROLE_MAPPING = {
@@ -78,7 +78,7 @@ local function to_tools(in_tools)
     if v['function'] then
       out_tools = out_tools or {}
 
-      out_tools[i] = {
+      table_insert(out_tools, {
         toolSpec = {
           name = v['function'].name,
           description = v['function'].description,
@@ -86,7 +86,7 @@ local function to_tools(in_tools)
             json = v['function'].parameters,
           },
         },
-      }
+      })
     end
   end
 
@@ -122,6 +122,23 @@ local function from_tool_call_response(content)
   return tools_used
 end
 
+local function new_chat_chunk_event(model_info)
+  local event = {
+    choices = {
+      {
+        delta = {},
+        index = 0,
+        logprobs = cjson.null,
+      },
+    },
+    model = model_info.name,
+    object = "chat.completion.chunk",
+    system_fingerprint = cjson.null,
+  }
+
+  return event
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   local new_event, metadata
 
@@ -144,20 +161,10 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   if event_type == "messageStart" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = "",
-            role = body.role,
-          },
-          index = 0,
-          logprobs = cjson.null,
-        },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-      system_fingerprint = cjson.null,
+    new_event = new_chat_chunk_event(model_info)
+    new_event.choices[1].delta = {
+      content = "",
+      role = body.role,
     }
 
   elseif event_type == "contentBlockStart" then
@@ -166,88 +173,84 @@ local function handle_stream_event(event_t, model_info, route_type)
       local tool_name = body.start.toolUse.name
       local tool_id = body.start.toolUse.toolUseId
 
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              tool_calls = {
-                {
-                  index = body.contentBlockIndex,
-                  id = tool_id,
-                  ['function'] = {
-                    name = tool_name,
-                    arguments = "",
-                  },
-                }
+      if get_global_ctx("structured_output_mode") and (tool_name == ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME) then
+        -- structured output tool call: return as if we're starting content
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          content = "",
+          role = "assistant",
+        }
+
+      else
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          tool_calls = {
+            {
+              index = body.contentBlockIndex,
+              id = tool_id,
+              ['function'] = {
+                name = tool_name,
+                arguments = "",
               }
-            },
-            index = 0,
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
-      }
+            }
+          }
+        }
+      end
     end
 
   elseif event_type == "contentBlockDelta" then
     -- check for async streamed tool parameters
     if body.delta and body.delta.toolUse then
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              tool_calls = {
-                {
-                  index = body.contentBlockIndex,
-                  ['function'] = {
-                    arguments = body.delta.toolUse.input,
-                  },
-                }
-              }
-            },
-            index = 0,
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
-      }
+
+      if get_global_ctx("structured_output_mode") then
+        -- structured output tool call: return as if we're starting content
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          content = (body.delta and
+                      body.delta.toolUse
+                      and body.delta.toolUse.input)
+                  or ""
+        }
+
+      else
+        new_event = new_chat_chunk_event(model_info)
+        new_event.choices[1].delta = {
+          tool_calls = {
+            {
+              index = body.contentBlockIndex,
+              ['function'] = {
+                arguments = body.delta.toolUse.input,
+              },
+            }
+          }
+        }
+      end
 
     else
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              content = (body.delta
-                     and body.delta.text)
-                     or "",
-            },
-            index = 0,
-            logprobs = cjson.null,
-          },
-        },
-        model = model_info.name,
-        object = "chat.completion.chunk",
-        system_fingerprint = cjson.null,
+      if get_global_ctx("structured_output_mode") then
+        -- return no frame to the caller, because the LLM might be
+        -- chatting over the top of our structured output tool result
+
+        return
+      end
+
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].delta = {
+        content = (body.delta
+              and body.delta.text)
+              or "",
       }
     end
 
   elseif event_type == "messageStop" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {},
-          index = 0,
-          finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop",
-          logprobs = cjson.null,
-        },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
+    if get_global_ctx("structured_output_mode") then
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].finish_reason = ((body.stopReason and body.stopReason ~= "tool_use") and _OPENAI_STOP_REASON_MAPPING[body.stopReason]) or "stop"
+
+    else
+      new_event = new_chat_chunk_event(model_info)
+      new_event.choices[1].finish_reason = _OPENAI_STOP_REASON_MAPPING[body.stopReason] or "stop"
+    end
 
   elseif event_type == "metadata" then
     metadata = {
@@ -269,6 +272,33 @@ local function handle_stream_event(event_t, model_info, route_type)
   else
     return nil, nil, metadata  -- caller code will handle "unrecognised" event types
   end
+end
+
+local function extract_structured_content_schema(request_table)
+  -- bounds check EVERYTHING first
+  if not request_table
+    or not request_table.response_format
+    or type(request_table.response_format.type) ~= "string"
+    or type(request_table.response_format.json_schema) ~= "table"
+    or type(request_table.response_format.json_schema.schema) ~= "table"
+  then
+    return nil
+  end
+
+  -- return
+  return request_table.response_format.json_schema.schema
+end
+
+local function schema_to_toolspec(structured_content_schema)
+  return {
+    toolSpec = {
+      name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME,
+      description = "Responds with strict structured output.",
+      inputSchema = {
+        json = structured_content_schema
+      }
+    }
+  }
 end
 
 local function to_bedrock_chat_openai(request_table, model_info, route_type)
@@ -293,23 +323,43 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         system_prompts[#system_prompts+1] = { text = v.content }
 
       elseif v.role and v.role == "tool" then
-        local tool_literal_content
-        local tool_execution_content, err = cjson.decode(v.content)
-        if err then
-          return nil, nil, "failed to decode function response arguments, not JSON format"
-        end
+        -- To mimic OpenAI behaviour, but also support Bedrock, here's what we do:
+        ---- If it's a string, and JSON decode fails, just treat as a literal reply in "text" field.
+        ---- If it's a string, and JSON decode succeeds, set that object as "json" field, and let Kong re-encode it later.
+        ---- If it's already a deep JSON object from the caller, set that straight to "json" as well, and let Kong re-encode it later.
+        -- https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use-inference-call.html#tool-calllng-make-tool-request
+        local tool_content
+        local tool_literal_content = v.content
+        if type(tool_literal_content) == "string" then
+          -- try
+          local tool_decoded_content, err = cjson.decode(tool_literal_content)
+          if err then
+            -- catch
+            tool_content = {
+              text = tool_literal_content
+            }
 
-        if type(tool_execution_content) == "table" then
-          tool_literal_content = {
-            json = tool_execution_content
+          else
+            -- Lua bug? Catch if it decoded a single number from JSON for some reason
+            if type(tool_decoded_content) == "number" then
+              tool_content = {
+                text = tool_literal_content
+              }
+            else
+              tool_content = {
+                json = tool_decoded_content
+              }
+            end
+
+          end
+
+        elseif type(tool_literal_content) == "table" then
+          tool_content = {
+            json = tool_literal_content
           }
 
         else
-          tool_literal_content = {
-            json = {
-              result = tool_execution_content
-            }
-          }
+          return nil, nil, "failed to decode function response arguments: expecting string or nested-JSON"
         end
 
         local content = {
@@ -317,18 +367,26 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
             toolResult = {
               toolUseId = v.tool_call_id,
               content = {
-                tool_literal_content
+                tool_content
               },
               status = v.status,
             },
           },
         }
 
-        new_r.messages = new_r.messages or {}
-        table_insert(new_r.messages, {
-          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-          content = content,
-        })
+        if i > 1 and ai_shared.is_tool_result_message(request_table.messages[i-1]) then
+          -- append to the previous message's 'content' array
+          local previous_content = new_r.messages[#new_r.messages].content or {}
+
+          previous_content[#previous_content+1] = content[1]
+          new_r.messages[#new_r.messages].content = previous_content
+        else
+          new_r.messages = new_r.messages or {}
+          table_insert(new_r.messages, {
+            role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+            content = content,
+          })
+        end
 
       else
         local content
@@ -342,15 +400,14 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
               return nil, nil, "failed to decode function response arguments from assistant's message, not JSON format"
             end
 
-            content = {
-              {
-                toolUse = {
-                  toolUseId = tool.id,
-                  name = tool['function'].name,
-                  input = inputs,
-                },
-              },
-            }
+            content = content or {}
+            table_insert(content, {
+              toolUse = {
+                toolUseId = tool.id,
+                name = tool['function'].name,
+                input = inputs,
+              }
+            })
           end
 
         else
@@ -398,6 +455,26 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
     new_r.toolConfig.tools = to_tools(request_table.tools)
   end
 
+  -- check for "structured output" mode
+  -- https://docs.aws.amazon.com/nova/latest/userguide/prompting-structured-output.html "Example 3"
+  local structured_content_schema = extract_structured_content_schema(request_table)
+  if structured_content_schema then
+    set_global_ctx("structured_output_mode", true)
+
+    -- set the output schema as an available tool
+    new_r.toolConfig = new_r.toolConfig or {}
+    new_r.toolConfig.tools = new_r.toolConfig.tools or {}
+
+    table_insert(new_r.toolConfig.tools, schema_to_toolspec(structured_content_schema))
+
+    -- force the use of that tool
+    new_r.toolChoice = {
+      tool = {
+        name = ai_shared._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+      }
+    }
+  end
+
   new_r.additionalModelRequestFields = request_table.bedrock
                                    and request_table.bedrock.additionalModelRequestFields
                                    and to_additional_request_fields(request_table)
@@ -406,7 +483,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
 end
 
 local function from_bedrock_chat_openai(response, model_info, route_type)
-  local response, err = cjson.decode(response)
+  local response, err = cjson.decode_with_array_mt(response)
 
   if err then
     local err_client = "failed to decode response from Bedrock"
@@ -434,6 +511,13 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
     client_response.object = "chat.completion"
     client_response.model = model_info.name
 
+    -- check for structured output tool call
+    if get_global_ctx("structured_output_mode") then
+      -- if we have a structured output tool call, we need to convert it to a message
+      -- this is a workaround for the fact that Bedrock-Converse does not support structured output
+      client_response = ai_shared.convert_structured_output_tool(client_response) or client_response
+    end
+
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Bedrock, or max_tokens too short"
     ngx.log(ngx.ERR, "[bedrock] ", err)
@@ -453,6 +537,7 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
 
   return cjson.encode(client_response)
 end
+
 
 local transformers_to = {
   ["llm/v1/chat"] = to_bedrock_chat_openai,
@@ -505,6 +590,7 @@ function _M.to_format(request_table, model_info, route_type)
     request_table,
     model_info
   )
+
   if err or (not ok) then
     return nil, nil, fmt("error transforming to %s://%s: %s", model_info.provider, route_type, err)
   end
@@ -619,13 +705,22 @@ function _M.configure_request(conf, aws_sdk)
     return nil, "invalid model parameter"
   end
 
-  local operation = get_global_ctx("stream_mode") and "converse-stream"
-                                                             or "converse"
+  local operation = conf.route_type ~= "llm/v1/embeddings" and (get_global_ctx("stream_mode") and "converse-stream"
+                                                             or "converse") or nil
+  local bedrocks_driver = DRIVER_NAME
+  local llm_format_adapter = get_global_ctx("llm_format_adapter")
+  local forward_path, runtime_name
+  if llm_format_adapter then
+    forward_path, runtime_name = llm_format_adapter:get_forwarded_path(model.name)
+    if runtime_name then
+      bedrocks_driver = runtime_name
+    end
+  end
 
   local f_url = model.options and model.options.upstream_url
   if not f_url then  -- upstream_url override is not set
-    local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
-    local path = fmt(
+    local uri = fmt(ai_shared.upstream_url_format[bedrocks_driver], aws_sdk.config.region)
+    local path = forward_path or fmt(
       ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
       model.name,
       operation)
@@ -647,7 +742,8 @@ function _M.configure_request(conf, aws_sdk)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
+  local default_port = (parsed_url.scheme == "https" or parsed_url.scheme == "wss") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
 
   -- do the IAM auth and signature headers
   aws_sdk.config.signatureVersion = "v4"
@@ -659,7 +755,7 @@ function _M.configure_request(conf, aws_sdk)
     path = parsed_url.path,
     host = parsed_url.host,
     port = tonumber(parsed_url.port) or 443,
-    body = kong.request.get_raw_body()
+    body = kong.request.get_raw_body(),
   }
 
   local signature, err = signer(aws_sdk.config, r)

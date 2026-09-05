@@ -42,6 +42,17 @@ local general_chat_request = {
   },
 }
 
+local full_chat_request = {
+  model = "gpt-4o",
+  temperature = 0.6,
+  messages = {
+    [1] = {
+      role = "user",
+      content = "What is 1+1?"
+    },
+  },
+}
+
 local injector_conf_prepend = {
   prompts = {
     prepend = {
@@ -171,6 +182,25 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
       assert.is_nil(err)
       assert.same(expected_request_copy, decorated_request)
+    end)
+
+
+    it("preserves model and temperature fields when decorating", function()
+      local request_copy = deepcopy(full_chat_request)
+      local expected_request_copy = deepcopy(full_chat_request)
+
+      -- combine the tables manually, and check the code does the same
+      table.insert(expected_request_copy.messages, 1, injector_conf_prepend.prompts.prepend[1])
+      table.insert(expected_request_copy.messages, 2, injector_conf_prepend.prompts.prepend[2])
+      table.insert(expected_request_copy.messages, 3, injector_conf_prepend.prompts.prepend[3])
+
+      local decorated_request, err = access_handler._execute(request_copy, injector_conf_prepend)
+
+      assert.is_nil(err)
+      assert.same(decorated_request, expected_request_copy)
+      -- Ensure model and temperature are preserved
+      assert.equal("gpt-4o", decorated_request.model)
+      assert.equal(0.6, decorated_request.temperature)
     end)
 
   end)

@@ -1,0 +1,3 @@
+message: "**AI Plugins**: Fixed an issue where `id`, `created`, and/or `finish_reason` fields were missing from or incorrect in Gemini responses."
+type: "bugfix"
+scope: "Plugin"

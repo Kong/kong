@@ -1,0 +1,4 @@
+message: |
+  **ai-prompt-decorator**: Fixed an issue where the plugin would miss the model, temperature, and other user-defined fields.
+type: bugfix
+scope: Plugin

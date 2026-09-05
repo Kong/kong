@@ -17,6 +17,8 @@ function _M:run(conf)
     return true
   end
 
+  ai_plugin_o11y.record_request_end()
+
   local provider_name, request_model
   do
     local model_t = ai_plugin_ctx.get_request_model_table_inuse()
@@ -82,8 +84,8 @@ function _M:run(conf)
 
   -- payloads
   if conf.logging and conf.logging.log_payloads then
-    -- can't use kong.service.get_raw_body because it also fall backs to get_body_file which isn't available in log phase
-    kong.log.set_serialize_value(string.format("ai.%s.payload.request", ai_plugin_o11y.NAMESPACE), ngx.req.get_body_data())
+    local request_body = ai_plugin_ctx.get_namespaced_ctx("save-request-body", "raw_request_body")
+    kong.log.set_serialize_value(string.format("ai.%s.payload.request", ai_plugin_o11y.NAMESPACE), request_body)
     kong.log.set_serialize_value(string.format("ai.%s.payload.response", ai_plugin_o11y.NAMESPACE), get_global_ctx("response_body"))
   end
 

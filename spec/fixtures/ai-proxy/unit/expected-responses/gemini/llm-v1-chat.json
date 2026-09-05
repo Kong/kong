@@ -4,11 +4,18 @@
       "finish_reason": "stop",
       "index": 0,
       "message": {
-        "content": "Ah, vous voulez savoir le double de ce résultat ? Eh bien, le double de 2 est **4**. \n",
+        "content": "Ah, vous voulez savoir le double de ce résultat? Eh bien, le double de 2 est **4**. \n",
         "role": "assistant"
       }
     }
   ],
-  "model": "gemini-pro",
-  "object": "chat.completion"
+  "created": 1751926593,
+  "model": "gemini-1.5-pro-002",
+  "object": "chat.completion",
+  "id": "QUdsaIKDBs-u3NoP5Iyb8QY",
+  "usage": {
+    "prompt_tokens": 223,
+    "completion_tokens": 12,
+    "total_tokens": 235
+  }
 }
