@@ -17,6 +17,9 @@ on:
     - master
     - release/*
 
+permissions:
+  contents: read
+
 jobs:
 
   autoformat:

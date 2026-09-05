@@ -9,6 +9,9 @@ on:
       - '.requirements'
       - 'changelog/**'
 
+permissions:
+  contents: read
+
 jobs:
   require-changelog:
     if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
