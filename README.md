@@ -46,8 +46,7 @@ The Gateway is now available on the following ports on localhost:
 - `:8001` - configure Kong using Admin API or via [decK](https://github.com/kong/deck)
 - `:8002` - access Kong's management Web UI ([Kong Manager](https://github.com/Kong/kong-manager)) on [localhost:8002](http://localhost:8002)
 
-Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
-) to tour the Gateway features.
+Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/) to tour the Gateway features.
 
 ### Getting started with AI Gateway for LLM and MCP
 
