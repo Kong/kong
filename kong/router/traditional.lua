@@ -1125,6 +1125,58 @@ end
 do
   local reducers = {
     [MATCH_RULES.HOST] = function(category, ctx)
+      local matching = ctx.hits.matching_host_values
+      if matching and next(matching) then
+        -- Union of routes for every host pattern that matched, then sort by
+        -- submatch_weight (desc, so port-specific wildcard wins), then
+        -- regex_priority (desc), then created_at (asc).
+        local seen = {}
+        local seen_ref = {}
+        local list = {}
+        for host_value, _ in pairs(matching) do
+          local candidates = category.routes_by_hosts[host_value]
+          if candidates then
+            for j = 1, candidates[0] do
+              local rt = candidates[j]
+              local id = rt.route and rt.route.id
+              if id then
+                if not seen[id] then
+                  seen[id] = true
+                  list[#list + 1] = rt
+                end
+              else
+                if not seen_ref[rt] then
+                  seen_ref[rt] = true
+                  list[#list + 1] = rt
+                end
+              end
+            end
+          end
+        end
+        if #list == 0 then
+          return nil
+        end
+        sort(list, function(a, b)
+          local sw1 = a.submatch_weight or 0
+          local sw2 = b.submatch_weight or 0
+          if sw1 ~= sw2 then
+            return sw1 > sw2
+          end
+          local rp1 = a.route and (a.route.regex_priority or 0) or 0
+          local rp2 = b.route and (b.route.regex_priority or 0) or 0
+          if rp1 ~= rp2 then
+            return rp1 > rp2
+          end
+          local ca = a.route and a.route.created_at
+          local cb = b.route and b.route.created_at
+          if ca and cb then
+            return ca < cb
+          end
+          return false
+        end)
+        list[0] = #list
+        return list
+      end
       return category.routes_by_hosts[ctx.hits.host or ctx.req_host]
     end,
 
@@ -1135,6 +1187,53 @@ do
     [MATCH_RULES.URI] = function(category, ctx)
       -- no ctx.req_uri indexing since regex URIs have a higher priority than
       -- plain URIs
+      local matching = ctx.hits.matching_uri_values
+      if matching and next(matching) then
+        -- Union of routes for every path that matched the request URI, then
+        -- sort by regex_priority (desc) then created_at (asc) so more specific
+        -- routes are tried first.
+        local seen = {}
+        local seen_ref = {}
+        local list = {}
+        for path_value, _ in pairs(matching) do
+          local candidates = category.routes_by_uris[path_value]
+          if candidates then
+            for j = 1, candidates[0] do
+              local rt = candidates[j]
+              local id = rt.route and rt.route.id
+              if id then
+                if not seen[id] then
+                  seen[id] = true
+                  list[#list + 1] = rt
+                end
+              else
+                if not seen_ref[rt] then
+                  seen_ref[rt] = true
+                  list[#list + 1] = rt
+                end
+              end
+            end
+          end
+        end
+        if #list == 0 then
+          return nil
+        end
+        sort(list, function(a, b)
+          local rp1 = a.route and (a.route.regex_priority or 0) or 0
+          local rp2 = b.route and (b.route.regex_priority or 0) or 0
+          if rp1 ~= rp2 then
+            return rp1 > rp2
+          end
+          local ca = a.route and a.route.created_at
+          local cb = b.route and b.route.created_at
+          if ca and cb then
+            return ca < cb
+          end
+          return false
+        end)
+        list[0] = #list
+        return list
+      end
       return category.routes_by_uris[ctx.hits.uri]
     end,
 
@@ -1379,7 +1478,11 @@ function _M.new(routes, cache, cache_neg)
   -- or IP ranges comparison functions
   local prefix_uris     = { [0] = 0 } -- will be sorted by length
   local regex_uris      = { [0] = 0 }
+  -- luacheck: ignore 311
+  local num_distinct_regex_uris = 0  -- set in do block below, read in find_route closure
   local wildcard_hosts  = { [0] = 0 }
+  -- luacheck: ignore 311
+  local num_distinct_wildcard_hosts = 0  -- set in do block below, read in find_route closure
   local src_trust_funcs = { [0] = 0 }
   local dst_trust_funcs = { [0] = 0 }
 
@@ -1462,6 +1565,34 @@ function _M.new(routes, cache, cache_neg)
       index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
                     wildcard_hosts, src_trust_funcs, dst_trust_funcs)
     end
+
+    -- Deduplicate regex_uris by path value so we run each regex at most once
+    -- per request, and know how many distinct patterns exist (for early exit).
+    local regex_uris_dedup = { [0] = 0 }
+    local seen_uri_value = {}
+    for i = 1, regex_uris[0] do
+      local uri_t = regex_uris[i]
+      if not seen_uri_value[uri_t.value] then
+        seen_uri_value[uri_t.value] = true
+        append(regex_uris_dedup, uri_t)
+      end
+    end
+    regex_uris = regex_uris_dedup
+    num_distinct_regex_uris = regex_uris[0]
+
+    -- Deduplicate wildcard_hosts by host value so we run each regex at most once
+    -- per request, and know how many distinct patterns exist (for early exit).
+    local wildcard_hosts_dedup = { [0] = 0 }
+    local seen_host_value = {}
+    for i = 1, wildcard_hosts[0] do
+      local host_t = wildcard_hosts[i]
+      if not seen_host_value[host_t.value] then
+        seen_host_value[host_t.value] = true
+        append(wildcard_hosts_dedup, host_t)
+      end
+    end
+    wildcard_hosts = wildcard_hosts_dedup
+    num_distinct_wildcard_hosts = wildcard_hosts[0]
   end
 
 
@@ -1655,9 +1786,19 @@ function _M.new(routes, cache, cache_neg)
           end
 
           if from then
-            hits.host    = host.value
+            if num_distinct_wildcard_hosts > 1 then
+              if not hits.matching_host_values then
+                hits.matching_host_values = {}
+              end
+              hits.matching_host_values[host.value] = true
+            end
+            if not hits.host then
+              hits.host = host.value
+            end
             req_category = bor(req_category, MATCH_RULES.HOST)
-            break
+            if num_distinct_wildcard_hosts <= 1 then
+              break
+            end
           end
         end
       end
@@ -1666,6 +1807,7 @@ function _M.new(routes, cache, cache_neg)
     -- uri match
 
     if match_regex_uris then
+      hits.matching_uri_values = nil
       for i = 1, regex_uris[0] do
         local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
         if err then
@@ -1674,9 +1816,19 @@ function _M.new(routes, cache, cache_neg)
         end
 
         if from then
-          hits.uri     = regex_uris[i].value
+          if num_distinct_regex_uris > 1 then
+            if not hits.matching_uri_values then
+              hits.matching_uri_values = {}
+            end
+            hits.matching_uri_values[regex_uris[i].value] = true
+          end
+          if not hits.uri then
+            hits.uri = regex_uris[i].value
+          end
           req_category = bor(req_category, MATCH_RULES.URI)
-          break
+          if num_distinct_regex_uris <= 1 then
+            break
+          end
         end
       end
     end
