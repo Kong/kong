@@ -234,7 +234,7 @@ function AWSLambdaHandler:access(conf)
   headers = kong.table.merge(headers) -- create a copy of headers
 
   if kong.configuration.enabled_headers[VIA_HEADER] then
-    local outbound_via = (ngx_var.http2 and "2 " or "1.1 ") .. server_tokens
+    local outbound_via = (ngx_var.http2 and "2 " or "1.1 ") .. fmt("kong (%s)", server_tokens)
     headers[VIA_HEADER] = headers[VIA_HEADER] and headers[VIA_HEADER] .. ", " .. outbound_via
                           or outbound_via
   end

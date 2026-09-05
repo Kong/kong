@@ -6,7 +6,7 @@ local uuid   = require("kong.tools.uuid").uuid
 
 
 local default_server_header = meta._SERVER_TOKENS
-local default_via_value =  "1.1 " .. default_server_header
+local default_via_value =  "1.1 " .. string.format("kong (%s)", default_server_header)
 
 for _, strategy in helpers.each_strategy() do
 describe("headers [#" .. strategy .. "]", function()
