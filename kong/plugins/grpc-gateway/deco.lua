@@ -173,11 +173,32 @@ function deco.new(method, path, protofile)
 end
 
 local function get_field_type(typ, field)
-  local _, _, field_typ = pb.field(typ, field)
-  return field_typ
+  local _, _, field_typ, _, label = pb.field(typ, field)
+  return field_typ, label
 end
 
-local function encode_fix(v, typ)
+-- pb.field reports a repeated field's label as "repeated" (non-packed, e.g.
+-- repeated string) or "packed" (proto3-packed scalars and enums, e.g.
+-- repeated int32 / repeated SomeEnum).
+local REPEATED_LABELS = {
+  repeated = true,
+  packed = true,
+}
+
+local function encode_fix(v, typ, label)
+  if REPEATED_LABELS[label] then
+    -- ngx.req.get_uri_args returns a string for a single-occurrence key and a
+    -- table for multiple occurrences. A repeated field must encode to a list,
+    -- so normalize a single value to a one-element array before encoding.
+    if type(v) ~= "table" then
+      v = { v }
+    end
+    for i = 1, #v do
+      v[i] = encode_fix(v[i], typ)
+    end
+    return v
+  end
+
   if typ == "bool" then
     -- special case for URI parameters
     return v and v ~= "0" and v ~= "false"
@@ -196,7 +217,8 @@ local function add_to_table( t, path, v, typ )
   local msg_typ = typ;
   for m in re_gmatch( path , "([^.]+)(\\.)?", "jo" ) do
     local key, dot = m[1], m[2]
-    msg_typ = get_field_type(msg_typ, key)
+    local label
+    msg_typ, label = get_field_type(msg_typ, key)
 
     -- not argument that we concern with
     if not msg_typ then
@@ -207,7 +229,7 @@ local function add_to_table( t, path, v, typ )
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
     else
-      tab[key] = encode_fix(v, msg_typ)
+      tab[key] = encode_fix(v, msg_typ, label)
     end
   end
 
