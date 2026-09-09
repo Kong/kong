@@ -1215,6 +1215,77 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   end)
 
 
+  describe("gemini context caching", function()
+    local gemini_driver
+
+    setup(function()
+      _G._TEST = true
+      package.loaded["kong.llm.drivers.gemini"] = nil
+      gemini_driver = require("kong.llm.drivers.gemini")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
+    end)
+
+    it("preserves cachedContent when provided in request", function()
+      local request = {
+        messages = {
+          {
+            role = "user",
+            content = "Analyze the pre-cached document.",
+          },
+        },
+        cachedContent = "projects/123456/locations/us-central1/cachedContents/987654",
+      }
+
+      local gemini_prompt, content_type, err = gemini_driver._to_gemini_chat_openai(request)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+      assert.equal("application/json", content_type)
+      assert.equal("projects/123456/locations/us-central1/cachedContents/987654", gemini_prompt.cachedContent)
+    end)
+
+    it("normalizes cached_content (snake_case) to cachedContent", function()
+      local request = {
+        messages = {
+          {
+            role = "user",
+            content = "Analyze the pre-cached document.",
+          },
+        },
+        cached_content = "cachedContents/sample-cache-id",
+      }
+
+      local gemini_prompt, content_type, err = gemini_driver._to_gemini_chat_openai(request)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+      assert.equal("application/json", content_type)
+      assert.equal("cachedContents/sample-cache-id", gemini_prompt.cachedContent)
+    end)
+
+    it("does not set cachedContent when not provided", function()
+      local request = {
+        messages = {
+          {
+            role = "user",
+            content = "Hello world",
+          },
+        },
+      }
+
+      local gemini_prompt, content_type, err = gemini_driver._to_gemini_chat_openai(request)
+
+      assert.is_nil(err)
+      assert.not_nil(gemini_prompt)
+      assert.equal("application/json", content_type)
+      assert.is_nil(gemini_prompt.cachedContent)
+    end)
+  end)
+
+
   describe("gemini tools", function()
     local gemini_driver
 
