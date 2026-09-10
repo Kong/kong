@@ -356,6 +356,18 @@ options use-vc
           resolv.options)
     end)
 
+    it("tests parsing 'resolv.conf' with multiple options on a single line", function()
+      -- Kubernetes dnsConfig generates this format (see issue #14993)
+      local file = splitlines(
+[[options ndots:2 timeout:2 attempts:3
+options debug rotate
+]])
+      local resolv, err = utils.parse_resolv_conf(file)
+      assert.is.Nil(err)
+      assert.is.same({ ndots = 2, timeout = 2000, attempts = 3, debug = true,
+          rotate = true }, resolv.options)
+    end)
+
     it("tests parsing 'resolv.conf' with mutual exclusive domain vs search", function()
       local file = splitlines(
 [[domain myservice.test
