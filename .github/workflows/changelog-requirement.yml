@@ -15,13 +15,13 @@ jobs:
     name: Requires changelog
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 2
 
       - name: Find changelog files
         id: changelog-list
-        uses: kong/changed-files@4edd678ac3f81e2dc578756871e4d00c19191daf
+        uses: kong/changed-files@cd69b79ca4e2a1198064c5e6564cce68920df311 # main (node24)
         with:
           files_yaml: |
             changelogs:

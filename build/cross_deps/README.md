@@ -13,7 +13,6 @@ Note that the artifacts of those dependencies are only used during build time,
 they are not shipped together with our binary artifact (.deb, .rpm or docker image etc).
 
 We currently do cross compile on following platforms:
-- Amazonlinux 2
 - Amazonlinux 2023
 - Ubuntu 18.04 (Version 3.4.x.x only)
 - Ubuntu 22.04

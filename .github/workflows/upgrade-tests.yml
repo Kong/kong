@@ -40,14 +40,14 @@ jobs:
 
     steps:
       - name: Clone Source Code
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Lookup build cache
         id: cache-deps
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.BUILD_ROOT }}
           key: ${{ needs.build.outputs.cache-key }}

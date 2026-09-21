@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.9.3](#393)
 - [3.9.2](#392)
 - [3.9.1](#391)
 - [3.9.0](#390)
@@ -23,6 +24,17 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.9.3
+
+### Kong
+
+#### Fixes
+
+##### Core
+
+- Applied upstream nginx security patches for limiting the maximum number of headers (CVE-2026-49975).
+ [#14895](https://github.com/Kong/kong/issues/14895)
 
 ## 3.9.2
 

@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Dispatch the workflow
         if: ${{ github.repository_owner == 'Kong' }}
-        uses: benc-uk/workflow-dispatch@25b02cc069be46d637e8fe2f1e8484008e9e9609 # v1
+        uses: benc-uk/workflow-dispatch@31e2b3319479a63f0ab15bf800eff9e913504e26 # v1.3.2
         with:
           workflow: create-pr.yml
           repo: kong/openresty-patches-review
