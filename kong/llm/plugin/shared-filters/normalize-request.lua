@@ -163,7 +163,6 @@ local function validate_and_transform(conf)
     kong.service.request.set_header("Accept-Encoding", "identity")
   end
 
-
   -- if this is a 'native' request with adapter,
   -- we need to update all the request/inference parameters as appropriate.
   -- for performance reasons, only read the raw body now if ABSOLUTELY necessary

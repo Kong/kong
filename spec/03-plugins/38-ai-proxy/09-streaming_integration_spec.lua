@@ -1396,7 +1396,7 @@ for _, strategy in helpers.all_strategies() do
           end
         until not buffer
 
-        assert.equal("gzip, identity", res.headers["X-Upstream-Accept-Encoding"])
+        assert.equal("identity", res.headers["X-Upstream-Accept-Encoding"])
         assert.truthy(found_marker, "didn't find bedrock native response marker, is it being transformer?")
 
         -- to verify not enable `kong.service.request.enable_buffering()`
