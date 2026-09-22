@@ -3,7 +3,15 @@ local gsub = string.gsub
 
 local match        = string.match
 local unescape_uri = ngx.unescape_uri
+local escape_uri   = ngx.escape_uri
 local pairs = pairs
+local type = type
+local tostring = tostring
+local next = next
+local setmetatable = setmetatable
+local table_insert = table.insert
+local table_sort   = table.sort
+local table_concat = table.concat
 
 local NULL                = "\0"
 local TRACE_ID_SIZE_BYTES = 16
@@ -19,6 +27,7 @@ local FORMATS = {
   AWS       = "aws",
   GCP       = "gcp",
   INSTANA   = "instana",
+  MCP       = "mcp",
 }
 
 local function hex_to_char(c)
@@ -64,6 +73,64 @@ local function parse_baggage_headers(headers, header_pattern)
   end
 end
 
+local function parse_w3c_baggage(baggage_raw)
+  if not baggage_raw then
+    return nil
+  end
+
+  local baggage
+  if type(baggage_raw) == "table" then
+    for k, v in pairs(baggage_raw) do
+      if type(k) == "string" and (type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        if not baggage then
+          baggage = {}
+        end
+        baggage[k] = tostring(v)
+      end
+    end
+  elseif type(baggage_raw) == "string" then
+    for item in baggage_raw:gmatch("[^,]+") do
+      item = item:match("^%s*(.-)%s*$")
+      if item and item ~= "" then
+        local key_val = item:match("^([^;]+)")
+        if key_val then
+          local k, v = key_val:match("^%s*([^=]+)%s*=%s*(.-)%s*$")
+          if k and v then
+            if not baggage then
+              baggage = {}
+            end
+            baggage[unescape_uri(k)] = unescape_uri(v)
+          end
+        end
+      end
+    end
+  end
+
+  if baggage and next(baggage) ~= nil then
+    return setmetatable(baggage, baggage_mt)
+  end
+end
+
+local function format_w3c_baggage(baggage)
+  if not baggage or type(baggage) ~= "table" or next(baggage) == nil then
+    return nil
+  end
+
+  local items = {}
+  for k, v in pairs(baggage) do
+    if type(k) == "string" and v ~= nil then
+      table_insert(items, escape_uri(k) .. "=" .. escape_uri(tostring(v)))
+    end
+  end
+
+  if #items == 0 then
+    return nil
+  end
+
+  table_sort(items)
+  return table_concat(items, ",")
+end
+
 local function to_id_size(id, length)
   if not id then
     return nil
@@ -96,4 +163,6 @@ return {
   to_kong_trace_id = to_kong_trace_id,
   to_kong_span_id = to_kong_span_id,
   parse_baggage_headers = parse_baggage_headers,
+  parse_w3c_baggage = parse_w3c_baggage,
+  format_w3c_baggage = format_w3c_baggage,
 }
