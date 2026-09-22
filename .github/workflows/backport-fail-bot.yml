@@ -7,7 +7,10 @@ on:
 jobs:
   check_comment:
     runs-on: ubuntu-latest
-    if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'cherry-pick the changes locally and resolve any conflicts')
+    if: >
+      github.event.issue.pull_request != null &&
+      contains(fromJSON('["MEMBER", "COLLABORATOR", "OWNER"]'), github.event.comment.author_association) &&
+      contains(github.event.comment.body, 'cherry-pick the changes locally and resolve any conflicts')
 
     steps:
     - name: Fetch mapping file
@@ -29,11 +32,13 @@ jobs:
       env:
         SLACK_CHANNEL: gateway-notifications
         SLACK_MAPPING: "${{ steps.fetch_mapping.outputs.result }}"
+        PR_URL: ${{ github.event.issue.pull_request.html_url }}
+        PR_AUTHOR: ${{ github.event.issue.user.login }}
       with:
         script: |
-          const pr_url = ${{ github.event.issue.pull_request.html_url }};
+          const pr_url = process.env.PR_URL;
           const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
-          const pr_author_github_id = ${{ github.event.issue.user.login }};
+          const pr_author_github_id = process.env.PR_AUTHOR;
           const pr_author_slack_id = slack_mapping[pr_author_github_id];
           const author = pr_author_slack_id ? `<@${pr_author_slack_id}>` : pr_author_github_id;
           const payload = {
