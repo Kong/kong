@@ -1,3 +1,0 @@
-message: "Bumped OpenSSL from 3.4.1 to 3.5.5."
-type: dependency
-scope: Core
