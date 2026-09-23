@@ -174,7 +174,6 @@ Supported build targets for binary packages:
 
 - `:kong_deb`
 - `:kong_el8`
-- `:kong_aws2`
 - `:kong_aws2023`
 
 For example, to build the deb package:
@@ -223,8 +222,7 @@ Cross compiling is currently only tested on Ubuntu 22.04/24.04 x86_64 with follo
 - **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
   - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.
 - **//:vendor_name-crossbuild-aarch64** Target to Redhat based Linux aarch64; bazel manages the build toolchain, `vendor_name`
-can be any of `rhel8`, `rhel9`, `aws2` or `aws2023`.
-- **//:aws2-crossbuild-x86_64** Target to AmazonLinux 2 x86_64; bazel manages the build toolchain.
+can be any of `rhel8`, `rhel9` or `aws2023`.
 
 Make sure platforms are selected both in building Kong and packaging kong:
 

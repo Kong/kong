@@ -60,19 +60,6 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_aws2",
-    config = "//build:package/nfpm.yaml",
-    env = nfpm_env,
-    extra_env = {
-        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
-        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
-    },
-    packager = "rpm",
-    pkg_name = "kong.aws2",
-    visibility = ["//visibility:public"],
-)
-
-nfpm_pkg(
     name = "kong_aws2023",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
@@ -123,20 +110,6 @@ config_setting(
     name = "brotli_flag",
     flag_values = {
         ":brotli": "true",
-    },
-    visibility = ["//visibility:public"],
-)
-
-# --//:simdjson=true
-bool_flag(
-    name = "simdjson",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "simdjson_flag",
-    flag_values = {
-        ":simdjson": "true",
     },
     visibility = ["//visibility:public"],
 )
@@ -294,16 +267,6 @@ platform(
     )
     for vendor in aarch64_glibc_distros
 ]
-
-platform(
-    name = "aws2-crossbuild-x86_64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-        "//build/platforms/distro:aws2",
-        ":cross_build",
-    ],
-)
 
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes

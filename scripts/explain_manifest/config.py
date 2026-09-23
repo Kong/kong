@@ -38,22 +38,6 @@ def transform(f: FileInfo):
 # - https://repology.org/project/gcc/versions
 # TODO: libstdc++ verions
 targets = {
-    "amazonlinux-2-amd64": ExpectSuite(
-        name="Amazon Linux 2 (amd64)",
-        manifest="fixtures/amazonlinux-2-amd64.txt",
-        use_rpath=True,
-        tests={
-            common_suites: {
-                "skip_libsimdjson_ffi": True,
-            },
-            libc_libcpp_suites: {
-                "libc_max_version": "2.26",
-                # gcc 7.3.1
-                "libcxx_max_version": "3.4.24",
-                "cxxabi_max_version": "1.3.11",
-            },
-        },
-    ),
     "amazonlinux-2023-amd64": ExpectSuite(
         name="Amazon Linux 2023 (amd64)",
         manifest="fixtures/amazonlinux-2023-amd64.txt",

@@ -23,9 +23,3 @@ constraint_value(
     constraint_setting = ":distro",
     visibility = ["//visibility:public"],
 )
-
-constraint_value(
-    name = "aws2",
-    constraint_setting = ":distro",
-    visibility = ["//visibility:public"],
-)

@@ -110,7 +110,6 @@ selects.config_setting_group(
         "@kong//build/platforms/distro:rhel9",
         "@kong//build/platforms/distro:rhel8",
         "@kong//build/platforms/distro:aws2023",
-        "@kong//build/platforms/distro:aws2",
     ],
 )
 
