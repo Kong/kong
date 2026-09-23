@@ -1,0 +1,3 @@
+message: Added the `wasm_filters` configuration parameter for enabling individual filters
+type: feature
+scope: Configuration

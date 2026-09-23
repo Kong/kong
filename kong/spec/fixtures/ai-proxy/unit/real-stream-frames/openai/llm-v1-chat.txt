@@ -1,0 +1,1 @@
+data: {"choices": [{"delta": {"content": "the answer"},"finish_reason": null,"index": 0,"logprobs": null}],"created": 1711938086,"id": "chatcmpl-991aYb1iD8OSD54gcxZxv8uazlTZy","model": "gpt-4-0613","object": "chat.completion.chunk","system_fingerprint": null}

@@ -1,0 +1,3 @@
+message: Improved proxy performance by refactoring internal hooking mechanism.
+type: performance
+scope: Performance

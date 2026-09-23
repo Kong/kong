@@ -1,0 +1,8 @@
+{
+  "prompt": "Explain why you can't divide by zero?",
+  "model": "gpt-3.5-turbo-instruct",
+  "max_tokens": 512,
+  "temperature": 0.5,
+  "stream": false,
+  "top_p": 1
+}

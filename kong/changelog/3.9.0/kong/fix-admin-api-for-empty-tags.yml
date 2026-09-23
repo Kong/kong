@@ -1,0 +1,3 @@
+message: Fix for querying admin API entities with empty tags
+type: bugfix
+scope: Admin API

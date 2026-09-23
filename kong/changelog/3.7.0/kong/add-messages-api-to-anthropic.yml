@@ -1,0 +1,6 @@
+"message": |
+  **AI Proxy**: To support the new messages API of `Anthropic`, the upstream path of the `Anthropic` for `llm/v1/chat` route type has changed from `/v1/complete` to `/v1/messages`.
+"type": breaking_change
+"scope": Plugin
+"jiras":
+- FTI-5770

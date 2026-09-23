@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where OpenAI chat completion's tool_choice was not converted to Anthropic's.
+type: bugfix
+scope: Plugin

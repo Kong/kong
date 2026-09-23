@@ -1,0 +1,6 @@
+message: >
+  Bumped lua-resty-openssl to 1.5.1
+  to fix some issues including a potential
+  use-after-free issue.
+type: dependency
+scope: Core

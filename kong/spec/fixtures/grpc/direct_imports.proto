@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+import "helloworld.proto";
+
+service Own {
+  rpc Open(hello.HelloRequest) returns (hello.HelloResponse);
+}

@@ -1,0 +1,4 @@
+message: |
+  Addded support for EdDSA algorithms in JWT plugin
+type: feature
+scope: Plugin

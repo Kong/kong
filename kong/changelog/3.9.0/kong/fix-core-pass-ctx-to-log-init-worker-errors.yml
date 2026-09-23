@@ -1,0 +1,4 @@
+message: |
+   Fix to always pass `ngx.ctx` to `log_init_worker_errors` as otherwise it may runtime crash.
+type: bugfix
+scope: Core

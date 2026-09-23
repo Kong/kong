@@ -1,0 +1,5 @@
+message: |
+  Changed the way deprecated shorthand fields are used with new fields.
+  If the new field contains null it allows for deprecated field to overwrite it if both are present in the request.
+type: bugfix
+scope: Core

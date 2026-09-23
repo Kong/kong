@@ -1,0 +1,3 @@
+message: "**AI-Proxy**: Resolved a bug where the object constructor would set data on the class instead of the instance"
+type: bugfix
+scope: Plugin

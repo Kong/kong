@@ -1,0 +1,4 @@
+message: |
+   **AI-Proxy**: Fixed issue where multi-modal requests is blocked on azure provider. 
+type: bugfix
+scope: Plugin

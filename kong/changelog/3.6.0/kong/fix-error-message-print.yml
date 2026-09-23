@@ -1,0 +1,3 @@
+message: print error message correctly when plugin fails
+type: bugfix
+scope: Core

@@ -1,0 +1,3 @@
+message: "**AWS-Lambda**: Fixed an issue in proxy integration mode that caused internal server error when the `multiValueHeaders` is null."
+type: bugfix
+scope: Plugin

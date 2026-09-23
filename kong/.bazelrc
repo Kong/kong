@@ -1,0 +1,54 @@
+# Bazel doesn't need more than 200MB of memory for local build based on memory profiling:
+# https://docs.bazel.build/versions/master/skylark/performance.html#memory-profiling
+# The default JVM max heapsize is 1/4 of physical memory up to 32GB which could be large
+# enough to consume all memory constrained by cgroup in large host.
+# Limiting JVM heapsize here to let it do GC more when approaching the limit to
+# leave room for compiler/linker.
+# The number 3G is chosen heuristically to both support large VM and small VM with RBE.
+# Startup options cannot be selected via config.
+startup --host_jvm_args=-Xmx512m
+
+run --color=yes
+
+common --color=yes
+common --curses=auto
+
+# TODO: remove after bump to bazel >= 8
+common --enable_workspace
+
+build --experimental_ui_max_stdouterr_bytes=10485760
+
+build --show_progress_rate_limit=0
+build --show_timestamps
+build --worker_verbose
+
+build --incompatible_strict_action_env
+
+# make output files and directories 0755 instead of 0555
+build --experimental_writable_outputs
+
+
+# Pass PATH, CC, CXX variables from the environment.
+build --action_env=CC --host_action_env=CC
+build --action_env=CXX --host_action_env=CXX
+build --action_env=PATH --host_action_env=PATH
+
+# temporary fix for https://github.com/bazelbuild/bazel/issues/12905 on macOS
+build --features=-debug_prefix_map_pwd_is_dot
+
+# Build flags.
+build --action_env=BUILD_NAME=kong-dev
+build --action_env=INSTALL_DESTDIR=MANAGED
+build --strip=never
+
+# Release flags
+build:release --//:debug=false
+build:release --//:licensing=true
+build:release --action_env=BUILD_NAME=kong-dev
+build:release --action_env=INSTALL_DESTDIR=/usr/local
+build:release --compilation_mode=opt
+build:release --copt="-g"
+build:release --strip=never
+
+build --spawn_strategy=local
+

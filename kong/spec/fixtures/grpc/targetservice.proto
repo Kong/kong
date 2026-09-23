@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package targetservice;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./targetservice";
+
+service Bouncer {
+  rpc SayHello(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      // https://github.com/googleapis/googleapis/blob/master/google/api/http.proto
+      // HTTP | gRPC
+      // -----|-----
+      // `GET /v1/messages/123456`  | `HelloRequest(greeting: "123456")`
+      get: "/v1/messages/{greeting}"
+      additional_bindings {
+        get: "/v1/messages/legacy/{greeting=**}"
+        additional_bindings {
+          post: "/v1/messages/"
+        }
+      }
+      body: "*"
+    };
+  };
+
+  // define a gRPC method that's not implemented in the target
+  rpc UnknownMethod(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/v1/unknown/{greeting}"
+    };
+  };
+
+  rpc BounceIt (BallIn) returns (BallOut) {
+    option (google.api.http) = {
+      post: "/bounce"
+      body: "*"
+    };
+  }
+
+  rpc GrowTail(Body) returns (Body) {
+    option (google.api.http) = {
+      get: "/v1/grow/tail"
+    };
+  }
+
+  rpc Echo(EchoMsg) returns (EchoMsg) {
+    option (google.api.http) = {
+      post: "/v1/echo"
+      body: "*"
+    };
+  }
+}
+
+
+message HelloRequest {
+  string greeting = 1;
+  bool boolean_test = 2;
+}
+
+message HelloResponse {
+  string reply = 1;
+  bool boolean_test = 2;
+}
+
+
+message BallIn {
+  string message = 1;
+  google.protobuf.Timestamp when = 2;
+  google.protobuf.Timestamp now = 3;
+}
+
+message BallOut {
+  string reply = 1;
+  string time_message = 2;
+  google.protobuf.Timestamp now = 3;
+}
+
+message Limb {
+  int32 count = 1;
+  string endings = 2;
+}
+
+message Body {
+  string name = 1;
+  Limb hands = 2;
+  Limb legs = 3;
+  Limb tail = 4;
+}
+
+message EchoMsg {
+  repeated string array = 1;
+  string nullable = 2;
+}

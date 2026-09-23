@@ -1,0 +1,3 @@
+message: Bumped libexpat from 2.6.2 to 2.6.4 to fix a crash in the XML_ResumeParser function caused by XML_StopParser stopping an uninitialized parser.
+type: dependency
+scope: Core

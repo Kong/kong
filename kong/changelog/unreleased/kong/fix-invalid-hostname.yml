@@ -1,0 +1,5 @@
+message: >
+  Fixed an issue where upstream connection pooling failed when pool names exceeded 32 characters 
+  by applying a patch from upstream OpenResty.
+type: "bugfix"
+scope: "Core"

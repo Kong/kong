@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where setting `tls_verify` to `false` didn't override the global level `proxy_ssl_verify`.
+type: bugfix
+scope: Core

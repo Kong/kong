@@ -1,0 +1,3 @@
+message: "**Datadog**: Fix a bug that datadog plugin is not triggered for serviceless routes. In this fix, datadog plugin is always triggered, and the value of tag `name`(service_name) is set as an empty value."
+type: bugfix
+scope: Plugin

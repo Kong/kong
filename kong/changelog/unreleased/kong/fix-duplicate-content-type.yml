@@ -1,0 +1,4 @@
+message: |
+  Fixed error caused by duplicate `Content-Type`.
+type: bugfix
+scope: Admin API

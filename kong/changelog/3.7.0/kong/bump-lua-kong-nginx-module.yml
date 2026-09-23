@@ -1,0 +1,4 @@
+message: |
+  Bumped lua-kong-nginx-module from 0.8.0 to 0.11.0
+type: dependency
+scope: Core

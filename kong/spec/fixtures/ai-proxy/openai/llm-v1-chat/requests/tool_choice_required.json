@@ -1,0 +1,21 @@
+{
+  "model": "gpt-4-0613",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the weather today in Paris?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_current_weather",
+        "parameters": {
+          "location": "Paris"
+        }
+      }
+    }
+  ],
+  "tool_choice": "required"
+}

@@ -1,0 +1,20 @@
+{
+	"messages":[
+		{
+			"role": "system",
+			"content": "You are a video game knowledgebase."
+		},
+		{
+			"role": "user",
+			"content": "What is Missingno.?"
+		},
+		{
+			"role": "system",
+			"content": "Missingno. is a weird character from a popular game."
+		},
+		{
+			"role": "user",
+			"content": "Why is it popular?"
+		}
+	]
+}

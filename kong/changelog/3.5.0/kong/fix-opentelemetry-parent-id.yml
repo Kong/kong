@@ -1,0 +1,3 @@
+message: "**Opentelemetry**: fix an issue that resulted in traces with invalid parent IDs when `balancer` instrumentation was enabled"
+type: bugfix
+scope: Plugin

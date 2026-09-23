@@ -1,0 +1,3 @@
+message: Allow primary key passed as a full entity to DAO functions.
+type: feature
+scope: Core

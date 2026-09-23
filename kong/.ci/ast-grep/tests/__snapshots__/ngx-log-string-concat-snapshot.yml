@@ -1,0 +1,264 @@
+id: ngx-log-string-concat
+snapshots:
+  ? |
+    local foo = ngx.log
+
+    foo(ngx.NOTICE, b .. c .. ": STRING")
+  : labels:
+    - source: 'b .. c .. ": STRING"'
+      style: primary
+      start: 37
+      end: 57
+    - source: foo = ngx.log
+      style: secondary
+      start: 6
+      end: 19
+    - source: |
+        local foo = ngx.log
+
+        foo(ngx.NOTICE, b .. c .. ": STRING")
+      style: secondary
+      start: 0
+      end: 59
+    - source: 'foo(ngx.NOTICE, b .. c .. ": STRING")'
+      style: secondary
+      start: 21
+      end: 58
+    - source: '(ngx.NOTICE, b .. c .. ": STRING")'
+      style: secondary
+      start: 24
+      end: 58
+  ? |
+    local foo = ngx.log
+
+    if true then
+      local function my_log(a, b, c)
+        foo(ngx.NOTICE, b .. c .. ": STRING")
+      end
+    end
+  : labels:
+    - source: 'b .. c .. ": STRING"'
+      style: primary
+      start: 87
+      end: 107
+    - source: foo = ngx.log
+      style: secondary
+      start: 6
+      end: 19
+    - source: |
+        local foo = ngx.log
+
+        if true then
+          local function my_log(a, b, c)
+            foo(ngx.NOTICE, b .. c .. ": STRING")
+          end
+        end
+      style: secondary
+      start: 0
+      end: 119
+    - source: 'foo(ngx.NOTICE, b .. c .. ": STRING")'
+      style: secondary
+      start: 71
+      end: 108
+    - source: '(ngx.NOTICE, b .. c .. ": STRING")'
+      style: secondary
+      start: 74
+      end: 108
+  ? |
+    local ngx_log = ngx.log
+    local foo = ngx.log
+
+    if true then
+      local function my_log(a, b, c)
+        ngx_log(ngx.ERR, "STRING: " .. a)
+        foo(ngx.NOTICE, b .. c .. ": STRING")
+      end
+    end
+  : labels:
+    - source: '"STRING: " .. a'
+      style: primary
+      start: 112
+      end: 127
+    - source: ngx_log = ngx.log
+      style: secondary
+      start: 6
+      end: 23
+    - source: |
+        local ngx_log = ngx.log
+        local foo = ngx.log
+
+        if true then
+          local function my_log(a, b, c)
+            ngx_log(ngx.ERR, "STRING: " .. a)
+            foo(ngx.NOTICE, b .. c .. ": STRING")
+          end
+        end
+      style: secondary
+      start: 0
+      end: 181
+    - source: 'ngx_log(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 95
+      end: 128
+    - source: '(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 102
+      end: 128
+  ? |
+    local ngx_log = ngx.log
+    local foo = ngx.log
+
+    local function my_log(a, b, c)
+      ngx_log(ngx.ERR, "STRING: " .. a)
+      foo(ngx.NOTICE, b .. c .. ": STRING")
+    end
+    my_log(1, 2, 3)
+  : labels:
+    - source: '"STRING: " .. a'
+      style: primary
+      start: 95
+      end: 110
+    - source: ngx_log = ngx.log
+      style: secondary
+      start: 6
+      end: 23
+    - source: |
+        local ngx_log = ngx.log
+        local foo = ngx.log
+
+        local function my_log(a, b, c)
+          ngx_log(ngx.ERR, "STRING: " .. a)
+          foo(ngx.NOTICE, b .. c .. ": STRING")
+        end
+        my_log(1, 2, 3)
+      style: secondary
+      start: 0
+      end: 172
+    - source: 'ngx_log(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 78
+      end: 111
+    - source: '(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 85
+      end: 111
+  ? |
+    local ngx_log = ngx.log
+    local foo = ngx.log
+
+    ngx_log(ngx.ERR, "STRING: " .. a)
+    foo(ngx.NOTICE, b .. c .. ": STRING")
+  : labels:
+    - source: '"STRING: " .. a'
+      style: primary
+      start: 62
+      end: 77
+    - source: ngx_log = ngx.log
+      style: secondary
+      start: 6
+      end: 23
+    - source: |
+        local ngx_log = ngx.log
+        local foo = ngx.log
+
+        ngx_log(ngx.ERR, "STRING: " .. a)
+        foo(ngx.NOTICE, b .. c .. ": STRING")
+      style: secondary
+      start: 0
+      end: 117
+    - source: 'ngx_log(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 45
+      end: 78
+    - source: '(ngx.ERR, "STRING: " .. a)'
+      style: secondary
+      start: 52
+      end: 78
+  ? |
+    ngx.log(ngx.INFO, "STRING: " .. my_var .. ": STRING")
+  : labels:
+    - source: '"STRING: " .. my_var .. ": STRING"'
+      style: primary
+      start: 18
+      end: 52
+    - source: 'ngx.log(ngx.INFO, "STRING: " .. my_var .. ": STRING")'
+      style: secondary
+      start: 0
+      end: 53
+    - source: '(ngx.INFO, "STRING: " .. my_var .. ": STRING")'
+      style: secondary
+      start: 7
+      end: 53
+  'ngx.log(ngx.INFO, "STRING: " .. my_var)':
+    labels:
+    - source: '"STRING: " .. my_var'
+      style: primary
+      start: 18
+      end: 38
+    - source: 'ngx.log(ngx.INFO, "STRING: " .. my_var)'
+      style: secondary
+      start: 0
+      end: 39
+    - source: '(ngx.INFO, "STRING: " .. my_var)'
+      style: secondary
+      start: 7
+      end: 39
+  ? |
+    ngx.log(ngx.INFO, "STRING: " .. my_var)
+  : labels:
+    - source: '"STRING: " .. my_var'
+      style: primary
+      start: 18
+      end: 38
+    - source: 'ngx.log(ngx.INFO, "STRING: " .. my_var)'
+      style: secondary
+      start: 0
+      end: 39
+    - source: '(ngx.INFO, "STRING: " .. my_var)'
+      style: secondary
+      start: 7
+      end: 39
+  ? |
+    ngx.log(ngx.INFO, my_var .. ": STRING :" .. my_other_var)
+  : labels:
+    - source: 'my_var .. ": STRING :" .. my_other_var'
+      style: primary
+      start: 18
+      end: 56
+    - source: 'ngx.log(ngx.INFO, my_var .. ": STRING :" .. my_other_var)'
+      style: secondary
+      start: 0
+      end: 57
+    - source: '(ngx.INFO, my_var .. ": STRING :" .. my_other_var)'
+      style: secondary
+      start: 7
+      end: 57
+  'ngx.log(ngx.INFO, my_var .. ": STRING")':
+    labels:
+    - source: 'my_var .. ": STRING"'
+      style: primary
+      start: 18
+      end: 38
+    - source: 'ngx.log(ngx.INFO, my_var .. ": STRING")'
+      style: secondary
+      start: 0
+      end: 39
+    - source: '(ngx.INFO, my_var .. ": STRING")'
+      style: secondary
+      start: 7
+      end: 39
+  ? |
+    ngx.log(ngx.INFO, my_var .. ": STRING")
+  : labels:
+    - source: 'my_var .. ": STRING"'
+      style: primary
+      start: 18
+      end: 38
+    - source: 'ngx.log(ngx.INFO, my_var .. ": STRING")'
+      style: secondary
+      start: 0
+      end: 39
+    - source: '(ngx.INFO, my_var .. ": STRING")'
+      style: secondary
+      start: 7
+      end: 39

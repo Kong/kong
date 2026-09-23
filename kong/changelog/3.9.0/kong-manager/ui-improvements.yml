@@ -1,0 +1,22 @@
+message: Improved the user experience in Kong Manager by fixing various UI-related issues.
+type: bugfix
+githubs:
+  - 277
+  - 283
+  - 286
+  - 287
+  - 288
+  - 291
+  - 293
+  - 295
+  - 298
+  - 302
+  - 304
+  - 306
+  - 309
+  - 317
+  - 319
+  - 322
+  - 325
+  - 329
+  - 330

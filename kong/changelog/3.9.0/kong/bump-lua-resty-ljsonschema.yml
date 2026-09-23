@@ -1,0 +1,2 @@
+message: "Bumped lua-resty-ljsonschema to 1.2.0, adding support for `null` as a valid option in `enum` types and properly calculation of utf8 string length instead of byte count"
+type: dependency

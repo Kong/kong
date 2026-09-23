@@ -1,0 +1,3 @@
+message: The default value of `dns_no_sync` option has been changed to `on`
+type: bugfix
+scope: Configuration

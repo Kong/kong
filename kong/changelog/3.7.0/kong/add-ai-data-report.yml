@@ -1,0 +1,3 @@
+"message": Added `events:ai:response_tokens`, `events:ai:prompt_tokens` and `events:ai:requests` to the anonymous report to start counting AI usage
+"type": feature
+"scope": Core

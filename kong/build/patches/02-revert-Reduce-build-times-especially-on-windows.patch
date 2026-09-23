@@ -1,0 +1,702 @@
+From 915e2b2c57e5450bf812e31c48675b1d5a8a03e6 Mon Sep 17 00:00:00 2001
+From: Wangchong Zhou <wangchong@konghq.com>
+Date: Wed, 11 Sep 2024 04:09:29 +0800
+Subject: [PATCH] Revert "Reduce build times (especially on windows) by
+ symlinking directories (#983)"
+
+This reverts commit 6425a21252116dac7553644b29248c2cf123c08d.
+---
+ foreign_cc/ninja.bzl                          |  2 +-
+ foreign_cc/private/framework.bzl              |  6 ++---
+ .../private/framework/toolchains/commands.bzl |  2 --
+ .../framework/toolchains/freebsd_commands.bzl | 21 +++++-----------
+ .../framework/toolchains/linux_commands.bzl   | 21 +++++-----------
+ .../framework/toolchains/macos_commands.bzl   | 21 +++++-----------
+ .../framework/toolchains/windows_commands.bzl | 23 ++++++------------
+ foreign_cc/private/make_script.bzl            |  2 +-
+ test/BUILD.bazel                              |  2 +-
+ test/convert_shell_script_test.bzl            | 24 +++++++++----------
+ test/expected/inner_fun_text.txt              | 19 ++++-----------
+ test/expected/inner_fun_text_freebsd.txt      | 19 ++++-----------
+ test/expected/inner_fun_text_macos.txt        | 19 ++++-----------
+ test/symlink_contents_to_dir_test_rule.bzl    |  4 ++--
+ 14 files changed, 59 insertions(+), 126 deletions(-)
+
+diff --git a/foreign_cc/ninja.bzl b/foreign_cc/ninja.bzl
+index 9b872e6..6242e0e 100644
+--- a/foreign_cc/ninja.bzl
++++ b/foreign_cc/ninja.bzl
+@@ -51,7 +51,7 @@ def _create_ninja_script(configureParameters):
+     script = []
+ 
+     root = detect_root(ctx.attr.lib_source)
+-    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$ False".format(root))
++    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$".format(root))
+ 
+     data = ctx.attr.data + ctx.attr.build_data
+ 
+diff --git a/foreign_cc/private/framework.bzl b/foreign_cc/private/framework.bzl
+index 892467e..84b74ad 100644
+--- a/foreign_cc/private/framework.bzl
++++ b/foreign_cc/private/framework.bzl
+@@ -728,10 +728,10 @@ def _copy_deps_and_tools(files):
+     for tool in files.tools_files:
+         tool_prefix = "$EXT_BUILD_ROOT/"
+         tool = tool[len(tool_prefix):] if tool.startswith(tool_prefix) else tool
+-        lines.append("##symlink_to_dir## $$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$/bin/ False".format(tool))
++        lines.append("##symlink_to_dir## $$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$/bin/".format(tool))
+ 
+     for ext_dir in files.ext_build_dirs:
+-        lines.append("##symlink_to_dir## $$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$ True".format(_file_path(ext_dir)))
++        lines.append("##symlink_to_dir## $$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$".format(_file_path(ext_dir)))
+ 
+     lines.append("##path## $$EXT_BUILD_DEPS$$/bin")
+ 
+@@ -749,7 +749,7 @@ def _symlink_contents_to_dir(dir_name, files_list):
+         path = _file_path(file).strip()
+         if path:
+             lines.append("##symlink_contents_to_dir## \
+-$$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$/{} True".format(path, dir_name))
++$$EXT_BUILD_ROOT$$/{} $$EXT_BUILD_DEPS$$/{}".format(path, dir_name))
+ 
+     return lines
+ 
+diff --git a/foreign_cc/private/framework/toolchains/commands.bzl b/foreign_cc/private/framework/toolchains/commands.bzl
+index e4f1073..148a4a5 100644
+--- a/foreign_cc/private/framework/toolchains/commands.bzl
++++ b/foreign_cc/private/framework/toolchains/commands.bzl
+@@ -227,7 +227,6 @@ PLATFORM_COMMANDS = {
+                 doc = "Source directory, immediate children of which are symlinked, or file to be symlinked.",
+             ),
+             _argument_info(name = "target", data_type = type(""), doc = "Target directory"),
+-            _argument_info(name = "replace_in_files", data_type = type(""), doc = "True if all transitive files in the source directory should have replace_in_files run"),
+         ],
+         doc = (
+             "Symlink contents of the directory to target directory (create the target directory if needed). " +
+@@ -242,7 +241,6 @@ PLATFORM_COMMANDS = {
+                 doc = "Source directory",
+             ),
+             _argument_info(name = "target", data_type = type(""), doc = "Target directory"),
+-            _argument_info(name = "replace_in_files", data_type = type(""), doc = "True if all transitive files in the source directory should have replace_in_files run"),
+         ],
+         doc = (
+             "Symlink all files from source directory to target directory (create the target directory if needed). " +
+diff --git a/foreign_cc/private/framework/toolchains/freebsd_commands.bzl b/foreign_cc/private/framework/toolchains/freebsd_commands.bzl
+index 9fb552f..80ae2ad 100644
+--- a/foreign_cc/private/framework/toolchains/freebsd_commands.bzl
++++ b/foreign_cc/private/framework/toolchains/freebsd_commands.bzl
+@@ -109,7 +109,7 @@ find "{target}" -type f -exec touch -r "{source}" "{{}}" \\;
+         target = target,
+     )
+ 
+-def symlink_contents_to_dir(_source, _target, _replace_in_files):
++def symlink_contents_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_contents_to_dir is unexpectedly empty"
+@@ -121,25 +121,24 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-  ##symlink_to_dir## "$1" "$target" "$replace_in_files"
++  ##symlink_to_dir## "$1" "$target"
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+   local actual=$(readlink "$1")
+-  ##symlink_contents_to_dir## "$actual" "$target" "$replace_in_files"
++  ##symlink_contents_to_dir## "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+   IFS=$SAVEIFS
+   for child in "${children[@]:-}"; do
+-    ##symlink_to_dir## "$child" "$target" "$replace_in_files"
++    ##symlink_to_dir## "$child" "$target"
+   done
+ fi
+ """
+     return FunctionAndCallInfo(text = text)
+ 
+-def symlink_to_dir(_source, _target, _replace_in_files):
++def symlink_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_to_dir is unexpectedly empty"
+@@ -151,7 +150,6 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+   # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+   # files so updating them is possible.
+@@ -164,13 +162,6 @@ if [[ -f "$1" ]]; then
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+   cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-  # If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-  if [[ "$replace_in_files" = False ]]; then
+-    ln -s -f "$1" "$target"
+-    return
+-  fi
+-
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+@@ -179,7 +170,7 @@ elif [[ -d "$1" ]]; then
+   mkdir -p "$target/$dirname"
+   for child in "${children[@]:-}"; do
+     if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-      ##symlink_to_dir## "$child" "$target/$dirname" "$replace_in_files"
++      ##symlink_to_dir## "$child" "$target/$dirname"
+     fi
+   done
+ else
+diff --git a/foreign_cc/private/framework/toolchains/linux_commands.bzl b/foreign_cc/private/framework/toolchains/linux_commands.bzl
+index ba265eb..e5781d6 100644
+--- a/foreign_cc/private/framework/toolchains/linux_commands.bzl
++++ b/foreign_cc/private/framework/toolchains/linux_commands.bzl
+@@ -91,7 +91,7 @@ def copy_dir_contents_to_dir(source, target):
+         target = target,
+     )
+ 
+-def symlink_contents_to_dir(_source, _target, _replace_in_files):
++def symlink_contents_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_contents_to_dir is unexpectedly empty"
+@@ -103,25 +103,24 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-  ##symlink_to_dir## "$1" "$target" "$replace_in_files"
++  ##symlink_to_dir## "$1" "$target"
+ elif [[ -L "$1" ]]; then
+   local actual=$(readlink "$1")
+-  ##symlink_contents_to_dir## "$actual" "$target" "$replace_in_files"
++  ##symlink_contents_to_dir## "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find -H "$1" -maxdepth 1 -mindepth 1))
+   IFS=$SAVEIFS
+   for child in "${children[@]:-}"; do
+-    ##symlink_to_dir## "$child" "$target" "$replace_in_files"
++    ##symlink_to_dir## "$child" "$target"
+   done
+ fi
+ """
+     return FunctionAndCallInfo(text = text)
+ 
+-def symlink_to_dir(_source, _target, _replace_in_files):
++def symlink_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_to_dir is unexpectedly empty"
+@@ -133,7 +132,6 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+   # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+   # files so updating them is possible.
+@@ -146,13 +144,6 @@ if [[ -f "$1" ]]; then
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+   cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-  # If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-  if [[ "$replace_in_files" = False ]]; then
+-    ln -s -f "$1" "$target"
+-    return
+-  fi
+-
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find -H "$1" -maxdepth 1 -mindepth 1))
+@@ -161,7 +152,7 @@ elif [[ -d "$1" ]]; then
+   mkdir -p "$target/$dirname"
+   for child in "${children[@]:-}"; do
+     if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-      ##symlink_to_dir## "$child" "$target/$dirname" "$replace_in_files"
++      ##symlink_to_dir## "$child" "$target/$dirname"
+     fi
+   done
+ else
+diff --git a/foreign_cc/private/framework/toolchains/macos_commands.bzl b/foreign_cc/private/framework/toolchains/macos_commands.bzl
+index ed04f24..a06924a 100644
+--- a/foreign_cc/private/framework/toolchains/macos_commands.bzl
++++ b/foreign_cc/private/framework/toolchains/macos_commands.bzl
+@@ -100,7 +100,7 @@ find "{target}" -type f -exec touch -r "{source}" "{{}}" \\;
+         target = target,
+     )
+ 
+-def symlink_contents_to_dir(_source, _target, _replace_in_files):
++def symlink_contents_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_contents_to_dir is unexpectedly empty"
+@@ -112,25 +112,24 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-  ##symlink_to_dir## "$1" "$target" "$replace_in_files"
++  ##symlink_to_dir## "$1" "$target"
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+   local actual=$(readlink "$1")
+-  ##symlink_contents_to_dir## "$actual" "$target" "$replace_in_files"
++  ##symlink_contents_to_dir## "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+   IFS=$SAVEIFS
+   for child in "${children[@]:-}"; do
+-    ##symlink_to_dir## "$child" "$target" "$replace_in_files"
++    ##symlink_to_dir## "$child" "$target"
+   done
+ fi
+ """
+     return FunctionAndCallInfo(text = text)
+ 
+-def symlink_to_dir(_source, _target, _replace_in_files):
++def symlink_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_to_dir is unexpectedly empty"
+@@ -142,7 +141,6 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+   # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+   # files so updating them is possible.
+@@ -155,13 +153,6 @@ if [[ -f "$1" ]]; then
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+   cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-  # If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-  if [[ "$replace_in_files" = False ]]; then
+-    ln -s -f "$1" "$target"
+-    return
+-  fi
+-
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+@@ -170,7 +161,7 @@ elif [[ -d "$1" ]]; then
+   mkdir -p "$target/$dirname"
+   for child in "${children[@]:-}"; do
+     if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-      ##symlink_to_dir## "$child" "$target/$dirname" "$replace_in_files"
++      ##symlink_to_dir## "$child" "$target/$dirname"
+     fi
+   done
+ else
+diff --git a/foreign_cc/private/framework/toolchains/windows_commands.bzl b/foreign_cc/private/framework/toolchains/windows_commands.bzl
+index f74cd94..b51ad07 100644
+--- a/foreign_cc/private/framework/toolchains/windows_commands.bzl
++++ b/foreign_cc/private/framework/toolchains/windows_commands.bzl
+@@ -113,7 +113,7 @@ def copy_dir_contents_to_dir(source, target):
+         target = target,
+     )
+ 
+-def symlink_contents_to_dir(_source, _target, _replace_in_files):
++def symlink_contents_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_contents_to_dir is unexpectedly empty"
+@@ -125,25 +125,24 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-  ##symlink_to_dir## "$1" "$target" "$replace_in_files"
++  ##symlink_to_dir## "$1" "$target"
+ elif [[ -L "$1" ]]; then
+   local actual=$(readlink "$1")
+-  ##symlink_contents_to_dir## "$actual" "$target" "$replace_in_files"
++  ##symlink_contents_to_dir## "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($($REAL_FIND -H "$1" -maxdepth 1 -mindepth 1))
+   IFS=$SAVEIFS
+   for child in "${children[@]}"; do
+-    ##symlink_to_dir## "$child" "$target" "$replace_in_files"
++    ##symlink_to_dir## "$child" "$target"
+   done
+ fi
+ """
+     return FunctionAndCallInfo(text = text)
+ 
+-def symlink_to_dir(_source, _target, _replace_in_files):
++def symlink_to_dir(_source, _target):
+     text = """\
+ if [[ -z "$1" ]]; then
+   echo "arg 1 to symlink_to_dir is unexpectedly empty"
+@@ -155,7 +154,6 @@ if [[ -z "$2" ]]; then
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+   # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+   # files so updating them is possible.
+@@ -167,15 +165,8 @@ if [[ -f "$1" ]]; then
+   fi
+ elif [[ -L "$1" ]]; then
+   local actual=$(readlink "$1")
+-  ##symlink_to_dir## "$actual" "$target" "$replace_in_files"
++  ##symlink_to_dir## "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+-
+-  # If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-  if [[ "$replace_in_files" = False ]]; then
+-    ln -s -f "$1" "$target"
+-    return
+-  fi
+-
+   SAVEIFS=$IFS
+   IFS=$'\n'
+   local children=($($REAL_FIND -H "$1" -maxdepth 1 -mindepth 1))
+@@ -183,7 +174,7 @@ elif [[ -d "$1" ]]; then
+   local dirname=$(basename "$1")
+   for child in "${children[@]}"; do
+     if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-      ##symlink_to_dir## "$child" "$target/$dirname" "$replace_in_files"
++      ##symlink_to_dir## "$child" "$target/$dirname"
+     fi
+   done
+ else
+diff --git a/foreign_cc/private/make_script.bzl b/foreign_cc/private/make_script.bzl
+index 5a37540..05b32af 100644
+--- a/foreign_cc/private/make_script.bzl
++++ b/foreign_cc/private/make_script.bzl
+@@ -16,7 +16,7 @@ def create_make_script(
+ 
+     script = pkgconfig_script(ext_build_dirs)
+ 
+-    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$ False".format(root))
++    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$".format(root))
+ 
+     script.append("##enable_tracing##")
+     configure_vars = get_make_env_vars(workspace_name, tools, flags, env_vars, deps, inputs, make_commands)
+diff --git a/test/BUILD.bazel b/test/BUILD.bazel
+index 9521ec4..525057f 100644
+--- a/test/BUILD.bazel
++++ b/test/BUILD.bazel
+@@ -15,7 +15,7 @@ utils_test_suite()
+ shell_script_helper_test_rule(
+     name = "shell_script_inner_fun",
+     out = "inner_fun_text.txt",
+-    script = ["##symlink_contents_to_dir## $$SOURCE_DIR$$ $$TARGET_DIR$$ False"],
++    script = ["##symlink_contents_to_dir## $$SOURCE_DIR$$ $$TARGET_DIR$$"],
+ )
+ 
+ # TODO: This should not be necessary but there appears to be some inconsistent
+diff --git a/test/convert_shell_script_test.bzl b/test/convert_shell_script_test.bzl
+index 1fe14ed..9b645e1 100644
+--- a/test/convert_shell_script_test.bzl
++++ b/test/convert_shell_script_test.bzl
+@@ -70,8 +70,8 @@ def _replace_vars_win_test(ctx):
+ 
+     return unittest.end(env)
+ 
+-def _funny_fun(a, b, c):
+-    return a + "_" + b + "_" + c
++def _funny_fun(a, b):
++    return a + "_" + b
+ 
+ def _echo(text):
+     return "echo1 " + text
+@@ -110,7 +110,7 @@ def _do_function_call_test(ctx):
+     cases = {
+         "##echo## \"\ntext\n\"": "echo1 \"\ntext\n\"",
+         "##script_prelude##": "set -euo pipefail",
+-        "##symlink_contents_to_dir## 1 2 3": "1_2_3",
++        "##symlink_contents_to_dir## 1 2": "1_2",
+         "export ROOT=\"A B C\"": "export1 ROOT=\"A B C\"",
+         "export ROOT=\"ABC\"": "export1 ROOT=\"ABC\"",
+         "export ROOT=ABC": "export1 ROOT=ABC",
+@@ -197,23 +197,22 @@ fi
+ 
+     return unittest.end(env)
+ 
+-def _symlink_contents_to_dir(_source, _target, _replace_in_files):
++def _symlink_contents_to_dir(_source, _target):
+     text = """local target="$2"
+ mkdir -p $target
+-local replace_in_files="${3:-}"
+ if [[ -f $1 ]]; then
+-  ##symlink_to_dir## $1 $target $replace_in_files
++  ##symlink_to_dir## $1 $target
+   return 0
+ fi
+ 
+ local children=$(find $1 -maxdepth 1 -mindepth 1)
+ for child in $children; do
+-  ##symlink_to_dir## $child $target $replace_in_files
++  ##symlink_to_dir## $child $target
+ done
+ """
+     return FunctionAndCallInfo(text = text)
+ 
+-def _symlink_to_dir(_source, _target, _replace_in_files):
++def _symlink_to_dir(_source, _target):
+     text = """local target="$2"
+ mkdir -p ${target}
+ 
+@@ -231,19 +230,18 @@ fi
+ 
+ def _script_conversion_test(ctx):
+     env = unittest.begin(ctx)
+-    script = ["##symlink_contents_to_dir## a b False"]
++    script = ["##symlink_contents_to_dir## a b"]
+     expected = """function symlink_contents_to_dir() {
+ local target="$2"
+ mkdir -p $target
+-local replace_in_files="${3:-}"
+ if [[ -f $1 ]]; then
+-symlink_to_dir $1 $target $replace_in_files
++symlink_to_dir $1 $target
+ return 0
+ fi
+ 
+ local children=$(find $1 -maxdepth 1 -mindepth 1)
+ for child in $children; do
+-symlink_to_dir $child $target $replace_in_files
++symlink_to_dir $child $target
+ done
+ 
+ }
+@@ -262,7 +260,7 @@ echo "Can not copy $1"
+ fi
+ 
+ }
+-symlink_contents_to_dir a b False"""
++symlink_contents_to_dir a b"""
+     shell_ = struct(
+         symlink_contents_to_dir = _symlink_contents_to_dir,
+         symlink_to_dir = _symlink_to_dir,
+diff --git a/test/expected/inner_fun_text.txt b/test/expected/inner_fun_text.txt
+index 4137d4d..e5fae1e 100755
+--- a/test/expected/inner_fun_text.txt
++++ b/test/expected/inner_fun_text.txt
+@@ -9,12 +9,11 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-symlink_to_dir "$1" "$target" "$replace_in_files"
++symlink_to_dir "$1" "$target"
+ elif [[ -L "$1" ]]; then
+ local actual=$(readlink "$1")
+-symlink_contents_to_dir "$actual" "$target" "$replace_in_files"
++symlink_contents_to_dir "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+ SAVEIFS=$IFS
+ IFS=$'
+@@ -22,7 +21,7 @@ IFS=$'
+ local children=($(find -H "$1" -maxdepth 1 -mindepth 1))
+ IFS=$SAVEIFS
+ for child in "${children[@]:-}"; do
+-symlink_to_dir "$child" "$target" "$replace_in_files"
++symlink_to_dir "$child" "$target"
+ done
+ fi
+ }
+@@ -37,7 +36,6 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+ # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+ # files so updating them is possible.
+@@ -50,13 +48,6 @@ fi
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+ cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-# If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-if [[ "$replace_in_files" = False ]]; then
+-ln -s -f "$1" "$target"
+-return
+-fi
+-
+ SAVEIFS=$IFS
+ IFS=$'
+ '
+@@ -66,11 +57,11 @@ local dirname=$(basename "$1")
+ mkdir -p "$target/$dirname"
+ for child in "${children[@]:-}"; do
+ if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-symlink_to_dir "$child" "$target/$dirname" "$replace_in_files"
++symlink_to_dir "$child" "$target/$dirname"
+ fi
+ done
+ else
+ echo "Can not copy $1"
+ fi
+ }
+-symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR False
++symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR
+diff --git a/test/expected/inner_fun_text_freebsd.txt b/test/expected/inner_fun_text_freebsd.txt
+index 990708c..52caeee 100755
+--- a/test/expected/inner_fun_text_freebsd.txt
++++ b/test/expected/inner_fun_text_freebsd.txt
+@@ -9,12 +9,11 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-symlink_to_dir "$1" "$target" "$replace_in_files"
++symlink_to_dir "$1" "$target"
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+ local actual=$(readlink "$1")
+-symlink_contents_to_dir "$actual" "$target" "$replace_in_files"
++symlink_contents_to_dir "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+ SAVEIFS=$IFS
+ IFS=$'
+@@ -22,7 +21,7 @@ IFS=$'
+ local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+ IFS=$SAVEIFS
+ for child in "${children[@]:-}"; do
+-symlink_to_dir "$child" "$target" "$replace_in_files"
++symlink_to_dir "$child" "$target"
+ done
+ fi
+ }
+@@ -37,7 +36,6 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+ # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+ # files so updating them is possible.
+@@ -50,13 +48,6 @@ fi
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+ cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-# If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-if [[ "$replace_in_files" = False ]]; then
+-ln -s -f "$1" "$target"
+-return
+-fi
+-
+ SAVEIFS=$IFS
+ IFS=$'
+ '
+@@ -66,11 +57,11 @@ local dirname=$(basename "$1")
+ mkdir -p "$target/$dirname"
+ for child in "${children[@]:-}"; do
+ if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-symlink_to_dir "$child" "$target/$dirname" "$replace_in_files"
++symlink_to_dir "$child" "$target/$dirname"
+ fi
+ done
+ else
+ echo "Can not copy $1"
+ fi
+ }
+-symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR False
++symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR
+diff --git a/test/expected/inner_fun_text_macos.txt b/test/expected/inner_fun_text_macos.txt
+index 990708c..52caeee 100755
+--- a/test/expected/inner_fun_text_macos.txt
++++ b/test/expected/inner_fun_text_macos.txt
+@@ -9,12 +9,11 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+-symlink_to_dir "$1" "$target" "$replace_in_files"
++symlink_to_dir "$1" "$target"
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+ local actual=$(readlink "$1")
+-symlink_contents_to_dir "$actual" "$target" "$replace_in_files"
++symlink_contents_to_dir "$actual" "$target"
+ elif [[ -d "$1" ]]; then
+ SAVEIFS=$IFS
+ IFS=$'
+@@ -22,7 +21,7 @@ IFS=$'
+ local children=($(find "$1/" -maxdepth 1 -mindepth 1))
+ IFS=$SAVEIFS
+ for child in "${children[@]:-}"; do
+-symlink_to_dir "$child" "$target" "$replace_in_files"
++symlink_to_dir "$child" "$target"
+ done
+ fi
+ }
+@@ -37,7 +36,6 @@ exit 1
+ fi
+ local target="$2"
+ mkdir -p "$target"
+-local replace_in_files="${3:-}"
+ if [[ -f "$1" ]]; then
+ # In order to be able to use `replace_in_files`, we ensure that we create copies of specfieid
+ # files so updating them is possible.
+@@ -50,13 +48,6 @@ fi
+ elif [[ -L "$1" && ! -d "$1" ]]; then
+ cp -pR "$1" "$2"
+ elif [[ -d "$1" ]]; then
+-
+-# If not replacing in files, simply create a symbolic link rather than traversing tree of files, which can result in very slow builds
+-if [[ "$replace_in_files" = False ]]; then
+-ln -s -f "$1" "$target"
+-return
+-fi
+-
+ SAVEIFS=$IFS
+ IFS=$'
+ '
+@@ -66,11 +57,11 @@ local dirname=$(basename "$1")
+ mkdir -p "$target/$dirname"
+ for child in "${children[@]:-}"; do
+ if [[ -n "$child" && "$dirname" != *.ext_build_deps ]]; then
+-symlink_to_dir "$child" "$target/$dirname" "$replace_in_files"
++symlink_to_dir "$child" "$target/$dirname"
+ fi
+ done
+ else
+ echo "Can not copy $1"
+ fi
+ }
+-symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR False
++symlink_contents_to_dir $SOURCE_DIR $TARGET_DIR
+diff --git a/test/symlink_contents_to_dir_test_rule.bzl b/test/symlink_contents_to_dir_test_rule.bzl
+index 896bbd9..dc3a6fa 100644
+--- a/test/symlink_contents_to_dir_test_rule.bzl
++++ b/test/symlink_contents_to_dir_test_rule.bzl
+@@ -11,8 +11,8 @@ def _symlink_contents_to_dir_test_rule_impl(ctx):
+     dir2 = detect_root(ctx.attr.dir2)
+     script_lines = [
+         "##mkdirs## aaa",
+-        "##symlink_contents_to_dir## %s aaa False" % dir1,
+-        "##symlink_contents_to_dir## %s aaa False" % dir2,
++        "##symlink_contents_to_dir## %s aaa" % dir1,
++        "##symlink_contents_to_dir## %s aaa" % dir2,
+         "ls -R aaa > %s" % out.path,
+     ]
+     converted_script = convert_shell_script(ctx, script_lines)
+-- 
+2.45.2
+

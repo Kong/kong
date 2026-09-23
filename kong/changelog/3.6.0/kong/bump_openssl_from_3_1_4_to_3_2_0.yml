@@ -1,0 +1,8 @@
+message: >-
+  In OpenSSL 3.2, the default SSL/TLS security level has been changed from 1 to 2.
+  Which means security level set to 112 bits of security. As a result
+  RSA, DSA and DH keys shorter than 2048 bits and ECC keys shorter than
+  224 bits are prohibited. In addition to the level 1 exclusions any cipher
+  suite using RC4 is also prohibited. SSL version 3 is also not allowed.
+  Compression is disabled.
+type: breaking_change

@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where SNI-based routing didn't work
+  using `tls_passthrough` and the `traditional_compatible` router flavor.
+type: bugfix
+scope: Core

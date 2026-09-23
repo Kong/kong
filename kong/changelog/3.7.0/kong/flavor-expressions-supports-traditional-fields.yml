@@ -1,0 +1,7 @@
+message: |
+  The route entity now supports the following fields when the
+  `router_flavor` is `expressions`: `methods`, `hosts`, `paths`, `headers`,
+  `snis`, `sources`, `destinations`, and `regex_priority`.
+  The meaning of these fields are consistent with the traditional route entity.
+type: feature
+scope: Core

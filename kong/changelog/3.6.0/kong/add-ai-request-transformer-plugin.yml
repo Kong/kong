@@ -1,0 +1,3 @@
+message: Introduced the new **AI Request Transformer** plugin that enables passing mid-flight consumer requests to an LLM for transformation or sanitization.
+type: feature
+scope: Plugin

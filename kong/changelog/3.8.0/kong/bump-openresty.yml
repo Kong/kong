@@ -1,0 +1,5 @@
+message: >
+  Bumped OpenResty to 1.25.3.2 to improve
+  the performance of the LuaJIT hash computation.
+type: dependency
+scope: Core

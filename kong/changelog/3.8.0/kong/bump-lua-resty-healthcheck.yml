@@ -1,0 +1,5 @@
+message: >
+  Bumped lua-resty-healthcheck from 3.0.1 to 3.1.0
+  to fix an issue that was causing high memory usage
+type: dependency
+scope: Core

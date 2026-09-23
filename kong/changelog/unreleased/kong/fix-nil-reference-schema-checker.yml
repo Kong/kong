@@ -1,0 +1,3 @@
+message: "Fix issue where the schema library would error with a nil reference if an entity checker referred to an inexistent field"
+type: bugfix
+scope: Core

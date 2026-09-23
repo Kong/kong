@@ -1,0 +1,55 @@
+{
+    "system": [
+        {
+            "text": "You are a mathematician."
+        }
+    ],
+    "messages": [
+        {
+            "content": [
+                {
+                    "text": "What is 1 + 2?"
+                }
+            ],
+            "role": "user"
+        },
+        {
+            "content": [
+                {
+                    "text": "The sum of 1 + 2 is 3. If you have any more math questions or if there's anything else I can help you with, feel free to ask!"
+                }
+            ],
+            "role": "assistant"
+        },
+        {
+            "content": [
+                {
+                    "text": "Multiply that by 2"
+                }
+            ],
+            "role": "user"
+        },
+        {
+            "content": [
+                {
+                    "text": "Certainly! If you multiply 3 by 2, the result is 6. If you have any more questions or if there's anything else I can help you with, feel free to ask!"
+                }
+            ],
+            "role": "assistant"
+        },
+        {
+            "content": [
+                {
+                    "text": "Why can't you divide by zero?"
+                }
+            ],
+            "role": "user"
+        }
+    ],
+    "inferenceConfig": {
+        "maxTokens": 8192,
+        "temperature": 0.8,
+        "topP": 0.6
+    },
+    "anthropic_version": "bedrock-2023-05-31"
+}

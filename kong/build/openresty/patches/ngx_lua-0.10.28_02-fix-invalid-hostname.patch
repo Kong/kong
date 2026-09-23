@@ -1,0 +1,22 @@
+diff --git a/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
+index ae0f138..aa26a4a 100644
+--- a/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
++++ b/bundle/ngx_lua-0.10.28/src/ngx_http_lua_balancer.c
+@@ -702,7 +702,7 @@ ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
+                     item->host.len = host->len;
+ 
+                 } else {
+-                    item->host.data = ngx_pstrdup(c->pool, bp->addr_text);
++                    item->host.data = ngx_pstrdup(c->pool, host);
+                     if (item->host.data == NULL) {
+                         ngx_http_lua_balancer_close(c);
+ 
+@@ -713,7 +713,7 @@ ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
+                         return;
+                     }
+ 
+-                    item->host.len = bp->addr_text->len;
++                    item->host.len = host->len;
+                 }
+ 
+             } else {

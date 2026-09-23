@@ -1,0 +1,4 @@
+message: |
+  **standard-webhooks**: Added standard webhooks plugin.
+type: feature
+scope: Plugin

@@ -1,0 +1,3 @@
+message: "Fixed an issue where validation of the certificate schema failed if the `snis` field was present in the request body."
+scope: Admin API
+type: bugfix

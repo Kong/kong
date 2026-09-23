@@ -1,0 +1,4 @@
+message: |
+   **Vault**: Reference ending with slash when parsed should not return a key.
+type: bugfix
+scope: PDK

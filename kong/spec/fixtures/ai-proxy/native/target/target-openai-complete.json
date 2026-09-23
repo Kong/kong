@@ -1,0 +1,116 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": [
+        {
+          "text": "You are a helpful lighting system bot. You can turn lights on and off, and you can set the color. Do not perform any other tasks.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Turn on the lights please.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "tool_calls": [
+        {
+          "id": "tooluse_12j842hSE-_gkri61ab2A",
+          "function": {
+            "arguments": "{}",
+            "name": "enable_lights"
+          },
+          "type": "function"
+        }
+      ],
+      "role": "assistant",
+      "content": [
+        {
+          "text": "Sure! I will turn them on now.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "tool_call_id": "tooluse_12j842hSE-_gkri61ab2A",
+      "role": "tool",
+      "content": "{\"success\":true}"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Now set them to orange.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "tool_calls": [
+        {
+          "id": "tooluse_5wP5DuMwSE-_VgqY61ab3A",
+          "function": {
+            "arguments": "{\"rgb_hex\":\"FFA500\"}",
+            "name": "set_light_color"
+          },
+          "type": "function"
+        }
+      ],
+      "role": "assistant",
+      "content": [
+        {
+          "text": "Setting to orange.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "tool_call_id": "tooluse_5wP5DuMwSE-_VgqY61ab3A",
+      "role": "tool",
+      "content": "{\"success\":true}"
+    }
+  ],
+  "model": "gemini-1.5-pro",
+  "tools": [
+    {
+      "function": {
+        "description": "Turn on the lighting system.",
+        "name": "enable_lights"
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "set_light_color",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "rgb_hex"
+          ],
+          "properties": {
+            "rgb_hex": {
+              "description": "The light color as a 6-digit hex string, e.g. ff0000 for red.",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Set the light color. Lights must be enabled for this to work."
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Turn off the lighting system.",
+        "name": "stop_lights"
+      },
+      "type": "function"
+    }
+  ],
+  "stream": false
+}

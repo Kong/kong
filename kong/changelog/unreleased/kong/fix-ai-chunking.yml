@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where response streaming in Gemini and Bedrock providers was returning whole chat responses in one chunk."
+type: bugfix
+scope: Plugin

@@ -1,0 +1,378 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong//build:build_system.bzl", "kong_cc_static_library")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
+load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
+
+filegroup(
+    name = "luajit_srcs",
+    srcs = glob(
+        include = ["bundle/LuaJIT*/**"],
+    ),
+)
+
+genrule(
+    name = "luajit_xcflags",
+    outs = ["luajit_xcflags.txt"],
+    cmd = "macos=" + select({
+              "@platforms//os:macos": "1",
+              "//conditions:default": "0",
+          }) + "\n" +
+          "aarch64=" + select({
+              "@platforms//cpu:aarch64": "1",
+              "//conditions:default": "0",
+          }) + "\n" +
+          "debug=" + select({
+              "@kong//:debug_flag": "1",
+              "//conditions:default": "0",
+          }) + "\n" +
+          "cross=" + select({
+              "@kong//:any-cross": "1",
+              "//conditions:default": "0",
+          }) +
+          """
+    flags="-DLUAJIT_ENABLE_LUA52COMPAT -DLUAJIT_VERSION=\\\\\\"{luajit_version}\\\\\\""
+    if [[ $$debug -eq 1 ]]; then
+        flags="$$flags -DLUA_USE_ASSERT -DLUA_USE_APICHECK"
+        if [[ $$macos -ne 1 ]]; then
+            if [[ $$cross -ne 1 ]]; then
+                flags="$$flags -DLUA_USE_VALGRIND"
+            fi
+            if [[ $$aarch64 -ne 1 ]]; then
+                flags="$$flags -DLUAJIT_USE_SYSMALLOC"
+            fi
+        fi
+    fi
+
+    if [[ $$macos -eq 1 ]]; then
+        flags="$$flags -fno-stack-check"
+    fi
+
+    echo "$$flags" >$@
+
+    """.format(luajit_version = LUAJIT_VERSION),
+    # make sure to include `toolchain` so that this rule executes in target configuration
+    toolchains = [
+        "@bazel_tools//tools/cpp:current_cc_toolchain",
+    ],
+)
+
+rpath_flags = "-Wl,-rpath,%s/kong/lib -Wl,-rpath,%s/openresty/lualib" % (
+    KONG_VAR["INSTALL_DESTDIR"],
+    KONG_VAR["INSTALL_DESTDIR"],
+)
+
+make(
+    name = "luajit",
+    args = [
+        "LDFLAGS=\"%s\"" % rpath_flags,  # make ffi.load happy, even when it's invoked without nginx
+        "XCFLAGS=\"$(cat $$EXT_BUILD_ROOT$$/$(execpath :luajit_xcflags))\"",
+        "LUA_ROOT=%s/openresty/luajit" % KONG_VAR["INSTALL_DESTDIR"].rstrip("/"),
+        "MACOSX_DEPLOYMENT_TARGET=" + KONG_VAR["MACOSX_DEPLOYMENT_TARGET"],
+    ] + select({
+        "@kong//:any-cross": [
+            "HOST_CC=cc",
+        ],
+        "@platforms//os:macos": [
+            "AR=/usr/bin/ar",
+        ],
+        "//conditions:default": [
+        ],
+    }),
+    data = [
+        ":luajit_xcflags",
+    ],
+    lib_source = ":luajit_srcs",
+    out_binaries = [
+        "luajit",
+    ],
+    out_data_dirs = ["share"],
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libluajit-5.1.2.dylib",
+        ],
+        "//conditions:default": [
+            "libluajit-5.1.so.2",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    name = "nogroup-name-as-nobody",
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:rhel8",
+        "@kong//build/platforms/distro:aws2023",
+        "@kong//build/platforms/distro:aws2",
+    ],
+)
+
+selects.config_setting_group(
+    name = "needs-xcrypt2",
+    match_any = [
+        "@kong//build/platforms/distro:generic",
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
+)
+
+CONFIGURE_OPTIONS = [
+    "--with-pcre-jit",
+    "--with-http_ssl_module",
+    "--with-http_sub_module",
+    "--with-http_realip_module",
+    "--with-http_stub_status_module",
+    "--with-http_v2_module",
+    "--with-stream_realip_module",  # >= 1.11.4
+    "--with-stream_ssl_preread_module",  # >= 1.11.5
+    "--without-http_encrypted_session_module",
+    "--without-http_xss_module",
+    "--without-http_coolkit_module",
+    "--without-http_set_misc_module",
+    "--without-http_form_input_module",
+    "--without-http_srcache_module",
+    "--without-http_lua_upstream_module",
+    "--without-http_array_var_module",
+    "--without-http_memc_module",
+    "--without-http_redis2_module",
+    "--without-http_redis_module",
+    "--without-http_rds_json_module",
+    "--without-http_rds_csv_module",
+    "--with-luajit=$$EXT_BUILD_DEPS/luajit",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/pcre/include\"",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/openssl/include\"",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/luajit/include\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/pcre/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/openssl/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/luajit/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/lib\"",
+    # Here let's try not having --disable-new-dtags; --disable-new-dtags creates rpath instead of runpath
+    # note rpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
+    # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
+    # overridable by LD_LIBRARY_PATH and it may cause trouble debugging, so we _should_ prefer runpath
+    # whenever available.
+    "--with-ld-opt=\"%s\"" % rpath_flags,
+    "-j%s" % KONG_VAR["NPROC"],
+
+    # options from our customed patch
+    "--with-install-prefix=%s" % KONG_VAR["INSTALL_DESTDIR"],
+
+    # Note $$EXT_BUILD_ROOT$$ is bazel variable not from environment variable
+    # which points to the directory of current WORKSPACE
+
+    # external modules
+    "--add-module=$$EXT_BUILD_ROOT$$/external/lua-kong-nginx-module",
+    "--add-module=$$EXT_BUILD_ROOT$$/external/lua-kong-nginx-module/stream",
+    "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-lmdb",
+    "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-events",
+] + select({
+    "@kong//:aarch64-linux-glibc-cross": [
+        "--crossbuild=Linux:aarch64",
+        "--with-endian=little",
+        "--with-int=4",
+        "--with-long=8",
+        "--with-long-long=8",
+        "--with-ptr-size=8",
+        "--with-sig-atomic-t=4",
+        "--with-size-t=8",
+        "--with-off-t=8",
+        "--with-time-t=8",
+        "--with-sys-nerr=132",
+    ],
+    "@kong//:x86_64-linux-glibc-cross": [
+        "--crossbuild=Linux:x86_64",
+        "--with-endian=little",
+        "--with-int=4",
+        "--with-long=8",
+        "--with-long-long=8",
+        "--with-ptr-size=8",
+        "--with-sig-atomic-t=4",
+        "--with-size-t=8",
+        "--with-off-t=8",
+        "--with-time-t=8",
+        "--with-sys-nerr=132",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:any-cross": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/zlib/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/zlib/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    ":needs-xcrypt2": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/libxcrypt/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/libxcrypt/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:debug_flag": [
+        "--with-debug",
+        "--with-no-pool-patch",
+        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC -g -O0\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:fips_flag": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    # some distros name "nogroup" group name as "nobody"
+    ":nogroup-name-as-nobody": [
+        "--group=nobody",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:brotli_flag": [
+        "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_brotli",
+    ],
+    "//conditions:default": [],
+}) + wasmx_configure_options
+
+# TODO: set prefix to populate pid_path, conf_path, log_path etc
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = [
+            "configure",
+            "bundle/**",
+        ],
+        exclude = [
+            "bundle/LuaJIT*/**",
+        ],
+    ),
+)
+
+wasm_runtime(
+    name = "wasm_runtime",
+    visibility = ["//visibility:public"],
+)
+
+kong_cc_static_library(
+    name = "brotlienc",
+    src = "@brotli//:brotlienc",
+    visibility = ["//visibility:public"],
+)
+
+kong_cc_static_library(
+    name = "brotlicommon",
+    src = "@brotli//:brotlicommon",
+    visibility = ["//visibility:public"],
+)
+
+configure_make(
+    name = "openresty",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = CONFIGURE_OPTIONS,
+    data = [
+        "@lua-kong-nginx-module//:all_srcs",
+        "@lua-resty-events//:all_srcs",
+        "@lua-resty-lmdb//:all_srcs",
+    ] + select({
+        "@kong//:brotli_flag": [
+            "@ngx_brotli//:all_srcs",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasmx_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ] + WASM_FILTERS_TARGETS,
+        "//conditions:default": [],
+    }),
+    env = wasmx_env,
+    lib_source = ":all_srcs",
+    out_bin_dir = "",
+    out_binaries = [
+        "nginx/sbin/nginx",
+    ],
+    out_data_dirs = [
+        "pod",
+        "bin",
+        "nginx/conf",
+        "nginx/html",
+        "lualib",
+    ],
+    out_lib_dir = "",
+    out_shared_libs = select({
+        "@kong//:wasmx_dynamic_mod": [
+            "nginx/modules/ngx_wasmx_module.so",
+        ],
+        "//conditions:default": [],
+    }),
+    postfix_script = select({
+                         # macOS ln doesn't support -r/relative path
+                         "@platforms//os:macos": "ln -sf openresty/nginx/sbin/nginx openresty/bin/openresty",
+                         "//conditions:default": "ln -srf openresty/nginx/sbin/nginx openresty/bin/openresty",
+                     }) +  # TODO: remove this after lua-resty-websocket becomes a patch or merged to upstream
+                     " && rm -rf $INSTALLDIR/lualib/resty/websocket",
+    targets = [
+        "-j " + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@openresty//:luajit",
+        "@openssl",
+        "@pcre",
+    ] + select({
+        "@kong//:any-cross": [
+            "@cross_deps_zlib//:zlib",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        # any cross build that migrated to use libxcrypt needs those flags
+        ":needs-xcrypt2": [
+            "@cross_deps_libxcrypt//:libxcrypt",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:brotli_flag": [
+            ":brotlicommon",
+            ":brotlienc",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+genrule(
+    name = "dev-just-make",
+    srcs = [
+        "@lua-kong-nginx-module//:all_srcs",
+        "@lua-resty-events//:all_srcs",
+        "@lua-resty-lmdb//:all_srcs",
+        "@ngx_brotli//:all_srcs",
+    ] + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasmx_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }),
+    outs = ["dev-builddir/.marker"],
+    cmd = """
+        pushd $(RULEDIR)/openresty.build_tmpdir >/dev/null
+        make -j%s
+        make install
+        popd >/dev/null
+        mkdir -p $$(dirname $@)
+        cp -r $(RULEDIR)/openresty.build_tmpdir/openresty $$(dirname $@)
+        touch $@
+    """ % KONG_VAR["NPROC"],
+    visibility = ["//visibility:public"],
+)

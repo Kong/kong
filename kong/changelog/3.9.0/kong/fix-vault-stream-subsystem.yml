@@ -1,0 +1,4 @@
+message: |
+   **Vault**: Fixed an issue where vault reference in kong configuration cannot be dereferenced when both http and stream subsystems are enabled.
+type: bugfix
+scope: Core

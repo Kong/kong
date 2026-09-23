@@ -1,0 +1,3 @@
+message: Reverted removal of `translate_backwards` from plugins' metaschema in order to maintain backward compatibility.
+type: bugfix
+scope: Core

@@ -1,0 +1,3 @@
+message: Fix a problem that abnormal socket connection will be reused when querying Postgres database.
+type: bugfix
+scope: Core

@@ -1,0 +1,22 @@
+{
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": " {\n    \"persons\": [\n      {\n        \"name\": \"Kong A\",\n        \"age\": 62\n      },\n      {\n        \"name\": \"Kong B\",\n        \"age\": 84\n      }\n    ]\n  }\n"
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "avgLogprobs": -0.013348851691592823
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 2,
+      "candidatesTokenCount": 11,
+      "totalTokenCount": 13
+    },
+    "modelVersion": "gemini-1.5-flash-002"
+}

@@ -1,0 +1,4 @@
+message: |
+  Improve error handling in AI plugins.
+type: bugfix
+scope: Plugin

@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where tools (function) calls to Cohere would return empty results."
+type: bugfix
+scope: Plugin

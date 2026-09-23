@@ -1,0 +1,8 @@
+{
+    "error": {
+        "code": null,
+        "message": "you must provide a 'prompt' parameter",
+        "param": null,
+        "type": "invalid_request_error"
+    }
+}

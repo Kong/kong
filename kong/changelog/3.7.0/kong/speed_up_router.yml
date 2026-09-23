@@ -1,0 +1,3 @@
+message: Sped up the router matching when the `router_flavor` is `traditional_compatible` or `expressions`.
+type: performance
+scope: Performance

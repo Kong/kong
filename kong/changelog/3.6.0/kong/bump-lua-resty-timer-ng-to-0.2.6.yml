@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-timer-ng from 0.2.5 to 0.2.6"
+type: dependency
+scope: Core

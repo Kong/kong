@@ -1,0 +1,3 @@
+message: "**tracing:** Fixed an issue where a DNS query failure would cause a tracing failure."
+type: bugfix
+scope: Core

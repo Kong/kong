@@ -1,0 +1,343 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "get_workspace_name", "kong_genrule", "kong_install", "kong_rules_group", "kong_template_file")
+
+exports_files([
+    "package/nfpm.yaml",
+])
+
+# C libraries
+
+clib_deps = [
+    "@openssl",
+    "@libexpat",
+    "@snappy",
+    "@ada",
+]
+
+[
+    kong_install(
+        name = "install-%s" % get_workspace_name(k),
+        src = k,
+        # only install openssl headers
+        exclude = [] if k in ("@openssl",) else ["include"],
+        prefix = "kong/lib" if k in ("@passwdqc", "@snappy", "@ada") else "kong",
+        strip_path = "snappy" if k == "@snappy" else "ada" if k == "@ada" else "",
+    )
+    for k in clib_deps
+]
+
+kong_rules_group(
+    name = "install-clibs",
+    propagates = [
+        ":install-%s" % get_workspace_name(k)
+        for k in clib_deps
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# Hermetic targets for caching
+# For local development, you could run the following command to warm up the cache:
+# bazel build //build:cacheable-targets --remote_cache=<your_local_cache_server>
+# And then run another build command with the same remote cache server to use the cache.
+# bazel build //:kong --remote_cache=<your_local_cache_server> --remote_upload_local_results=false
+# The `--remote_upload_local_results=false` flag is used to avoid uploading
+# the build results to the remote cache server, this is to avoid polluting the cache.
+kong_rules_group(
+    name = "cacheable-targets",
+    propagates = [
+        "@openssl",
+        "@libexpat",
+        "@atc_router",
+        "@simdjson_ffi",
+        "@snappy",
+        "@brotli",
+        "@pcre",
+        "@openresty",
+        "@lua",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# OpenResty
+
+kong_install(
+    name = "install-openresty-luajit",
+    src = "@openresty//:luajit",
+    prefix = "openresty/luajit",
+)
+
+kong_install(
+    name = "install-openresty",
+    src = "@openresty",
+    prefix = "openresty",
+    deps = [
+        ":install-openresty-luajit",
+        ":install-openssl",
+    ],
+)
+
+# Use this target when developing with nginx modules and want to
+# avoid rebuilding a clean OpenResty every time.
+kong_genrule(
+    name = "dev-make-openresty",
+    srcs = [
+        ":install-openresty-luajit",
+        "@openresty//:dev-just-make",
+    ],
+    outs = [
+        "openresty.dev.nop",
+    ],
+    cmd = """
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx
+        cp -r $(location @openresty//:dev-just-make)/. ${BUILD_DESTDIR}/openresty/
+        touch ${BUILD_DESTDIR}/openresty.dev.nop
+    """,
+    visibility = ["//visibility:public"],
+)
+
+# Lua Libraries
+
+lualib_deps = [
+    "@lua-kong-nginx-module//:lualib_srcs",
+    "@lua-resty-lmdb//:lualib_srcs",
+    "@lua-resty-events//:lualib_srcs",
+    "@lua-resty-websocket//:lualib_srcs",
+    "@atc_router//:lualib_srcs",
+]
+
+# TODO: merge into luaclib_deps once amazonlinux2 support is dropped
+lualib_conditional_deps = [
+    "@simdjson_ffi//:lualib_srcs",
+]
+
+[
+    kong_install(
+        name = "install-%s-lualib" % get_workspace_name(k),
+        src = k,
+        prefix = "openresty/site/lualib",
+        strip_path = get_workspace_name(k) + (
+            "/lualib" if k in [
+                "@lua-kong-nginx-module//:lualib_srcs",
+                "@lua-resty-events//:lualib_srcs",
+            ] else "/lib"
+        ),
+    )
+    for k in lualib_deps + lualib_conditional_deps
+]
+
+luaclib_deps = [
+    "@atc_router",
+]
+
+# TODO: merge into luaclib_deps once amazonlinux2 support is dropped
+luaclib_conditional_deps = [
+    "@simdjson_ffi",
+]
+
+[
+    kong_install(
+        name = "install-%s-luaclib" % get_workspace_name(k),
+        src = k,
+        prefix = "openresty/site/lualib",
+        strip_path = get_workspace_name(k),
+    )
+    for k in luaclib_deps + luaclib_conditional_deps
+]
+
+kong_rules_group(
+    name = "install-lualibs",
+    propagates = [
+        "install-%s-lualib" % get_workspace_name(k)
+        for k in lualib_deps
+    ] + [
+        "install-%s-luaclib" % get_workspace_name(k)
+        for k in luaclib_deps
+    ] + select({
+        "@kong//:simdjson_flag": [
+            ":install-simdjson_ffi-lualib",
+            ":install-simdjson_ffi-luaclib",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# WasmX
+
+kong_install(
+    name = "install-ngx-wasmx-module-lualib",
+    src = "@ngx_wasmx_module//:lualib_srcs",
+    prefix = "openresty/site/lualib",
+    strip_path = "ngx_wasmx_module/lib",
+)
+
+[
+    kong_install(
+        name = "install-wasm-filters-%s" % get_workspace_name(k),
+        src = k,
+        prefix = "kong/wasm",
+    )
+    for k in WASM_FILTERS_TARGETS
+]
+
+kong_rules_group(
+    name = "install-wasmx",
+    propagates = select({
+        "@kong//:wasmx_flag": [
+            ":install-ngx-wasmx-module-lualib",
+        ] + [
+            "install-wasm-filters-%s" % get_workspace_name(k)
+            for k in WASM_FILTERS_TARGETS
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# Tools
+
+kong_rules_group(
+    name = "install-tools",
+    propagates = selects.with_or({
+        "//conditions:default": [],
+        (
+            "@kong//:skip_tools_flag",
+            "@platforms//os:macos",
+        ): [],
+    }),
+)
+
+# Static Files
+
+kong_install(
+    name = "install-webui-dists",
+    src = "@kong_admin_gui//:dist",
+    prefix = "kong/gui",
+)
+
+kong_install(
+    name = "install-protobuf-headers",
+    src = "@protoc//:include",
+    prefix = "kong/include",
+)
+
+kong_rules_group(
+    name = "install-static-assets",
+    propagates = [
+        ":install-protobuf-headers",
+    ] + select({
+        "//conditions:default": [
+            ":install-webui-dists",
+        ],
+        "@kong//:skip_webui_flags": [],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+kong_install(
+    name = "install-lua",
+    src = "@lua",
+    exclude = ["include"],  # skip install headers
+)
+
+# Wrap up : )
+
+kong_rules_group(
+    name = "install",
+    propagates = [
+        ":install-clibs",
+        ":install-lualibs",
+        ":install-wasmx",
+        ":install-openresty",
+        ":install-static-assets",
+        ":install-tools",
+        ":install-lua",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+kong_genrule(
+    name = "kong",
+    srcs = [
+        ":install",
+        "@luarocks//:luarocks_make",
+        "@luarocks//:luarocks_target",
+    ],
+    outs = [
+        "bin/luarocks",
+        "bin/luarocks-admin",
+        "etc/kong/kong.conf.default",
+    ],
+    cmd =
+        """ set -e
+        rm -rf ${BUILD_DESTDIR}/share ${BUILD_DESTDIR}/lib ${BUILD_DESTDIR}/etc
+        LUAROCKS=$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
+        cp -r ${LUAROCKS}/share ${LUAROCKS}/lib ${LUAROCKS}/etc ${BUILD_DESTDIR}/.
+
+        TARGET_LUAROCKS=$(dirname '$(location @luarocks//:luarocks_target)')/luarocks_tree
+        cp ${TARGET_LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
+        cp ${TARGET_LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
+
+        mkdir -p ${BUILD_DESTDIR}/etc/kong/
+        cp ${WORKSPACE_PATH}/kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
+
+        # housecleaning
+        if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then
+            cp -r ${BUILD_DESTDIR}/kong/lib64/* ${BUILD_DESTDIR}/kong/lib/.
+            rm -rf ${BUILD_DESTDIR}/kong/lib64
+        fi
+
+        # clean empty directory
+        find ${BUILD_DESTDIR} -empty -type d -delete
+
+        # create empty folder to make nfpm happy when skip_tools is set to True
+        mkdir -p ${BUILD_DESTDIR}/kong-tools
+    """,
+    out_dirs = [
+        "etc/luarocks",
+        "lib",
+        "share",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+kong_template_file(
+    name = "venv.sh",
+    output = "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.sh",
+)
+
+kong_template_file(
+    name = "venv.fish",
+    output = "%s-venv.fish" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.fish",
+)
+
+kong_template_file(
+    name = "venv-commons",
+    is_executable = True,
+    output = "%s-venv/lib/venv-commons" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv-commons",
+)
+
+kong_rules_group(
+    name = "venv",
+    propagates = [
+        ":kong",
+        ":venv.sh",
+        ":venv.fish",
+        ":venv-commons",
+    ],
+    visibility = ["//visibility:public"],
+)

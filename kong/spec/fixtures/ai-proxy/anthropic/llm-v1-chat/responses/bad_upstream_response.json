@@ -1,0 +1,10 @@
+{
+  "nothing_object": {
+    "not_interesting_tag_names": "bad string",
+    "and_an_array": [
+        "because",
+        "why",
+        "not"
+    ]
+  }
+}

@@ -1,0 +1,274 @@
+'cherry-pick kong-ee':
+- changed-files:
+  - any-glob-to-any-file: ['kong/**/*', 'spec/**/*', 'build/**/*', 'bin/**/*', 'scripts/**/*', 'changelog/**/*']
+
+core/admin-api:
+- changed-files:
+  - any-glob-to-any-file: kong/api/**/*
+
+core/balancer:
+- changed-files:
+  - any-glob-to-any-file: kong/runloop/balancer/*
+
+core/cli:
+- changed-files:
+  - any-glob-to-any-file: kong/cmd/**/*
+
+core/clustering:
+- changed-files:
+  - any-glob-to-any-file: ['kong/clustering/**/*', 'kong/cluster_events/**/*']
+
+core/configuration:
+- changed-files:
+  - any-glob-to-any-file: kong/conf_loader/*
+
+core/db/migrations:
+- changed-files:
+  - any-glob-to-any-file: kong/db/migrations/**/*
+
+core/db:
+- changed-files:
+  - all-globs-to-any-file: ['kong/db/**/*', '!kong/db/migrations/**/*']
+
+changelog:
+- changed-files:
+  - any-glob-to-any-file: CHANGELOG.md
+
+core/docs:
+- changed-files:
+  - all-globs-to-any-file: ['**/*.md', '!CHANGELOG.md']
+
+autodoc:
+- changed-files:
+  - any-glob-to-any-file: 'autodoc/**/*'
+
+core/language/go:
+- changed-files:
+  - any-glob-to-any-file: kong/runloop/plugin_servers/*
+
+core/language/js:
+- changed-files:
+  - any-glob-to-any-file: kong/runloop/plugin_servers/*
+
+core/language/python:
+- changed-files:
+  - any-glob-to-any-file: kong/runloop/plugin_servers/*
+
+core/logs:
+- changed-files:
+  - any-glob-to-any-file: kong/pdk/log.lua
+
+core/pdk:
+- changed-files:
+  - all-globs-to-any-file: ['kong/pdk/**/*', '!kong/pdk/log.lua']
+
+core/proxy:
+- changed-files:
+  - all-globs-to-any-file: ['kong/runloop/**/*', '!kong/runloop/balancer/*', '!kong/runloop/plugin_servers/*']
+
+core/router:
+- changed-files:
+  - any-glob-to-any-file: kong/router/*
+
+core/templates:
+- changed-files:
+  - any-glob-to-any-file: kong/templates/*
+
+core/tracing:
+- changed-files:
+  - any-glob-to-any-file: ['kong/observability/tracing/**/*', 'kong/pdk/tracing.lua']
+
+core/wasm:
+- changed-files:
+  - any-glob-to-any-file: ['kong/runloop/wasm.lua', 'kong/runloop/wasm/**/*']
+
+chore:
+- changed-files:
+  - any-glob-to-any-file: ['.github/**/*', '.devcontainer/**/*']
+
+plugins/acl:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/acl/**/*
+
+plugins/acme:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/acme/**/*
+
+plugins/ai-proxy:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-proxy/**/*', 'kong/llm/**/*']
+
+plugins/ai-prompt-decorator:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-prompt-decorator/**/*
+
+plugins/ai-prompt-template:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-prompt-template/**/*
+
+plugins/ai-request-transformer:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-request-transformer/**/*', 'kong/llm/**/*']
+
+plugins/ai-response-transformer:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-response-transformer/**/*', 'kong/llm/**/*']
+
+plugins/ai-prompt-guard:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-prompt-guard/**/*
+
+plugins/aws-lambda:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/aws-lambda/**/*
+
+plugins/azure-functions:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/azure-functions/**/*
+
+plugins/basic-auth:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/basic-auth/**/*
+
+plugins/bot-detection:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/bot-detection/**/*
+
+plugins/correlation-id:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/correlation-id/**/*
+
+plugins/cors:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/cors/**/*
+
+plugins/datadog:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/datadog/**/*
+
+plugins/file-log:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/file-log/**/*
+
+plugins/grpc-gateway:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/grpc-gateway/**/*
+
+plugins/grpc-web:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/grpc-web/**/*
+
+plugins/hmac-auth:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/hmac-auth/**/*
+
+plugins/http-log:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/http-log/**/*
+
+plugins/ip-restriction:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ip-restriction/**/*
+
+plugins/jwt:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/jwt/**/*
+
+plugins/key-auth:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/key-auth/**/*
+
+plugins/ldap-auth:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ldap-auth/**/*
+
+plugins/loggly:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/loggly/**/*
+
+plugins/oauth2:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/oauth2/**/*
+
+plugins/prometheus:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/prometheus/**/*
+
+plugins/proxy-cache:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/proxy-cache/**/*
+
+plugins/rate-limiting:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/rate-limiting/**/*
+
+plugins/request-size-limiting:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/request-size-limiting/**/*
+
+plugins/request-termination:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/request-termination/**/*
+
+plugins/request-transformer:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/request-transformer/**/*
+
+plugins/response-ratelimiting:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/response-ratelimiting/**/*
+
+plugins/response-transformer:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/response-transformer/**/*
+
+plugins/session:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/session/**/*
+
+plugins/serverless-functions:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/post-function/**/*', 'kong/plugins/pre-function/**/*']
+
+plugins/statsd:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/statsd/**/*
+
+plugins/syslog:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/syslog/**/*
+
+plugins/tcp-log:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/tcp-log/**/*
+
+plugins/udp-log:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/udp-log/**/*
+
+plugins/zipkin:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/zipkin/**/*
+
+plugins/opentelemetry:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/opentelemetry/**/*
+
+plugins/standard-webhooks:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/standard-webhooks/**/*
+
+plugins/redirect:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/redirect/**/*
+
+schema-change-noteworthy:
+- changed-files:
+  - any-glob-to-any-file: [
+      'kong/db/schema/**/*.lua', 'kong/**/schema.lua', 'kong/plugins/**/daos.lua', 'plugins-ee/**/daos.lua', 'plugins-ee/**/schema.lua', 'kong/db/dao/*.lua', 'kong/enterprise_edition/redis/init.lua',
+      'kong/llm/init.lua', 'kong/llm/schemas/*.lua', 'kong/llm/vectordb/strategies/pgvector/init.lua',
+    ]
+
+build/bazel:
+- changed-files:
+  - any-glob-to-any-file: ['**/*.bazel', '**/*.bzl', 'build/**/*', 'WORKSPACE', '.bazelignore', '.bazelrc', '.bazelversion', 'scripts/build-*.sh']

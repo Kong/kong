@@ -1,0 +1,9 @@
+{
+  "prompt": "Explain why you can't divide by zero?",
+  "model": "command",
+  "max_tokens": 512,
+  "temperature": 0.5,
+  "p": 0.75,
+  "k": 5,
+  "stream": false
+}
