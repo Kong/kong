@@ -209,7 +209,7 @@ local model_schema = {
         type = "string", description = "AI provider request format - Kong translates "
                                     .. "requests to and from the specified backend compatible formats.",
         required = true,
-        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface" }}},
+        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface", "astraflow" }}},
     { name = {
         type = "string",
         description = "Model name to execute.",
