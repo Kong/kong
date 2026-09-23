@@ -204,6 +204,18 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route30 = bp.routes:insert {
+        hosts       = { "lambda30.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route31 = bp.routes:insert {
+        hosts       = { "lambda31.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -600,6 +612,34 @@ for _, strategy in helpers.each_strategy() do
           aws_region           = "us-east-1",
           function_name        = "functionWithNullMultiValueHeaders",
           is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route30.id },
+        config   = {
+          port                            = 10001,
+          aws_key                         = "mock-key",
+          aws_secret                      = "mock-secret",
+          aws_region                      = "us-east-1",
+          function_name                   = "kongLambdaTest",
+          max_uri_args                    = 3,
+          reject_if_max_uri_args_exceeded = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route31.id },
+        config   = {
+          port                            = 10001,
+          aws_key                         = "mock-key",
+          aws_secret                      = "mock-secret",
+          aws_region                      = "us-east-1",
+          function_name                   = "kongLambdaTest",
+          max_uri_args                    = 3,
+          reject_if_max_uri_args_exceeded = false,
         }
       }
 
@@ -1342,6 +1382,45 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         local req = assert.response(res).has.jsonbody()
         assert.equals("https", req.vars.scheme)
+      end)
+
+      it("returns 414 when reject_if_max_uri_args_exceeded is true and args exceed max_uri_args", function()
+        -- route30 has max_uri_args=3, reject_if_max_uri_args_exceeded=true
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?a=1&b=2&c=3&d=4",
+          headers = {
+            ["Host"] = "lambda30.test"
+          }
+        })
+        assert.res_status(414, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("URI Too Long", body.message)
+      end)
+
+      it("passes request through when reject_if_max_uri_args_exceeded is true and args are within limit", function()
+        -- route30 has max_uri_args=3, reject_if_max_uri_args_exceeded=true
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?a=1&b=2",
+          headers = {
+            ["Host"] = "lambda30.test"
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("does not return 414 when reject_if_max_uri_args_exceeded is false even if args exceed max_uri_args", function()
+        -- route31 has max_uri_args=3, reject_if_max_uri_args_exceeded=false
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?a=1&b=2&c=3&d=4",
+          headers = {
+            ["Host"] = "lambda31.test"
+          }
+        })
+        -- should NOT be 414, should pass through to Lambda
+        assert.res_status(200, res)
       end)
 
       it("#test2 works normally by removing transfer encoding header when proxy integration mode", function ()
