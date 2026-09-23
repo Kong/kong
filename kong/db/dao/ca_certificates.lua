@@ -1,5 +1,8 @@
 local certificate  = require "kong.runloop.certificate"
+local openssl_x509 = require "resty.openssl.x509"
+local to_hex = require("resty.string").to_hex
 local fmt = string.format
+local null = ngx.null
 
 local Ca_certificates = {}
 
@@ -49,6 +52,25 @@ function Ca_certificates:delete(cert_pk, options)
   end
 
   return self.super.delete(self, cert_pk, options)
+end
+
+function Ca_certificates:upsert(cert_pk, cert, options)
+  if cert.cert and (cert.cert_digest == nil or cert.cert_digest == null) then
+    local cert_x509, err = openssl_x509.new(cert.cert)
+    if not cert_x509 then
+      return nil, "cannot create digest value of certificate", err
+    end
+
+    local digest
+    digest, err = cert_x509:digest("sha256")
+    if not digest then
+      return nil, "cannot create digest value of certificate", err
+    end
+
+    cert.cert_digest = to_hex(digest)
+  end
+
+  return self.super.upsert(self, cert_pk, cert, options)
 end
 
 
