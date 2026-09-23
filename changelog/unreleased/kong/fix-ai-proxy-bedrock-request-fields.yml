@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where `bedrock.additionalModelRequestFields` was sent to Bedrock as an array and `bedrock.toolConfig.toolChoice` was dropped.
+type: bugfix
+scope: Plugin
