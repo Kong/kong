@@ -1,0 +1,3 @@
+message: Fixed an error in balancer target event handling that aborted the balancer rebuild when the worker-local target cache was empty and the event carried a partial target entity.
+scope: Core
+type: bugfix
