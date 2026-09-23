@@ -20,7 +20,9 @@ runs:
       shell: bash
       env:
         FILE_HASH: "${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}"
-        CACHE_VERSION: "4"
+        # bump when the pinned toolchain below changes: caches built by a
+        # different toolchain must not be reused
+        CACHE_VERSION: "5"
       run: |
         CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${{ runner.os }}::${WASM_FILTER_TARGET}"
         echo "CACHE_PREFIX=${CACHE_PREFIX}" >> $GITHUB_ENV
@@ -43,7 +45,8 @@ runs:
       if: steps.restore-cache.outputs.cache-hit != 'true'
       uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203 # v1
       with:
-        toolchain: stable
+        # rust 1.96+'s rust-lld no longer accepts proxy-wasm 0.2.1's
+        toolchain: 1.95.0
         components: cargo
         targets: ${{ env.WASM_FILTER_TARGET }}
 
