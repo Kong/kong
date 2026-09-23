@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where an empty `tools` array in an OpenAI-format request was sent to Anthropic as `tools: {}`, which Anthropic rejects.
+type: bugfix
+scope: Plugin

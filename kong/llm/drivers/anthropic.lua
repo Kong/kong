@@ -114,7 +114,8 @@ local function to_claude_messages(req)
 end
 
 local function to_tools(in_tools)
-  local out_tools = {}
+  -- keep `tools: []` a JSON array, Anthropic rejects `tools: {}`
+  local out_tools = setmetatable({}, cjson.array_mt)
 
   for i, v in ipairs(in_tools) do
     if v['function'] then
