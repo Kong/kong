@@ -51,6 +51,7 @@ function _BedrockAdapter:extract_metadata(response_body)
       return {
         prompt_tokens = response_body.usage.inputTokens or 0,
         completion_tokens = response_body.usage.outputTokens or 0,
+        total_tokens = response_body.usage.totalTokens,
       }
     end
 
