@@ -3,7 +3,35 @@ local cjson = require "cjson"
 local pl_file = require "pl.file"
 local deepcompare  = require("pl.tablex").deepcompare
 
+local strip = require("kong.tools.string").strip
+
+local ANTHROPIC_MOCK = pl_file.read("spec/fixtures/ai-proxy/mock_servers/anthropic.lua.txt")
 local PLUGIN_NAME = "ai-proxy"
+
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -20,191 +48,7 @@ for _, strategy in helpers.all_strategies() do
         http_mock = {},
       }
 
-      fixtures.http_mock.anthropic = [[
-        server {
-            server_name anthropic;
-            listen ]]..MOCK_PORT..[[;
-
-            default_type 'application/json';
-
-
-            location = "/llm/v1/chat/good" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                local token = ngx.req.get_headers()["x-api-key"]
-                if token == "anthropic-key" then
-                  ngx.req.read_body()
-                  local body, err = ngx.req.get_body_data()
-                  body, err = json.decode(body)
-
-                  if err or (not body.messages) then
-                    ngx.status = 400
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
-                  else
-                    ngx.status = 200
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/good.json"))
-                  end
-                else
-                  ngx.status = 401
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
-                end
-              }
-            }
-
-            location = "/llm/v1/chat/bad_upstream_response" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                local token = ngx.req.get_headers()["x-api-key"]
-                if token == "anthropic-key" then
-                  ngx.req.read_body()
-                  local body, err = ngx.req.get_body_data()
-                  body, err = json.decode(body)
-
-                  if err or (not body.messages) then
-                    ngx.status = 400
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
-                  else
-                    ngx.status = 200
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_upstream_response.json"))
-                  end
-                else
-                  ngx.status = 401
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
-                end
-              }
-            }
-
-            location = "/llm/v1/chat/no_usage_upstream_response" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                local token = ngx.req.get_headers()["x-api-key"]
-                if token == "anthropic-key" then
-                  ngx.req.read_body()
-                  local body, err = ngx.req.get_body_data()
-                  body, err = json.decode(body)
-
-                  if err or (not body.messages) then
-                    ngx.status = 400
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
-                  else
-                    ngx.status = 200
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/no_usage_response.json"))
-                  end
-                else
-                  ngx.status = 401
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
-                end
-              }
-            }
-
-            location = "/llm/v1/chat/malformed_usage_upstream_response" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                local token = ngx.req.get_headers()["x-api-key"]
-                if token == "anthropic-key" then
-                  ngx.req.read_body()
-                  local body, err = ngx.req.get_body_data()
-                  body, err = json.decode(body)
-
-                  if err or (not body.messages) then
-                    ngx.status = 400
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
-                  else
-                    ngx.status = 200
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/malformed_usage_response.json"))
-                  end
-                else
-                  ngx.status = 401
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
-                end
-              }
-            }
-
-            location = "/llm/v1/chat/bad_request" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-
-                ngx.status = 400
-                ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
-              }
-            }
-
-            location = "/llm/v1/chat/internal_server_error" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-
-                ngx.status = 500
-                ngx.header["content-type"] = "text/html"
-                ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/internal_server_error.html"))
-              }
-            }
-
-            location = "/llm/v1/chat/tool_choice" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                ngx.req.read_body()
-                local function assert_ok(ok, err)
-                  if not ok then
-                    ngx.status = 500
-                    ngx.say(err)
-                    ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
-                  end
-                  return ok
-                end
-                local body = assert_ok(ngx.req.get_body_data())
-                body = assert_ok(json.decode(body))
-                local tool_choice = body.tool_choice
-                ngx.header["tool-choice"] = json.encode(tool_choice)
-                ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/good.json"))
-              }
-            }
-
-            location = "/llm/v1/completions/good" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-                local json = require("cjson.safe")
-
-                local token = ngx.req.get_headers()["x-api-key"]
-                if token == "anthropic-key" then
-                  ngx.req.read_body()
-                  local body, err = ngx.req.get_body_data()
-                  body, err = json.decode(body)
-
-                  if err or (not body.prompt) then
-                    ngx.status = 400
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-completions/responses/bad_request.json"))
-                  else
-                    ngx.status = 200
-                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-completions/responses/good.json"))
-                  end
-                else
-                  ngx.status = 401
-                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-completions/responses/unauthorized.json"))
-                end
-              }
-            }
-
-            location = "/llm/v1/completions/bad_request" {
-              content_by_lua_block {
-                local pl_file = require "pl.file"
-
-                ngx.status = 400
-                ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-completions/responses/bad_request.json"))
-              }
-            }
-
-        }
-      ]]
+      fixtures.http_mock.anthropic = string.format(ANTHROPIC_MOCK, MOCK_PORT)
 
       local empty_service = assert(bp.services:insert {
         name = "empty_service",
@@ -240,6 +84,43 @@ for _, strategy in helpers.all_strategies() do
               anthropic_version = "2023-06-01",
             },
           },
+        },
+      }
+
+      local chat_good_with_no_upstream_port = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/good_with_no_upstream_port" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "x-api-key",
+            header_value = "anthropic-key",
+            allow_override = true,
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host.."/llm/v1/chat/good",
+              anthropic_version = "2023-06-01",
+            },
+          },
+        },
+      }
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          path = FILE_LOG_PATH_NO_LOGS,
         },
       }
 
@@ -633,6 +514,24 @@ for _, strategy in helpers.all_strategies() do
           role = "assistant",
         }, json.choices[1].message)
       end)
+
+      it("good request with no upstream port", function()
+        local r = client:get("/anthropic/llm/v1/chat/good_with_no_upstream_port", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        assert.res_status(502 , r)
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        local tries = log_message.tries
+        assert.is_table(tries)
+        assert.equal(tries[1].port, 80)
+      end)
+
 
       it("good request with client right header auth", function()
         local r = client:get("/anthropic/llm/v1/chat/good", {

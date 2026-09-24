@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy-advanced**: Fixed an issue where ai-retry phase was not correctly setting the namespace in the kong.plugin.ctx, causing ai-proxy-advanced balancer retry first target more than once.
+type: "bugfix"
+scope: "Plugin"

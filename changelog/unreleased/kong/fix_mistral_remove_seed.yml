@@ -1,0 +1,4 @@
+message: |
+  **AI Proxy Advanced**: Fixed an issue where Mistral models would return `Unsupported field: seed` when using some inference libraries.
+type: "bugfix"
+scope: "Plugin"

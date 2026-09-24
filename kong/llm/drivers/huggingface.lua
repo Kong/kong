@@ -28,6 +28,7 @@ local function from_huggingface(response_string, model_info, route_type)
   end
 
   local transformed_response = {
+    id = response_table.id,
     model = model_info.name,
     object = response_table.object or route_type,
     choices = {},
@@ -47,8 +48,9 @@ local function from_huggingface(response_string, model_info, route_type)
   elseif response_table.choices then
     for i, choice in ipairs(response_table.choices) do
       local content = choice.message and choice.message.content or ""
+      local role = choice.message and choice.message.role or ""
       table.insert(transformed_response.choices, {
-        message = { content = content },
+        message = { content = content, role = role },
         index = i - 1,
         finish_reason = "complete",
       })
@@ -64,63 +66,6 @@ local function from_huggingface(response_string, model_info, route_type)
     return nil, "Failed to encode response"
   end
   return result_string, nil
-end
-
-local function set_huggingface_options(model_info)
-  local use_cache = false
-  local wait_for_model = false
-
-  if model_info and model_info.options and model_info.options.huggingface then
-    use_cache = model_info.options.huggingface.use_cache or false
-    wait_for_model = model_info.options.huggingface.wait_for_model or false
-  end
-
-  return {
-    use_cache = use_cache,
-    wait_for_model = wait_for_model,
-  }
-end
-
-local function set_default_parameters(request_table)
-  local parameters = request_table.parameters or {}
-  if parameters.top_k == nil then
-    parameters.top_k = request_table.top_k
-  end
-  if parameters.top_p == nil then
-    parameters.top_p = request_table.top_p
-  end
-  if parameters.temperature == nil then
-    parameters.temperature = request_table.temperature
-  end
-  if parameters.max_tokens == nil then
-    if request_table.messages then
-      -- conversational model use the max_length param
-      -- https://huggingface.co/docs/api-inference/en/detailed_parameters?code=curl#conversational-task
-      parameters.max_length = request_table.max_tokens
-    else
-      parameters.max_new_tokens = request_table.max_tokens
-    end
-  end
-  request_table.top_k = nil
-  request_table.top_p = nil
-  request_table.temperature = nil
-  request_table.max_tokens = nil
-
-  return parameters
-end
-
-local function to_huggingface(task, request_table, model_info)
-  local parameters = set_default_parameters(request_table)
-  local options = set_huggingface_options(model_info)
-  if task == "llm/v1/completions" then
-    request_table.inputs = request_table.prompt
-    request_table.prompt = nil
-  end
-  request_table.options = options
-  request_table.parameters = parameters
-  request_table.model = model_info.name or request_table.model
-
-  return request_table, "application/json", nil
 end
 
 local function safe_access(tbl, ...)
@@ -203,6 +148,22 @@ function _M.from_format(response_string, model_info, route_type)
   return response_string, nil, metadata
 end
 
+local function to_huggingface(task, request_table, model_info)
+  if task == "llm/v1/completions" then
+    request_table.inputs = request_table.prompt
+    request_table.prompt = nil
+    request_table.model = model_info.name or request_table.model
+
+  elseif task == "llm/v1/chat" then
+    -- For router.huggingface.co, we need to include the model in the request body
+    request_table.model = model_info.name or request_table.model
+    request_table.inputs = request_table.prompt
+
+  end
+
+  return request_table, "application/json", nil
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = to_huggingface,
   ["llm/v1/completions"] = to_huggingface,
@@ -224,10 +185,6 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-local function build_url(base_url, route_type)
-  return (route_type == "llm/v1/completions") and base_url or (base_url .. "/v1/chat/completions")
-end
-
 local function huggingface_endpoint(conf, model)
   local parsed_url
 
@@ -240,8 +197,7 @@ local function huggingface_endpoint(conf, model)
     return nil
   end
 
-  local url = build_url(base_url, conf.route_type)
-  parsed_url = socket_url.parse(url)
+  parsed_url = socket_url.parse(base_url)
 
   return parsed_url
 end
@@ -260,14 +216,20 @@ function _M.configure_request(conf)
     kong.service.request.set_path(parsed_url.path)
   end
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, tonumber(parsed_url.port) or 443)
+  local default_port = (parsed_url.scheme == "https" or parsed_url.scheme == "wss") and 443 or 80
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or default_port))
+
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value
 
   if auth_header_name and auth_header_value then
-    kong.service.request.set_header(auth_header_name, auth_header_value)
+      kong.service.request.set_header(auth_header_name, auth_header_value)
   end
+
+  -- clear upstream `X-Forwarded-Host` header due to cloudfront limitation
+  ngx.var.upstream_x_forwarded_host = ""
+
   return true, nil
 end
 

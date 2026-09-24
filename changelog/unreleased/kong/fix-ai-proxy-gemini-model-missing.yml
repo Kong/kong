@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed an issue where `model` field was missing in OpenAI format response from Gemini provider in some situations."
+type: "bugfix"
+scope: "Plugin"

@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed an issue where HuggingFace embedding driver were incorrectly parsed responses from embedding API
+type: bugfix
+scope: Plugin

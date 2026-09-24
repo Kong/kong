@@ -1,0 +1,4 @@
+message: >
+  **ai-driver**: Fixed an issue where AI Proxy and AI Proxy Advanced generated incorrect default ports for upstream schemes, leading to 400 errors.
+type: bugfix
+scope: Plugin

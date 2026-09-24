@@ -1,7 +1,7 @@
 {
   "model": "llama2",
   "created_at": "2024-01-15T08:14:21.967358Z",
-  "response": "Because I said so.",
+  "response": "You cannot divide by zero because it is not a valid operation in mathematics.",
   "done": true,
   "context": [
   ],

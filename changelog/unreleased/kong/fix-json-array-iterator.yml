@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where JSON array data is not correctly parsed.
+type: bugfix
+scope: Plugin

@@ -19,10 +19,7 @@ local _, set_ctx = ai_plugin_ctx.get_namespaced_accesors(_M.NAME, FILTER_OUTPUT_
 local get_global_ctx, set_global_ctx = ai_plugin_ctx.get_global_accessors(_M.NAME)
 
 
-local _KEYBASTION = setmetatable({}, {
-  __mode = "k",
-  __index = ai_shared.cloud_identity_function,
-})
+local _KEYBASTION = ai_shared.get_key_bastion()
 
 local function bail(code, msg)
   if code == 400 and msg then
@@ -124,8 +121,10 @@ local function validate_and_transform(conf)
   local multipart = ai_plugin_ctx.get_namespaced_ctx("parse-request", "multipart_request")
   -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
-  if not multipart and not compatible then
-    return bail(400, err)
+  if conf.llm_format == "openai" then
+    if not multipart and not compatible then
+      return bail(400, err)
+    end
   end
 
   -- check if the user has asked for a stream, and/or if
@@ -213,7 +212,7 @@ local function validate_and_transform(conf)
     return bail(500, "LLM request failed before proxying")
   end
 
-  -- now re-configure the request for this operation type
+  -- now configure the request for this operation type
   local ok, err = ai_driver.configure_request(conf,
                identity_interface and identity_interface.interface)
   if not ok then

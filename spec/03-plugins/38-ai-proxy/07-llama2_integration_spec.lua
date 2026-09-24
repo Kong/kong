@@ -2,7 +2,35 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
 
+local strip = require("kong.tools.string").strip
+
+
 local PLUGIN_NAME = "ai-proxy"
+
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy  .. "]", function()
@@ -113,6 +141,41 @@ for _, strategy in helpers.all_strategies() do
           },
         },
       }
+
+      local chat_good_with_no_upstream_port = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/raw/llm/v1/chat/completions_no_upstream_port" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer llama2-key",
+          },
+          model = {
+            name = "llama-2-7b-chat-hf",
+            provider = "llama2",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              llama2_format = "raw",
+              upstream_url = "http://"..helpers.mock_upstream_host .."/raw/llm/v1/chat",
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good_with_no_upstream_port.id },
+        config = {
+          path = FILE_LOG_PATH_NO_LOGS,
+        },
+      }
       --
 
       -- 200 completions good with one option
@@ -214,6 +277,23 @@ for _, strategy in helpers.all_strategies() do
         local json = cjson.decode(body)
 
         assert.equals(json.choices[1].message.content, "Is a well known font.")
+      end)
+
+      it("runs good request in chat format with no upstream port", function()
+        local r = client:get("/raw/llm/v1/chat/completions_no_upstream_port", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-chat.json"),
+        })
+
+        assert.res_status(502, r)
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        local tries = log_message.tries
+        assert.is_table(tries)
+        assert.equal(tries[1].port, 80)
       end)
 
       it("runs good request in completions format", function()
