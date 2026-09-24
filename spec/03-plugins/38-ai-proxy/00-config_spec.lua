@@ -508,4 +508,51 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
     assert.is_falsy(err)
   end)
+
+  it("accepts the minimax provider with auth and model options", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "Authorization",
+        header_value = "Bearer token",
+      },
+      model = {
+        name = "MiniMax-M3",
+        provider = "minimax",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_truthy(ok)
+    assert.is_falsy(err)
+  end)
+
+  it("accepts the minimax provider with an overridden upstream_url", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "Authorization",
+        header_value = "Bearer token",
+      },
+      model = {
+        name = "MiniMax-M3",
+        provider = "minimax",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "https://api.minimaxi.com/v1/chat/completions",
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_truthy(ok)
+    assert.is_falsy(err)
+  end)
 end)

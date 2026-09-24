@@ -101,6 +101,7 @@ _M.upstream_url_format = {
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
   huggingface   = "https://api-inference.huggingface.co/models/%s",
+  minimax       = "https://api.minimax.io:443",
 }
 
 _M.operation_map = {
@@ -161,6 +162,16 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  minimax = {
+    ["llm/v1/completions"] = {
+      path = "/v1/completions",
+      method = "POST",
+    },
+    ["llm/v1/chat"] = {
+      path = "/v1/chat/completions",
+      method = "POST",
+    },
+  },
   huggingface = {
     ["llm/v1/completions"] = {
       path = "/models/%s",
@@ -190,6 +201,9 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   mistral = {
+    "Set-Cookie",
+  },
+  minimax = {
     "Set-Cookie",
   },
   gemini = {
