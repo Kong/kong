@@ -43,6 +43,7 @@ local log_entry_keys = {
   -- usage keys
   PROMPT_TOKENS = "prompt_tokens",
   COMPLETION_TOKENS = "completion_tokens",
+  PROMPT_CACHE_TOKENS = "prompt_cache_tokens",
   TOTAL_TOKENS = "total_tokens",
   TIME_PER_TOKEN = "time_per_token",
   COST = "cost",
@@ -844,9 +845,13 @@ function _M.post_request(conf, response_object)
     if response_object.usage.total_tokens then
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
     end
+    if response_object.usage.prompt_cache_tokens then
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.PROMPT_CACHE_TOKENS] = response_object.usage.prompt_cache_tokens
+    end
 
     ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", response_object.usage.prompt_tokens)
     ai_plugin_o11y.metrics_set("llm_completion_tokens_count", response_object.usage.completion_tokens)
+    ai_plugin_o11y.metrics_set("llm_prompt_cache_tokens_count", response_object.usage.prompt_cache_tokens)
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens and
        conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then

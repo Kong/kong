@@ -39,6 +39,7 @@ function _M:run(_)
       else
         ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", metadata.prompt_tokens)
         ai_plugin_o11y.metrics_set("llm_completion_tokens_count", metadata.completion_tokens)
+        ai_plugin_o11y.metrics_set("llm_prompt_cache_tokens_count", metadata.prompt_cache_tokens)
       end
 
     else
@@ -54,6 +55,9 @@ function _M:run(_)
 
       if t and t.usage and t.usage.completion_tokens then
         ai_plugin_o11y.metrics_set("llm_completion_tokens_count", t.usage.completion_tokens)
+      end
+      if t and t.usage and t.usage.prompt_tokens_details then
+        ai_plugin_o11y.metrics_set("llm_prompt_cache_tokens_count", t.usage.prompt_tokens_details.cache_tokens or 0)
       end
     end
   end
