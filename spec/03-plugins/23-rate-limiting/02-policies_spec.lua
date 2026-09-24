@@ -246,4 +246,62 @@ describe("Plugin: rate-limiting (policies)", function()
       end)
     end
   end
+
+  -- Regression for #14995: with sync_rate > 0, recreating a missing Redis key
+  -- must EXPIREAT using seconds (timestamp.get_timestamps is millisecond-based).
+  describe("redis with sync rate > 0 and key missing in redis at sync time", function()
+    local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
+
+    local redis
+    local conf = {
+      route_id = uuid(),
+      service_id = uuid(),
+      redis = {
+        host = helpers.redis_host,
+        port = helpers.redis_port,
+        database = 0,
+      },
+      sync_rate = 1,
+    }
+
+    before_each(function()
+      local red = require "resty.redis"
+      redis = assert(red:new())
+      redis:set_timeout(1000)
+      assert(redis:connect(conf.redis.host, conf.redis.port))
+      redis:flushall()
+    end)
+
+    after_each(function()
+      redis:close()
+    end)
+
+    for _, period in ipairs { "minute", "hour" } do
+      it("sets a TTL no longer than one " .. period .. " when recreating the key", function()
+        local identifier = uuid()
+        -- same unit the handler uses (milliseconds)
+        local current_timestamp = ngx.time() * 1000
+        local periods = timestamp.get_timestamps(current_timestamp)
+        local cache_key = get_local_key(conf, identifier, period, periods[period])
+
+        -- populates the local cache, including the key's expire_at
+        assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+
+        -- simulate the key expiring in redis before the pending delta is synced
+        assert(redis:del(cache_key))
+
+        assert(policies.redis.increment(conf, { [period] = 10 }, identifier, current_timestamp, 1))
+        assert(policies.redis.increment(conf, { [period] = 10 }, identifier, current_timestamp, 1))
+
+        -- give time to the async sync to recreate the key
+        ngx.sleep(1 + conf.sync_rate)
+
+        local ttl = assert(redis:ttl(cache_key))
+        assert(ttl > 0 and ttl <= EXPIRATION[period],
+          "expected TTL in (0, " .. EXPIRATION[period] .. "], got " .. ttl)
+      end)
+    end
+  end)
+
+
 end)
