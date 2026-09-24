@@ -1710,7 +1710,7 @@ lua-resty-session
 https://github.com/bungle/lua-resty-session
 https://github.com/bungle/lua-resty-session/blob/master/LICENSE
 
-Copyright (c) 2014 – 2025 Aapo Talvensaari, 2022 – 2025 Samuele Illuminati
+Copyright (c) 2014 – 2026 Aapo Talvensaari, 2022 – 2026 Samuele Illuminati
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2531,7 +2531,7 @@ the terms of the MIT license (the same license as Lua itself),
 unless noted otherwise in the body of that file.
 
 ====================================================================
-Copyright (C) 2013-2023 Gary V. Vaughan
+Copyright (C) 2013-2026 Gary V. Vaughan
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
