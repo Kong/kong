@@ -149,6 +149,7 @@ local CTX_NREC = 50 -- normally Kong has ~32 keys in ctx
 local UPSTREAM_KEEPALIVE_POOL_SIZE
 local UPSTREAM_KEEPALIVE_IDLE_TIMEOUT
 local UPSTREAM_KEEPALIVE_MAX_REQUESTS
+local UPSTREAM_KEEPALIVE_MAX_LIFETIME
 
 
 local declarative_entities
@@ -650,6 +651,7 @@ function Kong.init()
   UPSTREAM_KEEPALIVE_POOL_SIZE = config.upstream_keepalive_pool_size
   UPSTREAM_KEEPALIVE_IDLE_TIMEOUT = config.upstream_keepalive_idle_timeout
   UPSTREAM_KEEPALIVE_MAX_REQUESTS = config.upstream_keepalive_max_requests
+  UPSTREAM_KEEPALIVE_MAX_LIFETIME = config.upstream_keepalive_max_lifetime
 
   -- The dns client has been initialized in conf_loader, so we set it directly.
   -- Other modules should use 'kong.dns' to avoid reinitialization.
@@ -1439,7 +1441,9 @@ function Kong.balancer()
   end
 
   if pool then
-    ok, err = enable_keepalive(UPSTREAM_KEEPALIVE_IDLE_TIMEOUT, UPSTREAM_KEEPALIVE_MAX_REQUESTS)
+    ok, err = enable_keepalive(UPSTREAM_KEEPALIVE_IDLE_TIMEOUT,
+                               UPSTREAM_KEEPALIVE_MAX_REQUESTS,
+                               UPSTREAM_KEEPALIVE_MAX_LIFETIME)
     if not ok then
       ngx_log(ngx_ERR, "could not enable connection keepalive: ", err)
     end
@@ -1447,7 +1451,8 @@ function Kong.balancer()
     ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool,
                        ", pool_size=", UPSTREAM_KEEPALIVE_POOL_SIZE,
                        ", idle_timeout=", UPSTREAM_KEEPALIVE_IDLE_TIMEOUT,
-                       ", max_requests=", UPSTREAM_KEEPALIVE_MAX_REQUESTS, ")")
+                       ", max_requests=", UPSTREAM_KEEPALIVE_MAX_REQUESTS,
+                       ", max_lifetime=", UPSTREAM_KEEPALIVE_MAX_LIFETIME, ")")
   end
 
   -- record overall latency
