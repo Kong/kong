@@ -217,6 +217,36 @@ kong stop
 deactivate
 ```
 
+### Running Standalone Lua Scripts
+
+Activate the venv before using any of the commands below.
+
+#### `resty` - for scripts using OpenResty APIs (`ngx.*`, cosocket, `cjson`, `resty.*`)
+
+```bash
+source bazel-bin/build/kong-dev-venv.sh
+resty my_script.lua
+```
+
+Scripts can use a shebang (`#!/usr/bin/env resty`). See `scripts/changelog-helper.lua` for an example.
+
+#### `kong runner` - for scripts that need `kong.db`, `kong.configuration`, or the PDK
+
+CLI arguments are available as a global `args` table (`args[1]` is the script filename).
+
+```bash
+kong runner my_script.lua arg1 arg2
+```
+
+#### `luajit` - for pure Lua scripts with no nginx/OpenResty APIs
+
+```bash
+source bazel-bin/build/kong-dev-venv.sh
+luajit my_script.lua
+```
+
+---
+
 ### Install Development Dependencies
 
 #### Running for development
