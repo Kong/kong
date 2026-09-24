@@ -139,6 +139,9 @@ function _EXTRACTOR:extract(headers)
     ext_tracing_ctx.trace_id_original_size = #ext_tracing_ctx.trace_id
   end
 
+  if ext_tracing_ctx.baggage then
+    ext_tracing_ctx.baggage = ext_tracing_ctx.baggage
+  end
   -- convert IDs to internal format
   ext_tracing_ctx.trace_id  = to_kong_trace_id(ext_tracing_ctx.trace_id)
   ext_tracing_ctx.span_id   = to_kong_span_id(ext_tracing_ctx.span_id)
