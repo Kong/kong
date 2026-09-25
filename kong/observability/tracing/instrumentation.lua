@@ -329,7 +329,13 @@ function _M.runloop_before_header_filter()
   if root_span then
     root_span:set_attribute("http.status_code", ngx.status)
     local r = ngx.ctx.route
-    root_span:set_attribute("http.route", r and r.paths and r.paths[1] or "")
+    -- Only set http.route when we actually matched a route with a path.
+    -- The OpenTelemetry semantic conventions say the attribute must be omitted
+    -- when the route is not known, rather than reported as an empty string.
+    local http_route = r and r.paths and r.paths[1]
+    if http_route then
+      root_span:set_attribute("http.route", http_route)
+    end
   end
 end
 

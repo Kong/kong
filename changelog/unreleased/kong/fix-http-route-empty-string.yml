@@ -1,0 +1,3 @@
+message: "**observability**: The `http.route` span attribute is now omitted when a request does not match any route, instead of being set to an empty string, to comply with the OpenTelemetry semantic conventions."
+type: bugfix
+scope: Core
