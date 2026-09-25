@@ -5072,6 +5072,210 @@ for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
 
+    it("does not reuse a scalar header match for repeated values", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8201",
+            headers = {
+              test = { "a,b" },
+            },
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = "a,b" }))
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = { "a", "b" } }))
+      assert.falsy(router:exec(ctx))
+      assert.falsy(ctx.route_match_cached)
+    end)
+
+    it("does not reuse a repeated-header miss for a scalar value", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8202",
+            headers = {
+              test = { "a,b" },
+            },
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = { "a", "b" } }))
+      assert.falsy(router:exec(ctx))
+      assert.falsy(ctx.route_match_cached)
+
+      ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = "a,b" }))
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+    end)
+
+    it("keeps missing and empty header values in distinct cache entries", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8203",
+            headers = {
+              test = { "" },
+            },
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      router._set_ngx(mock_ngx("GET", "/"))
+      assert.falsy(router:exec(ctx))
+      assert.falsy(ctx.route_match_cached)
+
+      ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = "" }))
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+    end)
+
+    it("frames header values containing cache delimiters", function()
+      for i, case in ipairs({
+        {
+          route_value = "a,b",
+          first = { "a,b", "c" },
+          second = { "a", "b,c" },
+        },
+        {
+          route_value = "a|b",
+          first = "a|b",
+          second = { "a|b" },
+        },
+      }) do
+        local use_case = {
+          {
+            service = service,
+            route = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb820" .. i + 3,
+              headers = {
+                test = { case.route_value },
+              },
+            },
+          },
+        }
+        local router = assert(new_router(use_case))
+
+        local ctx = {}
+        router._set_ngx(mock_ngx("GET", "/", { test = case.first }))
+        local match_t = router:exec(ctx)
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+        assert.falsy(ctx.route_match_cached)
+
+        ctx = {}
+        router._set_ngx(mock_ngx("GET", "/", { test = case.second }))
+        match_t = router:exec(ctx)
+        if i == 1 then
+          assert.falsy(match_t)
+
+        else
+          assert.truthy(match_t)
+          assert.same(use_case[1].route, match_t.route)
+        end
+        assert.falsy(ctx.route_match_cached)
+      end
+    end)
+
+    it("shares a cache entry for reordered repeated header values", function()
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8206",
+            headers = {
+              test = { "a" },
+            },
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = { "b", "a" } }))
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", { test = { "a", "b" } }))
+      match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same("pos", ctx.route_match_cached)
+    end)
+
+    it("keeps adjacent header field boundaries distinct", function()
+      local route_headers = {
+        alpha = { "alpha|" },
+        beta = { "beta|" },
+      }
+      local use_case = {
+        {
+          service = service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8207",
+            headers = route_headers,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+      local ordered_headers = {}
+      for _, field in ipairs(router.fields.fields) do
+        local header = field:match("^http%.headers%.(.+)$")
+        if header then
+          ordered_headers[#ordered_headers + 1] = header
+        end
+      end
+      assert.same(2, #ordered_headers)
+
+      local first_headers = {
+        alpha = route_headers.alpha[1],
+        beta = route_headers.beta[1],
+      }
+      local second_headers = deep_copy(first_headers)
+      local first_header = ordered_headers[1]
+      local second_header = ordered_headers[2]
+      second_headers[first_header] = first_headers[first_header]:sub(1, -2)
+      second_headers[second_header] = "|" .. first_headers[second_header]
+
+      local ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", first_headers))
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      ctx = {}
+      router._set_ngx(mock_ngx("GET", "/", second_headers))
+      assert.falsy(router:exec(ctx))
+      assert.falsy(ctx.route_match_cached)
+    end)
+
     it("[cache hit should be case sensitive]", function()
       local use_case = {
         {

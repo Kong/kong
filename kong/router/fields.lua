@@ -7,7 +7,6 @@ local assert = assert
 local tonumber = tonumber
 local setmetatable = setmetatable
 local tb_sort = table.sort
-local tb_concat = table.concat
 
 
 local var           = ngx.var
@@ -399,19 +398,41 @@ end -- is_http
 -- the fields returned from atc-router have fixed order and name
 -- traversing these fields will always get a decided result (for one router instance)
 -- so we need not to add field's name in cache key now
+local function put_cache_scalar(value, str_buf)
+  local encoded = tostring(value)
+  str_buf:putf("%d:%s", #encoded, encoded)
+end
+
+
+local function put_cache_value(value, str_buf)
+  if value == nil then
+    str_buf:put("N|")
+    return
+  end
+
+  if type(value) == "table" then
+    tb_sort(value)
+    str_buf:putf("A%d:", #value)
+    for _, item in ipairs(value) do
+      put_cache_scalar(item, str_buf)
+    end
+    str_buf:put("|")
+    return
+  end
+
+  str_buf:put("S")
+  put_cache_scalar(value, str_buf)
+  str_buf:put("|")
+end
+
+
 local function visit_for_cache_key(field, value, str_buf)
   -- these fields were not in cache key
   if field == "net.protocol" then
     return true
   end
 
-  if type(value) == "table" then
-    tb_sort(value)
-    value = tb_concat(value, ",")
-  end
-
-  str_buf:putf("%s|", value or "")
-
+  put_cache_value(value, str_buf)
   return true
 end
 
