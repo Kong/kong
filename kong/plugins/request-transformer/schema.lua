@@ -1,7 +1,9 @@
 local pl_template = require "pl.template"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local typedefs = require "kong.db.schema.typedefs"
-local validate_header_name = require("kong.tools.http").validate_header_name
+local http = require "kong.tools.http"
+local validate_header_name = http.validate_header_name
+local validate_header_value = http.validate_header_value
 
 
 local compile_opts = {
@@ -26,23 +28,27 @@ local function check_for_value(entry)
 end
 
 
-local function validate_headers(pair, validate_value)
+local function validate_headers(pair, value_validator)
   local name, value = pair:match("^([^:]+):*(.-)$")
   if validate_header_name(name) == nil then
     return nil, string.format("'%s' is not a valid header", tostring(name))
   end
 
-  if validate_value then
-    if validate_header_name(value) == nil then
-      return nil, string.format("'%s' is not a valid header", tostring(value))
-    end
+  if value_validator and value_validator(value) == nil then
+    return nil, string.format("'%s' is not a valid header", tostring(value))
   end
+
   return true
 end
 
 
+local function validate_colon_header_values(pair)
+  return validate_headers(pair, validate_header_value)
+end
+
+
 local function validate_colon_headers(pair)
-  return validate_headers(pair, true)
+  return validate_headers(pair, validate_header_name)
 end
 
 
@@ -84,7 +90,7 @@ local colon_header_value_array = {
   type = "array",
   default = {},
   required = true,
-  elements = { type = "string", match = "^[^:]+:.*$", custom_validator = validate_headers },
+  elements = { type = "string", match = "^[^:]+:.*$", custom_validator = validate_colon_header_values },
 }
 
 

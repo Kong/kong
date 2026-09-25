@@ -252,6 +252,7 @@ local CONTROLS = [[\x00-\x1F\x7F]]
 local HIGHBIT = [[\x80-\xFF]]
 local SEPARATORS = [==[ \t()<>@,;:\\\"\/?={}\[\]]==]
 local HTTP_TOKEN_FORBID_PATTERN = "[".. CONTROLS .. HIGHBIT .. SEPARATORS .. "]"
+local HTTP_HEADER_VALUE_FORBID_PATTERN = [[\x00-\x08\x0A-\x1F\x7F]]
 
 
 --- Validates a token defined by RFC 2616.
@@ -289,6 +290,25 @@ function _M.validate_header_name(name)
 
   return nil, "bad header name '" .. name ..
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
+end
+
+
+--- Validates a header field value according to RFC 9110.
+-- Empty values, horizontal tabs, spaces, visible ASCII characters, and
+-- obs-text (0x80-0xFF) are allowed. Other control characters are forbidden.
+-- @param value (string) the header value to verify
+-- @return the valid header value, or `nil+error`
+function _M.validate_header_value(value)
+  if value == nil then
+    return nil, "no header value provided"
+  end
+
+  if not re_match(value, "[" .. HTTP_HEADER_VALUE_FORBID_PATTERN .. "]", "jo") then
+    return value
+  end
+
+  return nil, "bad header value, control characters other than horizontal " ..
+              "tab are not allowed"
 end
 
 
