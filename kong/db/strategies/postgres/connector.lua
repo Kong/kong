@@ -187,6 +187,23 @@ end
 local setkeepalive
 
 
+local function new_connection(config)
+  local connection = pgmoon.new(config)
+
+  if connection.sock_type == "nginx" then
+    local sslhandshake = connection.sock.sslhandshake
+    connection.sock.sslhandshake = function(sock, reused_session,
+                                             server_name, ssl_verify,
+                                             send_status_req)
+      return sslhandshake(sock, reused_session, server_name or config.host,
+                          ssl_verify, send_status_req)
+    end
+  end
+
+  return connection
+end
+
+
 local function reconnect(config)
   local phase = get_phase()
   if phase == "init" or phase == "init_worker" then
@@ -196,7 +213,7 @@ local function reconnect(config)
     config.socket_type = "nginx"
   end
 
-  local connection = pgmoon.new(config)
+  local connection = new_connection(config)
 
   connection.convert_null = true
   connection.NULL         = null
