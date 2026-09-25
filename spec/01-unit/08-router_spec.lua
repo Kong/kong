@@ -5273,6 +5273,52 @@ do
       assert.same(use_case[2].route, match_t.route)
     end)
 
+    it("does not retain preserve_host SNI in a cached stream match", function()
+      local tls_service = { name = "tls-service", protocol = "tls" }
+      local use_case = {
+        {
+          service = tls_service,
+          route = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8281",
+            protocols = { "tls" },
+            expression = [[net.dst.port == 443]],
+            priority = 100,
+            preserve_host = true,
+          },
+        },
+      }
+      local router = assert(new_router(use_case))
+
+      local first_ctx = { host_port = 443 }
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, {
+        protocol = "TCP",
+        server_port = "443",
+        ssl_preread_server_name = "tenant-a.example",
+      }))
+      local first = router:exec(first_ctx)
+      assert.equal("tenant-a.example", first.upstream_host)
+      assert.falsy(first_ctx.route_match_cached)
+
+      local second_ctx = { host_port = 443 }
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, {
+        protocol = "TCP",
+        server_port = "443",
+        ssl_preread_server_name = "tenant-b.example",
+      }))
+      local second = router:exec(second_ctx)
+      assert.equal("tenant-b.example", second.upstream_host)
+      assert.same("pos", second_ctx.route_match_cached)
+
+      local third_ctx = { host_port = 443 }
+      router._set_ngx(mock_ngx(nil, nil, nil, nil, {
+        protocol = "TCP",
+        server_port = "443",
+      }))
+      local third = router:exec(third_ctx)
+      assert.is_nil(third.upstream_host)
+      assert.same("pos", third_ctx.route_match_cached)
+    end)
+
   end)
 
   describe("Router (flavor = " .. flavor .. ") [http]", function()
