@@ -1,0 +1,11 @@
+message: >-
+  **response-transformer**: Fixed a bug where the plugin logged a spurious
+  `body transform failed: failed parsing json body` warning on every
+  intermediate `body_filter` invocation for any JSON response whose body
+  didn't fit in a single buffer (e.g. large or chunked responses), because it
+  called `transform_json_body()` without checking whether
+  `kong.response.get_raw_body()` had actually returned the full buffered body
+  yet. The final response was still transformed correctly; this only affected
+  log noise.
+type: bugfix
+scope: Plugin
