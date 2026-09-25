@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed an issue where the `cachedContent` field was dropped during OpenAI-to-Gemini transformation in the Gemini driver."
+type: bugfix
+scope: Plugin
