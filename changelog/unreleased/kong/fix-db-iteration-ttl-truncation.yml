@@ -1,0 +1,10 @@
+message: >-
+  **DB-less/Hybrid mode**: Fixed a bug where `kong.db.<entity>:each()` (used by
+  `GET /config` export, `kong config db_export`, and `db_cache_warmup_entities`)
+  could silently stop iterating before reaching the end of the data set. This
+  happened whenever a page returned fewer rows than the requested page size while
+  still reporting more data available, which the `off` (DB-less/Hybrid) strategy
+  does when it skips expired TTL'd entities (for example `keyauth_credentials`
+  with per-key TTLs) within a page.
+type: bugfix
+scope: Core

@@ -43,7 +43,11 @@ local function page_iterator(pager, size, options)
       return row, nil, page
     end
 
-    if i > size and offset then
+    -- `rows` is exhausted. Do not assume `#rows == size` before fetching the
+    -- next page: a strategy may legitimately return fewer than `size` rows
+    -- for a page (e.g. the `off` strategy drops expired entities) while
+    -- still returning a non-nil `offset` to indicate more data is available.
+    if offset then
       i, rows, err, offset = 1, pager(size, offset, options)
       if not rows then
         return nil, err
