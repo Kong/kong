@@ -25,7 +25,7 @@ If you prefer to use a cloud-hosted Kong, you can [sign up for a free trial of K
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong Gateway in DB-less mode.
+We suggest using the docker-compose distribution via the instructions below, but there is also a [Docker installation](https://docs.konghq.com/gateway/latest/install/docker/#install-kong-gateway-in-db-less-mode) procedure if you’d prefer to run the Kong Gateway in DB-less mode.
 
 Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
@@ -73,7 +73,7 @@ The top Kong features include:
 
 ### Plugin Hub
 
-Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/).
+Plugins provide advanced functionality that extends the use of the Gateway. Many Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/).
 
 Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
 
