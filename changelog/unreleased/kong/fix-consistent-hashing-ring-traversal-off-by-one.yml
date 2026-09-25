@@ -1,0 +1,8 @@
+message: >-
+  **Load Balancing**: Fixed a bug in the consistent-hashing (ketama) balancer where
+  the ring traversal always skipped the continuum slot immediately after the hashed
+  index, and could loop forever for the hash value equal to the continuum size. This
+  could cause spurious "no peers available" errors while an upstream target was
+  partially unhealthy, even though a healthy target was available on the ring.
+type: bugfix
+scope: Core
