@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed the `llm_total_tokens_count` metric to use the provider's reported `total_tokens` when available, instead of always summing prompt and completion tokens. Models that use reasoning/hidden tokens report a total greater than the sum, which was previously under-counted."
+type: bugfix
+scope: Plugin
