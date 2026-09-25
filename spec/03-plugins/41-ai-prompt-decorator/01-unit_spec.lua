@@ -175,4 +175,38 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   end)
 
+  describe("empty JSON arrays (#14983)", function()
+    local cjson
+    local ai_plugin_ctx
+
+    setup(function()
+      cjson = require("kong.tools.cjson")
+      ai_plugin_ctx = require("kong.llm.plugin.ctx")
+    end)
+
+    it("keeps empty tools and nested required arrays after decorate + encode", function()
+      local request = {
+        messages = {
+          { role = "user", content = "ping" },
+        },
+        tools = cjson.decode_with_array_mt("[]"),
+        extra = {
+          required = cjson.decode_with_array_mt("[]"),
+        },
+      }
+
+      local immutable = ai_plugin_ctx.immutable_table(request)
+      local materialized = access_handler._materialize_request(immutable)
+      local decorated, err = access_handler._execute(materialized, injector_conf_prepend)
+      assert.is_nil(err)
+
+      local encoded, encode_err = access_handler._encode_request_body(decorated)
+      assert.is_nil(encode_err)
+      assert.matches('"tools":%s*%[%]', encoded)
+      assert.matches('"required":%s*%[%]', encoded)
+      assert.not_matches('"tools":%s*{}', encoded)
+      assert.not_matches('"required":%s*{}', encoded)
+    end)
+  end)
+
 end)
