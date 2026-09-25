@@ -188,7 +188,9 @@ _M.parseResolvConf = function(filename)
         end
       elseif option == "options" then
         result.options = result.options or {}
-        parseOption(result.options, details)
+        for token in details:gmatch("%S+") do
+          parseOption(result.options, token)
+        end
       end
     end
   end
