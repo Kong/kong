@@ -1,0 +1,3 @@
+message: |
+  Fixed an issue in DAO and Declarative Config where foreign key primary keys were hardcoded to 'id'. Addresses several FIXME comments in the codebase.
+type: bugfix
