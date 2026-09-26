@@ -223,6 +223,15 @@ for _, strategy in helpers.all_strategies() do
                 end
               }
             }
+
+            location = "/preserve/invalid_json" {
+              content_by_lua_block {
+                -- upstream advertises JSON but returns a truncated/invalid body
+                ngx.status = 200
+                ngx.header["Content-Type"] = "application/json"
+                ngx.print("{")
+              }
+            }
         }
       ]]
 
@@ -570,6 +579,36 @@ for _, strategy in helpers.all_strategies() do
         route = { id = preserve_good.id },
         config = {
           path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- preserve mode, upstream returns invalid JSON while statistics logging is on
+      local preserve_invalid_json = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http", "https" },
+        paths = { "/preserve/invalid-json" },
+        snis = { "example.test" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = preserve_invalid_json.id },
+        config = {
+          route_type = "preserve",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/preserve/invalid_json"
+            },
+          },
         },
       }
       --
@@ -1306,6 +1345,25 @@ for _, strategy in helpers.all_strategies() do
        assert.equals("text-embedding-3-large", json.model)
        assert.equals("openai/text-embedding-ada-002", r.headers["X-Kong-LLM-Model"])
     end)
+
+      it("proxies an invalid-json upstream body instead of returning an empty response", function()
+        local r = client:get("/preserve/invalid-json", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = cjson.encode({
+            messages = {
+              { role = "user", content = "hello" },
+            },
+          }),
+        })
+
+        -- the malformed body must be passed through, not swallowed into an
+        -- empty reply by an error in the analytics body_filter
+        local body = assert.res_status(200, r)
+        assert.equals("{", body)
+      end)
   end)
 
     describe("openai different auth methods", function()
