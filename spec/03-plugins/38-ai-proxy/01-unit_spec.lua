@@ -2504,3 +2504,70 @@ describe("json_array_iterator", function()
     )
   end)
 end)
+
+describe("ai-proxy: (minimax driver)", function()
+  it("transforms chat requests identically to the openai driver", function()
+    local minimax_driver = require("kong.llm.drivers.minimax")
+    local openai_driver = require("kong.llm.drivers.openai")
+    assert.not_nil(minimax_driver)
+
+    local request_json = pl_file.read("spec/fixtures/ai-proxy/unit/requests/llm-v1-chat.json")
+
+    local minimax_model = {
+      route_type = "llm/v1/chat",
+      name = "MiniMax-M3",
+      provider = "minimax",
+      options = {
+        max_tokens = 512,
+        temperature = 0.5,
+      },
+    }
+
+    local openai_model = {
+      route_type = "llm/v1/chat",
+      name = "gpt-4",
+      provider = "openai",
+      options = {
+        max_tokens = 512,
+        temperature = 0.5,
+      },
+    }
+
+    local minimax_request_table, err = cjson.decode(request_json)
+    assert.is_nil(err)
+    local openai_request_table, err = cjson.decode(request_json)
+    assert.is_nil(err)
+
+    local minimax_request, minimax_content_type, err = minimax_driver.to_format(
+      minimax_request_table, minimax_model, minimax_model.route_type
+    )
+    assert.is_nil(err)
+    assert.not_nil(minimax_content_type)
+
+    local openai_request, openai_content_type, err = openai_driver.to_format(
+      openai_request_table, openai_model, openai_model.route_type
+    )
+    assert.is_nil(err)
+    assert.not_nil(openai_content_type)
+
+    -- MiniMax model name should be propagated; everything else matches OpenAI format
+    minimax_request.model = nil
+    openai_request.model = nil
+    assert.same(openai_request, minimax_request)
+  end)
+
+  it("converts from an openai-compatible response format", function()
+    local minimax_driver = require("kong.llm.drivers.minimax")
+
+    local model_config = {
+      route_type = "llm/v1/chat",
+      name = "MiniMax-M3",
+      provider = "minimax",
+    }
+
+    local response_json = pl_file.read("spec/fixtures/ai-proxy/unit/real-responses/openai/llm-v1-chat.json")
+    local response_string, err = minimax_driver.from_format(response_json, model_config, model_config.route_type)
+    assert.is_nil(err)
+    assert.not_nil(response_string)
+  end)
+end)
