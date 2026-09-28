@@ -517,6 +517,9 @@ jobs:
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
+    permissions:
+      contents: read
+      id-token: write
 
     strategy:
       # limit to 3 jobs at a time
@@ -544,6 +547,14 @@ jobs:
         echo "arch=$arch"
         echo "arch=$arch" >> $GITHUB_OUTPUT
 
+    - name: Get Cloudsmith OIDC token
+      id: cloudsmith_token
+      uses: cloudsmith-io/cloudsmith-cli-action@69e169e2ad9bc9a1599c2dff464061a00fe9f8ba # v3.1.1
+      with:
+        oidc-namespace: kong
+        oidc-service-slug: ${{ vars.CLOUDSMITH_SERVICE_ACCOUNT }}
+        oidc-auth-only: true
+
     - name: Upload Packages
       env:
         ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
@@ -555,7 +566,7 @@ jobs:
         PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        CLOUDSMITH_API_KEY: ${{ steps.cloudsmith_token.outputs.oidc-token }}
         CLOUDSMITH_DRY_RUN: ''
         IGNORE_CLOUDSMITH_FAILURES: ${{ vars.IGNORE_CLOUDSMITH_FAILURES }}
         USE_CLOUDSMITH: ${{ vars.USE_CLOUDSMITH }}
