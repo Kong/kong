@@ -42,6 +42,8 @@ local check_mixed_route_entities = compat.check_mixed_route_entities
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
+local is_valid_hostname = require("kong.tools.hostname").is_valid_hostname
 
 
 local kong_dict = ngx.shared.kong
@@ -192,6 +194,20 @@ function _M:handle_cp_websocket(cert)
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr
   local dp_version = ngx_var.arg_node_version
+
+  -- validate dp_id is a valid UUID to prevent injection
+  if not is_valid_uuid(dp_id) then
+    ngx_log(ngx_ERR, _log_prefix, "invalid node_id format, must be a valid UUID")
+    return ngx_exit(ngx_CLOSE)
+  end
+
+  -- validate dp_hostname format to prevent injection
+  -- more permissive than RFC strict validation
+  -- to support all possible gethostname() returns (e.g., underscores)
+  if not is_valid_hostname(dp_hostname) then
+    ngx_log(ngx_ERR, _log_prefix, "invalid hostname format")
+    return ngx_exit(ngx_CLOSE)
+  end
 
   local wb, log_suffix, ec = connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   if not wb then
