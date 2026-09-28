@@ -447,6 +447,16 @@ local function resolve_query(self, name, qtype, tries)
 end
 
 
+-- A TTL of zero means the answer may only be used for the transaction in
+-- progress and must not be cached (RFC 1035 section 3.2.1). mlcache reads a
+-- zero TTL as "never expires", so the answer is returned with a negative TTL,
+-- the same convention `resolve_callback` already uses for `cache_only`, which
+-- makes mlcache skip both of its caches for this answer.
+local function cache_ttl(answers)
+  return answers.ttl == 0 and -1 or answers.ttl
+end
+
+
 -- resolve all `name`s and return first usable answers
 local function resolve_query_names(self, names, qtype, tries)
   local answers, err
@@ -460,12 +470,12 @@ local function resolve_query_names(self, names, qtype, tries)
     end
 
     if not answers.errcode then
-      return answers, nil, answers.ttl
+      return answers, nil, cache_ttl(answers)
     end
   end
 
   -- not found in the search iteration
-  return answers, nil, answers.ttl
+  return answers, nil, cache_ttl(answers)
 end
 
 
