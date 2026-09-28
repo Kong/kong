@@ -1,0 +1,4 @@
+message: |
+  **Standard Webhooks**: Accept the space delimited signature list used for secret rotation, reject timestamps that are ahead of the tolerance, and compare signatures in constant time.
+type: bugfix
+scope: Plugin
