@@ -208,6 +208,7 @@ build = {
     ["kong.tools.time"] = "kong/tools/time.lua",
     ["kong.tools.module"] = "kong/tools/module.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
+    ["kong.tools.hostname"] = "kong/tools/hostname.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
