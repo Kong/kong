@@ -66,13 +66,13 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
  [KAG-9408](https://konghq.atlassian.net/browse/KAG-9408)
 
 - Fixed a potential CL.0 request smuggling issue (CVE-2026-6338).
- [15024](https://github.com/Kong/kong/pull/15024)
+ [#15024](https://github.com/Kong/kong/pull/15024)
  [FTI-7377](https://konghq.atlassian.net/browse/FTI-7377)
 
 ##### Clustering
 
 - Fixed an issue where a SQL injection vulnerability existed in the clustering RPC procedure, ensuring safer SQL operations (CVE-2026-1907).
- [15024](https://github.com/Kong/kong/pull/15024)
+ [#15024](https://github.com/Kong/kong/pull/15024)
  [FTI-7219](https://konghq.atlassian.net/browse/FTI-7219)
 
 ## 3.9.3
