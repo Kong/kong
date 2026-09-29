@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.9.4](#394)
 - [3.9.3](#393)
 - [3.9.2](#392)
 - [3.9.1](#391)
@@ -27,8 +28,10 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 ## 3.9.4
 
-### Dependencies
-#### Core
+### Kong
+
+#### Dependencies
+##### Core
 
 - Bumped libexpat from 2.7.1 to 2.8.4.
  [#15008](https://github.com/Kong/kong/pull/15008)
@@ -43,8 +46,8 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 
 
 
-### Fixes
-#### CoreExpand commentComment on lines R23 to R24Resolved
+#### Fixes
+##### Core
 
 - Applied upstream nginx security patches for CVE-2026-42055 and CVE-2026-48142.
  [#15009](https://github.com/Kong/kong/pull/15009)
@@ -62,13 +65,13 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
  [#15009](https://github.com/Kong/kong/pull/15009)
  [KAG-9408](https://konghq.atlassian.net/browse/KAG-9408)
 
-- Fixed a potential CL.0 request smuggling issue.
+- Fixed a potential CL.0 request smuggling issue (CVE-2026-6338).
  [15024](https://github.com/Kong/kong/pull/15024)
  [FTI-7377](https://konghq.atlassian.net/browse/FTI-7377)
 
-#### Clustering
+##### Clustering
 
-- Fixed an issue where a SQL injection vulnerability existed in the clustering RPC procedure, ensuring safer SQL operations.
+- Fixed an issue where a SQL injection vulnerability existed in the clustering RPC procedure, ensuring safer SQL operations (CVE-2026-1907).
  [15024](https://github.com/Kong/kong/pull/15024)
  [FTI-7219](https://konghq.atlassian.net/browse/FTI-7219)
 
