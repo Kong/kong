@@ -652,6 +652,39 @@ describe("Utils", function()
         assert.is_nil((tools_ip.normalize_ip("localhost:8x0")))
         assert.is_nil((tools_ip.normalize_ip("mashape..test")))
       end)
+      it("validates IP addresses with is_valid_ip", function()
+        -- Valid IPv4 addresses
+        assert.is_true(tools_ip.is_valid_ip("127.0.0.1"))
+        assert.is_true(tools_ip.is_valid_ip("192.168.1.1"))
+        assert.is_true(tools_ip.is_valid_ip("10.0.0.1"))
+        assert.is_true(tools_ip.is_valid_ip("255.255.255.255"))
+        assert.is_true(tools_ip.is_valid_ip("0.0.0.0"))
+
+        -- Valid IPv6 addresses
+        assert.is_true(tools_ip.is_valid_ip("::1"))
+        assert.is_true(tools_ip.is_valid_ip("2001:0db8:85a3:0000:0000:8a2e:0370:7334"))
+        assert.is_true(tools_ip.is_valid_ip("2001:db8::1"))
+        assert.is_true(tools_ip.is_valid_ip("fe80::"))
+
+        -- Invalid IP addresses
+        assert.is_false(tools_ip.is_valid_ip("256.1.1.1"))
+        assert.is_false(tools_ip.is_valid_ip("1.2.3"))
+        assert.is_false(tools_ip.is_valid_ip("1.2.3.4.5"))
+        assert.is_false(tools_ip.is_valid_ip("not-an-ip"))
+        assert.is_false(tools_ip.is_valid_ip("localhost"))
+        assert.is_false(tools_ip.is_valid_ip("example.com"))
+
+        -- Invalid inputs
+        assert.is_false(tools_ip.is_valid_ip(nil))
+        assert.is_false(tools_ip.is_valid_ip(""))
+        assert.is_false(tools_ip.is_valid_ip("1.2.3.4:80"))  -- ports not allowed
+        assert.is_false(tools_ip.is_valid_ip("[::1]:80"))    -- ports not allowed
+
+        -- Security-relevant invalid inputs
+        assert.is_false(tools_ip.is_valid_ip("1.2.3.4; DROP TABLE"))
+        assert.is_false(tools_ip.is_valid_ip("../../../etc/passwd"))
+        assert.is_false(tools_ip.is_valid_ip("1.2.3.4\n5.6.7.8"))
+      end)
     end)
     describe("formatting", function()
       it("correctly formats addresses", function()
