@@ -246,4 +246,83 @@ describe("Plugin: rate-limiting (policies)", function()
       end)
     end
   end
+
+  describe("redis with sync_rate not shorter than a limited period", function()
+    local redis_conf = {
+      host = helpers.redis_host,
+      port = helpers.redis_port,
+      database = 0,
+    }
+
+    local function new_conf(sync_rate)
+      return {
+        route_id = uuid(),
+        service_id = uuid(),
+        redis = redis_conf,
+        sync_rate = sync_rate,
+      }
+    end
+
+    -- mimics the handler for one request: read usage for every limited
+    -- period, then increment
+    local function do_request(conf, limits, identifier, ts)
+      for period in pairs(limits) do
+        assert(policies.redis.usage(conf, identifier, period, ts))
+      end
+      assert(policies.redis.increment(conf, limits, identifier, ts, 1))
+    end
+
+    -- reads the counter straight from Redis, i.e. what other nodes would see
+    local function redis_value(conf, identifier, period, ts)
+      local periods = timestamp.get_timestamps(ts)
+      local red = require("resty.redis"):new()
+      red:set_timeout(1000)
+      assert(red:connect(redis_conf.host, redis_conf.port))
+      local v = red:get(get_local_key(conf, identifier, period, periods[period]))
+      red:close()
+      return tonumber(v) or 0
+    end
+
+    before_each(function()
+      local red = require("resty.redis"):new()
+      red:set_timeout(1000)
+      assert(red:connect(redis_conf.host, redis_conf.port))
+      red:flushall()
+      red:close()
+    end)
+
+    it("syncs a period in realtime when sync_rate >= its length", function()
+      ngx.update_time()
+      local ts = ngx.time()
+      local conf = new_conf(1)
+      local identifier = uuid()
+      local limits = { second = 100 }
+
+      for _ = 1, 3 do
+        do_request(conf, limits, identifier, ts)
+      end
+
+      -- no sleep: every request must be visible in Redis right away
+      assert.equal(3, redis_value(conf, identifier, "second", ts))
+    end)
+
+    it("keeps longer periods async when mixed with a realtime one", function()
+      ngx.update_time()
+      local ts = ngx.time()
+      local conf = new_conf(1)
+      local identifier = uuid()
+      local limits = { second = 100, minute = 100 }
+
+      for _ = 1, 3 do
+        do_request(conf, limits, identifier, ts)
+      end
+
+      assert.equal(3, redis_value(conf, identifier, "second", ts))
+      -- minute is still batched: only the first request has reached Redis
+      assert.equal(1, redis_value(conf, identifier, "minute", ts))
+
+      ngx.sleep(conf.sync_rate + 1)
+      assert.equal(3, redis_value(conf, identifier, "minute", ts))
+    end)
+  end)
 end)
