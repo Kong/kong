@@ -1,0 +1,3 @@
+message: "Fixed traditional router to consider all matching path regexes for a request URI instead of only the first. When multiple path patterns matched the same URI, the router now unions candidates from every matching path and sorts by regex_priority (desc) and created_at (asc), so higher-priority routes (e.g. `/api/v1/login`) are no longer skipped in favor of a lower-priority fallback when an auth route's path matched first."
+type: bugfix
+scope: Core
