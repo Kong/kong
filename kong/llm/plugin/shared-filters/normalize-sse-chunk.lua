@@ -117,9 +117,15 @@ local function handle_streaming_frame(conf, chunk, finished)
       if conf.model.provider == "gemini" then
         ai_plugin_o11y.metrics_set("llm_prompt_tokens_count", metadata.prompt_tokens or 0)
         ai_plugin_o11y.metrics_set("llm_completion_tokens_count", metadata.completion_tokens or 0)
+        if metadata.total_tokens then
+          ai_plugin_o11y.metrics_set("llm_total_tokens_count", metadata.total_tokens)
+        end
       else
         ai_plugin_o11y.metrics_add("llm_prompt_tokens_count", metadata.prompt_tokens or 0)
         ai_plugin_o11y.metrics_add("llm_completion_tokens_count", metadata.completion_tokens or 0)
+        if metadata.total_tokens then
+          ai_plugin_o11y.metrics_set("llm_total_tokens_count", metadata.total_tokens)
+        end
       end
     end
   end
