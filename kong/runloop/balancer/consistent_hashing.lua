@@ -156,12 +156,11 @@ function consistent_hashing:getPeer(cacheOnly, handle, valueToHash)
 
   local address
   local index = handle.hashValue
+  local points = self.points
   local ip, port, hostname
-  while (index - 1) ~= handle.hashValue do
-    if index == 0 then
-      index = self.points
-    end
-
+  -- walk the whole continuum exactly once, starting at the hashed index and
+  -- going counter-clockwise, wrapping around back to `points` when we pass 1
+  for _ = 1, points do
     address = self.continuum[index]
     if address ~= nil and address.available and not address.disabled then
       ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
@@ -187,6 +186,9 @@ function consistent_hashing:getPeer(cacheOnly, handle, valueToHash)
     end
 
     index = index - 1
+    if index == 0 then
+      index = points
+    end
   end
 
   return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
