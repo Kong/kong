@@ -815,6 +815,10 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
   end
 
+  if conf.upstream_keepalive_max_lifetime < 0 then
+    errors[#errors + 1] = "upstream_keepalive_max_lifetime must be 0 or greater"
+  end
+
   if conf.tracing_instrumentations and #conf.tracing_instrumentations > 0 then
     local instrumentation = require "kong.observability.tracing.instrumentation"
     local available_types_map = cycle_aware_deep_copy(instrumentation.available_types)

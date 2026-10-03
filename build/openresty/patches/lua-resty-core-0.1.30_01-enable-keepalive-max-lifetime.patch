@@ -1,0 +1,49 @@
+diff --git a/bundle/lua-resty-core-0.1.30/lib/ngx/balancer.lua b/bundle/lua-resty-core-0.1.30/lib/ngx/balancer.lua
+--- a/bundle/lua-resty-core-0.1.30/lib/ngx/balancer.lua
++++ b/bundle/lua-resty-core-0.1.30/lib/ngx/balancer.lua
+@@ -39,7 +39,8 @@ if subsystem == 'http' then
+         char **err);
+ 
+     int ngx_http_lua_ffi_balancer_enable_keepalive(ngx_http_request_t *r,
+-        unsigned long timeout, unsigned int max_requests, char **err);
++        unsigned long timeout, unsigned int max_requests,
++        unsigned long max_lifetime, char **err);
+ 
+     int ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
+         int count, char **err);
+@@ -201,7 +202,7 @@ if subsystem == "http" then
+ end
+ 
+ if subsystem == "http" then
+-    function _M.enable_keepalive(idle_timeout, max_requests)
++    function _M.enable_keepalive(idle_timeout, max_requests, max_lifetime)
+         local r = get_request()
+         if not r then
+             error("no request found")
+@@ -230,10 +231,25 @@ if subsystem == "http" then
+ 
+         elseif max_requests < 0 then
+             error("bad argument #2 to 'enable_keepalive' (expected >= 0)", 2)
++        end
++
++        if not max_lifetime then
++            max_lifetime = 0
++
++        elseif type(max_lifetime) ~= "number" then
++            error("bad argument #3 to 'enable_keepalive' " ..
++                  "(number expected, got " .. type(max_lifetime) .. ")", 2)
++
++        elseif max_lifetime < 0 then
++            error("bad argument #3 to 'enable_keepalive' (expected >= 0)", 2)
++
++        else
++            max_lifetime = max_lifetime * 1000
+         end
+ 
+         local rc = ngx_lua_ffi_balancer_enable_keepalive(r, idle_timeout,
+-                                                         max_requests, errmsg)
++                                                         max_requests,
++                                                         max_lifetime, errmsg)
+         if rc == FFI_OK then
+             return true
+         end

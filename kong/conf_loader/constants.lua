@@ -316,6 +316,7 @@ local CONF_PARSERS = {
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
   upstream_keepalive_idle_timeout = { typ = "number" },
+  upstream_keepalive_max_lifetime = { typ = "number" },
   allow_debug_header = { typ = "boolean" },
 
   headers = { typ = "array" },

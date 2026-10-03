@@ -1014,6 +1014,15 @@
                                         # connection may be kept open
                                         # indefinitely.
 
+#upstream_keepalive_max_lifetime = 0    # Sets the default maximum lifetime (in
+                                        # seconds) of an upstream keepalive
+                                        # connection. After the maximum lifetime
+                                        # is exceeded, the connection will be
+                                        # closed.
+                                        # A value of `0` will disable this
+                                        # behavior, and a keepalive connection
+                                        # may be kept open indefinitely.
+
 #allow_debug_header = off               # Enable the `Kong-Debug` header function.
                                         # If it is `on`, Kong will add
                                         # `Kong-Route-Id`, `Kong-Route-Name`, `Kong-Service-Id`,
