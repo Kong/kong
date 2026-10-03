@@ -886,7 +886,7 @@ local function new(self)
       -- this can fail on init as the lmdb cannot be accessed and secondly,
       -- because the data is not yet inserted into LMDB when using KONG_DECLARATIVE_CONFIG.
       if get_phase() == "init" then
-        if not INIT_SECRETS[cache_key] then
+        if not INIT_SECRETS[reference] then
           INIT_SECRETS[reference] = true
           INIT_SECRETS[#INIT_SECRETS + 1] = reference
         end
