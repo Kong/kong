@@ -12,6 +12,34 @@ describe("Plugin: request-transformer(schema)", function()
     assert.falsy(ok)
     assert.equal("invalid value: HELLO!", err.config.http_method)
   end)
+
+  for _, operation in ipairs({ "add", "append", "replace" }) do
+    it("validates " .. operation .. " header values", function()
+      local ok, err = v({
+        [operation] = {
+          headers = { "X-Test:a value with spaces; and punctuation!" },
+        },
+      }, request_transformer_schema)
+      assert.truthy(ok)
+      assert.is_nil(err)
+
+      ok = v({
+        [operation] = {
+          headers = { "X-Test:invalid\rvalue" },
+        },
+      }, request_transformer_schema)
+      assert.falsy(ok)
+    end)
+  end
+
+  it("validates renamed header names", function()
+    local ok = v({
+      rename = {
+        headers = { "X-Test:not a header name" },
+      },
+    }, request_transformer_schema)
+    assert.falsy(ok)
+  end)
   it("validate regex pattern as value", function()
     local config = {
       add = {
