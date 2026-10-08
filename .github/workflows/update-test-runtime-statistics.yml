@@ -26,6 +26,7 @@ jobs:
           workflow-name: build_and_test.yml
           test-file-runtime-file: .ci/runtimes.json
           artifact-name-regexp: "^test-runtime-statistics-\\d+$"
+          fail-on-missing-statistics: true
 
       - name: Upload new runtimes file
         uses: Kong/gh-storage/upload@29d5de7b2b87c63016daae5680aefab30812a318 # main (node24)
