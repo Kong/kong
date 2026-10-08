@@ -1,4 +1,4 @@
-local cjson = require("cjson")
+local cjson = require("cjson.safe")
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
 local ai_plugin_o11y = require("kong.llm.plugin.observability")
 
@@ -39,7 +39,10 @@ function _M:run(conf)
 
       else
         -- openai formats
-        local response_body_table = cjson.decode(response_body)
+        local response_body_table, err = cjson.decode(response_body)
+        if err then
+          kong.log.info("failed to decode response body: ", err)
+        end
         response_model = response_body_table and response_body_table.model
       end
     end
