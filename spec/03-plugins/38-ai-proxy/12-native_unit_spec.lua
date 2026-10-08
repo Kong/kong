@@ -200,5 +200,54 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.same(target_response, response)
     end)
   end
+  it("bedrock adapter handles toolResult followed by trailing blocks without error", function()
+    package.loaded["kong.llm.adapters.bedrock"] = nil
+    _G.TEST = true
+    local bedrock = require("kong.llm.adapters.bedrock")
+    local adapter = bedrock:new()
+
+    local mock_request = {
+      messages = {
+        {
+          role = "user",
+          content = {
+            {
+              toolResult = {
+                toolUseId = "call_abc123",
+                content = { { text = "Temperature in Seattle is 72°F" } }
+              }
+            },
+            {
+              cachePoint = { type = "default" }
+            }
+          }
+        }
+      }
+    }
+
+    local mock_kong = {
+      request = {
+        get_path = function()
+          return "/bedrock/model/cohere.command-r-v1%3A0/converse"
+        end,
+        get_uri_captures = function()
+          return {
+            named = {
+              ["model"] = "cohere.command-r-v1:0",
+              ["operation"] = "converse",
+            },
+          }
+        end,
+      },
+    }
+
+    local response = adapter:to_kong_req(mock_request, mock_kong)
+
+    local msg = response.messages[1]
+    
+    assert.is_table(msg.content)
+    assert.equals(2, #msg.content)
+    assert.same({ type = "text", text = "Temperature in Seattle is 72°F" }, msg.content[1])
+  end)
 
 end)
