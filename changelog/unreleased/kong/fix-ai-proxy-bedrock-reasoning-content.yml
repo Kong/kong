@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where Bedrock chat responses had no `content` when the model returned a `reasoningContent` block before the text.
+type: bugfix
+scope: Plugin
