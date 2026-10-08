@@ -1,4 +1,4 @@
 message: |
-  Fixed an issue where a SQL injection vulnerability existed in the clustering RPC procedure, ensuring safer SQL operations.
+  Fixed an issue where a SQL injection vulnerability existed in the clustering RPC procedure, ensuring safer SQL operations (CVE-2026-1907).
 type: bugfix
 scope: Clustering
