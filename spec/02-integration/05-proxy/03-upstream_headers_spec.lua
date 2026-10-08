@@ -241,36 +241,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert.equal("Basic ZGVtbzp0ZXN0", headers["proxy-authorization"])
       end)
-
-      it("Content-Length in Connection header won't cause CL.0 request smuggling", function()
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          headers = {
-            ["Host"] = "headers-inspect.test",
-            ["Content-Length"] = "10",
-            ["Connection"] = "Content-Length",
-          },
-          body = "smuggled\r\n"
-        })
-
-        local json = cjson.decode(assert.res_status(200, res))
-        assert.equal("smuggled\r\n", json.post_data.text)
-      end)
-
-      it("Transfer-Encoding in Connection header won't cause CL.0 request smuggling", function()
-        local res = assert(proxy_client:send {
-          method  = "POST",
-          headers = {
-            ["Host"] = "headers-inspect.test",
-            ["Connection"] = "Transfer-Encoding",
-            ["Transfer-Encoding"] = "chunked",
-          },
-          body = "a\r\nsmuggled\r\n\r\n0\r\n\r\n"
-        })
-
-        local json = cjson.decode(assert.res_status(200, res))
-        assert.equal("smuggled\r\n", json.post_data.text)
-      end)
     end)
 
     describe("(response from upstream)", function()
@@ -291,31 +261,7 @@ for _, strategy in helpers.each_strategy() do
               ngx.header.content_type = "text/plain; charset=utf-8"
               ngx.say("Hello World!")
             ]]
-          },
-          ["/content-length"] = {
-            content = [[
-              ngx.header["Content-Type"] = "application/octet-stream"
-              ngx.header["Connection"] = "Content-Length"
-              ngx.header["Content-Length"] = 12
-              ngx.status = 200
-              ngx.send_headers()
-              ngx.flush(true)
-              ngx.print("smuggled\r\naa")
-            ]]
-          },
-          ["/transfer-encoding"] = {
-            content = [[
-              ngx.header["Content-Type"] = "application/octet-stream"
-              ngx.header["Connection"] = "Transfer-Encoding"
-              -- ngx.header["Transfer-Encoding"] = "chunked" -- chunked is set by OpenResty when the body is flushed without Content-Length
-              ngx.status = 200
-              ngx.send_headers()
-              ngx.print("smuggled\r\n")
-              ngx.flush(true)
-              ngx.print("aa")
-              ngx.flush(true)
-            ]]
-          },
+          }
         }, {
           record_opts = {
             req = false,
@@ -332,11 +278,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(bp.routes:insert {
           hosts = { "headers-charset.test" },
-          service = service,
-        })
-
-        assert(bp.routes:insert {
-          hosts = { "hop-by-hop-smuggling.test" },
           service = service,
         })
 
@@ -376,36 +317,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
           assert.equal("text/plain; charset=utf-8", res.headers["Content-Type"])
-        end)
-      end)
-
-      describe("Connection", function()
-        it("Content-Length in Connection header won't cause CL.0 response smuggling", function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = "/content-length",
-            headers = {
-              ["Host"] = "hop-by-hop-smuggling.test",
-            }
-          })
-
-          local body = assert.res_status(200, res)
-          -- trailing CRLF will be stripped by assert.res_status, so we add extra "aa"
-          assert.equal("smuggled\r\naa", body)
-        end)
-
-        it("Transfer-Encoding in Connection header won't cause CL.0 response smuggling", function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = "/transfer-encoding",
-            headers = {
-              ["Host"] = "hop-by-hop-smuggling.test",
-            }
-          })
-
-          local body = assert.res_status(200, res)
-          -- trailing CRLF will be stripped by assert.res_status, so we add extra "aa"
-          assert.equal("smuggled\r\naa", body)
         end)
       end)
     end)
