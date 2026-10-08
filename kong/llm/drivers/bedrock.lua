@@ -54,17 +54,13 @@ end
 -- this is a placeholder and is archaic now,
 -- leave it in for backwards compatibility
 local function to_additional_request_fields(request_table)
-  return {
-    request_table.bedrock.additionalModelRequestFields
-  }
+  return request_table.bedrock.additionalModelRequestFields
 end
 
 -- this is a placeholder and is archaic now,
 -- leave it in for backwards compatibility
 local function to_tool_config(request_table)
-  return {
-    request_table.bedrock.toolConfig
-  }
+  return request_table.bedrock.toolConfig
 end
 
 local function to_tools(in_tools)
