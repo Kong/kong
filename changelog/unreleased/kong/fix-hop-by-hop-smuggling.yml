@@ -1,3 +1,0 @@
-message: "Fixed a potential CL.0 request smuggling issue."
-type: bugfix
-scope: Core

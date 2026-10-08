@@ -1446,8 +1446,7 @@ return {
               clear_header(header_name)
             end
 
-          -- remove content-length header may cause CL.0 request smuggling
-          elseif header_name ~= "content-length" then
+          else
             clear_header(header_name)
           end
         end

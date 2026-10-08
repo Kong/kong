@@ -14,24 +14,28 @@
 - Path      : /usr/local/kong/lib/engines-3/afalg.so
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/engines-3/capi.so
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/engines-3/loader_attic.so
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/engines-3/padlock.so
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
@@ -43,6 +47,7 @@
 
 - Path      : /usr/local/kong/lib/libcrypto.so.3
   Needed    :
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
@@ -59,12 +64,14 @@
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/ossl-modules/legacy.so
   Needed    :
   - libcrypto.so.3
+  - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
@@ -98,8 +105,6 @@
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so
-  Needed    :
-  - libc.so.6
   Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/pb.so
@@ -141,8 +146,6 @@
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so
-  Needed    :
-  - libc.so.6
 
 - Path      : /usr/local/openresty/lualib/redis/parser.so
   Needed    :
@@ -150,7 +153,9 @@
 
 - Path      : /usr/local/openresty/nginx/modules/ngx_wasmx_module.so
   Needed    :
+  - libdl.so.2
   - libm.so.6
+  - libpthread.so.0
   - libgcc_s.so.1
   - libc.so.6
   - ld-linux-x86-64.so.2
@@ -158,6 +163,8 @@
 
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
+  - libdl.so.2
+  - libpthread.so.0
   - libcrypt.so.1
   - libluajit-5.1.so.2
   - libm.so.6
@@ -180,6 +187,8 @@
 - Path      : /usr/local/openresty/site/lualib/libatc_router.so
   Needed    :
   - libgcc_s.so.1
+  - libpthread.so.0
+  - libdl.so.2
   - libc.so.6
   - ld-linux-x86-64.so.2
 
@@ -188,3 +197,4 @@
   - libstdc++.so.6
   - libgcc_s.so.1
   - libc.so.6
+
