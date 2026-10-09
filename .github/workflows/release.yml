@@ -341,7 +341,6 @@ jobs:
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
       env:
-        # KAG-9727 stored connection 4 in this variable.
         DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     - name: Docker meta
@@ -478,7 +477,6 @@ jobs:
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
       env:
-        # KAG-9727 stored connection 4 in this variable.
         DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     # TODO: Refactor matrix file to support and parse platforms specific to distro
@@ -621,7 +619,6 @@ jobs:
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
       env:
-        # KAG-9727 stored connection 4 in this variable.
         DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
