@@ -22,7 +22,7 @@ local schema = {
           },
           {
             tolerance_second = {
-              description = "Tolerance of the webhook timestamp in seconds. If the webhook timestamp is older than this number of seconds, it will be rejected with a '400' response.",
+              description = "Tolerance of the webhook timestamp in seconds. If the webhook timestamp differs from the current time by more than this number of seconds, in either direction, it will be rejected with a '400' response.",
               type = "integer",
               required = true,
               gt = -1,

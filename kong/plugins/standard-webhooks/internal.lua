@@ -1,8 +1,14 @@
 local kong = kong
+local bit = require "bit"
 local mac = require "resty.openssl.mac"
 local tonumber = tonumber
 local ngx = ngx
 local type = type
+local abs = math.abs
+local bor = bit.bor
+local bxor = bit.bxor
+local byte = string.byte
+local gmatch = string.gmatch
 
 local HEADER_WEBHOOK_ID = "webhook-id"
 local HEADER_WEBHOOK_SIGN = "webhook-signature"
@@ -47,10 +53,34 @@ local function extract_webhook()
 end
 
 
+local function constant_time_equals(a, b)
+  if #a ~= #b then
+    return false
+  end
+
+  local diff = 0
+  for i = 1, #a do
+    diff = bor(diff, bxor(byte(a, i), byte(b, i)))
+  end
+
+  return diff == 0
+end
+
+-- the header carries a space delimited list during secret rotation
+local function signature_matches(header, expected)
+  for candidate in gmatch(header, "%S+") do
+    if constant_time_equals(candidate, expected) then
+      return true
+    end
+  end
+
+  return false
+end
+
 local function access(config)
   local id, signature, ts = extract_webhook()
 
-  if ngx.now() - ts > config.tolerance_second then
+  if abs(ngx.now() - ts) > config.tolerance_second then
     kong.log.debug("timestamp tolerance exceeded")
     return kong.response.error(400)
   end
@@ -64,7 +94,7 @@ local function access(config)
 
   local expected_signature = sign(config.secret_v1, id, ts, body)
 
-  if signature ~= expected_signature then
+  if not signature_matches(signature, expected_signature) then
     kong.log.debug("signature not matched")
     return kong.response.error(400)
   end
