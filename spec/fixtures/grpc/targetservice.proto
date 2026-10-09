@@ -49,6 +49,11 @@ service Bouncer {
     option (google.api.http) = {
       post: "/v1/echo"
       body: "*"
+      // GET binding exercises repeated fields supplied as query parameters,
+      // e.g. `?array=a` (single) and `?array=a&array=b` (multiple).
+      additional_bindings {
+        get: "/v1/echo"
+      }
     };
   }
 }
