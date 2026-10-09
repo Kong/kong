@@ -313,6 +313,45 @@ describe("[DNS client cache]", function()
       end
     end)
 
+    it("records with a zero ttl are not cached, Kong/kong #15000", function()
+      -- a TTL of 0 means "use for this transaction only" (RFC 1035 3.2.1);
+      -- caching it would pin the name, because mlcache reads a zero TTL as
+      -- "never expires"
+      local queries = 0
+      mock_records = {
+        ["myhost15.domain.test:"..resolver.TYPE_A] = {{
+          type = resolver.TYPE_A,
+          address = "1.2.3.4",
+          class = 1,
+          name = "myhost15.domain.test",
+          ttl = 0,
+        }}
+      }
+
+      query_func = function(self, original_query_func, qname, opts)
+        queries = queries + 1
+        return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
+      end
+
+      local answers = cli:resolve("myhost15.domain.test")
+      assert.equal("1.2.3.4", answers[1].address)
+      assert.equal(1, queries)
+
+      -- the address changes behind the zero-ttl record, in a fresh table so a
+      -- cached answer keeps the old address instead of following the mock
+      mock_records["myhost15.domain.test:"..resolver.TYPE_A] = {{
+        type = resolver.TYPE_A,
+        address = "5.6.7.8",
+        class = 1,
+        name = "myhost15.domain.test",
+        ttl = 0,
+      }}
+
+      local answers2 = cli:resolve("myhost15.domain.test")
+      assert.equal(2, queries)                   -- asked the resolver again
+      assert.equal("5.6.7.8", answers2[1].address)
+    end)
+
     it("errors do not replace stale records", function()
       local rec1 = {{
         type = resolver.TYPE_A,
