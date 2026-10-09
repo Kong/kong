@@ -1,0 +1,3 @@
+message: '**ai-proxy**: Added support for the MiniMax provider, using its OpenAI-compatible chat completions and completions endpoints.'
+type: feature
+scope: Plugin
