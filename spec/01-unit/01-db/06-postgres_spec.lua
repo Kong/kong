@@ -6,7 +6,7 @@ local config = {
 local Schema = require "kong.db.schema"
 local connector = require "kong.db.strategies.postgres.connector".new(config)
 
-
+-- Some random changes in a file --- 0000
 describe("kong.db [#postgres] connector", function()
   describe(":infos()", function()
     it("returns infos db_ver always with two digit groups divided with dot (.)", function()
@@ -34,6 +34,7 @@ describe("kong.db [#postgres] connector", function()
         db_readonly = false,
       }, infos)
 
+      -- Some random changes in a file --- 111
       infos = connector.infos{ major_version = 9.5, major_minor_version = "9.5.1", config = config }
       assert.same({
         db_desc  = "database",
@@ -114,6 +115,7 @@ describe("kong.db [#postgres] connector", function()
     end)
   end)
 
+  -- Some random changes in a file --- 222
   describe(":query() semaphore", function()
     describe("max 1", function()
       -- connector in a new scope

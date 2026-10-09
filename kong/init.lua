@@ -885,6 +885,8 @@ function Kong.init_worker()
   end
   kong.core_cache = core_cache
 
+  -- Some random changes in a file
+
   kong.db:set_events_handler(worker_events)
 
   if kong.configuration.admin_gui_listeners then
@@ -967,6 +969,7 @@ function Kong.init_worker()
     end
   end
 
+  -- Some random changes in a file --- 222
   ok, err = runloop.update_plugins_iterator()
   if not ok then
     stash_init_worker_error("failed to build the plugins iterator: " .. err)
@@ -1055,6 +1058,7 @@ function Kong.ssl_client_hello()
   ctx.KONG_PHASE = PHASES.client_hello
 end
 
+-- Some random changes in a file --- 333
 function Kong.preread()
   local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
   if not ctx.KONG_PROCESSING_START then
