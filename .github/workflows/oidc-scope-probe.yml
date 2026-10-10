@@ -1,0 +1,66 @@
+name: OIDC scope probe (temporary)
+
+# Proves the OSS push connection can open an upload on kong/kong.
+# Delete this file after the run is recorded. It creates no tag.
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe-kong-push:
+    name: Probe push scope on kong/kong
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
+        with:
+          username: kong
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
+
+      - name: Open and cancel a blob upload
+        run: |
+          set -euo pipefail
+          auth=$(jq -r '.auths["https://index.docker.io/v1/"].auth // .auths["index.docker.io"].auth // empty' "${HOME}/.docker/config.json")
+          if [ -z "$auth" ]; then
+            echo "::error::docker login did not store registry credentials"
+            jq -r '.auths | keys' "${HOME}/.docker/config.json" || true
+            exit 1
+          fi
+          userpass=$(printf '%s' "$auth" | base64 -d)
+          user=${userpass%%:*}
+          pass=${userpass#*:}
+          token=$(curl -fsS -u "${user}:${pass}" \
+            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:kong/kong:pull,push" \
+            | jq -r .token)
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "::error::token exchange returned no token"
+            exit 1
+          fi
+          payload=$(printf '%s' "$token" | cut -d. -f2)
+          pad=$(( (4 - ${#payload} % 4) % 4 ))
+          printf '%s' "$payload$(printf '=%.0s' $(seq 1 "$pad" 2>/dev/null))" | base64 -d 2>/dev/null | jq -c '.access // empty' || true
+          hdr=$(mktemp)
+          code=$(curl -sS -D "$hdr" -o /dev/null -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer ${token}" \
+            "https://registry-1.docker.io/v2/kong/kong/blobs/uploads/")
+          echo "blob upload status=${code}"
+          loc=$(awk 'tolower($1)=="location:" {print $2}' "$hdr" | tr -d '\r')
+          case "$loc" in
+            /*) loc="https://registry-1.docker.io${loc}" ;;
+          esac
+          if [ -n "$loc" ]; then
+            curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer ${token}" "$loc" || true
+            echo "cancelled upload session"
+          fi
+          if [ "$code" != "202" ]; then
+            echo "::error::expected 202 from kong/kong blob upload, got ${code}"
+            cat "$hdr"
+            exit 1
+          fi
+          echo "kong/kong push scope granted"
