@@ -22,7 +22,10 @@ local function cache_key(conf, username, password)
 end
 
 
-local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
+local ldap_host = os.getenv("KONG_SPEC_TEST_AD_SERVER_HOST") or "127.0.0.1"
+local ldap_port = tonumber(os.getenv("KONG_SPEC_TEST_AD_SERVER_PORT_389")) or 389
+local ldap_password = "pass:w2rd1111A$"
+local ldap_bind_dn = "cn=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com"
 
 local ldap_strategies = {
   non_secure = { name = "non-secure", start_tls = false },
@@ -39,6 +42,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local plugin2
 
         lazy_setup(function()
+          helpers.wait_for_ldap(ldap_host, ldap_port, ldap_bind_dn, ldap_password)
           local bp = helpers.get_db_utils(strategy, {
             "routes",
             "services",
@@ -95,11 +99,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route1.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid"
+              attribute = "cn"
             }
           }
 
@@ -107,11 +111,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route2.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host        = ldap_host_aws,
-              ldap_port        = 389,
+              ldap_host        = ldap_host,
+              ldap_port        = ldap_port,
               start_tls        = ldap_strategy.start_tls,
               base_dn          = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute        = "uid",
+              attribute        = "cn",
               hide_credentials = true,
               cache_ttl        = 2,
               realm            = "test-ldap",
@@ -122,11 +126,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route3.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               anonymous = anonymous_user.id,
             }
           }
@@ -135,11 +139,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route4.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               cache_ttl = 2,
               anonymous = uuid.uuid(), -- non existing consumer
             }
@@ -149,11 +153,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route5.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               header_type = "Basic",
             }
           }
@@ -161,11 +165,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           bp.plugins:insert {
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid"
+              attribute = "cn"
             }
           }
 
@@ -173,11 +177,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route7.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               anonymous = anonymous_user.username,
             }
           }
@@ -186,11 +190,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route8.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               header_type = "Basic",
               realm = "test-ldap",
             }
@@ -292,7 +296,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             body    = {},
             headers = {
               host             = "ldap.test",
-              authorization    = "ldap " .. ngx.encode_base64("einstein:password"),
+              authorization    = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
@@ -303,7 +307,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local ok, res = helpers.proxy_client_grpc(){
             service = "hello.HelloService.SayHello",
             opts = {
-              ["-H"] = ("'Authorization: ldap %s'"):format(ngx.encode_base64("einstein:password")),
+              ["-H"] = ("'Authorization: ldap %s'"):format(ngx.encode_base64("einstein:" .. ldap_password)),
             },
           }
           assert.truthy(ok)
@@ -317,7 +321,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             body = {},
             headers = {
               host = "ldap.test",
-              authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
+              authorization = "invalidldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
@@ -330,7 +334,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap.test",
-              authorization = " ldap " .. ngx.encode_base64("einstein:password")
+              authorization = " ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
@@ -341,7 +345,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap.test",
-              authorization = "LDAP " .. ngx.encode_base64("einstein:password")
+              authorization = "LDAP " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
@@ -352,7 +356,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
@@ -390,7 +394,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password:another_password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password .. ":another_password")
             }
           })
           assert.response(res).has.status(401)
@@ -414,12 +418,12 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
           local value = assert.request(res).has.header("authorization")
-          assert.equal("ldap " .. ngx.encode_base64("einstein:password"), value)
+          assert.equal("ldap " .. ngx.encode_base64("einstein:" .. ldap_password), value)
         end)
         it("hides credential sent along with authorization header to upstream server", function()
           local res = assert(proxy_client:send {
@@ -427,7 +431,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap2.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
@@ -452,7 +456,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             body = {},
             headers = {
               host = "ldap5.test",
-              authorization = "basic " .. ngx.encode_base64("einstein:password"),
+              authorization = "basic " .. ngx.encode_base64("einstein:" .. ldap_password),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
@@ -495,7 +499,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             body = {},
             headers = {
               host = "ldap5.test",
-              authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
+              authorization = "invalidldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               ["content-type"] = "application/x-www-form-urlencoded",
             }
           })
@@ -508,7 +512,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap6.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
@@ -522,13 +526,13 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             path    = "/request",
             headers = {
               host          = "ldap2.test",
-              authorization = "ldap " .. ngx.encode_base64("einstein:password")
+              authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
             }
           })
           assert.response(res).has.status(200)
 
           -- Check that cache is populated
-          local key = cache_key(plugin2.config, "einstein", "password")
+          local key = cache_key(plugin2.config, "einstein", ldap_password)
 
           helpers.wait_until(function()
             local res = assert(admin_client:send {
@@ -550,7 +554,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path    = "/request",
               headers = {
                 host          = "ldap3.test",
-                authorization = "ldap " .. ngx.encode_base64("einstein:password")
+                authorization = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password)
               }
             })
             assert.response(res).has.status(200)
@@ -609,6 +613,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local keyauth
 
         lazy_setup(function()
+          helpers.wait_for_ldap(ldap_host, ldap_port, ldap_bind_dn, ldap_password)
           local bp = helpers.get_db_utils(strategy, {
             "routes",
             "services",
@@ -630,11 +635,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route1.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
             },
           }
 
@@ -664,11 +669,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             route = { id = route2.id },
             name     = "ldap-auth",
             config   = {
-              ldap_host = ldap_host_aws,
-              ldap_port = 389,
+              ldap_host = ldap_host,
+              ldap_port = ldap_port,
               start_tls = ldap_strategy.start_tls,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
-              attribute = "uid",
+              attribute = "cn",
               anonymous = anonymous.id,
             },
           }
@@ -712,7 +717,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               headers = {
                 ["Host"]          = "logical-and.test",
                 ["apikey"]        = "Mouse",
-                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               }
             })
             assert.response(res).has.status(200)
@@ -738,7 +743,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path    = "/request",
               headers = {
                 ["Host"]          = "logical-and.test",
-                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               }
             })
             assert.response(res).has.status(401)
@@ -768,7 +773,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               headers = {
                 ["Host"]          = "logical-or.test",
                 ["apikey"]        = "Mouse",
-                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               }
             })
             assert.response(res).has.status(200)
@@ -804,7 +809,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path    = "/request",
               headers = {
                 ["Host"]          = "logical-or.test",
-                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+                ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:" .. ldap_password),
               }
             })
             assert.response(res).has.status(200)
