@@ -110,6 +110,35 @@ local function pwait_until(f, timeout, step)
 end
 
 
+--- Wait for a successful LDAP bind.
+-- @function wait_for_ldap
+-- @tparam string host LDAP server host.
+-- @tparam number port LDAP server port.
+-- @tparam string bind_dn User DN for the readiness check.
+-- @tparam string password User password.
+-- @tparam[opt=120] number timeout Maximum wait time in seconds.
+local function wait_for_ldap(host, port, bind_dn, password, timeout)
+  local ldap = require "kong.plugins.ldap-auth.ldap"
+
+  -- A listening socket does not prove that the seeded users can authenticate.
+  pwait_until(function()
+    local sock = ngx.socket.tcp()
+    sock:settimeout(1000)
+    local called, ok, err = pcall(function()
+      local connected, connect_err = sock:connect(host, port)
+      if not connected then
+        return nil, connect_err
+      end
+
+      return ldap.bind_request(sock, bind_dn, password)
+    end)
+    sock:close()
+    assert(called and ok, "LDAP fixture at " .. host .. ":" .. port ..
+           " is not ready: " .. tostring(called and err or ok))
+  end, timeout or 120, 0.5)
+end
+
+
 --- Wait for some timers, throws an error on timeout.
 --
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
@@ -680,6 +709,7 @@ return {
 
   wait_until = wait_until,
   pwait_until = pwait_until,
+  wait_for_ldap = wait_for_ldap,
   wait_timer = wait_timer,
   wait_for_invalidation = wait_for_invalidation,
   wait_for_all_config_update = wait_for_all_config_update,
