@@ -1,0 +1,12 @@
+version: '3.4'
+
+services:
+  ad-server:
+    image: nginx:1.17.3-alpine
+    # run as privileged to workaround this issue
+    # set_nt_acl_no_snum: fset_nt_acl returned NT_STATUS_ACCESS_DENIED
+    privileged: true
+    ports:
+      - "389:389/tcp"
+    volumes:
+       - .:/setup-ad/

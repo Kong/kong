@@ -308,6 +308,10 @@ jobs:
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
+    - name: Set up ldap ad server
+      run: |
+        cd .ci/ad-server && make build-ad-server
+
     - name: Download test schedule file
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
