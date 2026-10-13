@@ -28,6 +28,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
