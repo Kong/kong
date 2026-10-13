@@ -436,6 +436,11 @@ local function lookup_or_create(self, label_values)
   return full_name
 end
 
+-- Error message that gets logged when the shared dictionary gets full.
+local ERR_MSG_LRU_EVICTION = "Shared dictionary used for prometheus metrics " ..
+  "is full. REPORTED METRIC DATA MIGHT BE INCOMPLETE. Please increase the " ..
+  "size of the dictionary or reduce metric cardinality."
+
 -- Increment a gauge metric.
 --
 -- Gauges are incremented in the dictionary directly to provide strong ordering
@@ -446,7 +451,7 @@ end
 --   value: numeric value to increment by. Can be negative.
 --   label_values: a list of label values, in the same order as label keys.
 local function inc_gauge(self, value, label_values)
-  local k, err, _
+  local k, err, _, forcible
   k, err = lookup_or_create(self, label_values)
   if err then
     self._log_error(err)
@@ -459,9 +464,9 @@ local function inc_gauge(self, value, label_values)
     return
   end
 
-  _, err, _ = self._dict:incr(k, value, 0)
-  if err then
-    self._log_error_kv(k, value, err)
+  _, err, forcible = self._dict:incr(k, value, 0)
+  if err or forcible then
+    self._log_error_kv(k, value, err or ERR_MSG_LRU_EVICTION)
   end
 end
 
