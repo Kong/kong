@@ -100,13 +100,18 @@ function push_package () {
     dist_version="--dist-version noble"
   fi
 
+  tags="$PACKAGE_TAGS"
+  echo "tags passed to script: ${tags}"
+  tags="${tags//${KONG_RELEASE_LABEL}-/}"
+  tags="${tags//${KONG_RELEASE_LABEL}+/}"
+  echo "became:                ${tags}"
+  leftovers="$(echo "$tags" | tr -d 'a-zA-Z0-9._,')"
+  echo "after sanitizing:      ${leftovers}"
+
   # test for sanitized github actions input
-  if [[ -n "$(echo "$PACKAGE_TAGS" | tr -d 'a-zA-Z0-9._,')" ]]; then
+  if [ -n "$leftovers" ]; then
     echo 'invalid characters in PACKAGE_TAGS'
-    echo "passed to script: ${PACKAGE_TAGS}"
     tags=''
-  else
-    tags="$PACKAGE_TAGS"
   fi
 
   set -x
