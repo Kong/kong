@@ -75,6 +75,7 @@ error_default_type = text/plain
 upstream_keepalive_pool_size = 512
 upstream_keepalive_max_requests = 10000
 upstream_keepalive_idle_timeout = 60
+upstream_keepalive_max_lifetime = 0
 allow_debug_header = off
 
 nginx_user = kong kong
