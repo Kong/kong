@@ -37,7 +37,7 @@ Whether you’re running in the cloud, on bare metal, or using containers, you c
 
 2) Start the Gateway stack using:
 ```cmd
-  $ KONG_DATABASE=postgres docker-compose --profile database up
+  $ KONG_DATABASE=postgres docker compose --profile database up
 ```
 
 The Gateway is now available on the following ports on localhost:
