@@ -1359,6 +1359,33 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         ['trace'] = 'enabled',
       })
     end)
+
+    it("passes bedrock additionalModelRequestFields and toolConfig through as objects", function()
+      local model_info = {
+        route_type = "llm/v1/chat",
+        name = "some-model",
+        provider = "bedrock",
+      }
+      local request = {
+        messages = SAMPLE_OPENAI_TOOLS_REQUEST.messages,
+        tools = SAMPLE_OPENAI_TOOLS_REQUEST.tools,
+        bedrock = {
+          additionalModelRequestFields = {
+            reasoning = { effort = "high" },
+          },
+          toolConfig = {
+            toolChoice = { tool = { name = "check_stock" } },
+          },
+        },
+      }
+      local bedrock_request = bedrock_driver._to_bedrock_chat_openai(request, model_info, "llm/v1/chat")
+
+      assert.not_nil(bedrock_request)
+
+      assert.same({ reasoning = { effort = "high" } }, bedrock_request.additionalModelRequestFields)
+      assert.same({ tool = { name = "check_stock" } }, bedrock_request.toolConfig.toolChoice)
+      assert.same(bedrock_driver._to_tools(SAMPLE_OPENAI_TOOLS_REQUEST.tools), bedrock_request.toolConfig.tools)
+    end)
   end)
 end)
 
