@@ -1,0 +1,4 @@
+message: >
+  Fixed an issue where Via header was not RFC7230 compliant. Previously, the Via header was likely `<protocol> kong/<version>`. Now, it is set to `<protocol> kong (kong/<version>)`.
+type: bugfix
+scope: Core
