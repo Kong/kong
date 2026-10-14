@@ -1,0 +1,3 @@
+message: Added an option to use {vault://} in specific fields of plugins
+type: feature
+scope: Plugin
