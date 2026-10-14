@@ -268,37 +268,39 @@ for _, strategy in helpers.each_strategy() do
             }
           })
 
-          local route7 = bp.routes:insert {
-            hosts      = { "test7.test" },
-            protocols  = { "http", "https" },
-          }
-
-          bp.response_ratelimiting_plugins:insert({
-            route = { id = route7.id },
-            config   = {
-              fault_tolerant           = false,
-              policy                   = policy,
-              redis = {
-                host        = REDIS_HOST,
-                port        = redis_conf.redis_port,
-                ssl         = redis_conf.redis_ssl,
-                ssl_verify  = redis_conf.redis_ssl_verify,
-                server_name = redis_conf.redis_server_name,
-                password    = REDIS_PASSWORD,
-                database    = REDIS_DATABASE,
-              },
-              block_on_first_violation = true,
-              limits                   = {
-                video = {
-                  second = ITERATIONS,
-                  minute = ITERATIONS * 2,
-                },
-                image = {
-                  second = 4,
-                },
-              },
+          for _, image_cost in ipairs({ 4, 5 }) do
+            local route7 = bp.routes:insert {
+              hosts      = { "test7-" .. image_cost .. ".test" },
+              protocols  = { "http", "https" },
             }
-          })
+
+            bp.response_ratelimiting_plugins:insert({
+              route = { id = route7.id },
+              config   = {
+                fault_tolerant           = false,
+                policy                   = policy,
+                redis = {
+                  host        = REDIS_HOST,
+                  port        = redis_conf.redis_port,
+                  ssl         = redis_conf.redis_ssl,
+                  ssl_verify  = redis_conf.redis_ssl_verify,
+                  server_name = redis_conf.redis_server_name,
+                  password    = REDIS_PASSWORD,
+                  database    = REDIS_DATABASE,
+                },
+                block_on_first_violation = true,
+                limits                   = {
+                  video = {
+                    second = ITERATIONS,
+                    minute = ITERATIONS * 2,
+                  },
+                  image = {
+                    second = 4,
+                  },
+                },
+              }
+            })
+          end
 
           local route8 = bp.routes:insert {
             hosts      = { "test8.test" },
@@ -618,21 +620,24 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
-        it("should block on first violation", function()
-          wait_server_sync( { Host = "test7.test" })
-          local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2, image=4"), {
-            headers = { Host = "test7.test" },
-          })
-          assert.res_status(200, res)
-          wait_remaining_sync("/response-headers", { Host = "test7.test" }, {["x-ratelimit-remaining-video-second"] = ITERATIONS}, 429)
+        for _, image_cost in ipairs({ 4, 5 }) do
+          it("blocks before proxying when remaining quota is " .. (4 - image_cost), function()
+            local host = "test7-" .. image_cost .. ".test"
+            wait_server_sync( { Host = host })
+            local res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2, image=" .. image_cost), {
+              headers = { Host = host },
+            })
+            assert.res_status(200, res)
+            wait_remaining_sync("/response-headers", { Host = host }, {["x-ratelimit-remaining-video-second"] = ITERATIONS}, 429)
 
-          res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2"), {
-            headers = { Host = "test7.test" },
-          })
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.matches("API rate limit exceeded for 'image'", json.message)
-        end)
+            res = proxy_client():get("/response-headers?x-kong-limit="..escape_uri("video=2"), {
+              headers = { Host = host },
+            })
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.matches("API rate limit exceeded for 'image'", json.message)
+          end)
+        end
 
         describe("Config with hide_client_headers", function()
           it("does not send rate-limit headers when hide_client_headers==true", function()
