@@ -78,10 +78,8 @@ function _M:run(conf)
   -- Re-assign it to trigger GC of the old one and save memory.
   request_body_table = execute(cycle_aware_deep_copy(request_body_table), conf)
 
-  kong.service.request.set_body(request_body_table, "application/json")
-
   set_ctx("decorated", true)
-  ai_plugin_ctx.set_request_body_table_inuse(request_body_table, _M.NAME)
+  ai_plugin_ctx.set_request_body_table_inuse(request_body_table, _M.NAME, true)
 
   return true
 end

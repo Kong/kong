@@ -1,0 +1,1 @@
+{"input":{"text":"tell me about the most popular song on WZPZ"},"retrieveAndGenerateConfiguration":{"type":"KNOWLEDGE_BASE","knowledgeBaseConfiguration":{"knowledgeBaseId":"NGYM70ITLR","modelArn":"cohere.command-r-v1:0"}}}

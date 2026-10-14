@@ -1,6 +1,7 @@
 local cjson = require("cjson.safe")
 local fmt = string.format
 
+
 local _BedrockAdapter = {}
 
 _BedrockAdapter.role_map = {
@@ -305,9 +306,50 @@ function _BedrockAdapter:to_kong_req(bedrock_table, kong)
     openai_table.tools = self:extract_tools(bedrock_table.toolConfig.tools)
   end
 
+  local url = kong.request.get_path()
+  if url:find("/rerank", 1, true) then      
+    self.forward_path = "/rerank"
+    openai_table.messages = bedrock_table.queries
+    return openai_table
+  elseif url:find("/retrieveAndGenerateStream", 1, true) then
+      self.forward_path = "/retrieveAndGenerateStream"
+      openai_table.prompt = bedrock_table.input and bedrock_table.input.text
+      openai_table.stream = true
+      return openai_table
+  elseif url:find("/retrieveAndGenerate", 1, true) then
+    self.forward_path = "/retrieveAndGenerate"
+    openai_table.prompt = bedrock_table.input and bedrock_table.input.text
+    return openai_table
+  elseif url:find('converse-stream',1, true) then
+    self.forward_path = "/model/%s/converse-stream"
+    openai_table.stream = true
+    return openai_table
+  elseif url:find("converse",1, true) then
+    self.forward_path = "/model/%s/converse"
+    return openai_table
+  end
   return openai_table
 end
 
+
+function _BedrockAdapter:get_forwarded_path(model)
+  if not self.forward_path then
+    return
+  end
+
+  -- if the forward path is a string, it means we have to format it with the model name
+  if type(self.forward_path) == "string" then
+    local forward_path = fmt(self.forward_path, model)
+    if self.forward_path == "/rerank" or 
+        self.forward_path == "/retrieveAndGenerate" or
+        self.forward_path == "/retrieveAndGenerateStream" then
+          return forward_path, "bedrock_agent"
+    end
+    return forward_path, "bedrock"
+  end
+
+  return
+end
 
 -- for unit tests
 if _G.TEST then

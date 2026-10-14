@@ -1,0 +1,12 @@
+{
+  "usageMetadata": {
+    "trafficType": "ON_DEMAND"
+  },
+  "createTime": "2025-09-13T22:15:16.223845Z",
+  "promptFeedback": {
+    "blockReasonMessage": "Blocked by Model Armor Floor Setting: The prompt violated Responsible AI Safety settings (Harassment), Prompt Injection and Jailbreak filters.",
+    "blockReason": "MODEL_ARMOR"
+  },
+  "responseId": "9OzFaOXUDdyZgLUPmd2_sA0",
+  "modelVersion": "gemini-2.5-flash"
+}
