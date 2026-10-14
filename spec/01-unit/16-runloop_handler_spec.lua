@@ -96,6 +96,107 @@ local mock_router = {
 }
 
 
+local function setup_router_snapshot_it_block()
+  local state = {
+    db_available = true,
+    db_each_calls = 0,
+    phase = "timer",
+  }
+
+  local snapshot_values = {}
+  local shared = setmetatable({
+    kong = {
+      incr = function()
+        return 1
+      end,
+    },
+    kong_core_db_cache = {
+      get = function(_, key)
+        return snapshot_values[key]
+      end,
+      safe_set = function(_, key, value)
+        snapshot_values[key] = value
+        return true
+      end,
+    },
+  }, {
+    __index = ngx.shared,
+  })
+
+  local route = {
+    id = "current-route",
+    paths = { "/current" },
+    protocols = { "http" },
+  }
+
+  local Router = {
+    DEFAULT_MATCH_LRUCACHE_SIZE = 100,
+    new = function(routes)
+      return {
+        exec = function()
+          return nil
+        end,
+        routes = routes,
+      }
+    end,
+  }
+
+  mocker.setup(finally, {
+    ngx = {
+      get_phase = function()
+        return state.phase
+      end,
+      log = function() end,
+      shared = shared,
+    },
+
+    kong = {
+      configuration = {
+        database = "postgres",
+        worker_consistency = "eventual",
+      },
+      core_cache = {
+        get = function()
+          return "current-version"
+        end,
+      },
+      db = {
+        strategy = "postgres",
+        routes = {
+          pagination = {
+            max_page_size = 1000,
+          },
+          each = function()
+            state.db_each_calls = state.db_each_calls + 1
+            local done
+
+            return function()
+              if done then
+                return nil
+              end
+
+              done = true
+              if not state.db_available then
+                return false, "database unavailable"
+              end
+
+              return route
+            end
+          end,
+        },
+      },
+    },
+
+    modules = {
+      { "kong.router", Router },
+      { "kong.runloop.handler", {} },
+    },
+  })
+
+  return state
+end
+
+
 describe("runloop handler", function()
   describe("router rebuilds", function()
 
@@ -287,5 +388,49 @@ describe("runloop handler", function()
       assert.equal(saved_router, latest_router)
     end)
 
+  end)
+end)
+
+
+describe("runloop handler router snapshots", function()
+  it("rebuilds a respawned worker from the current snapshot", function()
+    local state = setup_router_snapshot_it_block()
+    local handler = require "kong.runloop.handler"
+
+    assert(handler.build_router("current-version"))
+    assert.equal(1, state.db_each_calls)
+
+    state.db_available = false
+    state.db_each_calls = 0
+    state.phase = "init_worker"
+    handler._set_router({ stale = true })
+
+    assert(handler.build_router("current-version"))
+    assert.equal(0, state.db_each_calls)
+
+    local router = handler._get_updated_router()
+    assert.equal("/current", router.routes[1].route.paths[1])
+    assert.is_nil(router.stale)
+  end)
+
+  it("does not use an inherited router when the snapshot is outdated", function()
+    local state = setup_router_snapshot_it_block()
+    local handler = require "kong.runloop.handler"
+
+    assert(handler.build_router("current-version"))
+
+    state.db_available = false
+    state.db_each_calls = 0
+    state.phase = "init_worker"
+    handler._set_router({ stale = true })
+
+    local ok, err = handler.build_router("new-version")
+    assert.is_nil(ok)
+    assert.matches("database unavailable", err, nil, true)
+    assert.equal(1, state.db_each_calls)
+
+    local router = handler._get_updated_router()
+    assert.equal(0, #router.routes)
+    assert.is_nil(router.stale)
   end)
 end)
