@@ -60,6 +60,13 @@ function W3C_EXTRACTOR:get_context(headers)
   trace_id            = from_hex(trace_id)
   parent_id           = from_hex(parent_id)
 
+  local tracestate = headers["tracestate"]
+  if type(tracestate) ~= "string" or tracestate == "" then
+    tracestate = nil
+  end
+
+  local baggage = propagation_utils.parse_w3c_baggage(headers["baggage"])
+
   return {
     trace_id      = trace_id,
     -- in w3c "parent" is "ID of this request as known by the caller"
@@ -68,7 +75,8 @@ function W3C_EXTRACTOR:get_context(headers)
     span_id       = parent_id,
     parent_id     = nil,
     should_sample = should_sample,
-    baggage       = nil,
+    baggage       = baggage,
+    tracestate    = tracestate,
     w3c_flags     = flags_number,
   }
 end
