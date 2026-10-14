@@ -518,6 +518,51 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("#regression", function ()
+      describe("http.route attribute omitted when route has no paths", function ()
+        lazy_setup(function()
+          setup_instrumentations("all", false, function(bp)
+            local http_srv = bp.services:insert({
+              name = "host-only-service",
+              host = helpers.mock_upstream_host,
+              port = helpers.mock_upstream_port,
+            })
+
+            bp.routes:insert({
+              service = http_srv,
+              protocols = { "http" },
+              hosts = { "no-paths-route.test" },
+            })
+          end)
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        it("does not set http.route when route has no paths", function ()
+          local thread = helpers.tcp_server(TCP_PORT)
+          local r = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              host = "no-paths-route.test",
+            }
+          })
+          assert.res_status(200, r)
+
+          -- Getting back the TCP server input
+          local ok, res = thread:join()
+          assert.True(ok)
+          assert.is_string(res)
+
+          local spans = cjson.decode(res)
+          local kong_span = assert_has_spans("kong", spans, 1)[1]
+
+          -- http.route must not be set when route has no paths
+          assert.is_nil(kong_span.attributes["http.route"])
+        end)
+      end)
+
       describe("nil attribute for dns_query when fail to query", function ()
         lazy_setup(function()
           setup_instrumentations("dns_query", true, function(bp)
