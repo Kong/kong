@@ -32,6 +32,10 @@ function ResponseTransformerHandler:body_filter(conf)
   end
 
   local body = kong.response.get_raw_body()
+  if not body then
+    -- not the last chunk yet, nothing to transform
+    return
+  end
 
   local json_body, err = transform_json_body(conf, body)
   if err then
