@@ -17,6 +17,7 @@ local FILTER_OUTPUT_SCHEMA = {
   -- TODO: refactor this so they don't need to be duplicated
   llm_prompt_tokens_count = "number",
   llm_completion_tokens_count = "number",
+  llm_prompt_cache_tokens_count = "number",
   llm_usage_cost = "number",
 }
 
@@ -190,6 +191,7 @@ function _M:run(conf)
   set_ctx("model", conf.llm.model)
   set_ctx("llm_prompt_tokens_count", ai_plugin_o11y.metrics_get("llm_prompt_tokens_count") or 0)
   set_ctx("llm_completion_tokens_count", ai_plugin_o11y.metrics_get("llm_completion_tokens_count") or 0)
+  set_ctx("llm_prompt_cache_tokens_count", ai_plugin_o11y.metrics_get("llm_prompt_cache_tokens_count") or 0)
   set_ctx("llm_usage_cost", ai_plugin_o11y.metrics_get("llm_usage_cost") or 0)
   return kong.response.exit(status, body, headers)
 end
