@@ -147,6 +147,7 @@ local wait = reload_module("spec.internal.wait")
   make_synchronized_clients = client.make_synchronized_clients,
   wait_until = wait.wait_until,
   pwait_until = wait.pwait_until,
+  wait_for_ldap = wait.wait_for_ldap,
   wait_pid = pid.wait_pid,
   wait_timer = wait.wait_timer,
   wait_for_all_config_update = wait.wait_for_all_config_update,
