@@ -78,6 +78,13 @@ local sock_opts = {}
 
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
+-- timestamp.get_timestamps() returns millisecond epoch values, while Redis
+-- EXPIREAT and ngx.time() use seconds. Convert before storing expire_at.
+local floor = math.floor
+local function redis_expire_at(period_ms, period)
+  return floor(period_ms / 1000) + EXPIRATION[period]
+end
+
 local function get_redis_configuration(plugin_conf)
   return {
      host = plugin_conf.redis.host,
@@ -390,7 +397,7 @@ return {
         end
 
         cur_usage[db_key][cache_key] = 0
-        cur_usage_expire_at[db_key][cache_key] = periods[period] + EXPIRATION[period]
+        cur_usage_expire_at[db_key][cache_key] = redis_expire_at(periods[period], period)
         cur_delta[db_key][cache_key] = 0
 
         return 0
@@ -429,7 +436,7 @@ return {
 
       if conf.sync_rate ~= SYNC_RATE_REALTIME then
         cur_usage[db_key][cache_key] = current_metric or 0
-        cur_usage_expire_at[db_key][cache_key] = periods[period] + EXPIRATION[period]
+        cur_usage_expire_at[db_key][cache_key] = redis_expire_at(periods[period], period)
         -- The key was just read from Redis using `incr`, which incremented it
         -- by 1. Adjust the value to account for the prior increment.
         cur_delta[db_key][cache_key] = -1
