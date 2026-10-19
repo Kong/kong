@@ -312,6 +312,7 @@ jobs:
     permissions:
       # create comments on commits for docker images needs the `write` permission
       contents: write
+      id-token: write # needed to obtain the Docker Hub OIDC token
 
     strategy:
       fail-fast: false
@@ -339,7 +340,8 @@ jobs:
       uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
-        password: ${{ secrets.DOCKER_OAT_PUSH }}
+      env:
+        DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     - name: Docker meta
       id: meta
@@ -446,6 +448,12 @@ jobs:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-24.04
+    # A job-level block replaces the default token permissions.
+    # scan-docker-image uploads SBOM artifacts and uses the Grype cache.
+    permissions:
+      contents: read
+      actions: write
+      id-token: write # needed to obtain the Docker Hub OIDC token
     timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: |-
       always()
@@ -468,7 +476,8 @@ jobs:
       uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
-        password: ${{ secrets.DOCKER_OAT_PUSH }}
+      env:
+        DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     # TODO: Refactor matrix file to support and parse platforms specific to distro
     # Workaround: Look for specific amd64 and arm64  hardcooded architectures
@@ -590,6 +599,10 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images]
     runs-on: ubuntu-24.04
+    # A job-level block replaces the default token permissions.
+    permissions:
+      contents: read
+      id-token: write # needed to obtain the Docker Hub OIDC token
     if: fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
@@ -605,7 +618,8 @@ jobs:
       uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
       with:
         username: ${{ env.DOCKER_ORGANIZATION }}
-        password: ${{ secrets.DOCKER_OAT_PUSH }}
+      env:
+        DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_OIDC_CONN_OSS_PUSH }}
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
