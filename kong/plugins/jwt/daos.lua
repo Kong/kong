@@ -24,7 +24,7 @@ return {
       { created_at = typedefs.auto_timestamp_s },
       { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
       { key = { type = "string", required = false, unique = true, auto = true }, },
-      { secret = { type = "string", auto = true }, },
+      { secret = { type = "string", auto = true, referenceable = true }, },
       { rsa_public_key = { type = "string" }, },
       { algorithm = {
           type    = "string",
