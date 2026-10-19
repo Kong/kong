@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed an issue where translated streaming upstreams could return gzip-compressed SSE responses that Kong could not transform correctly.
+type: "bugfix"
+scope: "Plugin"
