@@ -1,0 +1,4 @@
+message: |
+  **Semantic Plugins*: Fixed an issue where Gemini Vertex AI embeddings failed due to incorrect URL construction and response parsing.
+type: bugfix
+scope: Plugin

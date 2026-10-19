@@ -22,6 +22,18 @@ local openai_flat_chat = {
   },
 }
 
+local openai_full_chat = {
+  model = "gpt-4o",
+  temperature = 0.6,
+  max_tokens = 150,
+  messages = {
+    {
+      role = "user",
+      content = "What is 1+1?",
+    },
+  },
+}
+
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -241,6 +253,40 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.match_re(ctx, [[.*Prepend text 2 here.*]])
         assert.match_re(ctx, [[.*Append text 3 here.*]])
         assert.match_re(ctx, [[.*Append text 4 here.*]])
+      end)
+
+
+      it("preserves model and temperature fields when decorating - integration", function()
+        local r = client:get("/", {
+          headers = {
+            host = "prepend.decorate.local",
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode(openai_full_chat),
+        })
+
+        -- get the REQUEST body, that left Kong for the upstream, using the echo system
+        assert.response(r).has.status(200)
+        local request = assert.response(r).has.jsonbody()
+        request = cjson.decode(request.post_data.text)
+
+        -- Verify the messages are decorated correctly
+        assert.same({ content = "Prepend text 1 here.", role = "system" }, request.messages[1])
+        assert.same({ content = "Prepend text 2 here.", role = "system" }, request.messages[2])
+        assert.same({ content = "What is 1+1?", role = "user" }, request.messages[3])
+
+        -- Verify that model, temperature, and max_tokens are preserved
+        assert.equal("gpt-4o", request.model)
+        assert.equal(0.6, request.temperature)
+        assert.equal(150, request.max_tokens)
+
+        -- check ngx.ctx was set properly for later AI chain filters
+        local ctx = assert.response(r).has.header("ctx-checker-last-ai-namespaced-ctx")
+        ctx = ngx.unescape_uri(ctx)
+        assert.match_re(ctx, [[.*decorate-prompt.*]])
+        assert.match_re(ctx, [[.*decorated = true.*]])
+        assert.match_re(ctx, [[.*Prepend text 1 here.*]])
+        assert.match_re(ctx, [[.*Prepend text 2 here.*]])
       end)
     end)
   end)
