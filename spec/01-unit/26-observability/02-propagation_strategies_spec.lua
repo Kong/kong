@@ -1745,6 +1745,169 @@ local test_data = { {
     },
     err = "x-instana-t header invalid; ignoring."
   },}
+}, {
+  extractor = "mcp",
+  injector = "mcp",
+  headers_data = { {
+    description = "base case",
+    extract = true,
+    inject = true,
+    trace_id = trace_id_16,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+    },
+    ctx = {
+      w3c_flags = 0x01,
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      should_sample = true,
+      trace_id_original_size = 16,
+    }
+  }, {
+    description = "sampled = false",
+    extract = true,
+    inject = true,
+    trace_id = trace_id_16,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", trace_id_16, span_id_8_1),
+    },
+    ctx = {
+      w3c_flags = 0x00,
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      should_sample = false,
+      trace_id_original_size = 16,
+    }
+  }, {
+    description = "with tracestate and baggage",
+    extract = true,
+    inject = true,
+    trace_id = trace_id_16,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+      ["tracestate"] = "rojo=1,congo=2",
+      ["baggage"] = "k1=v1,k2=v2",
+    },
+    ctx = {
+      w3c_flags = 0x01,
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      should_sample = true,
+      tracestate = "rojo=1,congo=2",
+      baggage = { k1 = "v1", k2 = "v2" },
+      trace_id_original_size = 16,
+    }
+  }, {
+    description = "default injection size is 16B",
+    inject = true,
+    trace_id = trace_id_16,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+    },
+    ctx = {
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      should_sample = true,
+    }
+  }, { -- extraction error cases
+    description = "invalid header 1",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("vv-%s-%s-00", trace_id_16, span_id_8_1),
+    },
+    err = "invalid MCP traceparent; ignoring."
+  }, {
+    description = "invalid header 2",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv-%s-00", span_id_8_1),
+    },
+    err = "invalid MCP traceparent; ignoring."
+  }, {
+    description = "invalid header 3",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-vvvvvvvvvvvvvvvv-00", trace_id_16),
+    },
+    err = "invalid MCP traceparent; ignoring."
+  }, {
+    description = "invalid header 4",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-vv", trace_id_16, span_id_8_1),
+    },
+    err = "invalid MCP traceparent; ignoring."
+  }, {
+    description = "invalid trace id (too short)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", "123", span_id_8_1),
+    },
+    err = "invalid MCP trace context trace ID; ignoring."
+  }, {
+    description = "invalid trace id (all zero)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", "00000000000000000000000000000000", span_id_8_1),
+    },
+    err = "invalid MCP trace context trace ID; ignoring."
+  }, {
+    description = "invalid trace id (too long)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", too_long_id, span_id_8_1),
+    },
+    err = "invalid MCP trace context trace ID; ignoring."
+  }, {
+    description = "invalid parent id (too short)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", trace_id_16, "123"),
+    },
+    err = "invalid MCP trace context parent ID; ignoring."
+  }, {
+    description = "invalid parent id (all zero)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", trace_id_16, "0000000000000000"),
+    },
+    err = "invalid MCP trace context parent ID; ignoring."
+  }, {
+    description = "invalid parent id (too long)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-00", trace_id_16, too_long_id),
+    },
+    err = "invalid MCP trace context parent ID; ignoring."
+  }, {
+    description = "invalid version",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("01-%s-%s-00", trace_id_16, span_id_8_1),
+    },
+    err = "invalid MCP Trace Context version; ignoring."
+  }, {
+    description = "invalid flags (too long)",
+    extract = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-001", trace_id_16, span_id_8_1),
+    },
+    err = "invalid MCP trace context flags; ignoring."
+  }, { -- injection error cases
+    description = "missing trace id",
+    inject = true,
+    ctx = {
+      span_id = span_id_8_1,
+    },
+    err = "mcp injector context is invalid: field trace_id not found in context"
+  }, {
+    description = "missing span id",
+    inject = true,
+    ctx = {
+      trace_id = trace_id_16,
+    },
+    err = "mcp injector context is invalid: field span_id not found in context"
+  } }
 } }
 
 
@@ -1873,4 +2036,201 @@ describe("Tracing Headers Propagation Strategies", function()
       end
     end)
   end
+end)
+
+
+describe("MCP Context Propagation Specifics", function()
+  local mcp_ex = require("kong.observability.tracing.propagation.extractors.mcp")
+  local mcp_inj = require("kong.observability.tracing.propagation.injectors.mcp")
+  local w3c_ex = require("kong.observability.tracing.propagation.extractors.w3c")
+  local w3c_inj = require("kong.observability.tracing.propagation.injectors.w3c")
+
+  local warn
+
+  lazy_setup(function()
+    warn = spy.on(kong.log, "warn")
+  end)
+
+  before_each(function()
+    warn:clear()
+  end)
+
+  it("extracts from standard JSON-RPC 2.0 params._meta", function()
+    local payload = {
+      jsonrpc = "2.0",
+      id = "req-1",
+      method = "tools/call",
+      params = {
+        name = "weather",
+        arguments = { city = "San Francisco" },
+        _meta = {
+          traceparent = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+          tracestate = "rojo=1,congo=2",
+          baggage = "userId=alice,env=prod",
+        },
+      },
+    }
+
+    local ctx, err = mcp_ex:extract(payload)
+    assert.is_nil(err)
+    assert.is_not_nil(ctx)
+    local hex_ctx = to_hex_ids(ctx)
+    assert.equal(trace_id_16, hex_ctx.trace_id)
+    assert.equal(span_id_8_1, hex_ctx.span_id)
+    assert.is_true(hex_ctx.should_sample)
+    assert.equal("rojo=1,congo=2", hex_ctx.tracestate)
+    assert.same({ userId = "alice", env = "prod" }, hex_ctx.baggage)
+    assert.spy(warn).was_not_called()
+  end)
+
+  it("extracts from root-level _meta", function()
+    local payload = {
+      jsonrpc = "2.0",
+      id = 42,
+      method = "ping",
+      _meta = {
+        traceparent = fmt("00-%s-%s-00", trace_id_16, span_id_8_1),
+      },
+    }
+
+    local ctx = mcp_ex:extract(payload)
+    assert.is_not_nil(ctx)
+    local hex_ctx = to_hex_ids(ctx)
+    assert.equal(trace_id_16, hex_ctx.trace_id)
+    assert.equal(span_id_8_1, hex_ctx.span_id)
+    assert.is_false(hex_ctx.should_sample)
+    assert.spy(warn).was_not_called()
+  end)
+
+  it("extracts from batch JSON-RPC request array", function()
+    local payload = {
+      {
+        jsonrpc = "2.0",
+        id = 1,
+        method = "resources/read",
+        params = {
+          _meta = {
+            traceparent = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+          }
+        }
+      },
+      {
+        jsonrpc = "2.0",
+        id = 2,
+        method = "resources/read",
+      }
+    }
+
+    local ctx = mcp_ex:extract(payload)
+    assert.is_not_nil(ctx)
+    local hex_ctx = to_hex_ids(ctx)
+    assert.equal(trace_id_16, hex_ctx.trace_id)
+    assert.equal(span_id_8_1, hex_ctx.span_id)
+    assert.is_true(hex_ctx.should_sample)
+    assert.spy(warn).was_not_called()
+  end)
+
+  it("extracts baggage when provided as an object/table", function()
+    local payload = {
+      jsonrpc = "2.0",
+      params = {
+        _meta = {
+          traceparent = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+          baggage = {
+            userId = "alice",
+            team = "kong-gateway",
+            count = 5,
+          }
+        }
+      }
+    }
+
+    local ctx = mcp_ex:extract(payload)
+    assert.is_not_nil(ctx)
+    assert.same({ userId = "alice", team = "kong-gateway", count = "5" }, ctx.baggage)
+  end)
+
+  it("provides direct helper functions extract_from_meta and extract_from_body", function()
+    local meta = {
+      traceparent = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+      tracestate = "vendor=value",
+    }
+    local ctx1 = mcp_ex.extract_from_meta(meta)
+    assert.is_not_nil(ctx1)
+    assert.equal(trace_id_16, to_hex(ctx1.trace_id))
+    assert.equal(span_id_8_1, to_hex(ctx1.span_id))
+    assert.equal("vendor=value", ctx1.tracestate)
+
+    local body = { params = { _meta = meta } }
+    local ctx2 = mcp_ex.extract_from_body(body)
+    assert.is_not_nil(ctx2)
+    assert.equal(trace_id_16, to_hex(ctx2.trace_id))
+  end)
+
+  it("provides create_meta injector helper", function()
+    local ctx = {
+      trace_id = from_hex(trace_id_16),
+      span_id = from_hex(span_id_8_1),
+      should_sample = true,
+      tracestate = "rojo=1",
+      baggage = { user = "alice", priority = "high" },
+    }
+
+    local meta = mcp_inj.create_meta(ctx)
+    assert.is_not_nil(meta)
+    assert.equal(fmt("00-%s-%s-01", trace_id_16, span_id_8_1), meta.traceparent)
+    assert.equal("rojo=1", meta.tracestate)
+    assert.equal("priority=high,user=alice", meta.baggage)
+  end)
+
+  it("supports bidirectional cross-propagation between MCP and W3C", function()
+    -- 1. Incoming MCP request
+    local incoming_mcp = {
+      params = {
+        _meta = {
+          traceparent = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+          tracestate = "rojo=1",
+          baggage = "tenant=acme,tier=gold",
+        }
+      }
+    }
+
+    local extracted = mcp_ex:extract(incoming_mcp)
+    assert.is_not_nil(extracted)
+
+    -- 2. Inject into W3C HTTP headers
+    local w3c_headers = w3c_inj:create_headers(extracted)
+    assert.equal(fmt("00-%s-%s-01", trace_id_16, span_id_8_1), w3c_headers.traceparent)
+    assert.equal("rojo=1", w3c_headers.tracestate)
+    assert.equal("tenant=acme,tier=gold", w3c_headers.baggage)
+
+    -- 3. Extract back from W3C HTTP headers
+    local roundtrip_ctx = w3c_ex:extract(w3c_headers)
+    assert.is_not_nil(roundtrip_ctx)
+    local hex_ctx = to_hex_ids(roundtrip_ctx)
+    assert.equal(trace_id_16, hex_ctx.trace_id)
+    assert.equal(span_id_8_1, hex_ctx.span_id)
+    assert.is_true(hex_ctx.should_sample)
+    assert.equal("rojo=1", hex_ctx.tracestate)
+    assert.same({ tenant = "acme", tier = "gold" }, hex_ctx.baggage)
+
+    -- 4. Inject back into MCP _meta
+    local out_meta = mcp_inj.create_meta(roundtrip_ctx)
+    assert.equal(fmt("00-%s-%s-01", trace_id_16, span_id_8_1), out_meta.traceparent)
+    assert.equal("rojo=1", out_meta.tracestate)
+    assert.equal("tenant=acme,tier=gold", out_meta.baggage)
+  end)
+
+  it("handles malformed or missing _meta without errors", function()
+    assert.is_nil(mcp_ex:extract(nil))
+    assert.is_nil(mcp_ex:extract({}))
+    assert.is_nil(mcp_ex:extract({ params = {} }))
+    assert.is_nil(mcp_ex:extract({ params = { _meta = {} } }))
+    assert.is_nil(mcp_ex:extract({ params = { _meta = { traceparent = "" } } }))
+    assert.spy(warn).was_not_called()
+
+    -- Malformed traceparent should warn and return nil
+    assert.is_nil(mcp_ex:extract({ params = { _meta = { traceparent = "invalid" } } }))
+    assert.spy(warn).was_called_with("invalid MCP traceparent; ignoring.")
+  end)
 end)
