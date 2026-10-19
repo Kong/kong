@@ -1,0 +1,5 @@
+message: >
+    **DNS Client**: Fixed an issue where a DNS answer with a TTL of 0 was cached
+    forever by the new DNS client, so the name was never resolved again.
+type: bugfix
+scope: Core
