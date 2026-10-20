@@ -284,12 +284,23 @@ local function rate_limited_sync(conf, sync_func)
   end)
 end
 
+local function is_realtime(period, sync_rate)
+  if sync_rate == SYNC_RATE_REALTIME then
+    return true
+  end
+  if sync_rate >= EXPIRATION[period] then
+    kong.log.warn("[rate-limiting] sync_rate (", sync_rate, ") is greater than or equal to period length (", period, ": ", EXPIRATION[period], "). Running in realtime mode to prevent limits bypass.")
+    return true
+  end
+  return false
+end
+
 local function update_local_counters(conf, periods, limits, identifier, value)
   local db_key = get_db_key(conf)
   init_tables(db_key)
 
   for period, period_date in pairs(periods) do
-    if limits[period] then
+    if limits[period] and not is_realtime(period, conf.sync_rate) then
       local cache_key = get_local_key(conf, identifier, period, period_date)
 
       cur_delta[db_key][cache_key] = (cur_delta[db_key][cache_key] or 0) + value
@@ -366,15 +377,21 @@ return {
   ["redis"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
       local periods = timestamp.get_timestamps(current_timestamp)
+      
+      local has_async = false
+      for period, _ in pairs(limits) do
+        if not is_realtime(period, conf.sync_rate) then
+          has_async = true
+          break
+        end
+      end
 
-      if conf.sync_rate == SYNC_RATE_REALTIME then
-        -- we already incremented the counter at usage()
-        return true
-
-      else
+      if has_async then
         update_local_counters(conf, periods, limits, identifier, value)
         return rate_limited_sync(conf, sync_to_redis)
       end
+      
+      return true
     end,
     usage = function(conf, identifier, period, current_timestamp)
       local periods = timestamp.get_timestamps(current_timestamp)
@@ -384,7 +401,7 @@ return {
 
       -- use local cache to reduce the number of redis calls
       -- also by pass the logic of incrementing the counter
-      if conf.sync_rate ~= SYNC_RATE_REALTIME and cur_usage[db_key][cache_key] then
+      if not is_realtime(period, conf.sync_rate) and cur_usage[db_key][cache_key] then
         if cur_usage_expire_at[db_key][cache_key] > ngx_time() then
           return cur_usage[db_key][cache_key] + (cur_delta[db_key][cache_key] or 0)
         end
@@ -427,7 +444,7 @@ return {
         kong.log.err("failed to set Redis keepalive: ", err)
       end
 
-      if conf.sync_rate ~= SYNC_RATE_REALTIME then
+      if not is_realtime(period, conf.sync_rate) then
         cur_usage[db_key][cache_key] = current_metric or 0
         cur_usage_expire_at[db_key][cache_key] = periods[period] + EXPIRATION[period]
         -- The key was just read from Redis using `incr`, which incremented it
