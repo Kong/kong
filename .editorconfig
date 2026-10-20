@@ -1,8 +1,10 @@
-root                     = true
+root = true
 
 [*]
 end_of_line              = lf
-insert_final_newline     = true
+# We relax this rule because many files don't end with a newline,
+# and it causes unwanted diffs in compliant editors.
+insert_final_newline     = unset
 trim_trailing_whitespace = true
 charset                  = utf-8
 
