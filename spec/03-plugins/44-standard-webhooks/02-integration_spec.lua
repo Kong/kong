@@ -111,6 +111,44 @@ for _, strategy in helpers.all_strategies() do
       assert.response(res).has.status(200)
     end)
 
+    it("accepts a signature list holding the current key", function()
+      local ts = math.floor(ngx.now())
+      local signature = swh.sign(SECRET, MESSAGE_ID, ts, '{"foo":"bar"}')
+
+      local res = client:post("/", {
+        headers = {
+          ["Content-Type"] = "application/json",
+          ["webhook-id"] = MESSAGE_ID,
+          ["webhook-signature"] = "v1,b3RoZXJrZXlzaWduYXR1cmU= " .. signature,
+          ["webhook-timestamp"] = ts
+        },
+        body = {
+          foo = "bar"
+        }
+      })
+
+      assert.response(res).has.status(200)
+    end)
+
+    it("fails because the timestamp is ahead of the tolerance", function()
+      local ts = math.floor(ngx.now()) + 6 * 60
+      local signature = swh.sign(SECRET, MESSAGE_ID, ts, '{"foo":"bar"}')
+
+      local res = client:post("/", {
+        headers = {
+          ["Content-Type"] = "application/json",
+          ["webhook-id"] = MESSAGE_ID,
+          ["webhook-signature"] = signature,
+          ["webhook-timestamp"] = ts
+        },
+        body = {
+          foo = "bar"
+        }
+      })
+
+      assert.response(res).has.status(400)
+    end)
+
     it("fails because the timestamp tolerance is exceeded", function()
       local ts = math.floor(ngx.now()) - 6 * 60
       local signature = swh.sign(SECRET, MESSAGE_ID, ts, '{"foo":"bar"}')
