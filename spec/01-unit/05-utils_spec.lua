@@ -221,6 +221,14 @@ describe("Utils", function()
       assert.False(validate_utf8(string.char(128))) -- unexpected continuation byte
       assert.False(validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
       assert.False(validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(validate_utf8(string.char(194, 123))) -- invalid 2-byte sequence (second byte too low, ASCII '{')
+      assert.False(validate_utf8(string.char(194, 127))) -- invalid 2-byte sequence (second byte too low, ASCII DEL)
+      assert.True(validate_utf8(string.char(194, 128)))  -- valid 2-byte sequence (boundary min)
+      assert.True(validate_utf8(string.char(194, 191)))  -- valid 2-byte sequence (boundary max)
+      assert.False(validate_utf8(string.char(194, 192))) -- invalid 2-byte sequence (second byte too high)
+      assert.True(validate_utf8(string.char(223, 128)))  -- valid 2-byte sequence (boundary min)
+      assert.True(validate_utf8(string.char(223, 191)))  -- valid 2-byte sequence (boundary max)
+      assert.False(validate_utf8(string.char(223, 192))) -- invalid 2-byte sequence (second byte too high)
       assert.False(validate_utf8(string.char(254))) -- impossible byte
       assert.False(validate_utf8(string.char(255))) -- impossible byte
       assert.False(validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
