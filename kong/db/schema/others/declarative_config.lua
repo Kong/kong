@@ -591,8 +591,10 @@ local function build_cache_key(entity, item, schema, parent_fk, child_key)
 
     elseif item[k] == nil then
       if k == child_key then
-        if parent_fk.id and next(parent_fk, "id") == nil then
-          insert(ck, parent_fk.id)
+        local foreign_schema = schema.fields[k].schema
+        local pk_name = foreign_schema.primary_key[1]
+        if parent_fk[pk_name] and next(parent_fk, pk_name) == nil then
+          insert(ck, parent_fk[pk_name])
         else
           -- FIXME support building cache_keys with fk's whose pk is not id
           return nil
