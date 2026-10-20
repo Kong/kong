@@ -173,8 +173,14 @@ function deco.new(method, path, protofile)
 end
 
 local function get_field_type(typ, field)
-  local _, _, field_typ = pb.field(typ, field)
-  return field_typ
+  local _, _, field_typ, _, label = pb.field(typ, field)
+  return field_typ, label
+end
+
+-- proto3 marks repeated fields as either "repeated" (strings, messages, bytes)
+-- or "packed" (numeric/enum/bool that use packed encoding)
+local function is_repeated(label)
+  return label == "repeated" or label == "packed"
 end
 
 local function encode_fix(v, typ)
@@ -196,7 +202,8 @@ local function add_to_table( t, path, v, typ )
   local msg_typ = typ;
   for m in re_gmatch( path , "([^.]+)(\\.)?", "jo" ) do
     local key, dot = m[1], m[2]
-    msg_typ = get_field_type(msg_typ, key)
+    local label
+    msg_typ, label = get_field_type(msg_typ, key)
 
     -- not argument that we concern with
     if not msg_typ then
@@ -206,6 +213,11 @@ local function add_to_table( t, path, v, typ )
     if dot then
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
+    elseif is_repeated(label) and type(v) ~= "table" then
+      -- a repeated field passed as a single query-parameter value arrives as a
+      -- scalar (get_uri_args only returns a table for 2+ occurrences). Wrap it
+      -- so it encodes as a one-element list instead of failing to encode.
+      tab[key] = { encode_fix(v, msg_typ) }
     else
       tab[key] = encode_fix(v, msg_typ)
     end
