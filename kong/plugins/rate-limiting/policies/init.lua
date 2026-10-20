@@ -78,6 +78,33 @@ local sock_opts = {}
 
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
+local realtime_fallback_warned = {}
+
+-- A period whose window is not longer than sync_rate can't be synced
+-- asynchronously: the sync timer would fire after the window has closed, so
+-- other workers and nodes would never see those increments. Such periods are
+-- counted in Redis on every request instead.
+local function is_realtime(conf, period)
+  local sync_rate = conf.sync_rate
+  if sync_rate == SYNC_RATE_REALTIME then
+    return true
+  end
+
+  local window = EXPIRATION[period]
+  if not (sync_rate and window and sync_rate >= window) then
+    return false
+  end
+
+  local warn_key = (conf.__key__ or conf.__plugin_id or "rate-limiting") .. ":" .. period
+  if not realtime_fallback_warned[warn_key] then
+    realtime_fallback_warned[warn_key] = true
+    kong.log.warn("[rate-limiting] sync_rate (", sync_rate, "s) is not shorter than the '",
+                  period, "' window; counters for this period are synced to Redis on every request")
+  end
+
+  return true
+end
+
 local function get_redis_configuration(plugin_conf)
   return {
      host = plugin_conf.redis.host,
@@ -288,14 +315,17 @@ local function update_local_counters(conf, periods, limits, identifier, value)
   local db_key = get_db_key(conf)
   init_tables(db_key)
 
+  local updated = false
   for period, period_date in pairs(periods) do
-    if limits[period] then
+    if limits[period] and not is_realtime(conf, period) then
       local cache_key = get_local_key(conf, identifier, period, period_date)
 
       cur_delta[db_key][cache_key] = (cur_delta[db_key][cache_key] or 0) + value
+      updated = true
     end
   end
 
+  return updated
 end
 
 return {
@@ -365,16 +395,20 @@ return {
   },
   ["redis"] = {
     increment = function(conf, limits, identifier, current_timestamp, value)
-      local periods = timestamp.get_timestamps(current_timestamp)
-
       if conf.sync_rate == SYNC_RATE_REALTIME then
         -- we already incremented the counter at usage()
         return true
-
-      else
-        update_local_counters(conf, periods, limits, identifier, value)
-        return rate_limited_sync(conf, sync_to_redis)
       end
+
+      local periods = timestamp.get_timestamps(current_timestamp)
+
+      -- realtime periods were already incremented at usage(); only schedule
+      -- a sync if some period still needs one
+      if not update_local_counters(conf, periods, limits, identifier, value) then
+        return true
+      end
+
+      return rate_limited_sync(conf, sync_to_redis)
     end,
     usage = function(conf, identifier, period, current_timestamp)
       local periods = timestamp.get_timestamps(current_timestamp)
@@ -382,9 +416,11 @@ return {
       local db_key = get_db_key(conf)
       init_tables(db_key)
 
+      local realtime = is_realtime(conf, period)
+
       -- use local cache to reduce the number of redis calls
       -- also by pass the logic of incrementing the counter
-      if conf.sync_rate ~= SYNC_RATE_REALTIME and cur_usage[db_key][cache_key] then
+      if not realtime and cur_usage[db_key][cache_key] then
         if cur_usage_expire_at[db_key][cache_key] > ngx_time() then
           return cur_usage[db_key][cache_key] + (cur_delta[db_key][cache_key] or 0)
         end
@@ -427,7 +463,7 @@ return {
         kong.log.err("failed to set Redis keepalive: ", err)
       end
 
-      if conf.sync_rate ~= SYNC_RATE_REALTIME then
+      if not realtime then
         cur_usage[db_key][cache_key] = current_metric or 0
         cur_usage_expire_at[db_key][cache_key] = periods[period] + EXPIRATION[period]
         -- The key was just read from Redis using `incr`, which incremented it
