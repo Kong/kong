@@ -377,6 +377,9 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
     -- handle function calling translation from OpenAI format
     new_r.tools = request_table.tools and to_tools(request_table.tools)
     new_r.tool_config = request_table.tool_config
+
+    -- handle context caching for Vertex AI / Gemini
+    new_r.cachedContent = request_table.cachedContent or request_table.cached_content
   end
 
   return new_r, "application/json", nil
