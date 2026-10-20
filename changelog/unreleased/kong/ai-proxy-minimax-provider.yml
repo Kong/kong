@@ -1,3 +1,3 @@
-message: '**ai-proxy**: Added support for the MiniMax provider, using its OpenAI-compatible chat completions and completions endpoints.'
+message: '**ai-proxy**: Added support for the MiniMax provider. Chat requests default to MiniMax-M3.1-Flash when neither the configuration nor the request specifies a model; explicit MiniMax-M3, legacy and custom model names are preserved.'
 type: feature
 scope: Plugin

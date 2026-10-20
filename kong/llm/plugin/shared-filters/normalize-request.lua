@@ -110,6 +110,11 @@ local function validate_and_transform(conf)
     end
   end
 
+  -- Apply provider defaults only after honoring explicit configuration and request models.
+  if not model_t.name and conf.route_type == "llm/v1/chat" then
+    model_t.name = ai_shared.default_chat_models[model_provider]
+  end
+
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
   if not model_t.name and conf.route_type ~= "preserve" then
     return bail(400, "model parameter not found in request, nor in gateway configuration")

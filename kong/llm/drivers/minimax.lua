@@ -30,6 +30,11 @@ function _M.to_format(request_table, model_info, route_type)
     return request_table, nil, nil
   end
 
+  -- Internal LLM subrequests also use this driver without the proxy filters.
+  if route_type == "llm/v1/chat" and not model_info.name and not request_table.model then
+    request_table.model = ai_shared.default_chat_models[DRIVER_NAME]
+  end
+
   -- MiniMax uses the OpenAI-compatible request format
   return openai_driver.to_format(request_table, model_info, route_type)
 end

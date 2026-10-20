@@ -91,6 +91,10 @@ _M.streaming_has_token_counts = {
   ["bedrock"] = true,
 }
 
+_M.default_chat_models = {
+  minimax = "MiniMax-M3.1-Flash",
+}
+
 _M.upstream_url_format = {
   openai        = fmt("%s://api.openai.com:%s", openai_override and "http" or "https", openai_override or "443"),
   anthropic     = "https://api.anthropic.com:443",

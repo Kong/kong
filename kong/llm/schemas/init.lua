@@ -212,7 +212,9 @@ local model_schema = {
         one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface", "minimax" }}},
     { name = {
         type = "string",
-        description = "Model name to execute.",
+        description = "Model name to execute. For MiniMax chat, use MiniMax-M3.1-Flash " ..
+                      "or MiniMax-M3. If neither configuration nor request specifies a model, " ..
+                      "MiniMax chat defaults to MiniMax-M3.1-Flash.",
         required = false }},
     { options = model_options_schema },
   }
