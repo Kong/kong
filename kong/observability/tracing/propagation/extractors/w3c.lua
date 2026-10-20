@@ -7,6 +7,7 @@ local tonumber = tonumber
 local from_hex                 = propagation_utils.from_hex
 
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
+local W3C_BAGGAGE_HEADER = "baggage"
 
 local W3C_EXTRACTOR            = _EXTRACTOR:new({
   headers_validate = {
@@ -14,6 +15,48 @@ local W3C_EXTRACTOR            = _EXTRACTOR:new({
   }
 })
 
+-- Will return the key, value & properties found in the baggage header
+-- example baggage : "key1=value1;prop1=val1;prop2, key2=value2;prop3=val3"
+-- will return:
+-- {
+--   { key = "key1", value = "value1", properties = { prop1 = "val1", prop2 = "val2" } },
+--   { key = "key2", value = "value2", properties = { prop3 = "val3" } },
+-- }
+local function parse_baggage_headers(headers)
+  local baggage_header = headers[W3C_BAGGAGE_HEADER]
+  if type(baggage_header) ~= "string" or baggage_header == "" then
+    return nil
+  end
+  local baggage = {}
+  --  Split list-member by comma
+  for pair in baggage_header:gmatch("([^,]+)") do
+    member = member:match("^%s*(.-)%s*$") -- trim whitespace
+
+    -- Split key-value; prop=val1; prop2
+    local key, rest = pair:match("^([^=]+)=(.*)$")
+    if key and rest then
+      key = key:match("^%s*(.-)%s*$") 
+      local value, props = rest:match("^([^;]+);?(.*)$")
+      value = ngx.unescape_uri(value:match("^%s*(.-)%s*$"))
+      local entry = { key, value, properties = {} }
+
+      -- Parse properties; prop1=val1; prop2
+      for prop in props:gmatch("([^;]+)") do
+        local pkey, pvalue = prop:match("^%s*([^=]+)=(.-)%s*$")
+        if pkey then
+          if pkey ~= "" then
+              entry.properties[pkey] = ngx.unescape_uri(pvalue)
+          else
+              entry.properties[pkey] = true
+          end
+        end
+      end
+
+      table.insert(baggage, entry)
+    end
+  end
+  return baggage
+end
 
 function W3C_EXTRACTOR:get_context(headers)
   local traceparent = headers["traceparent"]
@@ -68,7 +111,7 @@ function W3C_EXTRACTOR:get_context(headers)
     span_id       = parent_id,
     parent_id     = nil,
     should_sample = should_sample,
-    baggage       = nil,
+    baggage       = parse_baggage_headers(headers),
     w3c_flags     = flags_number,
   }
 end
