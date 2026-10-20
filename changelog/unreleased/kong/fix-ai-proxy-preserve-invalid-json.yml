@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed a bug where, with `route_type = preserve` and statistics logging enabled, an invalid JSON response body from the upstream would raise an error in the analytics body filter and cause the client to receive an empty reply. The upstream body is now passed through unchanged."
+type: bugfix
+scope: Plugin
