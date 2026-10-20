@@ -1,0 +1,3 @@
+message: "Fixed AI Proxy metrics to use provider-reported total token counts when available."
+type: bugfix
+scope: Plugin
