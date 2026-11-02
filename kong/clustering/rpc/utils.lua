@@ -5,6 +5,10 @@ local lrucache = require("resty.lrucache")
 
 
 local string_sub = string.sub
+local string_lower = string.lower
+local string_gsub = string.gsub
+local pairs = pairs
+local type = type
 local assert = assert
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
@@ -14,6 +18,32 @@ local snappy_uncompress = snappy.uncompress
 
 
 local cap_names = lrucache.new(100)
+
+
+local function normalize_header_name(name)
+  return string_lower(string_gsub(name, "_", "-"))
+end
+
+
+--- Return a response/request header value by case- and separator-insensitive name.
+function _M.get_header(headers, name)
+  if not headers or name == nil then
+    return nil
+  end
+
+  if headers[name] ~= nil then
+    return headers[name]
+  end
+
+  local want = normalize_header_name(name)
+  for k, v in pairs(headers) do
+    if type(k) == "string" and normalize_header_name(k) == want then
+      return v
+    end
+  end
+
+  return nil
+end
 
 
 function _M.parse_method_name(method)
