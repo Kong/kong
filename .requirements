@@ -29,5 +29,5 @@ WASMER=3.1.1
 WASMTIME=26.0.0
 V8=12.0.267.17
 
-NGX_BROTLI=a71f9312c2deb28875acc7bacfdd5695a111aa53 # master branch of Oct 9, 2023
-BROTLI=ed738e842d2fbdf2d6459e39267a633c4a9b2f5d # 1.1.0
+NGX_BROTLI=53e0fb55f250f48fe80c0ddbf6c0f7103cdbaae1 # master branch of Oct 22, 2026
+BROTLI=db24a98aed38a16de78cc05ca15cdd8dc2a0d92d # 1.2.1

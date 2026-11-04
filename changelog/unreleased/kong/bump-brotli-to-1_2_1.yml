@@ -1,0 +1,6 @@
+message: >
+    Bumped brotli from 1.1.0 to 1.2.1 and ngx_brotli to the master branch of Oct 22, 2026,
+    which picks up the fix for CVE-2026-111497 in the brotli decoder.
+    Kong only links the brotli encoder, so it is not affected; this is a defensive update.
+type: dependency
+scope: Core
