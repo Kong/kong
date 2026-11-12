@@ -242,8 +242,8 @@ If Rust/Cargo doesn't work, try setting `export KONG_TEST_USER_CARGO_DISABLED=1`
 Kong relies on three test suites using the [busted](https://lunarmodules.github.io/busted/) testing library:
 
 * Unit tests
-* Integration tests, which require Postgres and Cassandra to be up and running
-* Plugins tests, which require Postgres to be running
+* Integration tests, which require PostgreSQL to be up and running
+* Plugins tests, which require PostgreSQL to be running
 
 The first can simply be run after installing busted and running:
 
@@ -254,11 +254,11 @@ make test
 However, the integration and plugins tests will spawn a Kong instance and
 perform their tests against it. Because these test suites perform their tests
 against the Kong instance, you may need to edit the `spec/kong_tests.conf`
-configuration file to make your test instance point to your Postgres/Cassandra
-servers, depending on your needs.
+configuration file to make your test instance point to your PostgreSQL
+server, depending on your needs.
 
-You can run the integration tests (assuming **both** Postgres and Cassandra are
-running and configured according to `spec/kong_tests.conf`) with:
+You can run the integration tests (assuming PostgreSQL is running and
+configured according to `spec/kong_tests.conf`) with:
 
 ```
 make test-integration
@@ -319,7 +319,7 @@ as follows:
    [Gojira](https://github.com/Kong/gojira), consisting of one node
    containing the previous version of Kong Gateway ("OLD"), one node
    containing the current version of Kong Gateway ("NEW") and a shared
-   database server (PostgreSQL or Cassandra).
+   PostgreSQL database server.
  * NEW: The database is initialized using `kong migrations bootstrap`.
  * OLD: The `setup` phase of all applicable migration tests is run.
  * NEW: `kong migrations up` is run to run the `up` part of all
@@ -418,7 +418,7 @@ If you have a Linux development environment (either virtual or bare metal), the 
 1. Development dependencies and runtime libraries, including:
    1. Prerequisite packages.  Mostly compilers, tools, and libraries required to compile everything else.
    2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-2. Databases. Kong uses Postgres, Cassandra, and Redis.  We have a handy setup with docker-compose to keep each on its container.
+2. Databases. Kong uses PostgreSQL, and some plugin tests require Redis. We have a handy setup with docker-compose to keep each in its own container.
 3. Kong itself.
 
 ### Virtual Machine (Optional)
