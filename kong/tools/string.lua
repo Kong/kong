@@ -133,18 +133,30 @@ local function splitn_common(value, pattern, n, plain)
   end
 
   local p = 1
+  local search_from = 1
   local i = 1
   local t = new_tab(n or 10, 0)
   ::again::
   if i < limit then
-    local s, e = find(value, pattern, p, plain)
+    local s, e = find(value, pattern, search_from, plain)
     if s then
       t[i] = sub(value, p, s - 1)
       i = i + 1
       p = e + 1
+      search_from = p
+      if e < s then
+        -- LuaJIT clamps searches beyond the end back to the final boundary.
+        if p > #value then
+          goto done
+        end
+
+        -- Advance the search without consuming the next character.
+        search_from = p + 1
+      end
       goto again
     end
   end
+  ::done::
   t[i] = sub(value, p)
   return t, i
 end
@@ -169,6 +181,7 @@ end
 
 
 --- splits a string with a pattern.
+-- Empty matches advance the search by one byte without consuming that byte.
 -- @function psplitn
 function _M.psplitn(value, pattern, n)
   return splitn_common(value, pattern, n, false)

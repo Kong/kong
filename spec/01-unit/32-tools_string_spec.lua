@@ -1,5 +1,7 @@
 local splitn = require("kong.tools.string").splitn
 local isplitn = require("kong.tools.string").isplitn
+local psplitn = require("kong.tools.string").psplitn
+local ipsplitn = require("kong.tools.string").ipsplitn
 local split_once = require("kong.tools.string").split_once
 local inspect = require "inspect"
 
@@ -166,6 +168,48 @@ end
 
 
 describe("kong.tools.string:", function()
+  local pattern_cases = {
+    { "abc", "^",       10, { "", "a", "b", "c", "" } },
+    { "abc", "$",       10, { "abc", "" } },
+    { "abc", "%s*",     10, { "", "a", "b", "c", "" } },
+    { "abc", "%s*",      3, { "", "a", "bc" } },
+    { "abc", "%s*",      1, { "abc" } },
+    { "abc", "%s*",      0, {} },
+    { "a b", "%s*",     10, { "", "a", "", "b", "" } },
+    { "a b", "%s+",     10, { "a", "b" } },
+    { "foo bar", "%f[%a]", 10, { "", "foo ", "bar" } },
+  }
+
+  for _, t in ipairs(pattern_cases) do
+    it(fn("psplitn", t[1], t[2], t[3]), function()
+      local r, c = psplitn(t[1], t[2], t[3])
+      same(t[4], r)
+      equal(#t[4], c)
+    end)
+
+    it(fn("ipsplitn", t[1], t[2], t[3]), function()
+      local r = {}
+      for v in ipsplitn(t[1], t[2], t[3]) do
+        r[#r + 1] = v
+      end
+      same(t[4], r)
+    end)
+  end
+
+  it("splits empty pattern matches without a limit", function()
+    local r, c = psplitn("abc", "%s*")
+    same({ "", "a", "b", "c", "" }, r)
+    equal(5, c)
+  end)
+
+  it("iterates empty pattern matches without a limit", function()
+    local r = {}
+    for v in ipsplitn("abc", "%s*") do
+      r[#r + 1] = v
+    end
+    same({ "", "a", "b", "c", "" }, r)
+  end)
+
   for _, t in ipairs(TEST_MATRIX) do
     local test = fn("splitn", t[1], t[2], t[3])
     it(test, function()
