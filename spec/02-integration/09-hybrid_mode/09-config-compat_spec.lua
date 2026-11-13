@@ -884,6 +884,36 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = ai_response_transformer.id })
       end)
+
+      it("[ai-proxy] falls back to openai preserve mode for the voyage provider on 3.9.x data planes", function()
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            route_type = "preserve",
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer value",
+            },
+            model = {
+              provider = "voyage",
+            },
+          },
+        }
+
+        local expected = cycle_aware_deep_copy(ai_proxy)
+        -- fields added in 3.10
+        expected.config.llm_format = nil
+        -- 'ai fallback' field sets
+        expected.config.route_type = "preserve"
+        expected.config.model.provider = "openai"
+        expected.config.model.options = { upstream_url = "https://api.voyageai.com:443" }
+
+        do_assert(uuid(), "3.9.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+      end)
     end)
 
     describe("ai plugins shared options", function()

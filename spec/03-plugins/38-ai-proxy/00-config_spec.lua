@@ -508,4 +508,36 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
     assert.is_falsy(err)
   end)
+
+  describe("voyage provider", function()
+    local function voyage_config(route_type)
+      return {
+        route_type = route_type,
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer token",
+        },
+        model = {
+          provider = "voyage",
+        },
+      }
+    end
+
+    for _, route_type in ipairs({ "llm/v1/chat", "llm/v1/completions" }) do
+      it("rejects route_type " .. route_type, function()
+        local ok, err = validate(voyage_config(route_type))
+
+        assert.is_falsy(ok)
+        assert.same("voyage only supports route_type 'preserve'", err.config["@entity"][1])
+        assert.same("value must be preserve", err["config"]["route_type"])
+      end)
+    end
+
+    it("accepts route_type preserve without a model name", function()
+      local ok, err = validate(voyage_config("preserve"))
+
+      assert.is_truthy(ok)
+      assert.is_falsy(err)
+    end)
+  end)
 end)

@@ -209,7 +209,7 @@ local model_schema = {
         type = "string", description = "AI provider request format - Kong translates "
                                     .. "requests to and from the specified backend compatible formats.",
         required = true,
-        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface" }}},
+        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface", "voyage" }}},
     { name = {
         type = "string",
         description = "Model name to execute.",
@@ -264,6 +264,11 @@ return {
                           then_field = "auth.allow_override",
                           then_match = { eq = false },
                           then_err = "bedrock and gemini only support auth.allow_override = false" }},
+    { conditional = { if_field = "model.provider",
+                      if_match = { eq = "voyage" },
+                      then_field = "route_type",
+                      then_match = { eq = "preserve" },
+                      then_err = "voyage only supports route_type 'preserve'" }},
     { mutually_required = { "auth.header_name", "auth.header_value" }, },
     { mutually_required = { "auth.param_name", "auth.param_value", "auth.param_location" }, },
 

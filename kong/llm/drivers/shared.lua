@@ -101,6 +101,7 @@ _M.upstream_url_format = {
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
   huggingface   = "https://api-inference.huggingface.co/models/%s",
+  voyage        = "https://api.voyageai.com:443",
 }
 
 _M.operation_map = {
