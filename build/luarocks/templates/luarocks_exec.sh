@@ -31,7 +31,7 @@ LIBXML2_DIR=$root_path/$libxml2_path
 OPENSSL_DIR=$root_path/$openssl_path
 
 # The Bazel rules doesn't export the `libexpat.so` file,
-# it only exports something like `libexpat.so.1.6.0`,
+# it only exports something like `libexpat.so.1.12.4`,
 # but the linker expects `libexpat.so` to be present.
 # So we create a symlink to the actual file
 # if it doesn't exist.

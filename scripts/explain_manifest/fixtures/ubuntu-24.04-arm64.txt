@@ -44,7 +44,7 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.10.0
+- Path      : /usr/local/kong/lib/libexpat.so.1.12.4
   Needed    :
   - libc.so.6
   - ld-linux-aarch64.so.1
@@ -181,7 +181,7 @@
   - lua-resty-events
   - lua-resty-lmdb
   - ngx_brotli
-  OpenSSL   : OpenSSL 3.4.1 11 Feb 2025
+  OpenSSL   : OpenSSL 3.5.8 25 Aug 2026
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 

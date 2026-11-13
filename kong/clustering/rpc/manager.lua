@@ -17,6 +17,8 @@ local table_remove = table.remove
 local cjson = require("cjson.safe")
 local isplitn = require("kong.tools.string").isplitn
 local strip = require("kong.tools.string").strip
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
+local is_valid_hostname = require("kong.tools.hostname").is_valid_hostname
 
 
 local ipairs = ipairs
@@ -246,6 +248,18 @@ function _M:_handle_meta_call(c, cert)
   assert(type(info.kong_node_id) == "string")
   assert(type(info.kong_hostname) == "string")
   assert(type(info.kong_conf) == "table")
+
+  -- validate node_id is a valid UUID to prevent injection
+  if not is_valid_uuid(info.kong_node_id) then
+    return nil, "invalid node_id format, must be a valid UUID"
+  end
+
+  -- validate hostname format to prevent injection
+  -- using check_hostname which is more permissive than RFC strict validation
+  -- to support all possible gethostname() returns (e.g., underscores)
+  if not is_valid_hostname(info.kong_hostname) then
+    return nil, "invalid hostname format"
+  end
 
   local rpc_capabilities = self.callbacks:get_capabilities_list()
   -- For data planes older than the control plane, we don't want to enable

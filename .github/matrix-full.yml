@@ -27,10 +27,6 @@ build-packages:
   check-manifest-suite: ubuntu-24.04-arm64
 
 # Debian
-- label: debian-11
-  image: debian:11
-  package: deb
-  check-manifest-suite: debian-11-amd64
 - label: debian-12
   image: debian:12
   package: deb
@@ -136,12 +132,6 @@ release-packages:
   artifact: kong.arm64.deb
 
 # Debian
-- label: debian-11
-  package: deb
-  artifact-from: debian-11
-  artifact-version: 11
-  artifact-type: debian
-  artifact: kong.amd64.deb
 - label: debian-12
   package: deb
   artifact-from: debian-12
