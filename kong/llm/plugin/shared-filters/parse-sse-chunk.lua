@@ -1,5 +1,6 @@
 local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 local ai_plugin_ctx = require("kong.llm.plugin.ctx")
+local ai_plugin_o11y = require("kong.llm.plugin.observability")
 local ai_shared = require("kong.llm.drivers.shared")
 
 local _M = {
@@ -25,6 +26,9 @@ local function handle_streaming_frame(conf, chunk, finished)
   end
 
   if type(chunk) == "string" and chunk ~= "" then
+    -- record time-to-first-token on the very first non-empty chunk
+    ai_plugin_o11y.record_ttft_once()
+
     -- transform each one into flat format, skipping transformer errors
     -- because we have already 200 OK'd the client by now
 

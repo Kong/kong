@@ -72,6 +72,7 @@ function _M:run(conf)
   -- usage
   local usage = {
     time_per_token = ai_plugin_o11y.metrics_get("llm_tpot_latency"),
+    time_to_first_token = ai_plugin_o11y.metrics_get("llm_ttft_latency"),
     prompt_tokens = ai_plugin_o11y.metrics_get("llm_prompt_tokens_count"),
     completion_tokens = ai_plugin_o11y.metrics_get("llm_completion_tokens_count"),
     total_tokens = ai_plugin_o11y.metrics_get("llm_total_tokens_count"),
