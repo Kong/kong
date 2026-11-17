@@ -22,7 +22,7 @@ runs:
       shell: bash
       env:
         FILE_HASH: ${{ hashFiles(env.WASM_FILTER_CARGO_LOCK, format('{0}/**/*.rs', env.WASM_FILTER_PATH)) }}
-        CACHE_VERSION: "6"
+        CACHE_VERSION: "7"
         RUNNER_OS: ${{ runner.os }}
       run: |
         CACHE_PREFIX="wasm-test-filters::v${CACHE_VERSION}::${RUNNER_OS}::${WASM_FILTER_TARGET}::"
@@ -49,7 +49,12 @@ runs:
     - name: Build Test Filters
       if: steps.restore-cache.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        RUSTFLAGS: "-C link-arg=--allow-undefined"
       run: |
+        SELF_CONTAINED="$(rustc --print sysroot)/lib/rustlib/${WASM_FILTER_TARGET:?}/lib/self-contained"
+        export RUSTFLAGS="${RUSTFLAGS} -C link-self-contained=no -C link-arg=-L${SELF_CONTAINED}"
+
         # building in release mode yields smaller library sizes, so it's
         # better for our cacheability
         cargo build \
