@@ -47,7 +47,7 @@ You can find every supported distribution on the [official installation page](ht
 
 #### Kong Pongo
 
-[Pongo](https://github.com/Kong/kong-pongo) is a CLI tool that are
+[Pongo](https://github.com/Kong/kong-pongo) is a CLI tool that is
 specific for plugin development. It is docker-compose based and will
 create local test environments including all dependencies. Core features
 are running tests, integrated linter, config initialization, CI support,
@@ -146,7 +146,7 @@ using either one of the following ways:
 
 Then you have to make the Rust build system also authenticate with GitHub,
 there is nothing you need to do if you were authenticated using `gh` or `git credential helper`,
-otherwise, you can set the[`CARGO_NET_GIT_FETCH_WITH_CLI`](https://doc.rust-lang.org/cargo/reference/config.html)
+otherwise, you can set the [`CARGO_NET_GIT_FETCH_WITH_CLI`](https://doc.rust-lang.org/cargo/reference/config.html)
 environment variable to `true`.
 
 ```shell
