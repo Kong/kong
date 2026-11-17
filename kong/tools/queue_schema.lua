@@ -53,7 +53,7 @@ return Schema.define {
       type = "integer",
       default = 1,
       one_of = { -1, 1 },
-      description = "The number of of queue delivery timers. -1 indicates unlimited."
+      description = "The number of the queue delivery timers. -1 indicates unlimited."
     } },
 
   }
