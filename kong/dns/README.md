@@ -36,7 +36,7 @@ Performs a series of initialization operations:
 
 **Input parameters:**
 
-`@opts` It accepts a options table argument. The following options are supported:
+`@opts` It accepts an options table argument. The following options are supported:
 
 * TTL options:
   * `valid_ttl`: (default: `nil`)
@@ -109,7 +109,7 @@ Performs a DNS resolution.
   * specify the query type instead of `self.order` types.
 * `@cache_only`: (optional: `boolean`)
   * control whether to solely retrieve data from the internal cache without querying to the nameserver.
-* `@tries?`: see the above section `Return value and input paramter @tries?`.
+* `@tries?`: see the above section `Return value and input parameter @tries?`.
 
 [Back to TOC](#table-of-contents)
 
