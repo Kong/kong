@@ -3,7 +3,10 @@ local constants = require "kong.constants"
 local cjson = require "cjson"
 local lyaml = require "lyaml"
 local lfs = require "lfs"
+local openssl_x509 = require "resty.openssl.x509"
 local shell = require "resty.shell"
+local ssl_fixtures = require "spec.fixtures.ssl"
+local to_hex = require("resty.string").to_hex
 
 
 local function sort_by_name(a, b)
@@ -355,6 +358,38 @@ describe("kong config", function()
     assert.match("in 'host': expected a string", err)
     assert.match("in 'port': value should be between 0 and 65535", err)
     assert.match("in 'routes': expected an array", err)
+  end)
+
+  it("#db config db_import computes cert_digest for ca_certificates", function()
+    local ca_id = "85a67812-678c-5fe5-9ff1-60af91f31b4b"
+    local cert = ssl_fixtures.cert_ca:gsub("\n", "\n      ")
+    local filename = helpers.make_yaml_file(([[
+      _format_version: "3.0"
+      _transform: false
+      ca_certificates:
+      - id: %s
+        cert: |
+          %s
+    ]]):format(ca_id, cert))
+
+    assert(db.ca_certificates:truncate())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    local cert_x509, err = openssl_x509.new(ssl_fixtures.cert_ca)
+    assert(cert_x509, err)
+    local digest, digest_err = cert_x509:digest("sha256")
+    assert(digest, digest_err)
+
+    local ca = assert(db.ca_certificates:select({ id = ca_id }))
+    assert.equal(to_hex(digest), ca.cert_digest)
+
+    assert(helpers.stop_kong())
   end)
 
   it("#db config db_import is idempotent based on endpoint_key and cache_key", function()
