@@ -1,0 +1,4 @@
+message: |
+  **Opentelemetry**: Support OpenTelemetry context propagation for Model Context Protocol (MCP) via the `_meta` field in JSON-RPC 2.0 payloads.
+type: feature
+scope: Plugin
