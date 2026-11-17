@@ -92,6 +92,7 @@ local _EXPECTED_CHAT_STATS_GEMINI = {
     },
     usage = {
       prompt_tokens = 2,
+      prompt_cache_tokens = 0,
       completion_tokens = 11,
       total_tokens = 13,
       time_per_token = 1,

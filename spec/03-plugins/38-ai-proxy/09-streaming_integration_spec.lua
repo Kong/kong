@@ -18,6 +18,7 @@ local _EXPECTED_CHAT_STATS = {
     llm_latency = 1
   },
   usage = {
+    prompt_cache_tokens = 0,
     prompt_tokens = 18,
     completion_tokens = 13, -- this was from estimation
     total_tokens = 31,
