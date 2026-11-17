@@ -7,6 +7,7 @@ local cjson = require "kong.tools.cjson"
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local string_tools = require "kong.tools.string"
+local gzip = require "kong.tools.gzip"
 
 
 local ngx = ngx
@@ -129,6 +130,7 @@ local function new(pdk, major_version)
   local MAX_POST_ARGS          = 1000
 
   local CONTENT_TYPE           = "Content-Type"
+  local CONTENT_ENCODING       = "Content-Encoding"
 
   local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
   local CONTENT_TYPE_JSON      = "application/json"
@@ -311,7 +313,7 @@ local function new(pdk, major_version)
   -- -- or `access` phase prior calling this function.
   --
   -- local body = kong.service.response.get_body()
-  function response.get_body(mimetype, max_args)
+  function response.get_body(mimetype, max_args, decompressed)
     check_phase(header_body_log)
     local ctx = ngx.ctx
     if not ctx.buffered_proxying then
@@ -332,6 +334,18 @@ local function new(pdk, major_version)
       end
     end
 
+    local body = ctx.buffered_body or ""
+    if decompressed then
+      local content_encoding = response.get_header(CONTENT_ENCODING)
+      if content_encoding and lower(content_encoding) == "gzip" then
+        local decompressed_body, err = gzip.inflate_gzip(body)
+        if err or decompressed_body == nil then
+          return nil, "failed to decompress body: " .. (err or "unknown error")
+        end
+        body = decompressed_body
+      end
+    end
+
     if find(content_type_lower, CONTENT_TYPE_POST, 1, true) == 1 then
       if max_args ~= nil then
         if type(max_args) ~= "number" then
@@ -344,8 +358,6 @@ local function new(pdk, major_version)
           error("max_args must be <= " .. MAX_POST_ARGS, 2)
         end
       end
-
-      local body = ctx.buffered_body or ""
       local pargs, err = ngx.decode_args(body, max_args or MAX_POST_ARGS_DEFAULT)
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
@@ -354,7 +366,6 @@ local function new(pdk, major_version)
       return pargs, nil, CONTENT_TYPE_POST
 
     elseif find(content_type_lower, CONTENT_TYPE_JSON, 1, true) == 1 then
-      local body = ctx.buffered_body or ""
       local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
@@ -363,8 +374,6 @@ local function new(pdk, major_version)
       return json, nil, CONTENT_TYPE_JSON
 
     elseif find(content_type_lower, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
-      local body = ctx.buffered_body or ""
-
       local parts = multipart(body, content_type)
       if not parts then
         return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
