@@ -1,0 +1,9 @@
+message: >-
+  **Admin API**: Fixed a bug where requests that triggered an `INVALID_FOREIGN_KEY`
+  or `INVALID_WORKSPACE` DAO error (for example, looking up an entity by a
+  malformed foreign-key-typed unique field, or writing to an entity whose
+  workspace was concurrently deleted) received a generic
+  `500 An unexpected error occurred` response instead of a `400` with the actual,
+  actionable error message.
+type: bugfix
+scope: Admin API
