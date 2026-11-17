@@ -145,7 +145,11 @@ function _BedrockAdapter:bedrock_msg_to_openai_msg(msg)
           new_msg.tool_call_id = part.tool_call_id
 
         else
-          new_msg.content = new_msg.content or {}
+          if type(new_msg.content) == "string" then
+            new_msg.content = { { type = "text", text = new_msg.content } }
+          else
+            new_msg.content = new_msg.content or {}
+          end
           table.insert(new_msg.content, part)
         end
       end
