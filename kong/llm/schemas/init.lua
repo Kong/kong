@@ -184,7 +184,9 @@ local model_options_schema = {
     { upstream_url = typedefs.url {
         description = "Manually specify or override the full URL to the AI operation endpoints, "
                    .. "when calling (self-)hosted models, or for running via a private endpoint.",
-        required = false }},
+        required = false,
+        referenceable = true,
+      }},
     { upstream_path = {
         description = "Manually specify or override the AI operation path, "
                    .. "used when e.g. using the 'preserve' route_type.",
