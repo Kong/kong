@@ -67,6 +67,18 @@ local AWSLambdaHandler = {
 
 
 function AWSLambdaHandler:access(conf)
+  -- Reject early if query string parameter count exceeds the configured limit
+  if conf.reject_if_max_uri_args_exceeded then
+    local args = ngx.req.get_uri_args(conf.max_uri_args)
+    local count = 0
+    for _ in pairs(args) do
+      count = count + 1
+    end
+    if count >= conf.max_uri_args then
+      return kong.response.exit(414, { message = "URI Too Long" })
+    end
+  end
+
   -- TRACING: set KONG_WAITING_TIME start
   local kong_wait_time_start = get_now()
 

@@ -122,4 +122,76 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.is_nil(err)
     assert.truthy(ok)
   end)
+
+  describe("max_uri_args", function()
+    it("defaults to 100", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function"
+      }, schema_def)
+
+      assert.is_nil(err)
+      assert.truthy(ok)
+      assert.equal(100, ok.config.max_uri_args)
+    end)
+
+    it("accepts a valid value", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function",
+        max_uri_args = 1000,
+      }, schema_def)
+
+      assert.is_nil(err)
+      assert.truthy(ok)
+      assert.equal(1000, ok.config.max_uri_args)
+    end)
+
+    it("errors with a value less than 1", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function",
+        max_uri_args = 0,
+      }, schema_def)
+
+      assert.equal("value should be between 1 and 1000", err.config.max_uri_args)
+      assert.falsy(ok)
+    end)
+
+    it("errors with a value greater than 1000", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function",
+        max_uri_args = 1001,
+      }, schema_def)
+
+      assert.equal("value should be between 1 and 1000", err.config.max_uri_args)
+      assert.falsy(ok)
+    end)
+  end)
+
+  describe("reject_if_max_uri_args_exceeded", function()
+    it("defaults to false", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function"
+      }, schema_def)
+
+      assert.is_nil(err)
+      assert.truthy(ok)
+      assert.is_false(ok.config.reject_if_max_uri_args_exceeded)
+    end)
+
+    it("accepts true", function()
+      local ok, err = v({
+        aws_region = "us-east-1",
+        function_name = "my-function",
+        reject_if_max_uri_args_exceeded = true,
+      }, schema_def)
+
+      assert.is_nil(err)
+      assert.truthy(ok)
+      assert.is_true(ok.config.reject_if_max_uri_args_exceeded)
+    end)
+  end)
 end)
