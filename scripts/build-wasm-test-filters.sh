@@ -97,7 +97,9 @@ main() {
         }
     fi
 
+    self_contained=$(rustc --print sysroot)/lib/rustlib/$BUILD_TARGET/lib/self-contained
 
+    RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=--allow-undefined -C link-self-contained=no -C link-arg=-L$self_contained" \
     "$cargo" build \
         --manifest-path "$FIXTURE_PATH/Cargo.toml" \
         --workspace \
