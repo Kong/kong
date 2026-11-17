@@ -1,0 +1,1 @@
+{"metrics":{"latencyMs":998},"output":{"message":{"content":[{"text":"The weather in Paris is currently 16.4°C."}],"role":"assistant"}},"stopReason":"end_turn","usage":{"inputTokens":39,"outputTokens":14,"totalTokens":53}}

@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where the Anthropic provider mapped the wrong stop_reason to Chat and Completions responses.
+type: "bugfix"
+scope: "Plugin"

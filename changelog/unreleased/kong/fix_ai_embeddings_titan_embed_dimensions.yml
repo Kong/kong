@@ -1,0 +1,4 @@
+message: >
+  **AI Plugins**: Fixed unable to use Titan Text Embeddings models.
+type: bugfix
+scope: Plugin

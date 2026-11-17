@@ -682,6 +682,7 @@ local function new(self)
 
   local before_content = phase_checker.new(PHASES.rewrite,
                                            PHASES.access,
+                                           PHASES.balancer,
                                            PHASES.response,
                                            PHASES.error,
                                            PHASES.admin_api)
@@ -700,7 +701,7 @@ local function new(self)
   -- and has performance implications.
   --
   -- @function kong.request.get_raw_body
-  -- @phases rewrite, access, response, admin_api
+  -- @phases rewrite, access, balancer, response, admin_api
   -- @max_allowed_file_size[opt] number the max allowed file size to be read from,
   -- 0 means unlimited, but the size of this body will still be limited
   -- by Nginx's client_max_body_size.
@@ -806,7 +807,7 @@ local function new(self)
   -- what MIME type the body was parsed as.
   --
   -- @function kong.request.get_body
-  -- @phases rewrite, access, response, admin_api
+  -- @phases rewrite, access, balancer, response, admin_api
   -- @tparam[opt] string mimetype The MIME type.
   -- @tparam[opt] number max_args Sets a limit on the maximum number of parsed
   -- @tparam[opt] number max_allowed_file_size the max allowed file size to be read from

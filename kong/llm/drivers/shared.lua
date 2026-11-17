@@ -14,9 +14,13 @@ local ai_plugin_o11y = require("kong.llm.plugin.observability")
 -- static
 local ipairs       = ipairs
 local str_find     = string.find
+local str_byte     = string.byte
 local str_sub      = string.sub
-local split        = require("kong.tools.string").split
 local splitn       = require("kong.tools.string").splitn
+local table_remove = table.remove
+
+local NEWLINE = str_byte("\n")
+local SPACE = str_byte(" ")
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
@@ -73,6 +77,9 @@ _M._CONST = {
   ["SSE_TERMINATOR"] = "[DONE]",
   ["AWS_STREAM_CONTENT_TYPE"] = "application/vnd.amazon.eventstream",
   ["GEMINI_STREAM_CONTENT_TYPE"] = "application/json",
+  ["SSE_CONTENT_TYPE"] = "text/event-stream",
+  ["UNIX_EPOCH"] = "1970-01-01T00:00:00.000000Z",
+  ["STRUCTURED_OUTPUT_TOOL_NAME"] = "kong_inc_to_structured_output",
 }
 
 _M._SUPPORTED_STREAMING_CONTENT_TYPES = {
@@ -99,8 +106,9 @@ _M.upstream_url_format = {
   gemini        = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
+  bedrock_agent = "https://bedrock-agent-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
-  huggingface   = "https://api-inference.huggingface.co/models/%s",
+  huggingface   = "https://router.huggingface.co",
 }
 
 _M.operation_map = {
@@ -152,7 +160,7 @@ _M.operation_map = {
   },
   gemini_vertex = {
     ["llm/v1/chat"] = {
-      path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
+      path = "/v1/projects/%s/locations/%s/publishers/%s/models/%s:%s",
     },
   },
   mistral = {
@@ -162,14 +170,11 @@ _M.operation_map = {
     },
   },
   huggingface = {
-    ["llm/v1/completions"] = {
-      path = "/models/%s",
-      method = "POST",
-    },
     ["llm/v1/chat"] = {
-      path = "/models/%s",
+      path = "/v1/chat/completions",
       method = "POST",
     },
+    -- NYI: image, audio
   },
   bedrock = {
     ["llm/v1/chat"] = {
@@ -217,7 +222,7 @@ _M.clear_response_headers = {
 function _M.merge_config_defaults(request, options, request_format)
   if options then
     request.temperature = options.temperature or request.temperature
-    request.max_tokens = options.max_tokens or request.max_tokens 
+    request.max_tokens = options.max_tokens or request.max_tokens
     request.top_p = options.top_p or request.top_p
     request.top_k = options.top_k or request.top_k
   end
@@ -225,7 +230,7 @@ function _M.merge_config_defaults(request, options, request_format)
   return request, nil
 end
 
-local function handle_stream_event(event_table, model_info, route_type)
+local function handle_ollama_stream_event(event_table, model_info, route_type)
   if event_table.done then
     -- return analytics table
     return "[DONE]", nil, {
@@ -334,14 +339,49 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
   end
 end
 
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = _M.cloud_identity_function,
+})
 
-local function json_array_iterator(input_str, prev_state)
+_M.get_key_bastion = function()
+  return _KEYBASTION
+end
+
+
+local JSON_ARRAY_TYPE = {
+  JSONL = "jsonl", -- JSON Lines format
+  GEMINI = "gemini", -- Gemini [{}, {}] format
+  FLAT_JSON = "flat_json", -- Like JSON Lines format, but the lines may be separated by '\n' or '\r'
+}
+
+-- json_array_iterator is an iterator that parses a JSON array from a string input.
+-- @param input_str The input string containing the JSON array.
+-- @param prev_state The previous state of the iterator, if any.
+-- @param json_array_type The type of JSON array format to parse. See the JSON_ARRAY_TYPE table above for available types.
+local function json_array_iterator(input_str, prev_state, json_array_type)
   local state = prev_state or {
     started = false,
     pos = 1,
     input = input_str,
     eof = false,
   }
+
+  local sep_char, sep_char2, start_char
+  if json_array_type == JSON_ARRAY_TYPE.JSONL then -- JSON Lines format
+    sep_char = "\n"
+    start_char = nil
+  elseif json_array_type == JSON_ARRAY_TYPE.FLAT_JSON then -- Flat JSON format
+    sep_char = "\n"
+    sep_char2 = "\r"
+    start_char = nil
+  elseif json_array_type == JSON_ARRAY_TYPE.GEMINI then -- Gemini [{}, {}] format
+    sep_char = ","
+    start_char = "["
+  else
+    error("Unsupported JSON array type: " .. tostring(json_array_type))
+  end
+
 
   if state.eof then
     error("Iterator has reached end of input")
@@ -361,11 +401,11 @@ local function json_array_iterator(input_str, prev_state)
     while state.pos <= len and state.input:sub(state.pos, state.pos):match("%s") do
       state.pos = state.pos + 1
     end
-    if state.pos > len or state.input:sub(state.pos, state.pos) ~= "[" then
-      error("Invalid start: expected '['")
+    if state.pos > len or (start_char and state.input:sub(state.pos, state.pos) ~= start_char) then
+      error("Invalid start: expected '" .. start_char .. "'")
     end
     state.started = true
-    state.pos = state.pos + 1
+    state.pos = state.pos + (start_char and 1 or 0) -- move past the start character
   end
 
   -- Skip whitespace
@@ -413,14 +453,18 @@ local function json_array_iterator(input_str, prev_state)
             delimiter = state.pos - 1
             state.eof = true
           end
-        elseif char == ',' and brace_count == 0 and bracket_count == 0 then
+        elseif (char == sep_char or (sep_char2 and char == sep_char2))
+          and brace_count == 0 and bracket_count == 0
+        then
           -- Found element delimiter at top level
           delimiter = state.pos - 1
           -- if delimiter is at start of string, skip it in next iteration
-          if state.pos == 1 then
-            start_pos = 2
+          if state.pos == start_pos then
+            start_pos = state.pos + 1
           end
-        elseif brace_count == 0 and bracket_count == 0 and state.pos == len then
+        end
+
+        if not delimiter and brace_count == 0 and bracket_count == 0 and state.pos == len then
           -- Found element delimiter at end of string
           delimiter = state.pos
         end
@@ -445,6 +489,80 @@ local function json_array_iterator(input_str, prev_state)
   end
 end
 
+_M.JSON_ARRAY_TYPE = JSON_ARRAY_TYPE
+_M.json_array_iterator = json_array_iterator
+
+local function ollama_message_has_tools(message)
+  return message
+          and type(message) == "table"
+          and message['tool_calls']
+          and type(message['tool_calls']) == "table"
+          and #message['tool_calls'] > 0
+end
+
+-- Check for leap year
+local function is_leap(y)
+  return (y % 4 == 0 and y % 100 ~= 0) or (y % 400 == 0)
+end
+
+local ISO_8601_PATTERN = "^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)%.(%d+)Z$"
+
+---
+-- Converts a JSON-format (ISO 8601) Timestamp into seconds since UNIX EPOCH.
+-- Input only supports UTC timezone (suffix 'Z').
+--
+-- @param {string} ISO 8601 UTC input time, example '2025-04-22T13:40:31.926503Z'
+-- @return {number} Seconds count since UNIX EPOCH.
+function _M.iso_8601_to_epoch(timestamp)
+  if not string.match(timestamp, ISO_8601_PATTERN) then
+    return nil, "Invalid ISO 8601 timestamp format"
+  end
+
+  local year, month, day, hour, min, sec, _ =
+    string.match(timestamp, ISO_8601_PATTERN)
+
+  -- we can't use os.time as it relys on the system timezone setup and won't always be UTC
+
+  -- Convert to numbers
+  year, month, day = tonumber(year), tonumber(month), tonumber(day)
+  hour, min, sec = tonumber(hour), tonumber(min), tonumber(sec)
+
+  if year < 1970 or month < 1 or month > 12 or day < 1 or day > 31
+      or hour < 0 or hour > 23 or min < 0 or min > 59 or sec < 0 or sec > 59 then
+    return nil, "Invalid date/time components"
+  end
+
+  -- Days in each month (non-leap year)
+  local days_in_month = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+  if is_leap(year) then
+    days_in_month[2] = 29
+  end
+
+  if day > days_in_month[month] then
+    return nil, "Invalid day for the given month"
+  end
+
+  -- Calculate days since Unix epoch (1970-01-01)
+  local days = 0
+
+  -- Add days for complete years
+  for y = 1970, year - 1 do
+    days = days + (is_leap(y) and 366 or 365)
+  end
+
+  -- Add days for complete months in current year
+  for m = 1, month - 1 do
+    days = days + days_in_month[m]
+  end
+
+  -- Add remaining days
+  days = days + day - 1
+
+  -- Convert to seconds and add time components
+  return days * 86400 + hour * 3600 + min * 60 + sec
+end
+
 ---
 -- Splits a HTTPS data chunk or frame into individual
 -- SSE-format messages, see:
@@ -467,10 +585,12 @@ function _M.frame_to_events(frame, content_type)
   end
 
   -- some new LLMs return the JSON object-by-object,
-  -- because that totally makes sense to parse?!
+  -- to make it difficult to parse
   if content_type == _M._CONST.GEMINI_STREAM_CONTENT_TYPE then
-    for element, new_state in json_array_iterator(frame, kong.ctx.plugin.gemini_state) do
-      kong.ctx.plugin.gemini_state = new_state
+    local gemini_state = kong.ctx.plugin.gemini_state
+    local iter = json_array_iterator(frame, gemini_state, JSON_ARRAY_TYPE.GEMINI)
+    while true do
+      local element, gemini_state = iter()
       if element then
         local _, err = cjson.decode(element)
         if err then
@@ -478,69 +598,109 @@ function _M.frame_to_events(frame, content_type)
         end
         events[#events+1] = { data = element }
       end
-      if new_state.eof then  -- array end
+
+      -- the order is important here: we check eof before "not element", so that we don't skip this event
+      if gemini_state.eof then  -- array end
         kong.ctx.plugin.gemini_state = nil
         events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+        return events
+      end
+
+      if not element then
+        kong.ctx.plugin.gemini_state = gemini_state
         return events
       end
     end
 
   elseif content_type == _M._CONST.AWS_STREAM_CONTENT_TYPE then
-    local parser = aws_stream:new(frame)
-    while true do
-      local msg = parser:next_message()
+    local parser = kong.ctx.plugin.aws_stream_parser
+    if not parser then
+      kong.ctx.plugin.aws_stream_parser = aws_stream:new(frame)
+      parser = kong.ctx.plugin.aws_stream_parser
+    else
+      -- add the new frame to the existing parser
+      parser:add(frame)
+    end
+
+    while parser:has_complete_message() do
+      -- We need to call `has_complete_message` first, as `next_message` will consume the data
+      local msg, err = parser:next_message()
 
       if not msg then
+        kong.log.err("failed to parse AWS stream message: ", err)
         break
       end
 
       events[#events+1] = { data = cjson.encode(msg) }
     end
+    -- there may be remained data in the stream, we will parse it with the next frame
 
   -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  elseif (not kong or (not kong.ctx.plugin.gemini_state and not kong.ctx.plugin.truncated_frame)) and string.sub(str_ltrim(frame), 1, 1) == "{" then
-    for event in frame:gmatch("[^\r\n]+") do
-      events[#events + 1] = {
-        data = event,
-      }
+  elseif content_type ~= _M._CONST.SSE_CONTENT_TYPE and
+    -- if we are parsing a flat JSON stream or the first character is '{'
+    (kong.ctx.plugin.flat_json_state or string.sub(str_ltrim(frame), 1, 1) == "{")
+  then
+    local state = kong.ctx.plugin.flat_json_state
+    local iter = json_array_iterator(frame, state, JSON_ARRAY_TYPE.FLAT_JSON)
+    while true do
+      local element, state = iter()
+      if element then
+        local _, err = cjson.decode(element)
+        if err then
+          kong.log.err("malformed JSON in flat json stream: ", err, ": ", element)
+        end
+        events[#events+1] = { data = element }
+      end
+
+      if not element then
+        kong.ctx.plugin.flat_json_state = state
+        return events
+      end
     end
 
   -- standard SSE parser
   else
-    local event_lines, count = splitn(frame, "\n")
-    local struct = {} -- { event = nil, id = nil, data = nil }
+    -- test for previous abnormal start-of-frame (truncation tail)
+    if kong and kong.ctx.plugin.truncated_frame then
+      -- this is the tail of a previous incomplete chunk
+      ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
+      frame = fmt("%s%s", kong.ctx.plugin.truncated_frame, frame)
+      kong.ctx.plugin.truncated_frame = nil
+    end
 
-    for i, dat in ipairs(event_lines) do
-      if dat == "" then
-        events[#events + 1] = struct
-        struct = {} -- { event = nil, id = nil, data = nil }
-      end
+    -- check if we were mid-chunk when the frame was truncated
+    local struct = kong.ctx.plugin.truncated_frame_struct or {} -- { event = nil, id = nil, data = nil }
+    kong.ctx.plugin.truncated_frame_struct = nil
 
-      -- test for truncated chunk on the last line (no trailing \r\n\r\n)
-      if dat ~= "" and count == i then
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
+    local start = 1
+    local n_events = 1
+    while start <= #frame do
+      -- SSE chunks end with `\n\n` or `\r\n`
+      local end_of_msg = str_find(frame, "[\r\n]", start, false)
+      if not end_of_msg or end_of_msg == #frame then
         if kong then
-          kong.ctx.plugin.truncated_frame = fmt("%s%s", (kong.ctx.plugin.truncated_frame or ""), dat)
+          -- we may be mid-chunk when the frame was truncated
+          -- and already have read in the "id", "event", etc
+          kong.ctx.plugin.truncated_frame = frame:sub(start)
+          kong.ctx.plugin.truncated_frame_struct = struct
         end
 
-        break  -- stop parsing immediately, server has done something wrong
+        break
       end
 
-      -- test for abnormal start-of-frame (truncation tail)
-      if kong and kong.ctx.plugin.truncated_frame then
-        -- this is the tail of a previous incomplete chunk
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
-        dat = fmt("%s%s", kong.ctx.plugin.truncated_frame, dat)
-        kong.ctx.plugin.truncated_frame = nil
-      end
-
-      local s1, _ = str_find(dat, ":") -- find where the cut point is
-
-      if s1 and s1 ~= 1 then
-        local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
-        local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
+      -- find where the cut point is. As str_find cannot specify the end of the search range,
+      -- the returned s1 may be larger than the end of msg.
+      local s1 = str_find(frame, ":", start, true)
+      if s1 and s1 ~= 1 and s1 < end_of_msg then
+        local field = str_sub(frame, start, s1 - 1) -- returns "data" from data: hello world
+        local j = s1 + 1
+        while j <= end_of_msg - 1 and str_byte(frame, j) == SPACE do
+          -- consume spaces.
+          j = j + 1
+        end
+        local value = str_sub(frame, j, end_of_msg - 1) -- returns "hello world" from data: hello world
 
         -- for now not checking if the value is already been set
         if     field == "event" then struct.event = value
@@ -548,8 +708,19 @@ function _M.frame_to_events(frame, content_type)
         elseif field == "data"  then struct.data = value
         end -- if
       end -- if
+
+      start = end_of_msg + 1
+      -- When start > #frame, str_byte returns nil, so we don't need to check out of bound here.
+      if str_byte(frame, start) == NEWLINE then
+        -- End of the SSE shunk. This is faster than calling str_find '\n' again.
+        events[n_events] = struct
+        n_events = n_events + 1
+        struct = {}
+        start = start + 1
+      end
+
     end
-  end
+  end -- else
 
   return events
 end
@@ -567,6 +738,28 @@ function _M.to_ollama(request_table, model)
     input.prompt = request_table.prompt
 
   end
+
+  -- If tools are an actual JSON object,
+  -- flatten to a raw string.
+  -- Ollama is inconsistent in its response formats.
+  if request_table.messages then
+    for _, message in ipairs(request_table.messages) do
+      if message["tool_calls"] and type(message["tool_calls"]) == "table" then
+        for _, tool in ipairs(message["tool_calls"]) do
+          if tool['function']
+            and tool['function']['arguments']
+            and type(tool['function']['arguments']) == "string" then
+            
+            tool['function']['arguments'] = cjson.decode(tool['function']['arguments'])
+          end
+        end
+      end
+    end
+  end
+
+
+  -- handle tools
+  input.tools = request_table.tools
 
   -- common parameters
   input.stream = request_table.stream or false -- for future capability
@@ -597,7 +790,7 @@ function _M.from_ollama(response_string, model_info, route_type)
       return nil, "failed to decode ollama response"
     end
 
-    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
+    output, _, analytics = handle_ollama_stream_event(response_table, model_info, route_type)
 
   elseif route_type == "stream/llm/v1/completions" then
     local response_table, err = cjson.decode(response_string.data)
@@ -605,7 +798,7 @@ function _M.from_ollama(response_string, model_info, route_type)
       return nil, "failed to decode ollama response"
     end
 
-    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
+    output, _, analytics = handle_ollama_stream_event(response_table, model_info, route_type)
 
   else
     local response_table, err = cjson.decode(response_string)
@@ -624,18 +817,40 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     -- common fields
     output.model = response_table.model
-    output.created = response_table.created_at
+    output.created, err = _M.iso_8601_to_epoch(response_table.created_at)
+    if err then
+      ngx.log(ngx.WARN, "failed to convert created_at to epoch: ", err, ", fallback to 1970-01-01T00:00:00Z")
+      output.created = 0
+    end
 
     -- analytics
     output.usage = {
       completion_tokens = response_table.eval_count or 0,
       prompt_tokens = response_table.prompt_eval_count or 0,
-      total_tokens = (response_table.eval_count or 0) + 
+      total_tokens = (response_table.eval_count or 0) +
                     (response_table.prompt_eval_count or 0),
     }
 
     if route_type == "llm/v1/chat" then
       output.object = "chat.completion"
+
+      -- handle tools conversion
+      if ollama_message_has_tools(response_table.message) then
+
+        -- If tools are an actual JSON object,
+        -- flatten to a raw string.
+        -- Ollama is inconsistent in its response formats.
+        for _, tool in ipairs(response_table.message['tool_calls']) do
+          if tool['function']
+            and tool['function']['arguments']
+            and type(tool['function']['arguments']) == "table" then
+            
+            tool['function']['arguments'] = cjson.encode(tool['function']['arguments'])
+          end
+        end
+
+      end
+
       output.choices = {
         {
           finish_reason = response_table.finish_reason or stop_reason,
@@ -700,25 +915,40 @@ function _M.merge_model_options(kong_request, conf_m)
       new_conf_m[k] = v
 
     else -- string values
-      local tmpl_start, tmpl_end = str_find(v or "", '%$%((.-)%)')
-      if tmpl_start then
-        local tmpl = str_sub(v, tmpl_start+2, tmpl_end-1) -- strip surrounding $( and )
-        local splitted = split(tmpl, '.')
-        if #splitted ~= 2 then
-          return nil, "cannot parse expression for field '" .. v .. "'"
+      local result = v
+      local has_error = false
+
+      -- Use gsub to replace all template variables in one pass
+      result = result:gsub("%$%((.-)%)", function(tmpl)
+        if has_error then return "" end
+
+        local splitted, count = splitn(tmpl, '.', 3)
+        if count ~= 2 then
+          has_error = true
+          err = "cannot parse expression for field '" .. v .. "'"
+          return ""
         end
-        local evaluated, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-        if err then
-          return nil, err
+
+        local evaluated, eval_err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+        if eval_err then
+          has_error = true
+          err = eval_err
+          return ""
         end
         if not evaluated then
-          return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+          has_error = true
+          err = splitted[1] .. " key " .. splitted[2] .. " was not provided"
+          return ""
         end
-        -- replace place holder with evaluated
-        new_conf_m[k] = str_sub(v, 1, tmpl_start - 1) .. evaluated .. str_sub(v, tmpl_end + 1)
-      else -- not a tmplate, just copy
-        new_conf_m[k] = v
+
+        return evaluated
+      end)
+
+      if has_error then
+        return nil, err
       end
+
+      new_conf_m[k] = result
     end
   end
 
@@ -993,7 +1223,7 @@ local function count_prompt(content, tokens_factor)
           return nil, "Invalid request format"
       end
     end
-  else 
+  else
     return nil, "Invalid request format"
   end
   return count, nil
@@ -1010,9 +1240,9 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   if query_body.choices then
     -- Calculate the cost based on the content type
     for _, choice in ipairs(query_body.choices) do
-      if choice.message and choice.message.content then 
+      if choice.message and choice.message.content then
         query_cost = query_cost + (count_words(choice.message.content) * tokens_factor)
-      elseif choice.text then 
+      elseif choice.text then
         query_cost = query_cost + (count_words(choice.text) * tokens_factor)
       end
     end
@@ -1047,6 +1277,49 @@ function _M.override_upstream_url(parsed_url, conf, model)
     -- why?
     parsed_url.path = kong.request.get_path()
   end
+end
+
+function _M.convert_structured_output_tool(response)
+  -- bounds check
+  if not response
+    or not response.choices
+    or not response.choices[1]
+    or not response.choices[1].message
+    or not response.choices[1].message.tool_calls
+  then
+    return nil
+  end
+
+  local tool_calls = response.choices[1].message.tool_calls
+
+  for i, tool_call in ipairs(tool_calls) do
+    if tool_call['function']
+        and tool_call['function'].name == _M._CONST.STRUCTURED_OUTPUT_TOOL_NAME
+    then
+      -- delete the tool and move it to the message params
+      table_remove(response.choices[1].message.tool_calls, i)
+      response.choices[1].message.content = tool_call['function'].arguments or '[]'
+      response.choices[1].finish_reason = "stop"
+
+      if #response.choices[1].message.tool_calls == 0 then
+        response.choices[1].message.tool_calls = nil
+      end
+
+      return response
+    end
+  end
+
+  return nil
+end
+
+function _M.is_tool_result_message(message)
+  return message
+          and message.role
+          and message.role == "tool"
+          and message.tool_call_id
+          and type(message.tool_call_id) == "string"
+          and message.content
+          and type(message.content) == "string"
 end
 
 -- for unit tests

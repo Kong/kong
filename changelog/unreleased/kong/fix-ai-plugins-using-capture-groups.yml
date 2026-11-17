@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Fixed an issue where patterns using multiple capture groups (e.g., `$(group1)/$(group2)`) failed to extract expected matches.
+type: "bugfix"
+scope: "Plugin"
