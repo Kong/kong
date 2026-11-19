@@ -1,0 +1,3 @@
+message: "**response-ratelimiting**: Fixed an issue where requests were still proxied upstream after usage exceeded a configured limit when `block_on_first_violation` was enabled."
+type: bugfix
+scope: Plugin
