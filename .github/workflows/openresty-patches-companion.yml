@@ -8,6 +8,15 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate Kong token
+        id: app-token
+        if: ${{ github.repository_owner == 'Kong' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.KONG_GH_APP_ID }}
+          private-key: ${{ secrets.KONG_GH_APP_PRIVATE_KEY }}
+          owner: Kong
+          repositories: openresty-patches-review
       - name: Dispatch the workflow
         if: ${{ github.repository_owner == 'Kong' }}
         uses: benc-uk/workflow-dispatch@31e2b3319479a63f0ab15bf800eff9e913504e26 # v1.3.2
@@ -15,7 +24,7 @@ jobs:
           workflow: create-pr.yml
           repo: kong/openresty-patches-review
           ref: master
-          token: ${{ secrets.PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           inputs: |
             {"pr-branch":"${{ github.event.pull_request.head.repo.owner.login }}:${{ github.head_ref }}", "pr-base":"${{ github.base_ref }}", "ee":${{ contains(github.repository, 'kong-ee') && 'true' || 'false' }}, "pr-id":"${{ github.event.pull_request.number }}"}
 
