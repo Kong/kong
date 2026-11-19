@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.9.5](#395)
 - [3.9.4](#394)
 - [3.9.3](#393)
 - [3.9.2](#392)
@@ -25,6 +26,20 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.9.5
+
+### Kong
+
+#### Fixes
+
+##### Core
+
+- Applied upstream nginx security patches for CVE-2026-123007.
+ [#15072](https://github.com/Kong/kong/pull/15072)
+
+- Applied upstream nginx security patches for CVE-2026-123633.
+ [#15072](https://github.com/Kong/kong/pull/15072)
 
 ## 3.9.4
 
