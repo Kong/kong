@@ -4,11 +4,6 @@ build-packages:
   image: ubuntu:24.04
   package: deb
   check-manifest-suite: ubuntu-24.04-amd64
-- label: rhel-9
-  image: rockylinux:9
-  package: rpm
-  package-type: el9
-  check-manifest-suite: el9-amd64
 
 build-images:
 - label: ubuntu
