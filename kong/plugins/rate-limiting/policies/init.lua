@@ -2,6 +2,8 @@ local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local timestamp = require "kong.tools.timestamp"
 local reports = require "kong.reports"
 local redis = require "resty.redis"
+local resty_sha1 = require "resty.sha1"
+local str_util = require "resty.string"
 local table_clear = require "table.clear"
 
 local kong = kong
@@ -174,6 +176,72 @@ local function clear_local_counter(db_key)
   table_clear(cur_delta[db_key])
 end
 
+
+local function sha1(script)
+  local sha1 = resty_sha1:new()
+  sha1:update(script)
+  local digest = sha1:final()
+  return str_util.to_hex(digest)
+end
+
+
+local INC_BY_SCRIPT = [[
+  local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
+  local exists = redis.call("exists", key)
+  redis.call("incrby", key, value)
+  if not exists or exists == 0 then
+    redis.call("expireat", key, expiration)
+  end
+]]
+
+local INC_SCRIPT = [[
+  local cache_key, expiration = KEYS[1], ARGV[1]
+  local result_incr = redis.call("incr", cache_key)
+  if result_incr == 1 then
+    redis.call("expire", cache_key, expiration)
+  end
+
+  return result_incr - 1
+]]
+
+local INC_BY_SCRIPT_SHA1 = sha1(INC_BY_SCRIPT)
+local INC_SCRIPT_SHA1 = sha1(INC_SCRIPT)
+
+local sha_scripts = {
+  [INC_BY_SCRIPT_SHA1] = INC_BY_SCRIPT,
+  [INC_SCRIPT_SHA1] = INC_SCRIPT,
+}
+
+
+local function check_redis_script(red, sha1)
+  assert(sha_scripts[sha1], "unknown sha1: " .. sha1)
+  local exists, err = red:script("exists", sha1)
+  if not exists then
+    return nil, err
+  end
+
+  if exists[1] == 0 then
+    local loaded, err = red:script("load", sha_scripts[sha1])
+    if not loaded then
+      return nil, err
+    end
+  end
+
+  return true
+end
+
+
+local function redis_eval_with_sha(red, sha1, num_keys, ...)
+  assert(sha_scripts[sha1], "unknown sha1: " .. sha1)
+  local result, err = red:evalsha(sha1, num_keys, ...)
+  if not result and err and err:find("NOSCRIPT") then
+    result, err = red:eval(sha_scripts[sha1], num_keys, ...)
+  end
+
+  return result, err
+end
+
+
 local function sync_to_redis(premature, conf)
   if premature then
     return
@@ -186,17 +254,23 @@ local function sync_to_redis(premature, conf)
     return
   end
 
-  red:init_pipeline()
+  -- Check and load the script before starting the pipeline.
+  local use_eval = false
+  local ok, err = check_redis_script(red, INC_BY_SCRIPT_SHA1)
+  if err or not ok then
+    use_eval = true
+  end
 
+  red:init_pipeline()
   for cache_key, delta in pairs(cur_delta[db_key] or EMPTY) do
-    red:eval([[
-      local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
-      local exists = redis.call("exists", key)
-      redis.call("incrby", key, value)
-      if not exists or exists == 0 then
-        redis.call("expireat", key, expiration)
-      end
-    ]], 1, cache_key, delta, cur_usage_expire_at[db_key][cache_key])
+    if use_eval then
+      red:eval(INC_BY_SCRIPT, 1, cache_key, delta,
+        cur_usage_expire_at[db_key][cache_key])
+
+    else
+      red:evalsha(INC_BY_SCRIPT_SHA1, 1, cache_key, delta,
+        cur_usage_expire_at[db_key][cache_key])
+    end
   end
 
   local _, err = red:commit_pipeline()
@@ -404,15 +478,9 @@ return {
       reports.retrieve_redis_version(red)
 
       -- the usage of redis command incr instead of get is to avoid race conditions in concurrent calls
-      local current_metric, err = red:eval([[
-        local cache_key, expiration = KEYS[1], ARGV[1]
-        local result_incr = redis.call("incr", cache_key)
-        if result_incr == 1 then
-          redis.call("expire", cache_key, expiration)
-        end
-
-        return result_incr - 1
-      ]], 1, cache_key, EXPIRATION[period])
+      local current_metric, err = redis_eval_with_sha(red, INC_SCRIPT_SHA1,
+                                                      1, cache_key,
+                                                      EXPIRATION[period])
 
       if err then
         return nil, err
