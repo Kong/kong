@@ -164,6 +164,9 @@ jobs:
     - name: Add Git to PATH
       if: (matrix.package == 'rpm') && matrix.image != ''
       run: |
+        # some images (e.g. rockylinux:9) don't set PATH in their config, and the
+        # runner then builds PATH only from GITHUB_PATH entries in container jobs
+        echo "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> $GITHUB_PATH
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Checkout Kong source code
