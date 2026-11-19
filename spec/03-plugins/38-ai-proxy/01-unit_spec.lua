@@ -1280,6 +1280,34 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     end)
   end)
 
+  describe("anthropic tools", function()
+    local anthropic_driver
+    local model_info = {
+      name = "claude-2.1",
+      provider = "anthropic",
+      options = {
+        max_tokens = 512,
+      },
+    }
+
+    setup(function()
+      package.loaded["kong.llm.drivers.anthropic"] = nil
+      anthropic_driver = require("kong.llm.drivers.anthropic")
+    end)
+
+    it("keeps an empty tools array as a JSON array", function()
+      local request = require("kong.tools.cjson").decode_with_array_mt([[
+        {"messages":[{"role":"user","content":"ping"}],"tools":[]}
+      ]])
+
+      local claude_request, _, err = anthropic_driver.to_format(request, model_info, "llm/v1/chat")
+      assert.is_nil(err)
+
+      local encoded = assert(cjson.encode(claude_request))
+      assert.matches('"tools":[]', encoded, nil, true)
+    end)
+  end)
+
   describe("bedrock tools", function()
     local bedrock_driver
 
