@@ -1343,6 +1343,30 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       })
     end)
 
+    it("keeps the text when a reasoningContent block comes first", function()
+      local bedrock_response = {
+        output = {
+          message = {
+            content = {
+              { reasoningContent = { redactedContent = "cnNuX2V4YW1wbGU=" } },
+              { text = "The ball costs $0.05." },
+            },
+            role = "assistant",
+          },
+        },
+        stopReason = "end_turn",
+      }
+      local model_info = {
+        name = "us.openai.gpt-6-sol",
+        provider = "bedrock",
+      }
+      local openai_response = bedrock_driver.from_format(cjson.encode(bedrock_response), model_info, "llm/v1/chat")
+
+      assert.not_nil(openai_response)
+
+      assert.same("The ball costs $0.05.", cjson.decode(openai_response).choices[1].message.content)
+    end)
+
     it("transforms guardrails into bedrock generation config", function()
       local model_info = {
         route_type = "llm/v1/chat",
