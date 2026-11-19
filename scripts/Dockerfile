@@ -1,4 +1,4 @@
-FROM ubuntu:latest AS expat-build
+FROM ubuntu:26.04 AS expat-build
 
 ARG expat_version=2.6.3
 
@@ -15,11 +15,11 @@ RUN curl -L https://github.com/libexpat/libexpat/releases/download/R_${expat_ver
     && ./configure --prefix=/expat_lib \
     && make && make install
 
-FROM ubuntu:latest
+FROM ubuntu:26.04
 
 COPY --from=expat-build /expat_lib /expat_lib
 
-RUN apt update && apt install -y curl libssl-dev libyaml-dev lua5.4 luarocks
+RUN apt update && apt install -y build-essential curl libssl-dev libyaml-dev lua5.4 luarocks
 
 WORKDIR /workspace
 CMD ["/bin/bash", "-c", "OPENSSL_DIR=/usr EXPAT_DIR=/expat_lib scripts/update-copyright"]
