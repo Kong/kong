@@ -31,8 +31,8 @@ local oauth2_credentials = {
     { created_at = typedefs.auto_timestamp_s },
     { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
     { name = { type = "string", required = true }, },
-    { client_id = { type = "string", required = false, unique = true, auto = true }, },
-    { client_secret = { type = "string", required = false, auto = true, encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
+    { client_id = { type = "string", required = false, unique = true, auto = true, referenceable = true }, },
+    { client_secret = { type = "string", required = false, auto = true, encrypted = true, referenceable = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
     { hash_secret = { type = "boolean", required = true, default = false }, },
     { redirect_uris = {
       type = "array",
