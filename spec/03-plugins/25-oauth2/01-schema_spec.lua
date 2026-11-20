@@ -145,6 +145,29 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err_t)
       end)
 
+      it("does not allow changing the authorization code after insert", function()
+        local consumer = bp.consumers:insert()
+        local credential = bp.oauth2_credentials:insert({
+          redirect_uris = { "http://example.com" },
+          consumer = { id = consumer.id },
+        })
+
+        local code_entity = bp.oauth2_authorization_codes:insert({
+          credential = { id = credential.id },
+        })
+
+        assert.truthy(code_entity.code)
+
+        local tampered = {
+          id = code_entity.id,
+          code = code_entity.code .. "-tampered",
+        }
+
+        local row, _, err = db.oauth2_authorization_codes:update(code_entity, tampered)
+        assert.is_nil(row)
+        assert.matches("immutable field cannot be updated", err)
+      end)
+
       it("errors when given an invalid service_id on oauth authorization codes", function()
         local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
           credential = { id = "foo" },
