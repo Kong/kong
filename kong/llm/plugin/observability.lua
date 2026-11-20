@@ -8,6 +8,7 @@ local _M = {
 -- global metrics
 local metrics_schema = {
   llm_tpot_latency = true,
+  llm_ttft_latency = true,
   llm_e2e_latency = true,
   llm_prompt_tokens_count = true,
   llm_completion_tokens_count = true,
@@ -92,6 +93,23 @@ function _M.record_request_start()
   ngx.ctx.ai_llm_request_start_time = ngx.now()
 
   return true
+end
+
+function _M.record_ttft_once()
+  if ngx.ctx.ai_llm_ttft_recorded then
+    return true
+  end
+
+  local start = ngx.ctx.ai_llm_request_start_time
+  if not start then
+    return 0
+  end
+
+  ngx.update_time()
+  local ttft = ngx.now() - start
+  _M.metrics_set("llm_ttft_latency", math.floor(ttft * 1000))
+  ngx.ctx.ai_llm_ttft_recorded = true
+  return ttft
 end
 
 function _M.record_request_end()
