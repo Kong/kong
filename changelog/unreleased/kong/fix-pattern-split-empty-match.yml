@@ -1,0 +1,3 @@
+message: "Fixed an infinite loop in the pattern-based string splitting helpers when a separator matches an empty string."
+type: bugfix
+scope: Core
