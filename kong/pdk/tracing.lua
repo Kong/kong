@@ -633,6 +633,11 @@ local function new_tracer(name, options)
     return not not sampled
   end
 
+  function self:get_baggage()
+    local ctx = ngx.ctx
+    return tracing_context.get_baggage(ctx)
+  end
+
   tracer_memo[name] = setmetatable(self, tracer_mt)
   return tracer_memo[name]
 end

@@ -99,6 +99,7 @@ local function extract_tracing_context(conf)
     -- extract tracing context only from the first successful extractor
     if type(extracted_ctx) == "table" and next(extracted_ctx) ~= nil then
       kong.ctx.plugin.extracted_from = extractor_m
+      tracing_context.set_baggage(extracted_ctx.baggage)
       break
     end
   end
