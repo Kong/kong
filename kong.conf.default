@@ -207,7 +207,7 @@
                                  # to use a proxy.
 
 
-#proxy_server_ssl_verify = off   # Toggles server certificate verification if
+#proxy_server_ssl_verify = on   # Toggles server certificate verification if
                                  # `proxy_server` is in HTTPS.
                                  # See the `lua_ssl_trusted_certificate`
                                  # setting to specify a certificate authority.
@@ -1626,12 +1626,12 @@
                                  # minimum recommended value of a few MBs.
                                  #
                                  # 5MB shared memory size could store
-                                 # ~20000 DNS responeses with single A record or
-                                 # ~10000 DNS responeses with 2~3 A records.
+                                 # ~20000 DNS responses with single A record or
+                                 # ~10000 DNS responses with 2~3 A records.
                                  #
                                  # 10MB shared memory size could store
-                                 # ~40000 DNS responeses with single A record or
-                                 # ~20000 DNS responeses with 2~3 A records.
+                                 # ~40000 DNS responses with single A record or
+                                 # ~20000 DNS responses with 2~3 A records.
 
 
 #------------------------------------------------------------------------------
