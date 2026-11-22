@@ -651,6 +651,7 @@ build = {
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
     ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
     ["kong.llm.drivers.huggingface"] = "kong/llm/drivers/huggingface.lua",
+    ["kong.llm.drivers.voyage"] = "kong/llm/drivers/voyage.lua",
 
 
     ["kong.llm.plugin.base"] = "kong/llm/plugin/base.lua",

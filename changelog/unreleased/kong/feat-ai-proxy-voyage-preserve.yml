@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Added the `voyage` provider, which forwards requests to the Voyage AI API (embeddings, contextualized embeddings, multimodal embeddings and rerank) using the `preserve` route type.
+type: feature
+scope: Plugin

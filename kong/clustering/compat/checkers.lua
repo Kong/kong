@@ -21,6 +21,9 @@ do
   end
 
   local _AI_PROVIDERS_ADDED = {
+    [3010000000] = {
+      "voyage",
+    },
     [3009000000] = {
       "huggingface",
     },
@@ -47,6 +50,38 @@ do
 end
 
 local compatible_checkers = {
+  { 3010000000, --[[ 3.10.0.0 ]]
+    function (config_table, dp_version, log_suffix)
+      local has_update
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3010000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with the ' ..
+            config.model.provider .. ' provider',
+            'fall back to openai preserve mode',
+            dp_version, log_suffix)
+
+            -- keep the traffic on the original upstream: openai preserve mode
+            -- sends the request to `upstream_url` with the original path
+            if not config.model.options or config.model.options == ngx.null then
+              config.model.options = {}
+            end
+            if not config.model.options.upstream_url or config.model.options.upstream_url == ngx.null then
+              config.model.options.upstream_url = "https://api.voyageai.com:443"
+            end
+
+            config.model.provider = "openai"
+            config.route_type = "preserve"
+
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
   { 3009000000, --[[ 3.9.0.0 ]]
     function (config_table, dp_version, log_suffix)
       local has_update
