@@ -72,5 +72,36 @@ for _, strategy in helpers.each_strategy() do
       h = assert.response(res).has.header("x-hello-from-python")
       assert.matches("Python says Kong! to", h)
     end)
+
+    it("tests Request_GetRawPath RPC method [golang, python]", function()
+      local proxy_client = assert(helpers.proxy_client())
+
+      local res = proxy_client:get("/test%20path/with%2Fencoded")
+      assert.res_status(200, res)
+
+      local go_raw_path = assert.response(res).has.header("x-raw-path-from-go")
+      assert.equals("/test%20path/with%2Fencoded", go_raw_path)
+
+      local py_raw_path = assert.response(res).has.header("x-raw-path-from-python")
+      assert.equals("/test%20path/with%2Fencoded", py_raw_path)
+
+      res = proxy_client:get("/simple/path")
+      assert.res_status(200, res)
+
+      go_raw_path = assert.response(res).has.header("x-raw-path-from-go")
+      assert.equals("/simple/path", go_raw_path)
+
+      py_raw_path = assert.response(res).has.header("x-raw-path-from-python")
+      assert.equals("/simple/path", py_raw_path)
+
+      res = proxy_client:get("/")
+      assert.res_status(200, res)
+
+      go_raw_path = assert.response(res).has.header("x-raw-path-from-go")
+      assert.equals("/", go_raw_path)
+
+      py_raw_path = assert.response(res).has.header("x-raw-path-from-python")
+      assert.equals("/", py_raw_path)
+    end)
   end)
 end
