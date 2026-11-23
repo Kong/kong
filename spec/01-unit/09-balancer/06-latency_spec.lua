@@ -378,6 +378,64 @@ describe("[latency]" .. (enable_new_dns_client and "[new dns]" or ""), function(
       }, counts)
     end)
 
+    it("performs power-of-two-choices instead of a full scan once more " ..
+       "than PICK_SET_SIZE addresses are available (regression)", function()
+      -- Regression test: getPeer() used to clamp its candidate-set size `k`
+      -- to PICK_SET_SIZE (2), but then immediately grow it back up to the
+      -- full number of available addresses whenever that number exceeded
+      -- PICK_SET_SIZE. That turned "power of two choices" into a full scan
+      -- that always finds the single globally-lowest-latency address,
+      -- defeating the purpose of sampling.
+      dnsA({ { name = "latency1.test", address = "10.0.0.1" } })
+      dnsA({ { name = "latency2.test", address = "10.0.0.2" } })
+      dnsA({ { name = "latency3.test", address = "10.0.0.3" } })
+      dnsA({ { name = "latency4.test", address = "10.0.0.4" } })
+      dnsA({ { name = "latency5.test", address = "10.0.0.5" } })
+
+      local b = validate_latency(new_balancer({
+        "latency1.test", "latency2.test", "latency3.test",
+        "latency4.test", "latency5.test",
+      }))
+
+      -- Fresh handles pass through getPeer() with an empty failedAddresses
+      -- set, so the candidate list is built by iterating self.ewma in its
+      -- natural pairs() order -- the very same order we discover here.
+      local ordered_addresses = {}
+      for addr in pairs(b.algorithm.ewma) do
+        t_insert(ordered_addresses, addr)
+      end
+      assert.equal(5, #ordered_addresses)
+
+      -- Give the two addresses a power-of-two-choices pass would compare
+      -- first the worst (highest) scores, and bury the single best score
+      -- on the third address -- one a real 2-candidate sample would never
+      -- see.
+      local now = ngx.now()
+      local scores = { 500, 400, 1, 300, 200 }
+      for i, addr in ipairs(ordered_addresses) do
+        b.algorithm.ewma[addr] = scores[i]
+        b.algorithm.ewma_last_touched_at[addr] = now
+      end
+
+      local best_ip = ordered_addresses[3].ip          -- score 1, globally lowest
+      local first_pair_winner_ip = ordered_addresses[2].ip -- score 400 < 500
+
+      local counts = {}
+      local handles = {}
+      for _ = 1, 20 do
+        -- pass no handle, so every call starts with a fresh, empty
+        -- failedAddresses set and re-samples from the full candidate list.
+        local ip, _, _, handle = assert(b:getPeer())
+        counts[ip] = (counts[ip] or 0) + 1
+        t_insert(handles, handle) -- don't let them get GC'ed
+      end
+
+      assert.is_nil(counts[best_ip],
+        "power-of-two-choices must not always find the single globally-" ..
+        "best address once there are more than PICK_SET_SIZE candidates")
+      assert.same({ [first_pair_winner_ip] = 20 }, counts)
+    end)
+
     it("long time update ewma address score, ewma will use the most accurate value", function()
       dnsSRV({
         { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
