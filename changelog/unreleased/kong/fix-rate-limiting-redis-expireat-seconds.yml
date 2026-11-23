@@ -1,0 +1,3 @@
+message: "**Rate Limiting**: Fixed Redis key TTLs when `sync_rate > 0` by converting millisecond period timestamps to seconds before `EXPIREAT`."
+type: bugfix
+scope: Plugin
