@@ -101,6 +101,7 @@ _M.upstream_url_format = {
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
   mistral       = "https://api.mistral.ai:443",
   huggingface   = "https://api-inference.huggingface.co/models/%s",
+  astraflow     = "https://api-us-ca.umodelverse.ai",
 }
 
 _M.operation_map = {
@@ -171,6 +172,16 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  astraflow = {
+    ["llm/v1/completions"] = {
+      path = "/v1/completions",
+      method = "POST",
+    },
+    ["llm/v1/chat"] = {
+      path = "/v1/chat/completions",
+      method = "POST",
+    },
+  },
   bedrock = {
     ["llm/v1/chat"] = {
       path = "/model/%s/%s",
@@ -196,6 +207,9 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   bedrock = {
+    "Set-Cookie",
+  },
+  astraflow = {
     "Set-Cookie",
   },
 }
