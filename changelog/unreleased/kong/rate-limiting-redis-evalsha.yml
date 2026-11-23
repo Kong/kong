@@ -1,0 +1,5 @@
+message: >
+  Reduced Redis script transmission overhead in the rate-limiting plugin by
+  executing cached scripts with EVALSHA and loading missing scripts as needed.
+type: performance
+scope: Plugin
