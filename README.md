@@ -65,7 +65,7 @@ The top Kong features include:
 - MCP traffic governance, MCP security and MCP observability in addition to MCP autogeneration from any RESTful API.
 - 60+ AI features like AI observability, semantic security and caching, semantic routing and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
-- Plugins for enforcing traffic controls, rate limiting, req/res transformations, logging, monitoring and including a plugin developer hub.
+- Plugins for enforcing traffic controls, rate limiting, req/res transformations, logging, monitoring and includes a plugin developer hub.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
 - Native [ingress controller](https://github.com/Kong/kubernetes-ingress-controller) support for serving Kubernetes.
 
