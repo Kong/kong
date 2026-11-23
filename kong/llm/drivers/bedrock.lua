@@ -122,6 +122,20 @@ local function from_tool_call_response(content)
   return tools_used
 end
 
+-- reasoning models (Claude Opus 5.x, OpenAI GPT-6, gpt-oss) can put a
+-- reasoningContent block before the text; join the text blocks with "\n"
+-- like the anthropic driver does
+local function join_text(content)
+  local texts = {}
+  for _, block in ipairs(content) do
+    if block.text then
+      table_insert(texts, block.text)
+    end
+  end
+
+  return #texts > 0 and table.concat(texts, "\n") or nil
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   local new_event, metadata
 
@@ -426,7 +440,7 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
       index = 0,
       message = {
         role = "assistant",
-        content = response.output.message.content[1].text,  -- may be nil
+        content = join_text(response.output.message.content),  -- may be nil
         tool_calls = from_tool_call_response(response.output.message.content),
       },
       finish_reason = _OPENAI_STOP_REASON_MAPPING[response.stopReason] or "stop",
