@@ -268,6 +268,25 @@ for _, strategy in helpers.each_strategy() do
       }, cjson.decode(body))
     end)
 
+    describe("repeated field as query parameter", function()
+      -- single occurrence used to fail with 400 "failed to encode payload"
+      -- because ngx.req.get_uri_args returns a string (not a table) and the
+      -- repeated field could not be encoded. See issue #14907.
+      test("single value transcodes to a one-element list", function()
+        local res, _ = proxy_client:get("/v1/echo?array=a")
+        assert.equal(200, res.status)
+        local data = cjson.decode((res:read_body()))
+        assert.same({ "a" }, data.array)
+      end)
+
+      test("multiple values transcode to a list", function()
+        local res, _ = proxy_client:get("/v1/echo?array=a&array=b")
+        assert.equal(200, res.status)
+        local data = cjson.decode((res:read_body()))
+        assert.same({ "a", "b" }, data.array)
+      end)
+    end)
+
     test("null in json", function()
       local res, _ = proxy_client:post("/bounce", {
         headers = { ["Content-Type"] = "application/json" },
