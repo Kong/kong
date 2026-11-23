@@ -57,6 +57,7 @@ service Bouncer {
 message HelloRequest {
   string greeting = 1;
   bool boolean_test = 2;
+  repeated string tags = 3;
 }
 
 message HelloResponse {
