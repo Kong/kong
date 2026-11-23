@@ -143,8 +143,12 @@ local function do_authentication(conf)
       key = v
 
       if conf.hide_credentials then
-        kong.service.request.clear_query_arg(name)
-        kong.service.request.clear_header(name)
+        if conf.key_in_query then
+          kong.service.request.clear_query_arg(name)
+        end
+        if conf.key_in_header then
+          kong.service.request.clear_header(name)
+        end
 
         if conf.key_in_body then
           if not body then
