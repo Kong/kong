@@ -1,0 +1,5 @@
+message: >
+  **ai-prompt-decorator**: Fixed empty JSON arrays (such as `tools: []`) being
+  re-encoded as objects after decorating the request body.
+type: bugfix
+scope: Plugin
