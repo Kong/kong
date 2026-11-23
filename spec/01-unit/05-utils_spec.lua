@@ -217,6 +217,25 @@ describe("Utils", function()
       assert.True(validate_utf8("hello"))
       assert.True(validate_utf8(123))
       assert.True(validate_utf8(true))
+      -- valid 2-byte sequences (0xC2..0xDF followed by 0x80..0xBF)
+      assert.True(validate_utf8(string.char(194, 128))) -- U+0080
+      assert.True(validate_utf8(string.char(194, 191))) -- U+00BF
+      assert.True(validate_utf8(string.char(223, 128))) -- U+0780
+      assert.True(validate_utf8(string.char(223, 191))) -- U+07FF
+      -- invalid 2-byte sequences with ASCII second byte (123..127)
+      assert.False(validate_utf8(string.char(194, 122))) -- 0xC2 followed by 'z' (122)
+      assert.False(validate_utf8(string.char(194, 123))) -- 0xC2 followed by '{' (123)
+      assert.False(validate_utf8(string.char(194, 124))) -- 0xC2 followed by '|' (124)
+      assert.False(validate_utf8(string.char(194, 125))) -- 0xC2 followed by '}' (125)
+      assert.False(validate_utf8(string.char(194, 126))) -- 0xC2 followed by '~' (126)
+      assert.False(validate_utf8(string.char(194, 127))) -- 0xC2 followed by DEL (127)
+      assert.False(validate_utf8(string.char(223, 123))) -- 0xDF followed by '{' (123)
+      assert.False(validate_utf8(string.char(223, 127))) -- 0xDF followed by DEL (127)
+      assert.False(validate_utf8(string.char(194, 192))) -- 0xC2 followed by 0xC0 (192)
+      -- failure index check
+      local ok, idx = validate_utf8("abc" .. string.char(194, 123))
+      assert.False(ok)
+      assert.equal(4, idx)
       assert.False(validate_utf8(string.char(105, 213, 205, 149)))
       assert.False(validate_utf8(string.char(128))) -- unexpected continuation byte
       assert.False(validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
