@@ -170,7 +170,8 @@ local function aws_serializer(ctx, config)
   end
 
   -- query parameters
-  local queryStringParameters = ngx_req_get_uri_args()
+  local max_args = config and config.max_uri_args or nil
+  local queryStringParameters = ngx_req_get_uri_args(max_args)
   local multiValueQueryStringParameters = {}
   for qname, qvalue in pairs(queryStringParameters) do
     if type(qvalue) == "table" then
