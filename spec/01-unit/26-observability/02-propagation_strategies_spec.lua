@@ -285,6 +285,20 @@ local test_data = { {
       should_sample = false,
     },
     err = "w3c injector context is invalid: field span_id not found in context"
+  },{
+    description = "base baggage case",
+    inject = true,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
+      ["baggage"] = "foo=bar,baz=qux",
+    },
+    ctx = {
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      parent_id = span_id_8_2,
+      should_sample = true,
+      baggage = { foo = "bar", baz = "qux"},
+    }
   } }
 }, {
   extractor = "b3",
