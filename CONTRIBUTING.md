@@ -69,7 +69,7 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 For questions about the use of the Community Edition, please use
 [GitHub Discussions](https://github.com/Kong/kong/discussions).  You
-can also join our [Community Slack](http://kongcommunity.slack.com/)
+can also join our [Community Slack](https://kongcommunity.slack.com/)
 for real-time conversations around Kong Gateway.
 
 **Please avoid opening GitHub issues for general questions or help**, as those
