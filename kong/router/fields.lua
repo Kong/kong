@@ -406,6 +406,12 @@ local function visit_for_cache_key(field, value, str_buf)
   end
 
   if type(value) == "table" then
+    for i, item in ipairs(value) do
+      if type(item) == "boolean" then
+        value[i] = ""
+      end
+    end
+
     tb_sort(value)
     value = tb_concat(value, ",")
   end
@@ -422,6 +428,10 @@ local function visit_for_context(field, value, ctx)
   -- multiple values for a single header/query parameter, like /?foo=bar&foo=baz
   if v_type == "table" then
     for _, v in ipairs(value) do
+      if type(v) == "boolean" then
+        v = ""
+      end
+
       local res, err = ctx:add_value(field, v)
       if not res then
         return nil, err
