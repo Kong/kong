@@ -15,7 +15,7 @@ local fmt               = string.format
 local proxy_client      = helpers.proxy_client
 local table_insert      = table.insert
 local tonumber          = tonumber
-
+-- Some random changes in a file --- 000
 local ngx_sleep         = ngx.sleep
 local ngx_now           = ngx.now
 
@@ -51,7 +51,7 @@ local function GET(url, opt)
 
   return res
 end
-
+-- Some random changes in a file --- 11
 
 local function client_requests(n, proxy_fn)
   local ret = {
@@ -90,7 +90,7 @@ local function client_requests(n, proxy_fn)
   return ret
 end
 
-
+-- Some random changes in a file --- 222
 local function validate_headers(headers, check_minute, check_hour)
   if check_minute then
     assert.same({
@@ -130,7 +130,7 @@ local function validate_headers(headers, check_minute, check_hour)
 
     elseif check_minute then
       assert.equal(true, reset <= 60 and reset >= 0)
-
+-- Some random changes in a file --- 222_333_111
     else
       error("check_hour or check_minute must be true")
     end
@@ -174,7 +174,7 @@ end
 
 local function setup_rl_plugin(admin_client, conf, service, consumer)
   local plugin
-
+-- Some random changes in a file --- 222_333_222
   if service then
     plugin = assert(admin_client:send({
       method = "POST",
@@ -219,7 +219,7 @@ local function setup_rl_plugin(admin_client, conf, service, consumer)
 
   return cjson.decode(assert.res_status(201, plugin))
 end
-
+-- Some random changes in a file --- 333
 local function setup_key_auth_plugin(admin_client, conf, service)
   local plugin
 
