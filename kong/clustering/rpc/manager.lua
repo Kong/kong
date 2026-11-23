@@ -650,17 +650,15 @@ function _M:connect(premature, node_id, host, path, cert, key)
 
   do
     local resp_headers = c:get_resp_headers()
-    -- FIXME: resp_headers should not be case sensitive
+    local meta_cap = utils.get_header(resp_headers, "sec_websocket_protocol")
 
-    if not resp_headers or not resp_headers["sec_websocket_protocol"] then
+    if not meta_cap then
       ngx_log(ngx_ERR, _log_prefix, "peer did not provide sec_websocket_protocol, node_id: ", node_id)
       c:send_close() -- can't do much if this fails
       goto err
     end
 
     -- should like "kong.meta.v1"
-    local meta_cap = resp_headers["sec_websocket_protocol"]
-
     if meta_cap ~= RPC_META_V1 then
       ngx_log(ngx_ERR, _log_prefix, "did not support protocol : ", meta_cap)
       c:send_close() -- can't do much if this fails
