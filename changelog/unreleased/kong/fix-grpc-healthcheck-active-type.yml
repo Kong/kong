@@ -1,0 +1,7 @@
+message: >-
+  Fix crash when upstream healthchecks.active.type is set to "grpc" or "grpcs".
+  The lua-resty-healthcheck library only accepts "tcp", "http", or "https";
+  Kong now maps "grpc" to "http" and "grpcs" to "https" before passing the
+  checks configuration to the library.
+type: bugfix
+scope: Core
