@@ -4,18 +4,29 @@ on:
     paths:
     - 'build/openresty/patches/**'
 
+permissions: {}
+
 jobs:
   create-pr:
     runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'Kong' }}
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.KONG_OSS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.KONG_OSS_APP_SECRET }}
+          owner: Kong
+          repositories: openresty-patches-review
+          permission-actions: write
+
       - name: Dispatch the workflow
-        if: ${{ github.repository_owner == 'Kong' }}
         uses: benc-uk/workflow-dispatch@31e2b3319479a63f0ab15bf800eff9e913504e26 # v1.3.2
         with:
           workflow: create-pr.yml
           repo: kong/openresty-patches-review
           ref: master
-          token: ${{ secrets.PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           inputs: |
             {"pr-branch":"${{ github.event.pull_request.head.repo.owner.login }}:${{ github.head_ref }}", "pr-base":"${{ github.base_ref }}", "ee":${{ contains(github.repository, 'kong-ee') && 'true' || 'false' }}, "pr-id":"${{ github.event.pull_request.number }}"}
-
