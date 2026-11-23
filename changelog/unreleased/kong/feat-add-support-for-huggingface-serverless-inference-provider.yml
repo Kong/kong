@@ -1,0 +1,4 @@
+message: |
+  **ai-proxy**: Added support for HuggingFace's new serverless API in the AI Proxy plugin, enabling seamless integration and improved compatibility.
+type: "feature"
+scope: "Plugin"

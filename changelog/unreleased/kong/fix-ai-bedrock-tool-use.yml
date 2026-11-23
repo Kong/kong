@@ -1,0 +1,4 @@
+message: >
+  **AI Plugins**: Fixed an issue where Bedrock (Converse API) didn't properly parse multiple `toolUse` tool calls in one turn, on some models.
+type: bugfix
+scope: Plugin

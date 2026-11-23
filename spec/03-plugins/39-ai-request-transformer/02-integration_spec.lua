@@ -87,7 +87,7 @@ local _EXPECTED_CHAT_STATS_GEMINI = {
       plugin_id = '71083e79-4921-4f9f-97a4-ee7810b6cd8b',
       provider_name = 'gemini',
       request_model = 'UNSPECIFIED',
-      response_model = 'gemini-1.5-flash',
+      response_model = 'gemini-1.5-flash-002',
       llm_latency = 1
     },
     usage = {

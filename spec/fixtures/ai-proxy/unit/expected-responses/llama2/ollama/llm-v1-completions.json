@@ -8,8 +8,9 @@
   "object": "text_completion",
   "model": "llama2",
   "usage": {
-    "completion_tokens": 139,
-    "prompt_tokens": 130,
-    "total_tokens": 269
-  }
+    "completion_tokens": 12,
+    "prompt_tokens": 13,
+    "total_tokens": 25
+  },
+  "created": 1705306461
 }

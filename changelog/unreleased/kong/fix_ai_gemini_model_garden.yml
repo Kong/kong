@@ -1,0 +1,4 @@
+message: >
+  "AI Proxy Advanced: Fixed an issue where gemini provider not support model garden"
+type: bugfix
+scope: Plugin

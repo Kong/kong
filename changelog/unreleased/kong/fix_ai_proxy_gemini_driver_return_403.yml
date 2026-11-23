@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Fixed an issue where AI Proxy returns 403 using gemini provider.
+type: bugfix
+scope: Plugin

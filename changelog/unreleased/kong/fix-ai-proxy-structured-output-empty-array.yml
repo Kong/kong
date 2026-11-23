@@ -1,0 +1,3 @@
+message: "**ai-proxy**: Fixed an issue when empty array in structured output was encoded as empty object."
+type: "bugfix"
+scope: "Plugin"

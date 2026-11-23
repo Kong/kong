@@ -6,7 +6,7 @@
   "stop_reason": "stop_sequence",
   "model": "claude-2.1",
   "usage": {
-    "input_tokens": 0,
-    "output_tokens": 0
+    "input_tokens": 12,
+    "output_tokens": 16
   }
 }

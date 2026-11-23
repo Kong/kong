@@ -1,0 +1,4 @@
+message: |
+  **AI Proxy**: Fixed an issue where extra inputs were not permitted for huggingface inference provider
+type: "bugfix"
+scope: "Plugin"
