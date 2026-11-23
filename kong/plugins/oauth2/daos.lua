@@ -74,7 +74,7 @@ local oauth2_authorization_codes = {
     { created_at = typedefs.auto_timestamp_s },
     { service = { type = "foreign", reference = "services", default = ngx.null, on_delete = "cascade", }, },
     { credential = { type = "foreign", reference = "oauth2_credentials", required = true, on_delete = "cascade", }, },
-    { code = { type = "string", required = false, unique = true, auto = true }, }, -- FIXME immutable
+    { code = { type = "string", required = false, unique = true, auto = true, immutable = true }, },
     { authenticated_userid = { type = "string", required = false }, },
     { scope = { type = "string" }, },
     { challenge = { type = "string", required = false }},
