@@ -12,6 +12,7 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
 local request_id   = require "kong.observability.tracing.request_id"
+local buffer       = require "string.buffer"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -49,7 +50,8 @@ local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
-local encode            = require("string.buffer").encode
+local encode            = buffer.encode
+local decode            = buffer.decode
 local uuid              = require("kong.tools.uuid").uuid
 local EMPTY            = require("kong.tools.table").EMPTY
 
@@ -66,6 +68,7 @@ local PLUGINS_REBUILD_COUNTER_KEY =
                                 constants.PLUGINS_REBUILD_COUNTER_KEY
 local ROUTERS_REBUILD_COUNTER_KEY =
                                 constants.ROUTERS_REBUILD_COUNTER_KEY
+local ROUTER_SNAPSHOT_KEY = "kong:router_snapshot"
 
 
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
@@ -344,9 +347,96 @@ local function get_router_version()
 end
 
 
+-- Respawned workers inherit the router that the master built during init.
+-- Keep the latest successfully built inputs in shared memory so init_worker
+-- can replace that inherited router without requiring the database.
+local function load_router_snapshot(version)
+  if kong.db.strategy == "off" or
+     not version or
+     get_phase() ~= "init_worker"
+  then
+    return nil
+  end
+
+  local value = ngx.shared.kong_core_db_cache:get(ROUTER_SNAPSHOT_KEY)
+  if not value then
+    return nil
+  end
+
+  local snapshot, err = decode(value)
+  if not snapshot then
+    log(ERR, "could not decode router snapshot: ", err)
+    return nil
+  end
+
+  if snapshot[1] ~= version then
+    return nil
+  end
+
+  return snapshot[2]
+end
+
+
+local function store_router_snapshot(version, routes)
+  if kong.db.strategy == "off" or
+     not version or
+     version == "init" or
+     not kong.core_cache
+  then
+    return
+  end
+
+  local value, err = encode({ version, routes })
+  if not value then
+    log(ERR, "could not encode router snapshot: ", err)
+    return
+  end
+
+  local ok, err = ngx.shared.kong_core_db_cache:safe_set(ROUTER_SNAPSHOT_KEY,
+                                                          value)
+  if not ok then
+    log(WARN, "could not store router snapshot: ", err)
+  end
+end
+
+
+local function create_router(routes, version, from_snapshot)
+  local n = DEFAULT_MATCH_LRUCACHE_SIZE
+  local i = #routes
+  local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
+
+  if cache_size ~= ROUTER_CACHE_SIZE then
+    ROUTER_CACHE = lrucache.new(cache_size)
+    ROUTER_CACHE_SIZE = cache_size
+  end
+
+  local new_router, err = Router.new(routes, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
+  if not new_router then
+    return nil, "could not create router: " .. err
+  end
+
+  if not from_snapshot then
+    store_router_snapshot(version, routes)
+  end
+
+  local _, err = kong_shm:incr(ROUTERS_REBUILD_COUNTER_KEY, 1, 0)
+  if err then
+    log(ERR, "failed to increase router rebuild counter: ", err)
+  end
+
+  return new_router
+end
+
+
 local function new_router(version)
+  local routes = load_router_snapshot(version)
+  if routes then
+    return create_router(routes, version, true)
+  end
+
   local db = kong.db
-  local routes, i = {}, 0
+  local i = 0
+  routes = {}
 
   local err
   -- The router is initially created on init phase, where kong.core_cache is
@@ -415,25 +505,7 @@ local function new_router(version)
     end
   end
 
-  local n = DEFAULT_MATCH_LRUCACHE_SIZE
-  local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
-
-  if cache_size ~= ROUTER_CACHE_SIZE then
-    ROUTER_CACHE = lrucache.new(cache_size)
-    ROUTER_CACHE_SIZE = cache_size
-  end
-
-  local new_router, err = Router.new(routes, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
-  if not new_router then
-    return nil, "could not create router: " .. err
-  end
-
-  local _, err = kong_shm:incr(ROUTERS_REBUILD_COUNTER_KEY, 1, 0)
-  if err then
-    log(ERR, "failed to increase router rebuild counter: ", err)
-  end
-
-  return new_router
+  return create_router(routes, version)
 end
 
 
@@ -441,12 +513,16 @@ local function build_router(version)
   -- as new_router may be interrupted, and after init_worker we assume
   -- the ROUTE is never nil, we create an empty router which cannot be
   -- interrupted and will be replaced by the new_router
-  if version == "init" then
-    local err
-    ROUTER, err = Router.new(EMPTY, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
-    if not ROUTER then
-      log(ERR, "could not create an empty router: ", err)
+  if version == "init" or get_phase() == "init_worker" then
+    local router, err = Router.new(EMPTY, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
+    if not router then
+      ROUTER = nil
+      return nil, "could not create an empty router: " .. err
     end
+
+    ROUTER = router
+    ROUTER_CACHE:flush_all()
+    ROUTER_CACHE_NEG:flush_all()
   end
 
   local router, err = new_router(version)
@@ -874,6 +950,10 @@ local function set_init_versions_in_cache()
   assert(ngx.get_phase() == "init")
 
   local core_cache_shm = ngx.shared["kong_core_db_cache"]
+
+  -- snapshots are tied to the router version and cannot survive a reload,
+  -- which resets that version to "init".
+  core_cache_shm:delete(ROUTER_SNAPSHOT_KEY)
 
   -- ttl = forever is okay as "*:versions" keys are always manually invalidated
   local marshalled_value = encode("init")
