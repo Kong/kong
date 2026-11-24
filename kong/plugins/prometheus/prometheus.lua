@@ -213,7 +213,7 @@ local function full_metric_name(name, label_names, label_values)
       end
     end
 
-    -- add a comma to seperate k=v
+    -- add a comma to separate k=v
     if idx > 1 then
       buf:put(",")
     end
