@@ -26,7 +26,7 @@ for _, module in ipairs(modules) do
 end
 
 -- get a session from the logs with a timeout
--- throws error if no request is recieved within the timeout
+-- throws error if no request is received within the timeout
 -- @treturn table the session
 function http_mock:get_session()
   local ret
@@ -38,14 +38,14 @@ function http_mock:get_session()
 end
 
 -- get a request from the logs with a timeout
--- throws error if no request is recieved within the timeout
+-- throws error if no request is received within the timeout
 -- @treturn table the request
 function http_mock:get_request()
   return self:get_session().req
 end
 
 -- get a response from the logs with a timeout
--- throws error if no request is recieved within the timeout
+-- throws error if no request is received within the timeout
 -- @treturn table the response
 function http_mock:get_response()
   return self:get_session().resp
