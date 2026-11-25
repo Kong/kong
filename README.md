@@ -15,7 +15,7 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 ---
 
-[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds] | [AI Gateway](https://konghq.com/products/kong-ai-gateway) | [Cloud Hosted Kong](https://konghq.com/kong-konnect/)
+[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds] | [AI Gateway](https://konghq.com/products/kong-ai-gateway) | [Cloud Hosted Kong](https://konghq.com/kong-konnect/) | <a href="README.zh-CN.md">简体中文</a>
 
 ---
 
